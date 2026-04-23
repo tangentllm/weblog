@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LLM Notes — 记录大模型学习之路</title>
+  <title>LLM Notes — 未来已来</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -325,7 +325,7 @@
   <div id="search-overlay" class="search-overlay" onclick="if(event.target===this)closeSearch()">
     <div class="search-backdrop"></div>
     <div class="search-box">
-      <input id="search-input" class="search-input" placeholder="搜索文章标题、标签..." oninput="handleSearch(this.value)" autocomplete="off">
+      <input id="search-input" class="search-input" placeholder="搜索文章 / 作品 / 标签..." oninput="handleSearch(this.value)" autocomplete="off">
       <div id="search-results" class="search-results"></div>
     </div>
   </div>
@@ -480,6 +480,69 @@ const siteMeta = {
   repoBase: 'https://github.com/tangentllm/weblog.git',
 };
 
+const skillStackSections = [
+  {
+    title: '大模型核心原理',
+    skills: ['Transformer架构', '自注意力机制', '多头注意力', '位置编码', '编码器-解码器结构', '模型架构设计', '模型规模与能力关系'],
+  },
+  {
+    title: '训练与微调',
+    skills: ['SFT（监督微调）', 'RLHF（人类反馈强化学习）', 'PPO算法', '奖励模型训练', '指令微调', '梯度累积', '混合精度训练', '分布式训练'],
+  },
+  {
+    title: 'Prompt Engineering',
+    skills: ['基础提示设计', '零样本提示', '少样本提示', '思维链（Chain-of-Thought）', 'Prompt Chaining', '动态提示', '上下文管理', '提示优化'],
+  },
+  {
+    title: '工程化实践',
+    skills: ['模型部署', '推理优化', 'ONNX转换', 'TensorRT加速', '模型量化', '模型剪枝', '异步推理', '批处理优化', '监控与日志'],
+  },
+  {
+    title: 'RAG技术',
+    skills: ['检索增强生成', '向量数据库', '文本分块', '嵌入模型', '知识库构建', '检索-生成流程', '重排序', '上下文压缩'],
+  },
+  {
+    title: 'Agent开发',
+    skills: ['ReAct范式', 'Reflection机制', '单智能体架构', 'Multi-Agent系统', '角色分配', '任务分解', '通信协议', '协同工作流', '错误检测与修正', '自我迭代', 'Function Call', 'Tool Calling', 'MCP协议', 'Agent Skill设计'],
+  },
+  {
+    title: '高级技术',
+    skills: ['模型压缩', '知识蒸馏', '长上下文处理', '多模态融合', '模型安全', '可解释性', '持续学习', '联邦学习', '边缘部署'],
+  },
+  {
+    title: '工具与框架',
+    skills: ['PyTorch', 'Hugging Face Transformers', 'LangChain', 'LlamaIndex', 'AutoGen', 'DeepSpeed', 'PEFT', 'Transformers', 'accelerate', 'bitsandbytes', 'Cursor Skills', 'MCP Server'],
+  },
+  {
+    title: '评估与优化',
+    skills: ['模型评估指标', '性能基准测试', 'A/B测试', '用户反馈收集', '模型迭代优化', '成本优化', '效率优化'],
+  },
+  {
+    title: '部署与运维',
+    skills: ['Docker容器化', 'Kubernetes编排', 'CI/CD流程', '监控告警', '负载均衡', '故障恢复', '版本管理', '安全防护', '合规性检查'],
+  },
+  {
+    title: '伦理与治理',
+    skills: ['模型偏见检测', '伦理审查', '数据隐私保护', '可解释性分析', '模型审计', '风险评估', '合规性要求', '透明度报告'],
+  },
+  {
+    title: '系统设计',
+    skills: ['API设计', '服务架构', '缓存策略', '负载均衡', '容错机制', '扩展性设计', '高可用性', '性能调优', '成本控制'],
+  },
+  {
+    title: '相关技术',
+    skills: ['自然语言处理', '计算机视觉', '语音识别', '知识图谱', '推荐系统', '数据挖掘', '机器学习基础', '深度学习', '算法设计', '数据结构'],
+  },
+  {
+    title: '工具链',
+    skills: ['Git版本控制', 'Jupyter Notebook', 'VS Code', 'PyCharm', '数据分析工具', '可视化工具', '监控工具', '部署工具', '测试框架', '持续集成'],
+  },
+  {
+    title: '应用编排与生态',
+    skills: ['Function Calling', 'MCP', 'Skill系统', '工具路由', '上下文工程', '会话记忆', '长任务编排', '人机协同闭环'],
+  },
+];
+
 /* ============================
    工具函数
    ============================ */
@@ -496,6 +559,90 @@ function getCategoryIcon(name) {
 function getProjectYear(periodText) {
   const matched = (periodText || '').match(/\d{4}/);
   return matched ? matched[0] : '未知';
+}
+
+let lucideRetryCount = 0;
+function renderLucideIconsSafely() {
+  if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+    lucide.createIcons();
+    lucideRetryCount = 0;
+    return;
+  }
+  if (lucideRetryCount >= 10) return;
+  lucideRetryCount += 1;
+  setTimeout(renderLucideIconsSafely, 60);
+}
+
+function normalizeSkillToken(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[（()）\s\-_/]/g, '')
+    .replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
+}
+
+function buildCoveredSkillSet() {
+  const allTags = [
+    ...posts.flatMap((post) => post.tags || []),
+    ...projectsData.flatMap((project) => project.tags || []),
+  ];
+  const normalizedTags = allTags.map(normalizeSkillToken).filter(Boolean);
+  const covered = new Set(normalizedTags);
+  const aliasMap = {
+    rag: ['检索增强生成', '向量数据库', '检索生成流程'],
+    sft: ['sft监督微调', '指令微调'],
+    rlhf: ['rlhf人类反馈强化学习'],
+    dpo: ['模型迭代优化'],
+    promptops: ['提示优化'],
+    multiagent: ['multiagent系统', '协同工作流'],
+    abtest: ['ab测试'],
+    pytorch: ['pytorch'],
+    langchain: ['langchain'],
+    llamaindex: ['llamaindex'],
+    functioncall: ['functioncall', 'functioncalling', 'function call', 'tool calling'],
+    mcp: ['mcp', 'mcp协议', 'mcpserver', 'mcp server'],
+    skill: ['skill', 'skills', 'agentskill', 'agent skill', 'cursorskills', 'cursor skills'],
+    toolcalling: ['toolcalling', 'tool calling', 'function calling'],
+    deepspeed: ['deepspeed'],
+    peft: ['peft'],
+    accelerate: ['accelerate'],
+    bitsandbytes: ['bitsandbytes'],
+  };
+  normalizedTags.forEach((tag) => {
+    Object.entries(aliasMap).forEach(([alias, linkedSkills]) => {
+      if (tag.includes(normalizeSkillToken(alias))) {
+        linkedSkills.forEach((skill) => covered.add(normalizeSkillToken(skill)));
+      }
+    });
+  });
+  return { covered, normalizedTags };
+}
+
+function isSkillCovered(skillLabel, coveredInfo) {
+  const normalizedSkill = normalizeSkillToken(skillLabel);
+  if (!normalizedSkill) return false;
+  if (coveredInfo.covered.has(normalizedSkill)) return true;
+  return coveredInfo.normalizedTags.some(
+    (tag) => tag.includes(normalizedSkill) || normalizedSkill.includes(tag),
+  );
+}
+
+function renderSkillStack() {
+  const coveredInfo = buildCoveredSkillSet();
+  return skillStackSections.map((section) => `
+    <section class="dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border rounded-xl p-5">
+      <h3 class="font-semibold dark:text-white text-[#111] mb-3">${section.title}</h3>
+      <div class="flex flex-wrap gap-2">
+        ${section.skills.map((skill) => {
+          const covered = isSkillCovered(skill, coveredInfo);
+          return `<span class="${
+            covered
+              ? 'px-3 py-1.5 rounded-full text-xs font-medium dark:bg-[rgba(0,229,160,0.15)] bg-[rgba(0,180,125,0.12)] dark:text-[#00e5a0] text-[#008866] border dark:border-[rgba(0,229,160,0.45)] border-[rgba(0,180,125,0.35)]'
+              : 'px-3 py-1.5 rounded-full text-xs font-medium dark:bg-[#171717] bg-[#f7f7f7] dark:text-[#7e7e7e] text-[#8a8a8a] border dark:border-[#262626] border-[#e9e9e9]'
+          }">${skill}</span>`;
+        }).join('')}
+      </div>
+    </section>
+  `).join('');
 }
 
 function stripFrontmatter(markdownText) {
@@ -689,24 +836,28 @@ function router() {
 
   const isPostRoute = hash.startsWith('#/post/');
   const isProjectRoute = hash.startsWith('#/project/');
-  const runEnhancements = () => {
+  const runImmediateEnhancements = () => {
+    renderLucideIconsSafely();
+    // 立即初始化 reveal，避免关于页内容延迟出现
+    initReveal();
+  };
+  const runDeferredEnhancements = () => {
     if ((isPostRoute || isProjectRoute) && typeof renderMathInElement === 'function') {
       renderMathInElement(app, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false });
     }
     if ((isPostRoute || isProjectRoute) && typeof hljs !== 'undefined') {
       app.querySelectorAll('pre code').forEach(block => { hljs.highlightElement(block); });
     }
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-    initReveal();
     if (isPostRoute || isProjectRoute) {
       initImageLightbox();
       initPostToc();
     }
   };
+  requestAnimationFrame(runImmediateEnhancements);
   if (typeof requestIdleCallback === 'function') {
-    requestIdleCallback(runEnhancements, { timeout: 120 });
+    requestIdleCallback(runDeferredEnhancements, { timeout: 120 });
   } else {
-    setTimeout(runEnhancements, 30);
+    setTimeout(runDeferredEnhancements, 30);
   }
 
   window.scrollTo({top: 0, behavior: 'instant'});
@@ -724,7 +875,6 @@ function router() {
 function renderHome(app) {
   const pinned = posts.filter(p => p.pinned);
   const recent = posts.filter(p => !p.pinned);
-  const allTags = [...new Set(posts.flatMap(p => p.tags))];
   const hasPosts = posts.length > 0;
 
   app.innerHTML = `
@@ -737,9 +887,6 @@ function renderHome(app) {
           <h1 class="font-serif text-4xl md:text-6xl font-bold leading-tight dark:text-white text-[#111] mb-6">
             理解大模型，<br>从第一性原理出发
           </h1>
-          <p class="text-lg md:text-xl dark:text-[#888] text-[#777] max-w-2xl leading-relaxed mb-8">
-            这里记录我从零学习大模型的完整过程——原理拆解、代码实战、论文精读、独立思考。不求速度，但求每一步都踩实。
-          </p>
           <div class="flex gap-3">
             <a href="#/categories" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#00e5a0] text-[#050505] text-sm font-semibold hover:brightness-110 transition-all">
               浏览全部文章 <i data-lucide="arrow-right" class="w-4 h-4"></i>
@@ -812,20 +959,10 @@ function renderHome(app) {
       </div>
     </section>
 
-    <!-- 标签云 -->
-    <section class="max-w-5xl mx-auto px-6 pb-20">
-      <div class="reveal">
-        <p class="text-xs font-mono dark:text-[#555] text-[#bbb] uppercase tracking-widest mb-5">Tags</p>
-        <div class="flex flex-wrap gap-2">
-          ${allTags.map(t => `<span class="tag">${t}</span>`).join('')}
-        </div>
-      </div>
-    </section>
-
     <!-- 页脚 -->
     <footer class="border-t dark:border-[#1a1a1a] border-[#eee] py-10">
       <div class="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm dark:text-[#555] text-[#bbb]">
-        <span>LLM Notes — 记录大模型学习之路</span>
+        <span>LLM Notes — 未来已来</span>
         <span>Powered by curiosity & persistence</span>
       </div>
     </footer>
@@ -1191,7 +1328,13 @@ function renderAbout(app) {
           <div>
             <h2 class="font-semibold text-xl dark:text-white text-[#111] mb-2">一个对大模型充满好奇的工程师</h2>
             <p class="dark:text-[#888] text-[#666] leading-relaxed mb-4">
-              有过几年后端开发经验，2024 年开始系统学习大模型相关技术。创建这个博客的初衷很简单——发现网上很多教程要么太浅（停留在 API 调用层面），要么太深（直接甩论文），缺乏一个"从工程师视角逐步深入"的中间地带。
+              拥有10年客户端开发经验，自2024年起开始接触并深入研究大模型相关技术，对该领域产生了浓厚兴趣并持续探索。创建此博客的主要目的是填补当前技术学习资源的空白.
+            </p>
+            <p class="dark:text-[#888] text-[#666] leading-relaxed mb-4">
+              	市场上现有教程普遍存在两个极端：要么过于浅显，仅停留在API调用的基础层面；要么过于深奥，直接引用学术论文，缺乏一个能够"从工程师视角逐步深入"的系统性学习路径。
+            </p>
+            <p class="dark:text-[#888] text-[#666] leading-relaxed mb-4">
+              需要说明的是,由于我之前的GitHub账号无法继续使用，因此重新创建了当前账号以记录和分享我的技术学习历程。
             </p>
             <p class="dark:text-[#888] text-[#666] leading-relaxed">
               我相信 <strong class="dark:text-[#ccc] text-[#333]">理解原理是写好代码的前提</strong>，所以每学一个技术，我都会先搞清楚"为什么"再动手。这个博客就是这段旅程的副产品。
@@ -1203,42 +1346,46 @@ function renderAbout(app) {
       <!-- 技能图谱 -->
       <div class="reveal mb-8">
         <h2 class="font-serif text-xl font-bold dark:text-white text-[#111] mb-6">技能图谱</h2>
-        <div class="grid sm:grid-cols-2 gap-4">
-          ${[
-            {name: 'Python / PyTorch', level: 85, color: '#00e5a0'},
-            {name: 'Transformer 原理', level: 75, color: '#00c9ff'},
-            {name: '模型微调', level: 65, color: '#00e5a0'},
-            {name: 'Prompt Engineering', level: 70, color: '#00c9ff'},
-            {name: 'RAG / Agent 开发', level: 50, color: '#00e5a0'},
-            {name: '模型部署 / 推理优化', level: 40, color: '#00c9ff'},
-          ].map(skill => `
-            <div class="dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border rounded-lg p-4">
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-sm font-medium dark:text-[#ccc] text-[#333]">${skill.name}</span>
-                <span class="text-xs dark:text-[#555] text-[#bbb]">${skill.level}%</span>
-              </div>
-              <div class="h-1.5 rounded-full dark:bg-[#1a1a1a] bg-[#eee] overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-1000" style="width:${skill.level}%;background:${skill.color}"></div>
-              </div>
-            </div>
-          `).join('')}
+        <div class="space-y-4">
+          ${renderSkillStack()}
         </div>
       </div>
 
       <!-- 联系方式 -->
       <div class="reveal">
-        <h2 class="font-serif text-xl font-bold dark:text-white text-[#111] mb-6">联系我</h2>
-        <div class="flex flex-wrap gap-3">
-          ${[
-            {icon: 'github', label: 'GitHub', href: '#'},
-            {icon: 'twitter', label: 'Twitter / X', href: '#'},
-            {icon: 'mail', label: 'Email', href: '#'},
-            {icon: 'rss', label: 'RSS 订阅', href: '#'},
-          ].map(link => `
-            <a href="${link.href}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border text-sm dark:text-[#aaa] text-[#555] hover:dark:border-[#00e5a0] hover:border-[#00a870] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-all">
-              <i data-lucide="${link.icon}" class="w-4 h-4"></i> ${link.label}
-            </a>
-          `).join('')}
+        <h2 class="font-serif text-xl font-bold dark:text-white text-[#111] mb-6">保持连接</h2>
+        <div class="grid grid-cols-3 gap-3">
+          <a
+            href="https://github.com/tangentllm"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub"
+            title="GitHub"
+            class="group rounded-xl dark:bg-[#151515] bg-[#f7f7f7] border dark:border-[#242424] border-[#e6e6e6] px-3 py-3 flex flex-col items-center justify-center gap-1.5 dark:text-[#b8b8b8] text-[#666] hover:dark:text-[#00e5a0] hover:text-[#00a870] hover:dark:border-[#00e5a0] hover:border-[#00a870] hover:-translate-y-0.5 transition-all"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="w-5 h-5 fill-current"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.3c-3.3.7-4-1.6-4-1.6-.6-1.5-1.4-1.9-1.4-1.9-1.2-.8.1-.8.1-.8 1.3.1 2 1.4 2 1.4 1.2 2 3.1 1.4 3.9 1.1.1-.9.5-1.4.8-1.8-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.3-3.1-.1-.3-.6-1.5.1-3.1 0 0 1.1-.3 3.4 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.6 3.4-1.2 3.4-1.2.7 1.6.2 2.8.1 3.1.8.8 1.3 1.8 1.3 3.1 0 4.4-2.7 5.4-5.3 5.7.5.4.9 1.2.9 2.4v3.5c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z"/></svg>
+            <span class="text-[11px] font-medium">GitHub</span>
+          </a>
+          <a
+            href="https://tangentllm.github.io/weblog/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Blog"
+            title="Blog"
+            class="group rounded-xl dark:bg-[#151515] bg-[#f7f7f7] border dark:border-[#242424] border-[#e6e6e6] px-3 py-3 flex flex-col items-center justify-center gap-1.5 dark:text-[#b8b8b8] text-[#666] hover:dark:text-[#00e5a0] hover:text-[#00a870] hover:dark:border-[#00e5a0] hover:border-[#00a870] hover:-translate-y-0.5 transition-all"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="w-5 h-5 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5V4.5A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span class="text-[11px] font-medium">Blog</span>
+          </a>
+          <a
+            href="mailto:tangentllm@qq.com"
+            aria-label="Email"
+            title="Email"
+            class="group rounded-xl dark:bg-[#151515] bg-[#f7f7f7] border dark:border-[#242424] border-[#e6e6e6] px-3 py-3 flex flex-col items-center justify-center gap-1.5 dark:text-[#b8b8b8] text-[#666] hover:dark:text-[#00e5a0] hover:text-[#00a870] hover:dark:border-[#00e5a0] hover:border-[#00a870] hover:-translate-y-0.5 transition-all"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="w-5 h-5 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+            <span class="text-[11px] font-medium">Email</span>
+          </a>
         </div>
       </div>
     </section>
@@ -1263,23 +1410,52 @@ function handleSearch(query) {
   const results = document.getElementById('search-results');
   if (!query.trim()) { results.innerHTML = ''; return; }
   const q = query.toLowerCase();
-  const matched = posts.filter(p =>
+  const matchedPosts = posts.filter(p =>
     p.title.toLowerCase().includes(q) ||
     p.tags.some(t => t.toLowerCase().includes(q)) ||
     p.excerpt.toLowerCase().includes(q) ||
     p.category.toLowerCase().includes(q)
   );
-  if (matched.length === 0) {
-    results.innerHTML = '<div class="p-5 text-sm dark:text-[#555] text-[#bbb] text-center">没有找到匹配的文章</div>';
+  const matchedProjects = projectsData.filter(project =>
+    project.title.toLowerCase().includes(q) ||
+    (project.subtitle || '').toLowerCase().includes(q) ||
+    (project.summary || '').toLowerCase().includes(q) ||
+    (project.tags || []).some(t => t.toLowerCase().includes(q)) ||
+    (project.status || '').toLowerCase().includes(q) ||
+    (project.period || '').toLowerCase().includes(q)
+  );
+
+  if (matchedPosts.length === 0 && matchedProjects.length === 0) {
+    results.innerHTML = '<div class="p-5 text-sm dark:text-[#555] text-[#bbb] text-center">没有找到匹配结果</div>';
     return;
   }
-  results.innerHTML = matched.map(p => `
-    <a href="#/post/${p.slug}" onclick="closeSearch()" class="search-item block">
-      <p class="text-sm font-medium dark:text-[#ddd] text-[#333] mb-1">${p.title}</p>
-      <p class="text-xs dark:text-[#666] text-[#999] line-clamp-1">${p.excerpt}</p>
-      <div class="flex gap-2 mt-1.5">${p.tags.map(t => `<span class="text-[10px] dark:text-[#555] text-[#bbb]">#${t}</span>`).join('')}</div>
-    </a>
-  `).join('');
+  const postSection = matchedPosts.length > 0
+    ? `
+      <div class="px-4 pt-3 pb-1 text-[11px] uppercase tracking-widest dark:text-[#666] text-[#999]">文章</div>
+      ${matchedPosts.map(p => `
+        <a href="#/post/${p.slug}" onclick="closeSearch()" class="search-item block">
+          <p class="text-sm font-medium dark:text-[#ddd] text-[#333] mb-1">${p.title}</p>
+          <p class="text-xs dark:text-[#666] text-[#999] line-clamp-1">${p.excerpt}</p>
+          <div class="flex gap-2 mt-1.5">${p.tags.map(t => `<span class="text-[10px] dark:text-[#555] text-[#bbb]">#${t}</span>`).join('')}</div>
+        </a>
+      `).join('')}
+    `
+    : '';
+
+  const projectSection = matchedProjects.length > 0
+    ? `
+      <div class="px-4 pt-3 pb-1 text-[11px] uppercase tracking-widest dark:text-[#666] text-[#999]">作品</div>
+      ${matchedProjects.map(project => `
+        <a href="#/project/${project.slug}" onclick="closeSearch()" class="search-item block">
+          <p class="text-sm font-medium dark:text-[#ddd] text-[#333] mb-1">${project.title}</p>
+          <p class="text-xs dark:text-[#666] text-[#999] line-clamp-1">${project.summary || project.subtitle || ''}</p>
+          <div class="flex gap-2 mt-1.5">${(project.tags || []).map(t => `<span class="text-[10px] dark:text-[#555] text-[#bbb]">#${t}</span>`).join('')}</div>
+        </a>
+      `).join('')}
+    `
+    : '';
+
+  results.innerHTML = `${postSection}${projectSection}`;
 }
 
 // 主题切换
@@ -1321,10 +1497,28 @@ function updateBackToTop() {
 
 // 滚动渐显
 function initReveal() {
+  const pending = [...document.querySelectorAll('.reveal:not(.visible)')];
+  if (pending.length === 0) return;
+
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  pending.forEach((el) => {
+    const rect = el.getBoundingClientRect();
+    // 首屏可见元素立即显示，避免必须滚动才触发 observer
+    if (rect.top < viewportHeight * 0.95 && rect.bottom > 0) {
+      el.classList.add('visible');
+    }
+  });
+
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal:not(.visible)').forEach(el => observer.observe(el));
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.05, rootMargin: '0px 0px -8% 0px' });
+
+  document.querySelectorAll('.reveal:not(.visible)').forEach((el) => observer.observe(el));
 }
 
 // 图片灯箱
@@ -1393,6 +1587,10 @@ window.addEventListener('scroll', () => {
 
 // 路由监听
 window.addEventListener('hashchange', router);
+window.addEventListener('load', () => {
+  // 避免首次打开时图标脚本晚到导致漏渲染
+  renderLucideIconsSafely();
+});
 
 // 初始化
 async function initApp() {
