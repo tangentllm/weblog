@@ -1,0 +1,75 @@
+[
+  {
+    "slug": "multi-agent-ops",
+    "title": "多智能体运营自动化系统",
+    "subtitle": "内容规划、投放分析、复盘建议的 Agent 协同",
+    "status": "概念验证",
+    "period": "2026 Q2",
+    "tags": [
+      "Multi-Agent",
+      "Tool Calling",
+      "Workflow"
+    ],
+    "summary": "通过角色化 Agent 协作，把运营分析流程从天级缩短到小时级。",
+    "cover": "https://picsum.photos/seed/agent-ops/1200/700",
+    "architecture": [],
+    "features": [],
+    "metrics": [],
+    "screenshots": [],
+    "links": {
+      "github": "https://github.com/",
+      "demo": "https://example.com/",
+      "docs": "https://example.com/docs"
+    },
+    "file": "./content/projects/multi-agent-ops.md"
+  },
+  {
+    "slug": "llm-eval-studio",
+    "title": "LLM Eval Studio",
+    "subtitle": "模型评测与提示词回归平台",
+    "status": "迭代中",
+    "period": "2026 Q1",
+    "tags": [
+      "Evaluation",
+      "PromptOps",
+      "A/B Test"
+    ],
+    "summary": "围绕真实业务样本做离线评测，建立 Prompt 与模型变更的质量闸门。",
+    "cover": "https://picsum.photos/seed/eval-studio/1200/700",
+    "architecture": [],
+    "features": [],
+    "metrics": [],
+    "screenshots": [],
+    "links": {
+      "github": "https://github.com/",
+      "demo": "https://example.com/",
+      "docs": "https://example.com/docs"
+    },
+    "file": "./content/projects/llm-eval-studio.md"
+  },
+  {
+    "slug": "rag-copilot-platform",
+    "title": "企业知识库 RAG Copilot",
+    "subtitle": "私域知识问答平台，支持权限检索与引用溯源",
+    "status": "已上线",
+    "period": "2025 Q4",
+    "tags": [
+      "RAG",
+      "LangGraph",
+      "Supabase",
+      "权限系统"
+    ],
+    "summary": "将文档、FAQ、工单统一索引，构建可审计的企业问答助手。",
+    "cover": "https://picsum.photos/seed/rag-copilot/1200/700",
+    "architecture": [],
+    "features": [],
+    "metrics": [],
+    "screenshots": [],
+    "links": {
+      "github": "https://github.com/",
+      "demo": "https://example.com/",
+      "docs": "https://example.com/docs"
+    },
+    "file": "./content/projects/rag-copilot-platform.md"
+  }
+]

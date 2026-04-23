@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Notes — 记录大模型学习之路</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Noto+Serif+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['"Noto Serif SC"', 'Georgia', 'serif'],
+            sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    /* === 全局过渡 === */
+    html { scroll-behavior: smooth; }
+    a, button, .tag, .toc-link, .search-item {
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
+    }
+    body { font-family: 'DM Sans', system-ui, sans-serif; overflow-x: hidden; }
+    .font-serif { font-family: 'Noto Serif SC', Georgia, serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* === 阅读进度条 === */
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 2px; z-index: 9999;
+      background: linear-gradient(90deg, #00e5a0, #00c9ff);
+      width: 0%; transition: width 0.1s linear;
+    }
+
+    /* === 滚动渐显 === */
+    .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* === 页面切换动画 === */
+    #app { animation: fadeUp 0.4s ease; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* === 导航栏 === */
+    .nav-blur { backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); }
+
+    /* === Hero 网格背景 === */
+    .hero-grid {
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    html:not(.dark) .hero-grid {
+      background-image:
+        linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    }
+
+    /* === 强调色光晕 === */
+    .accent-glow {
+      position: absolute; width: 500px; height: 500px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,229,160,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* === 文章排版 === */
+    .prose { font-family: 'Noto Serif SC', Georgia, serif; line-height: 1.9; }
+    .prose h2 {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 1.5rem; font-weight: 700; margin: 2.5em 0 1em; padding-left: 14px;
+      border-left: 3px solid #00e5a0;
+    }
+    .prose h3 {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 1.2rem; font-weight: 600; margin: 2em 0 0.8em;
+    }
+    .prose p { margin: 0 0 1.2em; }
+    .prose a { color: #00e5a0; text-decoration: underline; text-underline-offset: 3px; }
+    .prose strong { font-weight: 600; }
+    .prose ul, .prose ol { margin: 0 0 1.2em; padding-left: 1.5em; }
+    .prose li { margin-bottom: 0.4em; }
+    .prose ul li { list-style: disc; }
+    .prose ol li { list-style: decimal; }
+
+    /* === 行内代码 === */
+    .prose code:not(pre code) {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.85em;
+      padding: 2px 6px; border-radius: 4px;
+      background: rgba(0,229,160,0.08); color: #00e5a0;
+    }
+    html:not(.dark) .prose code:not(pre code) {
+      background: rgba(0,180,125,0.08); color: #00a870;
+    }
+
+    /* === 代码块 === */
+    .code-block { position: relative; margin: 1.5em 0; border-radius: 10px; overflow: hidden; }
+    .code-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace;
+    }
+    .dark .code-header { background: #1a1a1a; color: #666; }
+    html:not(.dark) .code-header { background: #f0f0f0; color: #888; }
+    .code-block pre { margin: 0 !important; padding: 1.2em !important; border-radius: 0 !important; background: transparent !important; }
+    .dark .code-block pre { background: #111 !important; }
+    html:not(.dark) .code-block pre { background: #fafafa !important; }
+    .code-block code { font-family: 'JetBrains Mono', monospace !important; font-size: 0.85rem !important; line-height: 1.7 !important; }
+    .dark .code-block code { color: #d4d4d4 !important; }
+    .copy-btn {
+      padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;
+      border: none; opacity: 0.6; transition: opacity 0.2s;
+    }
+    .copy-btn:hover { opacity: 1; }
+    .dark .copy-btn { background: #333; color: #aaa; }
+    html:not(.dark) .copy-btn { background: #e0e0e0; color: #555; }
+
+    /* === 引用块 === */
+    .prose blockquote {
+      margin: 1.5em 0; padding: 1em 1.2em; border-radius: 0 8px 8px 0;
+      border-left: 3px solid #00e5a0; font-style: italic;
+    }
+    .dark .prose blockquote { background: rgba(0,229,160,0.05); color: #aaa; }
+    html:not(.dark) .prose blockquote { background: rgba(0,180,125,0.05); color: #666; }
+
+    /* === 表格 === */
+    .prose table { width: 100%; border-collapse: collapse; margin: 1.5em 0; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
+    .prose th { text-align: left; padding: 10px 12px; font-weight: 600; }
+    .prose td { padding: 10px 12px; }
+    .dark .prose th { background: #1a1a1a; border-bottom: 1px solid #333; color: #ccc; }
+    .dark .prose td { border-bottom: 1px solid #1e1e1e; color: #bbb; }
+    .dark .prose tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+    html:not(.dark) .prose th { background: #f5f5f5; border-bottom: 1px solid #ddd; color: #333; }
+    html:not(.dark) .prose td { border-bottom: 1px solid #eee; color: #555; }
+    html:not(.dark) .prose tr:nth-child(even) td { background: rgba(0,0,0,0.02); }
+
+    /* === 折叠区域 === */
+    .collapse-details { margin: 1.2em 0; border-radius: 8px; overflow: hidden; }
+    .dark .collapse-details { border: 1px solid #2a2a2a; }
+    html:not(.dark) .collapse-details { border: 1px solid #e0e0e0; }
+    .collapse-summary {
+      cursor: pointer; padding: 12px 16px; font-weight: 500; font-size: 0.9rem;
+      list-style: none; display: flex; align-items: center; gap: 8px; user-select: none;
+    }
+    .collapse-summary::-webkit-details-marker { display: none; }
+    .dark .collapse-summary { background: #1a1a1a; color: #ccc; }
+    .dark .collapse-summary:hover { background: #222; }
+    html:not(.dark) .collapse-summary { background: #f8f8f8; color: #444; }
+    html:not(.dark) .collapse-summary:hover { background: #f0f0f0; }
+    .collapse-content { padding: 16px; font-size: 0.9rem; }
+    .dark .collapse-content { background: #141414; color: #aaa; }
+    html:not(.dark) .collapse-content { background: #fdfdfd; color: #666; }
+
+    /* === TOC === */
+    .toc-link { display: block; padding: 4px 12px; font-size: 0.8rem; color: #666; text-decoration: none; border-left: 2px solid transparent; transition: all 0.2s; }
+    .toc-link:hover { color: #00e5a0; }
+    .toc-link.active { color: #00e5a0; border-left-color: #00e5a0; }
+    html:not(.dark) .toc-link { color: #999; }
+    html:not(.dark) .toc-link.active { color: #00a870; border-left-color: #00a870; }
+
+    /* === 搜索弹窗 === */
+    .search-overlay { position: fixed; inset: 0; z-index: 100; display: none; align-items: flex-start; justify-content: center; padding-top: 15vh; }
+    .search-overlay.open { display: flex; }
+    .search-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+    .search-box { position: relative; z-index: 1; width: 90%; max-width: 560px; border-radius: 12px; overflow: hidden; }
+    .dark .search-box { background: #1a1a1a; border: 1px solid #333; }
+    html:not(.dark) .search-box { background: #fff; border: 1px solid #ddd; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .search-input {
+      width: 100%; padding: 16px 20px; border: none; outline: none; font-size: 1rem;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .dark .search-input { background: transparent; color: #e5e5e5; }
+    html:not(.dark) .search-input { background: transparent; color: #1a1a1a; }
+    .search-results { max-height: 320px; overflow-y: auto; }
+    .search-item { padding: 12px 20px; cursor: pointer; border-top: 1px solid; }
+    .dark .search-item { border-color: #2a2a2a; }
+    .dark .search-item:hover { background: #222; }
+    html:not(.dark) .search-item { border-color: #eee; }
+    html:not(.dark) .search-item:hover { background: #f5f5f5; }
+
+    /* === 图片灯箱 === */
+    .lightbox { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); cursor: zoom-out; }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
+
+    /* === 回到顶部 === */
+    #back-to-top {
+      position: fixed; bottom: 32px; right: 32px; z-index: 90;
+      width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none;
+    }
+    #back-to-top.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .dark #back-to-top { background: #1a1a1a; color: #00e5a0; border: 1px solid #333; }
+    html:not(.dark) #back-to-top { background: #fff; color: #00a870; border: 1px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+    /* === 标签 === */
+    .tag {
+      display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem;
+      font-weight: 500; text-decoration: none;
+    }
+    .dark .tag { background: rgba(0,229,160,0.08); color: #00e5a0; }
+    html:not(.dark) .tag { background: rgba(0,180,125,0.08); color: #00a870; }
+    .tag:hover { filter: brightness(1.2); }
+
+    /* === 路线图 === */
+    .roadmap-line { position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; }
+    .dark .roadmap-line { background: #2a2a2a; }
+    html:not(.dark) .roadmap-line { background: #e0e0e0; }
+    .roadmap-dot {
+      position: absolute; left: 8px; top: 4px; width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid; z-index: 1;
+    }
+    .roadmap-dot.done { background: #00e5a0; border-color: #00e5a0; }
+    .roadmap-dot.active { border-color: #00e5a0; background: transparent; box-shadow: 0 0 0 4px rgba(0,229,160,0.15); }
+    .roadmap-dot.pending { border-color: #444; background: transparent; }
+    html:not(.dark) .roadmap-dot.pending { border-color: #ccc; }
+
+    /* === hljs 覆盖 === */
+    .hljs-keyword { color: #c678dd; }
+    .hljs-string { color: #98c379; }
+    .hljs-number { color: #d19a66; }
+    .hljs-comment { color: #5c6370; font-style: italic; }
+    .hljs-function { color: #61afef; }
+    .hljs-title { color: #61afef; }
+    .hljs-params { color: #abb2bf; }
+    .hljs-built_in { color: #e5c07b; }
+    .hljs-attr { color: #d19a66; }
+    .hljs-variable { color: #e06c75; }
+    .hljs-operator { color: #56b6c2; }
+    .hljs-literal { color: #d19a66; }
+    .hljs-type { color: #e5c07b; }
+    html:not(.dark) .hljs-keyword { color: #a626a4; }
+    html:not(.dark) .hljs-string { color: #50a14f; }
+    html:not(.dark) .hljs-number { color: #986801; }
+    html:not(.dark) .hljs-comment { color: #a0a1a7; }
+    html:not(.dark) .hljs-function { color: #4078f2; }
+    html:not(.dark) .hljs-title { color: #4078f2; }
+    html:not(.dark) .hljs-params { color: #383a42; }
+    html:not(.dark) .hljs-built_in { color: #c18401; }
+    html:not(.dark) .hljs-attr { color: #986801; }
+    html:not(.dark) .hljs-variable { color: #e45649; }
+    html:not(.dark) .hljs-operator { color: #0184bc; }
+    html:not(.dark) .hljs-literal { color: #986801; }
+
+    /* === 移动端菜单 === */
+    .mobile-menu { display: none; }
+    .mobile-menu.open { display: flex; }
+
+    /* === 滚动条 === */
+    ::-webkit-scrollbar { width: 6px; }
+    .dark ::-webkit-scrollbar-track { background: #0a0a0a; }
+    .dark ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    html:not(.dark) ::-webkit-scrollbar-track { background: #fafaf9; }
+    html:not(.dark) ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+    /* === 文章图片 === */
+    .prose img { border-radius: 8px; cursor: zoom-in; margin: 1.5em 0; max-width: 100%; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, .reveal, #app { animation: none !important; transition: none !important; opacity: 1 !important; transform: none !important; }
+    }
+  </style>
+</head>
+<body class="dark:bg-[#050505] bg-[#fafaf9] dark:text-[#e5e5e5] text-[#1a1a1a] min-h-screen">
+
+  <!-- 阅读进度条 -->
+  <div id="progress-bar"></div>
+
+  <!-- 导航栏 -->
+  <nav class="nav-blur fixed top-0 left-0 right-0 z-50 dark:bg-[rgba(5,5,5,0.8)] bg-[rgba(250,250,249,0.8)] border-b dark:border-[#1a1a1a] border-[#eee]">
+    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="#/" class="flex items-center gap-2 text-base font-semibold tracking-tight dark:text-white text-[#111]">
+        <span class="w-5 h-5 rounded bg-[#00e5a0] flex items-center justify-center text-[10px] font-bold text-[#050505]">L</span>
+        LLM Notes
+      </a>
+      <!-- 桌面导航 -->
+      <div class="hidden md:flex items-center gap-1">
+        <a href="#/" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">首页</a>
+        <a href="#/categories" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">分类</a>
+        <a href="#/projects" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">作品</a>
+        <a href="#/about" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">关于</a>
+        <div class="w-px h-4 dark:bg-[#2a2a2a] bg-[#ddd] mx-2"></div>
+        <button onclick="openSearch()" class="p-1.5 rounded-md dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]" aria-label="搜索">
+          <i data-lucide="search" class="w-4 h-4"></i>
+        </button>
+        <button onclick="toggleTheme()" class="p-1.5 rounded-md dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]" aria-label="切换主题">
+          <i data-lucide="sun" class="w-4 h-4 dark:hidden"></i>
+          <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+        </button>
+      </div>
+      <!-- 移动端按钮 -->
+      <div class="flex md:hidden items-center gap-1">
+        <button onclick="openSearch()" class="p-1.5 rounded-md dark:text-[#888] text-[#888]" aria-label="搜索"><i data-lucide="search" class="w-4 h-4"></i></button>
+        <button onclick="toggleMobileMenu()" class="p-1.5 rounded-md dark:text-[#888] text-[#888]" aria-label="菜单"><i data-lucide="menu" class="w-4 h-4"></i></button>
+      </div>
+    </div>
+    <!-- 移动端菜单 -->
+    <div id="mobile-menu" class="mobile-menu flex-col border-t dark:border-[#1a1a1a] border-[#eee] dark:bg-[rgba(5,5,5,0.95)] bg-[rgba(250,250,249,0.95)] px-6 py-3">
+      <a href="#/" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">首页</a>
+      <a href="#/categories" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">分类</a>
+      <a href="#/projects" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">作品</a>
+      <a href="#/about" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">关于</a>
+      <div class="flex items-center gap-2 py-2">
+        <button onclick="toggleTheme();closeMobileMenu()" class="text-sm dark:text-[#aaa] text-[#666]">切换主题</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 主内容区 -->
+  <main id="app" class="pt-14"></main>
+
+  <!-- 搜索弹窗 -->
+  <div id="search-overlay" class="search-overlay" onclick="if(event.target===this)closeSearch()">
+    <div class="search-backdrop"></div>
+    <div class="search-box">
+      <input id="search-input" class="search-input" placeholder="搜索文章标题、标签..." oninput="handleSearch(this.value)" autocomplete="off">
+      <div id="search-results" class="search-results"></div>
+    </div>
+  </div>
+
+  <!-- 图片灯箱 -->
+  <div id="lightbox" class="lightbox" onclick="this.classList.remove('open')">
+    <img id="lightbox-img" src="" alt="">
+  </div>
+
+  <!-- 回到顶部 -->
+  <button id="back-to-top" onclick="window.scrollTo({top:0})" aria-label="回到顶部">
+    <i data-lucide="arrow-up" class="w-4 h-4"></i>
+  </button>
+
+<script>
+/* ============================
+   数据层
+   ============================ */
+const categories = [
+  { name: '基础原理', icon: 'brain', desc: 'Transformer、注意力机制、预训练', count: 1 },
+  { name: '模型架构', icon: 'boxes', desc: 'GPT、LLaMA、MoE、RAG', count: 0 },
+  { name: '微调与对齐', icon: 'sliders-horizontal', desc: 'SFT、RLHF、DPO、PTuning', count: 1 },
+  { name: '工程实践', icon: 'wrench', desc: '部署、量化、推理优化、vLLM', count: 1 },
+  { name: '多模态', icon: 'scan-eye', desc: '视觉、语音、视频理解', count: 0 },
+  { name: '论文解读', icon: 'file-text', desc: '前沿论文精读与解读', count: 1 },
+  { name: '随想与思考', icon: 'lightbulb', desc: '学习感悟、行业观察', count: 1 },
+];
+
+let posts = [];
+
+// 作品集数据
+let projectsData = [
+  {
+    slug: 'rag-copilot-platform',
+    title: '企业知识库 RAG Copilot',
+    subtitle: '私域知识问答平台，支持权限检索与引用溯源',
+    cover: 'https://picsum.photos/seed/rag-copilot/1200/700',
+    status: '已上线',
+    period: '2025 Q4',
+    tags: ['RAG', 'LangGraph', 'Supabase', '权限系统'],
+    summary: '将文档、FAQ、工单统一索引，构建可审计的企业问答助手。',
+    architecture: [
+      '数据层：Supabase Postgres + pgvector，支持租户隔离',
+      '检索层：Hybrid Search + rerank，提升召回稳定性',
+      '编排层：LangGraph 工作流，支持工具调用与追问',
+      '观测层：请求级 tracing，统计命中率与幻觉率',
+    ],
+    features: [
+      '多知识库切换与细粒度角色权限',
+      '答案引用原文片段，可一键跳转定位',
+      '低置信度时自动澄清而非强行回答',
+      '后台可视化评测集，支持版本回归对比',
+    ],
+    metrics: [
+      'Top-5 召回率：89.7%',
+      '首字响应时间：1.3s',
+      '人工评测准确率：+21%',
+    ],
+    screenshots: [
+      'https://picsum.photos/seed/rag-shot-1/1200/760',
+      'https://picsum.photos/seed/rag-shot-2/1200/760',
+    ],
+    links: {
+      github: 'https://github.com/',
+      demo: 'https://example.com/',
+      docs: 'https://example.com/docs',
+    },
+  },
+  {
+    slug: 'llm-eval-studio',
+    title: 'LLM Eval Studio',
+    subtitle: '模型评测与提示词回归平台',
+    cover: 'https://picsum.photos/seed/eval-studio/1200/700',
+    status: '迭代中',
+    period: '2026 Q1',
+    tags: ['Evaluation', 'PromptOps', 'A/B Test'],
+    summary: '围绕真实业务样本做离线评测，建立 Prompt 与模型变更的质量闸门。',
+    architecture: [
+      '样本层：标准化 case schema，支持多轮对话',
+      '执行层：并行调用多模型并缓存结果',
+      '评判层：规则分 + LLM as Judge 组合打分',
+      '报告层：可视化对比基线，自动生成评测报告',
+    ],
+    features: [
+      '支持一键复跑历史版本并做回归差异分析',
+      '分场景评分：事实性、指令遵循、格式稳定性',
+      '失败用例自动聚类，快速定位系统性问题',
+    ],
+    metrics: [
+      '评测耗时降低：63%',
+      '上线前缺陷拦截率：+34%',
+      'Prompt 回归定位时间：从 2 小时降至 25 分钟',
+    ],
+    screenshots: [
+      'https://picsum.photos/seed/eval-shot-1/1200/760',
+      'https://picsum.photos/seed/eval-shot-2/1200/760',
+    ],
+    links: {
+      github: 'https://github.com/',
+      demo: 'https://example.com/',
+      docs: 'https://example.com/docs',
+    },
+  },
+  {
+    slug: 'multi-agent-ops',
+    title: '多智能体运营自动化系统',
+    subtitle: '内容规划、投放分析、复盘建议的 Agent 协同',
+    cover: 'https://picsum.photos/seed/agent-ops/1200/700',
+    status: '概念验证',
+    period: '2026 Q2',
+    tags: ['Multi-Agent', 'Tool Calling', 'Workflow'],
+    summary: '通过角色化 Agent 协作，把运营分析流程从天级缩短到小时级。',
+    architecture: [
+      'Planner Agent：拆解目标与执行计划',
+      'Analyst Agent：调用 BI API 产出诊断',
+      'Writer Agent：生成复盘文案与行动建议',
+      'Supervisor：统一校验输出结构与风险提示',
+    ],
+    features: [
+      '支持人工确认节点，避免错误自动扩散',
+      '工具调用失败自动降级并回填解释',
+      '可追溯每一步 Agent 决策链路',
+    ],
+    metrics: [
+      '周报生产时间：8h -> 1.5h',
+      '异常归因覆盖率：78%',
+      '人工修改率：下降 42%',
+    ],
+    screenshots: [
+      'https://picsum.photos/seed/agent-shot-1/1200/760',
+      'https://picsum.photos/seed/agent-shot-2/1200/760',
+    ],
+    links: {
+      github: 'https://github.com/',
+      demo: 'https://example.com/',
+      docs: 'https://example.com/docs',
+    },
+  },
+];
+
+const postDataSource = {
+  manifestPath: './content/posts/manifest.json',
+  fallbackToEmbedded: true,
+};
+
+const projectDataSource = {
+  manifestPath: './content/projects/manifest.json',
+  fallbackToEmbedded: true,
+};
+
+const siteMeta = {
+  repoBase: 'https://github.com/tangentllm/weblog.git',
+};
+
+/* ============================
+   工具函数
+   ============================ */
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日';
+}
+
+function getCategoryIcon(name) {
+  const cat = categories.find(c => c.name === name);
+  return cat ? cat.icon : 'tag';
+}
+
+function getProjectYear(periodText) {
+  const matched = (periodText || '').match(/\d{4}/);
+  return matched ? matched[0] : '未知';
+}
+
+function stripFrontmatter(markdownText) {
+  if (!markdownText || !markdownText.startsWith('---')) return markdownText || '';
+  const matched = markdownText.match(/^---[\s\S]*?---\s*/);
+  return matched ? markdownText.slice(matched[0].length) : markdownText;
+}
+
+function estimateReadTimeFromMarkdown(markdownText) {
+  const plainText = (markdownText || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`]*`/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
+    .replace(/\[[^\]]*\]\([^)]+\)/g, ' ')
+    .replace(/[^\u4e00-\u9fa5A-Za-z0-9\s]/g, ' ');
+  const tokens = plainText.trim().split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(3, Math.ceil(tokens / 220));
+  return `${minutes} min`;
+}
+
+function buildExcerptFromMarkdown(markdownText) {
+  const noCode = (markdownText || '').replace(/```[\s\S]*?```/g, ' ');
+  const plain = noCode
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/>\s?/g, '')
+    .replace(/[*_`~\-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return plain.slice(0, 92) + (plain.length > 92 ? '...' : '');
+}
+
+function normalizeLoadedPost(item, markdownText, index) {
+  const safeSlug = item.slug || `post-${index + 1}`;
+  const contentMarkdown = stripFrontmatter(markdownText);
+  return {
+    slug: safeSlug,
+    title: item.title || safeSlug,
+    excerpt: item.excerpt || buildExcerptFromMarkdown(contentMarkdown),
+    date: item.date || '2025-01-01',
+    readTime: item.readTime || estimateReadTimeFromMarkdown(contentMarkdown),
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    category: item.category || '随想与思考',
+    pinned: Boolean(item.pinned),
+    cover: item.cover || `https://picsum.photos/seed/${safeSlug}/800/400.jpg`,
+    content: typeof marked === 'undefined'
+      ? contentMarkdown
+      : marked.parse(contentMarkdown),
+  };
+}
+
+function normalizeLoadedProject(item, markdownText, index) {
+  const safeSlug = item.slug || `project-${index + 1}`;
+  const contentMarkdown = stripFrontmatter(markdownText);
+  const contentHtml = typeof marked === 'undefined'
+    ? contentMarkdown
+    : marked.parse(contentMarkdown);
+  return {
+    slug: safeSlug,
+    title: item.title || safeSlug,
+    subtitle: item.subtitle || '',
+    cover: item.cover || `https://picsum.photos/seed/${safeSlug}/1200/700`,
+    status: item.status || '进行中',
+    period: item.period || '2026',
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    summary: item.summary || buildExcerptFromMarkdown(contentMarkdown),
+    architecture: Array.isArray(item.architecture) ? item.architecture : [],
+    features: Array.isArray(item.features) ? item.features : [],
+    metrics: Array.isArray(item.metrics) ? item.metrics : [],
+    screenshots: Array.isArray(item.screenshots) ? item.screenshots : [],
+    links: typeof item.links === 'object' && item.links
+      ? item.links
+      : { github: '#', demo: '#', docs: '#' },
+    content: contentHtml,
+    rawMarkdown: markdownText || '',
+  };
+}
+
+function applyPostDerivedState() {
+  const categoryCountMap = posts.reduce((acc, post) => {
+    acc[post.category] = (acc[post.category] || 0) + 1;
+    return acc;
+  }, {});
+  categories.forEach((cat) => {
+    cat.count = categoryCountMap[cat.name] || 0;
+  });
+
+  const hasPinned = posts.some((post) => post.pinned);
+  if (!hasPinned) {
+    posts
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .forEach((post, idx) => {
+        post.pinned = idx < 2;
+      });
+  }
+}
+
+async function loadPostsFromManifest() {
+  const response = await fetch(postDataSource.manifestPath, {
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`manifest load failed: ${response.status}`);
+  }
+
+  const manifest = await response.json();
+  if (!Array.isArray(manifest) || manifest.length === 0) {
+    throw new Error('manifest empty');
+  }
+
+  const fetchedPosts = await Promise.all(
+    manifest.map(async (item, index) => {
+      if (!item.file) return normalizeLoadedPost(item, '', index);
+      const markdownResponse = await fetch(item.file, { cache: 'no-store' });
+      const markdownText = markdownResponse.ok
+        ? await markdownResponse.text()
+        : '';
+      return normalizeLoadedPost(item, markdownText, index);
+    }),
+  );
+  posts = fetchedPosts;
+  applyPostDerivedState();
+}
+
+async function loadProjectsFromManifest() {
+  const response = await fetch(projectDataSource.manifestPath, {
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`project manifest load failed: ${response.status}`);
+  }
+
+  const manifest = await response.json();
+  if (!Array.isArray(manifest) || manifest.length === 0) {
+    throw new Error('project manifest empty');
+  }
+
+  const fetchedProjects = await Promise.all(
+    manifest.map(async (item, index) => {
+      const file = item.file;
+      if (!file) return normalizeLoadedProject(item, '', index);
+      const markdownResponse = await fetch(file, { cache: 'no-store' });
+      const markdownText = markdownResponse.ok
+        ? await markdownResponse.text()
+        : '';
+      return normalizeLoadedProject(item, markdownText, index);
+    }),
+  );
+  projectsData = fetchedProjects;
+}
+
+/* ============================
+   路由系统
+   ============================ */
+function router() {
+  const hash = location.hash || '#/';
+  const app = document.getElementById('app');
+
+  // 高亮当前导航
+  document.querySelectorAll('.nav-link').forEach(link => {
+    const href = link.getAttribute('href');
+    if (href === hash || (hash.startsWith(href) && href !== '#/')) {
+      link.classList.add('dark:text-white', 'text-[#111]', 'font-medium');
+      link.classList.remove('dark:text-[#888]', 'text-[#888]');
+    } else {
+      link.classList.remove('dark:text-white', 'text-[#111]', 'font-medium');
+      link.classList.add('dark:text-[#888]', 'text-[#888]');
+    }
+  });
+
+  // 解析路由
+  if (hash === '#/' || hash === '') {
+    renderHome(app);
+  } else if (hash.startsWith('#/post/')) {
+    const slug = hash.replace('#/post/', '');
+    renderPost(app, slug);
+  } else if (hash === '#/categories') {
+    renderCategories(app);
+  } else if (hash.startsWith('#/category/')) {
+    const name = decodeURIComponent(hash.replace('#/category/', ''));
+    renderCategoryPosts(app, name);
+  } else if (hash === '#/projects') {
+    renderProjects(app);
+  } else if (hash.startsWith('#/project/')) {
+    const slug = hash.replace('#/project/', '');
+    renderProjectDetail(app, slug);
+  } else if (hash === '#/about') {
+    renderAbout(app);
+  } else {
+    renderHome(app);
+  }
+
+  const isPostRoute = hash.startsWith('#/post/');
+  const isProjectRoute = hash.startsWith('#/project/');
+  const runEnhancements = () => {
+    if ((isPostRoute || isProjectRoute) && typeof renderMathInElement === 'function') {
+      renderMathInElement(app, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false });
+    }
+    if ((isPostRoute || isProjectRoute) && typeof hljs !== 'undefined') {
+      app.querySelectorAll('pre code').forEach(block => { hljs.highlightElement(block); });
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    initReveal();
+    if (isPostRoute || isProjectRoute) {
+      initImageLightbox();
+      initPostToc();
+    }
+  };
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(runEnhancements, { timeout: 120 });
+  } else {
+    setTimeout(runEnhancements, 30);
+  }
+
+  window.scrollTo({top: 0, behavior: 'instant'});
+  // 重新触发动画
+  app.style.animation = 'none';
+  app.offsetHeight;
+  app.style.animation = '';
+}
+
+/* ============================
+   页面渲染函数
+   ============================ */
+
+// 首页
+function renderHome(app) {
+  const pinned = posts.filter(p => p.pinned);
+  const recent = posts.filter(p => !p.pinned);
+  const allTags = [...new Set(posts.flatMap(p => p.tags))];
+  const hasPosts = posts.length > 0;
+
+  app.innerHTML = `
+    <!-- Hero -->
+    <section class="relative hero-grid overflow-hidden">
+      <div class="accent-glow" style="top:-200px;right:-200px;"></div>
+      <div class="max-w-5xl mx-auto px-6 pt-24 pb-20 md:pt-32 md:pb-28 relative z-10">
+        <div class="reveal">
+          <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">WELCOME TO MY BLOG</p>
+          <h1 class="font-serif text-4xl md:text-6xl font-bold leading-tight dark:text-white text-[#111] mb-6">
+            理解大模型，<br>从第一性原理出发
+          </h1>
+          <p class="text-lg md:text-xl dark:text-[#888] text-[#777] max-w-2xl leading-relaxed mb-8">
+            这里记录我从零学习大模型的完整过程——原理拆解、代码实战、论文精读、独立思考。不求速度，但求每一步都踩实。
+          </p>
+          <div class="flex gap-3">
+            <a href="#/categories" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#00e5a0] text-[#050505] text-sm font-semibold hover:brightness-110 transition-all">
+              浏览全部文章 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </a>
+            <a href="#/projects" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium dark:text-[#ccc] text-[#444] dark:border-[#333] border-[#ddd] border hover:dark:bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(0,0,0,0.03)] transition-all">
+              作品集
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 置顶文章 -->
+    ${pinned.length > 0 ? `
+    <section class="max-w-5xl mx-auto px-6 pb-16">
+      <div class="reveal">
+        <p class="text-xs font-mono dark:text-[#555] text-[#bbb] uppercase tracking-widest mb-6">Pinned</p>
+        <div class="grid md:grid-cols-${pinned.length} gap-5">
+          ${pinned.map(post => `
+            <a href="#/post/${post.slug}" class="group block rounded-xl overflow-hidden dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all">
+              <div class="aspect-[2/1] overflow-hidden">
+                <img src="${post.cover}" alt="${post.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+              </div>
+              <div class="p-5">
+                <div class="flex flex-wrap gap-2 mb-3">${post.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                <h2 class="font-semibold text-base dark:text-white text-[#111] leading-snug mb-2 group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h2>
+                <p class="text-sm dark:text-[#777] text-[#999] line-clamp-2 leading-relaxed">${post.excerpt}</p>
+                <div class="flex items-center gap-3 mt-4 text-xs dark:text-[#555] text-[#bbb]">
+                  <span>${formatDate(post.date)}</span>
+                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+                  <span>${post.readTime}</span>
+                </div>
+              </div>
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+    ` : ''}
+
+    <!-- 最新文章 -->
+    <section class="max-w-5xl mx-auto px-6 pb-20">
+      <div class="reveal">
+        <div class="flex items-center justify-between mb-8">
+          <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111]">最新文章</h2>
+          <a href="#/categories" class="text-sm dark:text-[#666] text-[#999] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors">查看全部</a>
+        </div>
+        ${hasPosts ? `
+          <div class="space-y-0 dark:divide-y dark:divide-[#1a1a1a] divide-y divide-[#eee]">
+            ${recent.map(post => `
+              <a href="#/post/${post.slug}" class="group flex flex-col md:flex-row md:items-center gap-3 md:gap-6 py-6 first:pt-0 last:pb-0">
+                <div class="flex-1 min-w-0">
+                  <div class="flex flex-wrap gap-2 mb-2">${post.tags.slice(0,2).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                  <h3 class="font-semibold text-base dark:text-[#ddd] text-[#333] leading-snug group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h3>
+                  <p class="text-sm dark:text-[#666] text-[#999] mt-1.5 line-clamp-1">${post.excerpt}</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs dark:text-[#555] text-[#bbb] shrink-0">
+                  <span>${formatDate(post.date)}</span>
+                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+                  <span>${post.readTime}</span>
+                </div>
+              </a>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="rounded-xl border dark:border-[#1f1f1f] border-[#e8e8e8] dark:bg-[#0f0f0f] bg-white p-6 text-sm dark:text-[#777] text-[#888]">
+            暂未加载到文章。请通过本地静态服务访问，或确认 manifest 与 Markdown 文件已发布。
+          </div>
+        `}
+      </div>
+    </section>
+
+    <!-- 标签云 -->
+    <section class="max-w-5xl mx-auto px-6 pb-20">
+      <div class="reveal">
+        <p class="text-xs font-mono dark:text-[#555] text-[#bbb] uppercase tracking-widest mb-5">Tags</p>
+        <div class="flex flex-wrap gap-2">
+          ${allTags.map(t => `<span class="tag">${t}</span>`).join('')}
+        </div>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="border-t dark:border-[#1a1a1a] border-[#eee] py-10">
+      <div class="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm dark:text-[#555] text-[#bbb]">
+        <span>LLM Notes — 记录大模型学习之路</span>
+        <span>Powered by curiosity & persistence</span>
+      </div>
+    </footer>
+  `;
+}
+
+// 文章详情页
+function renderPost(app, slug) {
+  const post = posts.find(p => p.slug === slug);
+  if (!post) { app.innerHTML = '<div class="max-w-3xl mx-auto px-6 pt-32 text-center dark:text-[#888] text-[#999]">文章不存在</div>'; return; }
+
+  // 提取标题用于TOC
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = post.content;
+  const headings = [...tempDiv.querySelectorAll('h2, h3')].map((h, i) => ({
+    id: 'heading-' + i,
+    tag: h.tagName,
+    text: h.textContent
+  }));
+  let contentWithIds = post.content;
+  headings.forEach((h, i) => {
+    const regex = new RegExp(`<${h.tag}>(.*?)</${h.tag}>`);
+    contentWithIds = contentWithIds.replace(regex, `<${h.tag} id="heading-${i}">$1</${h.tag}>`);
+  });
+
+  const prevPost = posts[posts.indexOf(post) - 1] || null;
+  const nextPost = posts[posts.indexOf(post) + 1] || null;
+
+  app.innerHTML = `
+    <article class="max-w-3xl mx-auto px-6 pt-24 md:pt-28 pb-20">
+      <!-- 文章头部 -->
+      <header class="reveal mb-12">
+        <div class="flex flex-wrap gap-2 mb-4">${post.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+        <h1 class="font-serif text-3xl md:text-4xl font-bold leading-tight dark:text-white text-[#111] mb-4">${post.title}</h1>
+        <div class="flex items-center gap-3 text-sm dark:text-[#666] text-[#999]">
+          <span>${formatDate(post.date)}</span>
+          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+          <span>${post.readTime}</span>
+          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+          <span>${post.category}</span>
+        </div>
+      </header>
+
+      <!-- 封面图 -->
+      <div class="reveal mb-12 rounded-xl overflow-hidden">
+        <img src="${post.cover}" alt="${post.title}" class="w-full aspect-[2/1] object-cover">
+      </div>
+
+      <!-- 正文 + TOC -->
+      <div class="flex gap-10 relative">
+        <div class="prose flex-1 min-w-0 dark:text-[#ccc] text-[#444] text-[1.05rem]">
+          ${contentWithIds}
+        </div>
+        <!-- TOC 侧栏 -->
+        ${headings.length > 2 ? `
+        <aside id="toc-sidebar" class="hidden lg:block w-48 shrink-0 sticky top-20 self-start">
+          <p class="text-xs font-mono dark:text-[#555] text-[#bbb] uppercase tracking-widest mb-3">目录</p>
+          <nav class="space-y-0.5 max-h-[70vh] overflow-y-auto">
+            ${headings.map(h => `<a href="#${h.id}" class="toc-link ${h.tag === 'h3' ? 'pl-6' : ''}" data-target="${h.id}">${h.text}</a>`).join('')}
+          </nav>
+        </aside>
+        ` : ''}
+      </div>
+
+      <!-- 上下篇导航 -->
+      <div class="mt-16 pt-8 border-t dark:border-[#1e1e1e] border-[#eee] grid grid-cols-2 gap-4">
+        ${prevPost ? `
+        <a href="#/post/${prevPost.slug}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors">
+          <p class="text-xs dark:text-[#555] text-[#bbb] mb-1">上一篇</p>
+          <p class="text-sm font-medium dark:text-[#aaa] text-[#555] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-1">${prevPost.title}</p>
+        </a>
+        ` : '<div></div>'}
+        ${nextPost ? `
+        <a href="#/post/${nextPost.slug}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors text-right">
+          <p class="text-xs dark:text-[#555] text-[#bbb] mb-1">下一篇</p>
+          <p class="text-sm font-medium dark:text-[#aaa] text-[#555] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-1">${nextPost.title}</p>
+        </a>
+        ` : '<div></div>'}
+      </div>
+    </article>
+  `;
+}
+
+// 分类页
+function renderCategories(app) {
+  app.innerHTML = `
+    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
+      <div class="reveal">
+        <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">CATEGORIES</p>
+        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111] mb-4">知识分类</h1>
+        <p class="dark:text-[#888] text-[#777] mb-12 max-w-xl">按大模型知识体系组织的文章分类，每个分类都是一个值得深入的方向。</p>
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        ${categories.map(cat => `
+          <a href="#/category/${encodeURIComponent(cat.name)}" class="reveal group p-6 rounded-xl dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all">
+            <div class="w-10 h-10 rounded-lg dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] flex items-center justify-center mb-4">
+              <i data-lucide="${cat.icon}" class="w-5 h-5 dark:text-[#00e5a0] text-[#00a870]"></i>
+            </div>
+            <h2 class="font-semibold text-base dark:text-white text-[#111] mb-1.5 group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${cat.name}</h2>
+            <p class="text-sm dark:text-[#666] text-[#999] mb-3 leading-relaxed">${cat.desc}</p>
+            <span class="text-xs dark:text-[#555] text-[#bbb]">${cat.count} 篇文章</span>
+          </a>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+// 分类下的文章列表
+function renderCategoryPosts(app, categoryName) {
+  const cat = categories.find(c => c.name === categoryName);
+  const catPosts = posts.filter(p => p.category === categoryName);
+
+  app.innerHTML = `
+    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
+      <div class="reveal">
+        <a href="#/categories" class="inline-flex items-center gap-1 text-sm dark:text-[#666] text-[#999] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors mb-6">
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 返回分类
+        </a>
+        <h1 class="font-serif text-3xl font-bold dark:text-white text-[#111] mb-2">${categoryName}</h1>
+        ${cat ? `<p class="dark:text-[#888] text-[#777] mb-10">${cat.desc}</p>` : '<div class="mb-10"></div>'}
+      </div>
+      ${catPosts.length === 0 ? `
+        <div class="text-center py-20 dark:text-[#555] text-[#bbb]">
+          <i data-lucide="file-x" class="w-10 h-10 mx-auto mb-4 opacity-30"></i>
+          <p>该分类下暂无文章，持续更新中</p>
+        </div>
+      ` : `
+        <div class="space-y-0 dark:divide-y dark:divide-[#1a1a1a] divide-y divide-[#eee]">
+          ${catPosts.map(post => `
+            <a href="#/post/${post.slug}" class="reveal group flex flex-col md:flex-row md:items-center gap-3 md:gap-6 py-6">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-semibold text-base dark:text-[#ddd] text-[#333] leading-snug group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h3>
+                <p class="text-sm dark:text-[#666] text-[#999] mt-1.5 line-clamp-2">${post.excerpt}</p>
+              </div>
+              <div class="flex items-center gap-3 text-xs dark:text-[#555] text-[#bbb] shrink-0">
+                <span>${formatDate(post.date)}</span>
+                <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+                <span>${post.readTime}</span>
+              </div>
+            </a>
+          `).join('')}
+        </div>
+      `}
+    </section>
+  `;
+}
+
+// 作品列表页
+function renderProjects(app) {
+  const hashQuery = location.hash.includes('?')
+    ? new URLSearchParams(location.hash.split('?')[1])
+    : new URLSearchParams();
+  const statusFilter = hashQuery.get('status') || '全部';
+  const tagFilter = hashQuery.get('tag') || '全部';
+  const yearFilter = hashQuery.get('year') || '全部';
+
+  const statusOptions = ['全部', ...new Set(projectsData.map((project) => project.status))];
+  const tagOptions = ['全部', ...new Set(projectsData.flatMap((project) => project.tags))];
+  const yearOptions = ['全部', ...new Set(projectsData.map((project) => getProjectYear(project.period)))];
+
+  const filteredProjects = projectsData.filter((project) => {
+    const statusMatched = statusFilter === '全部' || project.status === statusFilter;
+    const tagMatched = tagFilter === '全部' || project.tags.includes(tagFilter);
+    const yearMatched = yearFilter === '全部' || getProjectYear(project.period) === yearFilter;
+    return statusMatched && tagMatched && yearMatched;
+  });
+
+  app.innerHTML = `
+    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
+      <div class="reveal mb-10">
+        <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">PROJECTS</p>
+        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111] mb-4">作品集</h1>
+        <p class="dark:text-[#888] text-[#777] max-w-2xl">这里是我做过的大模型项目。每个项目都包含架构设计、关键功能、效果展示与结果指标。</p>
+      </div>
+      <div class="reveal mb-8 grid md:grid-cols-3 gap-3">
+        <label class="text-sm dark:text-[#888] text-[#666]">
+          <span class="block text-xs mb-1 dark:text-[#666] text-[#999]">按状态筛选</span>
+          <select id="projectFilterStatus" class="w-full rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#2a2a2a] border-[#ddd] border px-3 py-2 text-sm">
+            ${statusOptions.map((option) => `<option value="${option}" ${option === statusFilter ? 'selected' : ''}>${option}</option>`).join('')}
+          </select>
+        </label>
+        <label class="text-sm dark:text-[#888] text-[#666]">
+          <span class="block text-xs mb-1 dark:text-[#666] text-[#999]">按标签筛选</span>
+          <select id="projectFilterTag" class="w-full rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#2a2a2a] border-[#ddd] border px-3 py-2 text-sm">
+            ${tagOptions.map((option) => `<option value="${option}" ${option === tagFilter ? 'selected' : ''}>${option}</option>`).join('')}
+          </select>
+        </label>
+        <label class="text-sm dark:text-[#888] text-[#666]">
+          <span class="block text-xs mb-1 dark:text-[#666] text-[#999]">按年份筛选</span>
+          <select id="projectFilterYear" class="w-full rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#2a2a2a] border-[#ddd] border px-3 py-2 text-sm">
+            ${yearOptions.map((option) => `<option value="${option}" ${option === yearFilter ? 'selected' : ''}>${option}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6">
+        ${filteredProjects.map((project) => `
+          <a href="#/project/${project.slug}" class="reveal group block rounded-xl overflow-hidden dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all">
+            <div class="aspect-[16/10] overflow-hidden">
+              <img src="${project.cover}" alt="${project.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+            </div>
+            <div class="p-5">
+              <div class="flex items-center justify-between gap-3 mb-3">
+                <span class="text-[11px] px-2 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${project.status}</span>
+                <span class="text-xs dark:text-[#666] text-[#999]">${project.period}</span>
+              </div>
+              <h2 class="font-semibold text-lg dark:text-white text-[#111] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${project.title}</h2>
+              <p class="text-sm dark:text-[#888] text-[#777] mt-1.5">${project.subtitle}</p>
+              <p class="text-sm dark:text-[#666] text-[#999] mt-3 line-clamp-2">${project.summary}</p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                ${project.tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}
+              </div>
+            </div>
+          </a>
+        `).join('')}
+      </div>
+      ${filteredProjects.length === 0 ? `
+        <div class="mt-8 text-center text-sm dark:text-[#666] text-[#999]">
+          没有匹配项目，试试调整筛选条件。
+        </div>
+      ` : ''}
+    </section>
+  `;
+
+  const statusSelect = document.getElementById('projectFilterStatus');
+  const tagSelect = document.getElementById('projectFilterTag');
+  const yearSelect = document.getElementById('projectFilterYear');
+  const bindFilterEvent = () => {
+    const next = new URLSearchParams();
+    if (statusSelect.value !== '全部') next.set('status', statusSelect.value);
+    if (tagSelect.value !== '全部') next.set('tag', tagSelect.value);
+    if (yearSelect.value !== '全部') next.set('year', yearSelect.value);
+    const query = next.toString();
+    location.hash = query ? `#/projects?${query}` : '#/projects';
+  };
+  statusSelect.addEventListener('change', bindFilterEvent);
+  tagSelect.addEventListener('change', bindFilterEvent);
+  yearSelect.addEventListener('change', bindFilterEvent);
+}
+
+// 作品详情页
+function renderProjectDetail(app, slug) {
+  const project = projectsData.find((item) => item.slug === slug);
+  if (!project) {
+    app.innerHTML = '<div class="max-w-3xl mx-auto px-6 pt-32 text-center dark:text-[#888] text-[#999]">作品不存在</div>';
+    return;
+  }
+
+  app.innerHTML = `
+    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
+      <div class="reveal mb-6">
+        <a href="#/projects" class="inline-flex items-center gap-1 text-sm dark:text-[#666] text-[#999] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors mb-6">
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 返回作品列表
+        </a>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <span class="text-[11px] px-2 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${project.status}</span>
+          <span class="text-xs dark:text-[#666] text-[#999]">${project.period}</span>
+        </div>
+        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111]">${project.title}</h1>
+        <p class="dark:text-[#888] text-[#777] mt-3">${project.subtitle}</p>
+      </div>
+
+      <div class="reveal rounded-xl overflow-hidden mb-10">
+        <img src="${project.cover}" alt="${project.title}" class="w-full aspect-[16/8] object-cover" />
+      </div>
+      <div class="reveal mb-10 flex flex-wrap gap-3">
+        <a href="${project.links?.github || '#'}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold dark:bg-[#121212] bg-white dark:text-[#d8fff2] text-[#11664f] border dark:border-[#2a6a56] border-[#89d7bf] hover:dark:border-[#00e5a0] hover:border-[#00a870] transition-colors">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="w-4 h-4 fill-current"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.3c-3.3.7-4-1.6-4-1.6-.6-1.5-1.4-1.9-1.4-1.9-1.2-.8.1-.8.1-.8 1.3.1 2 1.4 2 1.4 1.2 2 3.1 1.4 3.9 1.1.1-.9.5-1.4.8-1.8-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.3-3.1-.1-.3-.6-1.5.1-3.1 0 0 1.1-.3 3.4 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.6 3.4-1.2 3.4-1.2.7 1.6.2 2.8.1 3.1.8.8 1.3 1.8 1.3 3.1 0 4.4-2.7 5.4-5.3 5.7.5.4.9 1.2.9 2.4v3.5c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z"/></svg> GitHub
+        </a>
+        <a href="${project.links?.demo || '#'}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold dark:bg-[#121212] bg-white dark:text-[#d8fff2] text-[#11664f] border dark:border-[#2a6a56] border-[#89d7bf] hover:dark:border-[#00e5a0] hover:border-[#00a870] transition-colors">
+          <i data-lucide="rocket" class="w-4 h-4"></i> 在线 Demo
+        </a>
+        <a href="${project.links?.docs || '#'}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold dark:bg-[#121212] bg-white dark:text-[#d8fff2] text-[#11664f] border dark:border-[#2a6a56] border-[#89d7bf] hover:dark:border-[#00e5a0] hover:border-[#00a870] transition-colors">
+          <i data-lucide="book-open" class="w-4 h-4"></i> 技术文档
+        </a>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2 space-y-8">
+          <section class="reveal">
+            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">项目概述</h2>
+            <p class="dark:text-[#888] text-[#666] leading-relaxed">${project.summary}</p>
+          </section>
+
+          ${project.architecture?.length ? `
+          <section class="reveal">
+            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">架构设计</h2>
+            <ul class="space-y-2 dark:text-[#888] text-[#666] list-disc pl-5">
+              ${project.architecture.map((item) => `<li>${item}</li>`).join('')}
+            </ul>
+          </section>
+          ` : ''}
+
+          ${project.features?.length ? `
+          <section class="reveal">
+            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">核心功能</h2>
+            <ul class="space-y-2 dark:text-[#888] text-[#666] list-disc pl-5">
+              ${project.features.map((item) => `<li>${item}</li>`).join('')}
+            </ul>
+          </section>
+          ` : ''}
+
+          ${project.screenshots?.length ? `
+          <section class="reveal">
+            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">效果图</h2>
+            <div class="grid sm:grid-cols-2 gap-4">
+              ${project.screenshots.map((image) => `
+                <div class="rounded-lg overflow-hidden border dark:border-[#1f1f1f] border-[#e8e8e8]">
+                  <img src="${image}" alt="${project.title} 截图" class="w-full h-full object-cover" loading="lazy" />
+                </div>
+              `).join('')}
+            </div>
+          </section>
+          ` : ''}
+          ${project.content ? `
+          <section class="reveal">
+            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">详细分析</h2>
+            <div class="prose dark:text-[#ccc] text-[#444] text-[1.02rem]">
+              ${project.content}
+            </div>
+          </section>
+          ` : ''}
+        </div>
+
+        <aside class="reveal lg:sticky lg:top-20 self-start rounded-xl border dark:border-[#1f1f1f] border-[#e8e8e8] dark:bg-[#0f0f0f] bg-white p-5">
+          <h3 class="font-semibold dark:text-white text-[#111] mb-4">项目信息</h3>
+          <div class="space-y-3 text-sm dark:text-[#888] text-[#666]">
+            <div>
+              <p class="dark:text-[#666] text-[#999] text-xs mb-1">技术标签</p>
+              <div class="flex flex-wrap gap-2">
+                ${project.tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}
+              </div>
+            </div>
+            <div>
+              <p class="dark:text-[#666] text-[#999] text-xs mb-1">关键指标</p>
+              ${project.metrics?.length
+                ? `<ul class="list-disc pl-5 space-y-1">${project.metrics.map((metric) => `<li>${metric}</li>`).join('')}</ul>`
+                : '<p class="text-xs dark:text-[#666] text-[#999]">暂无指标，后续补充。</p>'}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
+
+}
+
+// 关于页
+function renderAbout(app) {
+  app.innerHTML = `
+    <section class="max-w-3xl mx-auto px-6 pt-24 md:pt-28 pb-20">
+      <div class="reveal">
+        <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">ABOUT</p>
+        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111] mb-8">关于我</h1>
+      </div>
+
+      <!-- 个人介绍 -->
+      <div class="reveal dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border rounded-xl p-8 mb-8">
+        <div class="flex flex-col sm:flex-row gap-6 items-start">
+          <div class="w-20 h-20 rounded-full dark:bg-[#1a1a1a] bg-[#eee] overflow-hidden shrink-0">
+            <img src="https://picsum.photos/seed/avatar-llm/200/200.jpg" alt="头像" class="w-full h-full object-cover">
+          </div>
+          <div>
+            <h2 class="font-semibold text-xl dark:text-white text-[#111] mb-2">一个对大模型充满好奇的工程师</h2>
+            <p class="dark:text-[#888] text-[#666] leading-relaxed mb-4">
+              有过几年后端开发经验，2024 年开始系统学习大模型相关技术。创建这个博客的初衷很简单——发现网上很多教程要么太浅（停留在 API 调用层面），要么太深（直接甩论文），缺乏一个"从工程师视角逐步深入"的中间地带。
+            </p>
+            <p class="dark:text-[#888] text-[#666] leading-relaxed">
+              我相信 <strong class="dark:text-[#ccc] text-[#333]">理解原理是写好代码的前提</strong>，所以每学一个技术，我都会先搞清楚"为什么"再动手。这个博客就是这段旅程的副产品。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 技能图谱 -->
+      <div class="reveal mb-8">
+        <h2 class="font-serif text-xl font-bold dark:text-white text-[#111] mb-6">技能图谱</h2>
+        <div class="grid sm:grid-cols-2 gap-4">
+          ${[
+            {name: 'Python / PyTorch', level: 85, color: '#00e5a0'},
+            {name: 'Transformer 原理', level: 75, color: '#00c9ff'},
+            {name: '模型微调', level: 65, color: '#00e5a0'},
+            {name: 'Prompt Engineering', level: 70, color: '#00c9ff'},
+            {name: 'RAG / Agent 开发', level: 50, color: '#00e5a0'},
+            {name: '模型部署 / 推理优化', level: 40, color: '#00c9ff'},
+          ].map(skill => `
+            <div class="dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border rounded-lg p-4">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium dark:text-[#ccc] text-[#333]">${skill.name}</span>
+                <span class="text-xs dark:text-[#555] text-[#bbb]">${skill.level}%</span>
+              </div>
+              <div class="h-1.5 rounded-full dark:bg-[#1a1a1a] bg-[#eee] overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-1000" style="width:${skill.level}%;background:${skill.color}"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- 联系方式 -->
+      <div class="reveal">
+        <h2 class="font-serif text-xl font-bold dark:text-white text-[#111] mb-6">联系我</h2>
+        <div class="flex flex-wrap gap-3">
+          ${[
+            {icon: 'github', label: 'GitHub', href: '#'},
+            {icon: 'twitter', label: 'Twitter / X', href: '#'},
+            {icon: 'mail', label: 'Email', href: '#'},
+            {icon: 'rss', label: 'RSS 订阅', href: '#'},
+          ].map(link => `
+            <a href="${link.href}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border text-sm dark:text-[#aaa] text-[#555] hover:dark:border-[#00e5a0] hover:border-[#00a870] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-all">
+              <i data-lucide="${link.icon}" class="w-4 h-4"></i> ${link.label}
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+/* ============================
+   交互逻辑
+   ============================ */
+
+// 搜索
+function openSearch() {
+  document.getElementById('search-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('search-input').focus(), 100);
+}
+function closeSearch() {
+  document.getElementById('search-overlay').classList.remove('open');
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+}
+function handleSearch(query) {
+  const results = document.getElementById('search-results');
+  if (!query.trim()) { results.innerHTML = ''; return; }
+  const q = query.toLowerCase();
+  const matched = posts.filter(p =>
+    p.title.toLowerCase().includes(q) ||
+    p.tags.some(t => t.toLowerCase().includes(q)) ||
+    p.excerpt.toLowerCase().includes(q) ||
+    p.category.toLowerCase().includes(q)
+  );
+  if (matched.length === 0) {
+    results.innerHTML = '<div class="p-5 text-sm dark:text-[#555] text-[#bbb] text-center">没有找到匹配的文章</div>';
+    return;
+  }
+  results.innerHTML = matched.map(p => `
+    <a href="#/post/${p.slug}" onclick="closeSearch()" class="search-item block">
+      <p class="text-sm font-medium dark:text-[#ddd] text-[#333] mb-1">${p.title}</p>
+      <p class="text-xs dark:text-[#666] text-[#999] line-clamp-1">${p.excerpt}</p>
+      <div class="flex gap-2 mt-1.5">${p.tags.map(t => `<span class="text-[10px] dark:text-[#555] text-[#bbb]">#${t}</span>`).join('')}</div>
+    </a>
+  `).join('');
+}
+
+// 主题切换
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.classList.contains('dark');
+  html.classList.toggle('dark');
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+function initTheme() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light') document.documentElement.classList.remove('dark');
+  else document.documentElement.classList.add('dark');
+}
+
+// 移动端菜单
+function toggleMobileMenu() {
+  document.getElementById('mobile-menu').classList.toggle('open');
+}
+function closeMobileMenu() {
+  document.getElementById('mobile-menu').classList.remove('open');
+}
+
+// 阅读进度条
+function updateProgressBar() {
+  const bar = document.getElementById('progress-bar');
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+  bar.style.width = progress + '%';
+}
+
+// 回到顶部
+function updateBackToTop() {
+  const btn = document.getElementById('back-to-top');
+  if (window.scrollY > 400) btn.classList.add('show');
+  else btn.classList.remove('show');
+}
+
+// 滚动渐显
+function initReveal() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal:not(.visible)').forEach(el => observer.observe(el));
+}
+
+// 图片灯箱
+function initImageLightbox() {
+  document.querySelectorAll('.prose img').forEach(img => {
+    img.addEventListener('click', () => {
+      const lb = document.getElementById('lightbox');
+      document.getElementById('lightbox-img').src = img.src;
+      lb.classList.add('open');
+    });
+  });
+}
+
+// 文章TOC跟随
+function initPostToc() {
+  const sidebar = document.getElementById('toc-sidebar');
+  if (!sidebar) return;
+  const links = sidebar.querySelectorAll('.toc-link');
+  if (links.length === 0) return;
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = sidebar.querySelector(`[data-target="${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-80px 0px -70% 0px' });
+
+  links.forEach(link => {
+    const target = document.getElementById(link.dataset.target);
+    if (target) observer.observe(target);
+  });
+}
+
+// 复制代码
+function copyCode(btn) {
+  const code = btn.closest('.code-block').querySelector('code');
+  navigator.clipboard.writeText(code.textContent).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '已复制';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+// 键盘快捷键
+document.addEventListener('keydown', (e) => {
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault(); openSearch();
+  }
+  if (e.key === 'Escape') closeSearch();
+});
+
+// 滚动监听
+let isScrollScheduled = false;
+window.addEventListener('scroll', () => {
+  if (isScrollScheduled) return;
+  isScrollScheduled = true;
+  requestAnimationFrame(() => {
+    updateProgressBar();
+    updateBackToTop();
+    isScrollScheduled = false;
+  });
+}, { passive: true });
+
+// 路由监听
+window.addEventListener('hashchange', router);
+
+// 初始化
+async function initApp() {
+  initTheme();
+  try {
+    await loadPostsFromManifest();
+  } catch (error) {
+    if (!postDataSource.fallbackToEmbedded) {
+      posts = [];
+    }
+    applyPostDerivedState();
+    console.log('文章自动加载失败，回退内置数据。', error);
+  }
+  try {
+    await loadProjectsFromManifest();
+  } catch (error) {
+    if (!projectDataSource.fallbackToEmbedded) {
+      projectsData = [];
+    }
+    console.log('作品自动加载失败，回退内置数据。', error);
+  }
+  router();
+}
+
+initApp();
+</script>
+</body>
+</html>
