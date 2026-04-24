@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="evalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#evalGrad)"/>
+
+  <!-- Dashboard/Chart representation -->
+  <g transform="translate(600, 250)">
+    <!-- Bar chart -->
+    <rect x="-200" y="-40" width="50" height="100" rx="5" fill="white" opacity="0.3"/>
+    <rect x="-130" y="-70" width="50" height="130" rx="5" fill="white" opacity="0.4"/>
+    <rect x="-60" y="-50" width="50" height="110" rx="5" fill="white" opacity="0.35"/>
+    <rect x="10" y="-90" width="50" height="150" rx="5" fill="white" opacity="0.45"/>
+    <rect x="80" y="-60" width="50" height="120" rx="5" fill="white" opacity="0.38"/>
+    <rect x="150" y="-80" width="50" height="140" rx="5" fill="white" opacity="0.42"/>
+
+    <!-- Baseline -->
+    <line x1="-220" y1="70" x2="220" y2="70" stroke="white" stroke-width="2" opacity="0.5"/>
+  </g>
+
+  <!-- Evaluation metrics icons -->
+  <g transform="translate(300, 450)">
+    <circle cx="0" cy="0" r="25" fill="white" opacity="0.3"/>
+    <text x="0" y="8" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle" font-weight="bold">✓</text>
+    <text x="0" y="50" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle" opacity="0.8">Accuracy</text>
+  </g>
+
+  <g transform="translate(600, 450)">
+    <circle cx="0" cy="0" r="25" fill="white" opacity="0.3"/>
+    <text x="0" y="8" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle" font-weight="bold">⚡</text>
+    <text x="0" y="50" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle" opacity="0.8">Speed</text>
+  </g>
+
+  <g transform="translate(900, 450)">
+    <circle cx="0" cy="0" r="25" fill="white" opacity="0.3"/>
+    <text x="0" y="8" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle" font-weight="bold">📊</text>
+    <text x="0" y="50" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle" opacity="0.8">Regression</text>
+  </g>
+
+  <!-- A/B Test indicator -->
+  <g transform="translate(200, 200)">
+    <rect x="-40" y="-30" width="80" height="60" rx="8" fill="white" opacity="0.2"/>
+    <text x="0" y="-5" font-family="Arial, sans-serif" font-size="28" fill="white" text-anchor="middle" font-weight="bold">A</text>
+    <text x="0" y="25" font-family="Arial, sans-serif" font-size="28" fill="white" text-anchor="middle" font-weight="bold">B</text>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="120" font-family="Arial, sans-serif" font-size="48" fill="white" text-anchor="middle" font-weight="bold">LLM Eval Studio</text>
+  <text x="600" y="165" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle" opacity="0.9">模型评测与提示词回归平台</text>
+</svg>

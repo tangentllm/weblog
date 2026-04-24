@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="ragCopilotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#30cfd0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#330867;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#ragCopilotGrad)"/>
+
+  <!-- Knowledge base representation -->
+  <g transform="translate(250, 280)">
+    <!-- Document stack -->
+    <rect x="-60" y="-90" width="120" height="35" rx="5" fill="white" opacity="0.25"/>
+    <rect x="-60" y="-50" width="120" height="35" rx="5" fill="white" opacity="0.3"/>
+    <rect x="-60" y="-10" width="120" height="35" rx="5" fill="white" opacity="0.35"/>
+    <rect x="-60" y="30" width="120" height="35" rx="5" fill="white" opacity="0.4"/>
+
+    <!-- Lock icon for permission -->
+    <g transform="translate(0, 90)">
+      <rect x="-15" y="0" width="30" height="25" rx="3" fill="white" opacity="0.4"/>
+      <path d="M -10,-5 L -10,-15 Q -10,-20 0,-20 Q 10,-20 10,-15 L 10,-5" stroke="white" stroke-width="3" fill="none" opacity="0.4"/>
+    </g>
+
+    <text x="0" y="140" font-family="Arial, sans-serif" font-size="18" fill="white" text-anchor="middle" font-weight="bold">Knowledge</text>
+  </g>
+
+  <!-- Vector search -->
+  <g transform="translate(500, 280)">
+    <circle cx="0" cy="0" r="60" fill="white" opacity="0.2"/>
+    <circle cx="0" cy="0" r="40" fill="white" opacity="0.25"/>
+    <circle cx="0" cy="0" r="20" fill="white" opacity="0.3"/>
+    <text x="0" y="80" font-family="Arial, sans-serif" font-size="18" fill="white" text-anchor="middle" font-weight="bold">Vector Search</text>
+  </g>
+
+  <!-- LLM + Citation -->
+  <g transform="translate(800, 280)">
+    <rect x="-70" y="-70" width="140" height="140" rx="12" fill="white" opacity="0.25"/>
+    <text x="0" y="-20" font-family="Arial, sans-serif" font-size="32" fill="white" text-anchor="middle" font-weight="bold">LLM</text>
+    <text x="0" y="20" font-family="Arial, sans-serif" font-size="20" fill="white" text-anchor="middle" opacity="0.9">+</text>
+    <text x="0" y="50" font-family="Arial, sans-serif" font-size="18" fill="white" text-anchor="middle" opacity="0.9">Citation</text>
+  </g>
+
+  <!-- Answer output -->
+  <g transform="translate(1000, 280)">
+    <path d="M 0,-30 L 60,-30 L 70,-20 L 70,30 L 0,30 Z" fill="white" opacity="0.3"/>
+    <text x="35" y="80" font-family="Arial, sans-serif" font-size="18" fill="white" text-anchor="middle" font-weight="bold">Answer</text>
+  </g>
+
+  <!-- Flow arrows -->
+  <defs>
+    <marker id="arrowRag" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="white" opacity="0.6"/>
+    </marker>
+  </defs>
+  <path d="M 310,280 L 430,280" stroke="white" stroke-width="4" opacity="0.5" marker-end="url(#arrowRag)"/>
+  <path d="M 560,280 L 720,280" stroke="white" stroke-width="4" opacity="0.5" marker-end="url(#arrowRag)"/>
+  <path d="M 870,280 L 990,280" stroke="white" stroke-width="4" opacity="0.5" marker-end="url(#arrowRag)"/>
+
+  <!-- Title -->
+  <text x="600" y="500" font-family="Arial, sans-serif" font-size="46" fill="white" text-anchor="middle" font-weight="bold">RAG Copilot</text>
+  <text x="600" y="545" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle" opacity="0.9">企业知识库问答平台</text>
+</svg>

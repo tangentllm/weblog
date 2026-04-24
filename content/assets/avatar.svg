@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00e5a0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00a870;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#00e5a0;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#00e5a0;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+
+  <!-- 背景圆 -->
+  <circle cx="100" cy="100" r="100" fill="url(#bgGrad)"/>
+
+  <!-- 发光效果 -->
+  <circle cx="100" cy="100" r="80" fill="url(#glowGrad)"/>
+
+  <!-- 头部轮廓 -->
+  <ellipse cx="100" cy="85" rx="35" ry="40" fill="#2a2a2a"/>
+
+  <!-- 脸部 -->
+  <ellipse cx="100" cy="80" rx="32" ry="36" fill="#333"/>
+
+  <!-- 眼睛 - 左 -->
+  <circle cx="90" cy="75" r="3" fill="#00e5a0"/>
+  <circle cx="91" cy="74" r="1.5" fill="#fff"/>
+
+  <!-- 眼睛 - 右 -->
+  <circle cx="110" cy="75" r="3" fill="#00e5a0"/>
+  <circle cx="111" cy="74" r="1.5" fill="#fff"/>
+
+  <!-- 嘴巴 - 微笑 -->
+  <path d="M 92 88 Q 100 92 108 88" stroke="#00e5a0" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- 身体 -->
+  <path d="M 65 120 L 65 160 Q 65 165 70 165 L 130 165 Q 135 165 135 160 L 135 120 Z" fill="#1a1a1a"/>
+
+  <!-- 衣领 -->
+  <path d="M 85 120 L 80 130 L 85 135 L 100 128 L 115 135 L 120 130 L 115 120 Z" fill="#2a2a2a"/>
+
+  <!-- 领带 - AI 符号 -->
+  <path d="M 100 128 L 95 145 L 100 165 L 105 145 Z" fill="url(#accentGrad)"/>
+
+  <!-- AI 芯片图标在胸前 -->
+  <g transform="translate(85, 140)">
+    <!-- 芯片外框 -->
+    <rect x="0" y="0" width="30" height="20" rx="2" fill="none" stroke="#00e5a0" stroke-width="1.5"/>
+    <!-- 芯片引脚 - 左 -->
+    <line x1="-3" y1="5" x2="0" y2="5" stroke="#00e5a0" stroke-width="1"/>
+    <line x1="-3" y1="10" x2="0" y2="10" stroke="#00e5a0" stroke-width="1"/>
+    <line x1="-3" y1="15" x2="0" y2="15" stroke="#00e5a0" stroke-width="1"/>
+    <!-- 芯片引脚 - 右 -->
+    <line x1="30" y1="5" x2="33" y2="5" stroke="#00e5a0" stroke-width="1"/>
+    <line x1="30" y1="10" x2="33" y2="10" stroke="#00e5a0" stroke-width="1"/>
+    <line x1="30" y1="15" x2="33" y2="15" stroke="#00e5a0" stroke-width="1"/>
+    <!-- 芯片内部电路 -->
+    <circle cx="15" cy="10" r="4" fill="none" stroke="#00e5a0" stroke-width="1"/>
+    <line x1="11" y1="10" x2="8" y2="10" stroke="#00e5a0" stroke-width="0.8"/>
+    <line x1="19" y1="10" x2="22" y2="10" stroke="#00e5a0" stroke-width="0.8"/>
+    <line x1="15" y1="6" x2="15" y2="3" stroke="#00e5a0" stroke-width="0.8"/>
+    <line x1="15" y1="14" x2="15" y2="17" stroke="#00e5a0" stroke-width="0.8"/>
+  </g>
+
+  <!-- 代码符号装饰 - 左上 -->
+  <text x="25" y="35" font-family="monospace" font-size="16" fill="#00e5a0" opacity="0.4">&lt;/&gt;</text>
+
+  <!-- 神经网络节点装饰 - 右上 -->
+  <g transform="translate(155, 25)" opacity="0.4">
+    <circle cx="0" cy="0" r="2" fill="#00e5a0"/>
+    <circle cx="10" cy="-5" r="2" fill="#00e5a0"/>
+    <circle cx="10" cy="5" r="2" fill="#00e5a0"/>
+    <line x1="0" y1="0" x2="10" y2="-5" stroke="#00e5a0" stroke-width="0.8"/>
+    <line x1="0" y1="0" x2="10" y2="5" stroke="#00e5a0" stroke-width="0.8"/>
+  </g>
+
+  <!-- 数据流动效果 - 底部 -->
+  <g opacity="0.3">
+    <circle cx="40" cy="170" r="1.5" fill="#00e5a0">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="60" cy="175" r="1.5" fill="#00e5a0">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" begin="0.3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="140" cy="175" r="1.5" fill="#00e5a0">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" begin="0.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="160" cy="170" r="1.5" fill="#00e5a0">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" begin="0.9s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>

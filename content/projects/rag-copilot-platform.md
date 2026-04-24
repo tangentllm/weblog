@@ -6,8 +6,8 @@ status: 已上线
 period: 2025 Q4
 tags: RAG, LangGraph, Supabase, 权限系统
 summary: 将文档、FAQ、工单统一索引，构建可审计的企业问答助手。
-cover: https://picsum.photos/seed/rag-copilot/1200/700
-github: https://github.com/tangentllm/weblog.git
+cover: ./content/assets/projects/covers/rag-copilot.svg
+github: https://github.com/tangentllm/weblog
 demo: https://example.com/
 docs: https://example.com/docs
 ---

@@ -1,0 +1,51 @@
+# robots.txt for LLM Notes Blog
+
+# 允许所有搜索引擎爬取
+User-agent: *
+Allow: /
+
+# 百度爬虫
+User-agent: Baiduspider
+Allow: /
+
+# 百度图片爬虫
+User-agent: Baiduspider-image
+Allow: /
+
+# 百度移动爬虫
+User-agent: Baiduspider-mobile
+Allow: /
+
+# 360 搜索爬虫
+User-agent: 360Spider
+Allow: /
+
+# 搜狗爬虫
+User-agent: Sogou web spider
+Allow: /
+
+# 搜狗移动爬虫
+User-agent: Sogou inst spider
+Allow: /
+
+# 搜狗图片爬虫
+User-agent: Sogou pic spider
+Allow: /
+
+# Google 爬虫
+User-agent: Googlebot
+Allow: /
+
+# Google 图片爬虫
+User-agent: Googlebot-Image
+Allow: /
+
+# Bing 爬虫
+User-agent: Bingbot
+Allow: /
+
+# Sitemap 位置
+Sitemap: https://tangentllm.github.io/weblog/sitemap.xml
+
+# 爬取延迟（秒）
+Crawl-delay: 1

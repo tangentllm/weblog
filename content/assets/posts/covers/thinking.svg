@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="thinkingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a8edea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fed6e3;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#thinkingGrad)"/>
+
+  <!-- Brain/thinking icon -->
+  <g transform="translate(600, 250)">
+    <!-- Head outline -->
+    <ellipse cx="0" cy="0" rx="100" ry="120" fill="none" stroke="#667eea" stroke-width="4" opacity="0.6"/>
+
+    <!-- Thought bubbles -->
+    <circle cx="-80" cy="-80" r="20" fill="#667eea" opacity="0.3"/>
+    <circle cx="-50" cy="-130" r="15" fill="#667eea" opacity="0.3"/>
+    <circle cx="0" cy="-150" r="25" fill="#667eea" opacity="0.3"/>
+    <circle cx="50" cy="-130" r="15" fill="#667eea" opacity="0.3"/>
+    <circle cx="80" cy="-80" r="20" fill="#667eea" opacity="0.3"/>
+
+    <!-- Neural connections inside -->
+    <g opacity="0.5">
+      <line x1="-40" y1="-20" x2="40" y2="20" stroke="#667eea" stroke-width="2"/>
+      <line x1="-40" y1="20" x2="40" y2="-20" stroke="#667eea" stroke-width="2"/>
+      <line x1="0" y1="-40" x2="0" y2="40" stroke="#667eea" stroke-width="2"/>
+      <circle cx="-40" cy="-20" r="6" fill="#667eea"/>
+      <circle cx="40" cy="-20" r="6" fill="#667eea"/>
+      <circle cx="-40" cy="20" r="6" fill="#667eea"/>
+      <circle cx="40" cy="20" r="6" fill="#667eea"/>
+      <circle cx="0" cy="0" r="8" fill="#667eea"/>
+    </g>
+  </g>
+
+  <!-- Lightbulb icon -->
+  <g transform="translate(900, 200)">
+    <circle cx="0" cy="-20" r="30" fill="#fed6e3" opacity="0.6"/>
+    <rect x="-15" y="10" width="30" height="20" rx="3" fill="#fed6e3" opacity="0.6"/>
+    <line x1="-40" y1="-20" x2="-55" y2="-20" stroke="#667eea" stroke-width="3" opacity="0.4"/>
+    <line x1="40" y1="-20" x2="55" y2="-20" stroke="#667eea" stroke-width="3" opacity="0.4"/>
+    <line x1="-25" y1="-50" x2="-35" y2="-65" stroke="#667eea" stroke-width="3" opacity="0.4"/>
+    <line x1="25" y1="-50" x2="35" y2="-65" stroke="#667eea" stroke-width="3" opacity="0.4"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="480" font-family="Arial, sans-serif" font-size="44" fill="#667eea" text-anchor="middle" font-weight="bold">AI 时代的工程师优势</text>
+  <text x="600" y="530" font-family="Arial, sans-serif" font-size="26" fill="#667eea" text-anchor="middle" opacity="0.8">问题定义 · 系统整合 · 持续验证</text>
+</svg>

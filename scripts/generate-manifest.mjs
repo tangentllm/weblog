@@ -5,7 +5,8 @@ const postsDir = path.resolve("content/posts");
 const manifestPath = path.resolve("content/posts/manifest.json");
 
 function parseFrontmatter(fileContent) {
-  const match = fileContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  const normalizedContent = fileContent.replace(/^\uFEFF/, "");
+  const match = normalizedContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
   if (!match) {
     return null;
   }

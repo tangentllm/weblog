@@ -5,13 +5,25 @@ date: 2026-04-14
 readTime: 16 分钟
 category: 微调与对齐
 tags: SFT, LoRA, DPO
-cover: https://picsum.photos/seed/sft/1000/500
+cover: ./content/assets/posts/covers/sft.svg
 excerpt: 从数据构造、训练参数到离线评估，记录一次可复现的指令微调流程与常见坑。
 ---
 
 ## 任务定义
 
-目标：让基础模型在“技术问答+代码解释”场景下提升可控性与稳定性。
+目标：让基础模型在“技术问答 + 代码解释”场景下提升可控性与稳定性。
+
+```mermaid
+flowchart LR
+    A[Instruction Data] --> B[SFT]
+    B --> C[LoRA Adapter]
+    C --> D[Offline Eval]
+    D --> E[Online A/B]
+    E --> F[Failure Replay Set]
+    F --> A
+```
+
+*图1：SFT + LoRA 的训练与评估回流闭环*
 
 ## 数据准备
 
@@ -39,16 +51,13 @@ python train.py \
 
 - 对小数据集，优先减小学习率，避免过拟合到模板化表达。  
 - 对长回答任务，增大 max_seq_length 并配合 packing。  
-- 先做 2k step 烟雾测试，再做完整训练，能节省大量排障时间。  
+- 先做烟雾测试，再做完整训练，能节省大量排障时间。  
 
 </details>
 
 ## 评估闭环
 
-1. 离线：采样 200 条高价值问题做人审打分。
-2. 在线：灰度流量 A/B 对比平均回复长度与用户停留时间。
-3. 回流：将低分样本与拒答失败样本纳入下一轮训练。
+1. 离线：抽样高价值问题做人审打分。  
+2. 在线：灰度 A/B 对比平均回复长度与用户停留时间。  
+3. 回流：将低分样本与拒答失败样本纳入下一轮训练。  
 
-## 结论
-
-SFT 不是“训一次就好”，而是数据、评估、重训的循环工程。

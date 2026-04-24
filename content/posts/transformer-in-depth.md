@@ -5,13 +5,25 @@ date: 2026-04-10
 readTime: 18 分钟
 category: 基础原理
 tags: Transformer, Attention, Pretraining
-cover: https://picsum.photos/seed/transformer/1000/500
+cover: ./content/assets/posts/covers/transformer.svg
 excerpt: 系统梳理自注意力、位置编码、前馈网络与训练策略，给出公式推导与工程实现细节。
 ---
 
 ## 为什么 Transformer 成为主流
 
 Transformer 的核心价值在于将序列建模从“逐步递归”转为“全局并行”。在长上下文场景中，这个变化同时影响了训练效率和表达能力。
+
+```mermaid
+flowchart LR
+    X[Token Embedding] --> P[Positional Encoding]
+    P --> E1[Encoder Block xN]
+    E1 --> E2[Self Attention]
+    E2 --> E3[FFN]
+    E3 --> D1[Decoder Block xN]
+    D1 --> O[Next Token Distribution]
+```
+
+*图1：Transformer 从输入嵌入到输出分布的主干计算链路*
 
 ## 自注意力的核心计算
 

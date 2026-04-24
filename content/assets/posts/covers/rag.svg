@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="ragGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fa709a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fee140;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#ragGrad)"/>
+
+  <!-- Document database -->
+  <g transform="translate(300, 280)">
+    <rect x="-60" y="-80" width="120" height="30" rx="5" fill="white" opacity="0.3"/>
+    <rect x="-60" y="-40" width="120" height="30" rx="5" fill="white" opacity="0.3"/>
+    <rect x="-60" y="0" width="120" height="30" rx="5" fill="white" opacity="0.3"/>
+    <rect x="-60" y="40" width="120" height="30" rx="5" fill="white" opacity="0.3"/>
+    <text x="0" y="100" font-family="Arial, sans-serif" font-size="20" fill="white" text-anchor="middle" font-weight="bold">Knowledge Base</text>
+  </g>
+
+  <!-- Retrieval arrow -->
+  <path d="M 360,280 L 520,280" stroke="white" stroke-width="4" fill="none" opacity="0.7" marker-end="url(#arrowhead)"/>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="white" opacity="0.7"/>
+    </marker>
+  </defs>
+
+  <!-- LLM Generator -->
+  <g transform="translate(700, 280)">
+    <circle cx="0" cy="0" r="70" fill="white" opacity="0.3"/>
+    <text x="0" y="10" font-family="Arial, sans-serif" font-size="32" fill="white" text-anchor="middle" font-weight="bold">LLM</text>
+    <text x="0" y="100" font-family="Arial, sans-serif" font-size="20" fill="white" text-anchor="middle" font-weight="bold">Generator</text>
+  </g>
+
+  <!-- Query input -->
+  <g transform="translate(150, 150)">
+    <path d="M 0,0 L 100,0 L 110,10 L 110,40 L 0,40 Z" fill="white" opacity="0.3"/>
+    <text x="55" y="27" font-family="Arial, sans-serif" font-size="16" fill="white" text-anchor="middle" font-weight="bold">Query</text>
+  </g>
+
+  <!-- Output -->
+  <g transform="translate(900, 280)">
+    <rect x="0" y="-30" width="150" height="60" rx="8" fill="white" opacity="0.3"/>
+    <text x="75" y="5" font-family="Arial, sans-serif" font-size="18" fill="white" text-anchor="middle" font-weight="bold">Answer</text>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="500" font-family="Arial, sans-serif" font-size="48" fill="white" text-anchor="middle" font-weight="bold">RAG</text>
+  <text x="600" y="550" font-family="Arial, sans-serif" font-size="28" fill="white" text-anchor="middle" opacity="0.9">检索增强生成的演化路径</text>
+</svg>

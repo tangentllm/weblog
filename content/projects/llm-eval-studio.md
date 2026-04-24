@@ -6,8 +6,8 @@ status: 迭代中
 period: 2026 Q1
 tags: Evaluation, PromptOps, A/B Test
 summary: 围绕真实业务样本做离线评测，建立 Prompt 与模型变更的质量闸门。
-cover: https://picsum.photos/seed/eval-studio/1200/700
-github: https://github.com/tangentllm/weblog.git
+cover: ./content/assets/projects/covers/eval-studio.svg
+github: https://github.com/tangentllm/weblog
 demo: https://example.com/
 docs: https://example.com/docs
 ---

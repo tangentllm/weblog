@@ -1,5 +1,22 @@
 [
   {
+    "slug": "everything-claude-code-zh-guide",
+    "title": "Everything Claude Code 中文版 - 完整使用教程",
+    "date": "2026-04-22",
+    "readTime": "35 分钟",
+    "category": "工程实践",
+    "tags": [
+      "Claude Code",
+      "MCP",
+      "Skill",
+      "Agent",
+      "Function Calling"
+    ],
+    "cover": "./content/assets/posts/covers/everything-claude-code.svg",
+    "excerpt": "从安装配置到代理、技能、钩子、规则与 MCP 的完整实践指南。",
+    "file": "./content/posts/everything-claude-code-zh.md"
+  },
+  {
     "slug": "tech-thinking-ai-engineer",
     "title": "技术随想：大模型时代，工程师如何建立长期优势",
     "date": "2026-04-20",
@@ -10,7 +27,7 @@
       "AI Engineering",
       "Thinking"
     ],
-    "cover": "https://picsum.photos/seed/thinking/1000/500",
+    "cover": "./content/assets/posts/covers/thinking.svg",
     "excerpt": "当模型能力快速迭代，真正稀缺的是问题定义、系统整合与持续验证能力。",
     "file": "./content/posts/tech-thinking-ai-engineer.md"
   },
@@ -25,7 +42,7 @@
       "Retrieval",
       "Knowledge"
     ],
-    "cover": "https://picsum.photos/seed/rag/1000/500",
+    "cover": "./content/assets/posts/covers/rag.svg",
     "excerpt": "梳理 RAG 在检索粒度、索引结构和训练范式上的关键演进，并总结落地启发。",
     "file": "./content/posts/paper-rag-survey.md"
   },
@@ -40,7 +57,7 @@
       "LoRA",
       "DPO"
     ],
-    "cover": "https://picsum.photos/seed/sft/1000/500",
+    "cover": "./content/assets/posts/covers/sft.svg",
     "excerpt": "从数据构造、训练参数到离线评估，记录一次可复现的指令微调流程与常见坑。",
     "file": "./content/posts/llm-sft-note.md"
   },
@@ -55,7 +72,7 @@
       "Attention",
       "Pretraining"
     ],
-    "cover": "https://picsum.photos/seed/transformer/1000/500",
+    "cover": "./content/assets/posts/covers/transformer.svg",
     "excerpt": "系统梳理自注意力、位置编码、前馈网络与训练策略，给出公式推导与工程实现细节。",
     "file": "./content/posts/transformer-in-depth.md"
   }

@@ -1,0 +1,43 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+
+# Logs / temp
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Node / Python common
+node_modules/
+dist/
+build/
+.cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+
+# Cursor / local runtime artifacts
+.cursor/
+*.cursorlog
+
+# Coverage / reports
+coverage/
+*.lcov
+reports/
+
+# Project local-only files
+.claude/settings.local.json
+FEATURES_SUMMARY.md

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="transformerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#transformerGrad)"/>
+
+  <!-- Attention mechanism visualization -->
+  <g transform="translate(600, 250)">
+    <!-- Query, Key, Value boxes -->
+    <rect x="-180" y="-60" width="80" height="40" rx="5" fill="white" opacity="0.3"/>
+    <text x="-140" y="-30" font-family="monospace" font-size="20" fill="white" text-anchor="middle" font-weight="bold">Q</text>
+
+    <rect x="-60" y="-60" width="80" height="40" rx="5" fill="white" opacity="0.3"/>
+    <text x="-20" y="-30" font-family="monospace" font-size="20" fill="white" text-anchor="middle" font-weight="bold">K</text>
+
+    <rect x="60" y="-60" width="80" height="40" rx="5" fill="white" opacity="0.3"/>
+    <text x="100" y="-30" font-family="monospace" font-size="20" fill="white" text-anchor="middle" font-weight="bold">V</text>
+
+    <!-- Attention arrows -->
+    <path d="M -140,-20 L -20,40" stroke="white" stroke-width="3" fill="none" opacity="0.6"/>
+    <path d="M -20,-20 L -20,40" stroke="white" stroke-width="3" fill="none" opacity="0.6"/>
+    <path d="M 100,-20 L -20,40" stroke="white" stroke-width="3" fill="none" opacity="0.6"/>
+
+    <!-- Output -->
+    <circle cx="-20" cy="60" r="25" fill="white" opacity="0.4"/>
+    <text x="-20" y="70" font-family="monospace" font-size="18" fill="white" text-anchor="middle" font-weight="bold">⊗</text>
+  </g>
+
+  <!-- Multi-head representation -->
+  <g opacity="0.4">
+    <circle cx="300" cy="450" r="12" fill="white"/>
+    <circle cx="400" cy="450" r="12" fill="white"/>
+    <circle cx="500" cy="450" r="12" fill="white"/>
+    <circle cx="600" cy="450" r="12" fill="white"/>
+    <circle cx="700" cy="450" r="12" fill="white"/>
+    <circle cx="800" cy="450" r="12" fill="white"/>
+    <circle cx="900" cy="450" r="12" fill="white"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="530" font-family="Arial, sans-serif" font-size="48" fill="white" text-anchor="middle" font-weight="bold">Transformer</text>
+  <text x="600" y="575" font-family="Arial, sans-serif" font-size="26" fill="white" text-anchor="middle" opacity="0.9">从注意力到可扩展建模</text>
+</svg>

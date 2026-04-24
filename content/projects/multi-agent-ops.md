@@ -6,8 +6,8 @@ status: 概念验证
 period: 2026 Q2
 tags: Multi-Agent, Tool Calling, Workflow
 summary: 通过角色化 Agent 协作，把运营分析流程从天级缩短到小时级。
-cover: https://picsum.photos/seed/agent-ops/1200/700
-github: https://github.com/tangentllm/weblog.git
+cover: ./content/assets/projects/covers/agent-ops.svg
+github: https://github.com/tangentllm/weblog
 demo: https://example.com/
 docs: https://example.com/docs
 ---

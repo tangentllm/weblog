@@ -3,7 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- 基础 SEO -->
   <title>LLM Notes — 未来已来</title>
+  <meta name="description" content="专注于大模型技术的学习笔记、实践经验与项目分享。涵盖 Transformer、RAG、Agent、微调等核心技术。">
+  <meta name="keywords" content="大模型,LLM,Transformer,RAG,Agent,微调,SFT,LoRA,Prompt Engineering,人工智能,深度学习,自然语言处理,NLP">
+  <meta name="author" content="tangentllm">
+
+  <!-- 百度 SEO -->
+  <meta name="baidu-site-verification" content="codeva-placeholder" />
+  <meta name="applicable-device" content="pc,mobile">
+  <meta name="MobileOptimized" content="width">
+  <meta name="HandheldFriendly" content="true">
+
+  <!-- 360 搜索 SEO -->
+  <meta name="360-site-verification" content="placeholder" />
+
+  <!-- 搜狗 SEO -->
+  <meta name="sogou_site_verification" content="placeholder"/>
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://tangentllm.github.io/weblog/">
+  <meta property="og:title" content="LLM Notes — 未来已来">
+  <meta property="og:description" content="专注于大模型技术的学习笔记、实践经验与项目分享。涵盖 Transformer、RAG、Agent、微调等核心技术。">
+  <meta property="og:image" content="https://tangentllm.github.io/weblog/og-image.png">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:site_name" content="LLM Notes">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://tangentllm.github.io/weblog/">
+  <meta name="twitter:title" content="LLM Notes — 未来已来">
+  <meta name="twitter:description" content="专注于大模型技术的学习笔记、实践经验与项目分享。涵盖 Transformer、RAG、Agent、微调等核心技术。">
+  <meta name="twitter:image" content="https://tangentllm.github.io/weblog/og-image.png">
+
+  <!-- 其他 SEO -->
+  <link rel="canonical" href="https://tangentllm.github.io/weblog/">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="googlebot" content="index, follow">
+  <meta name="baiduspider" content="index, follow">
+
+  <!-- 结构化数据 - JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "name": "LLM Notes",
+    "description": "专注于大模型技术的学习笔记、实践经验与项目分享",
+    "url": "https://tangentllm.github.io/weblog/",
+    "author": {
+      "@type": "Person",
+      "name": "tangentllm"
+    },
+    "inLanguage": "zh-CN",
+    "keywords": "大模型,LLM,Transformer,RAG,Agent,微调,人工智能,深度学习"
+  }
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +68,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
   <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script>
@@ -77,7 +135,17 @@
     }
 
     /* === 文章排版 === */
-    .prose { font-family: 'Noto Serif SC', Georgia, serif; line-height: 1.9; }
+    .prose {
+      font-family: 'Noto Serif SC', Georgia, serif;
+      line-height: 1.9;
+      max-width: 100%;
+      word-wrap: break-word;
+    }
+    .prose h1 {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 2rem; font-weight: 700; margin: 2em 0 1em; padding-left: 14px;
+      border-left: 3px solid #00e5a0;
+    }
     .prose h2 {
       font-family: 'DM Sans', system-ui, sans-serif;
       font-size: 1.5rem; font-weight: 700; margin: 2.5em 0 1em; padding-left: 14px;
@@ -87,6 +155,14 @@
       font-family: 'DM Sans', system-ui, sans-serif;
       font-size: 1.2rem; font-weight: 600; margin: 2em 0 0.8em;
     }
+    .prose h4 {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 1.1rem; font-weight: 600; margin: 1.5em 0 0.6em;
+    }
+    .prose h5, .prose h6 {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 1rem; font-weight: 600; margin: 1.2em 0 0.5em;
+    }
     .prose p { margin: 0 0 1.2em; }
     .prose a { color: #00e5a0; text-decoration: underline; text-underline-offset: 3px; }
     .prose strong { font-weight: 600; }
@@ -94,6 +170,22 @@
     .prose li { margin-bottom: 0.4em; }
     .prose ul li { list-style: disc; }
     .prose ol li { list-style: decimal; }
+    .prose pre {
+      margin: 1.5em 0;
+      padding: 1.2em;
+      border-radius: 8px;
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    .dark .prose pre { background: #111; }
+    html:not(.dark) .prose pre { background: #fafafa; }
+    .prose pre code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+    .dark .prose pre code { color: #d4d4d4; }
+    html:not(.dark) .prose pre code { color: #333; }
 
     /* === 行内代码 === */
     .prose code:not(pre code) {
@@ -106,17 +198,29 @@
     }
 
     /* === 代码块 === */
-    .code-block { position: relative; margin: 1.5em 0; border-radius: 10px; overflow: hidden; }
+    .code-block { position: relative; margin: 1.5em 0; border-radius: 10px; overflow: hidden; max-width: 100%; }
     .code-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 8px 14px; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace;
     }
     .dark .code-header { background: #1a1a1a; color: #666; }
     html:not(.dark) .code-header { background: #f0f0f0; color: #888; }
-    .code-block pre { margin: 0 !important; padding: 1.2em !important; border-radius: 0 !important; background: transparent !important; }
+    .code-block pre {
+      margin: 0 !important;
+      padding: 1.2em !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      max-width: 100%;
+      overflow-x: auto;
+    }
     .dark .code-block pre { background: #111 !important; }
     html:not(.dark) .code-block pre { background: #fafafa !important; }
-    .code-block code { font-family: 'JetBrains Mono', monospace !important; font-size: 0.85rem !important; line-height: 1.7 !important; }
+    .code-block code {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.85rem !important;
+      line-height: 1.7 !important;
+      display: block;
+    }
     .dark .code-block code { color: #d4d4d4 !important; }
     .copy-btn {
       padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;
@@ -133,6 +237,20 @@
     }
     .dark .prose blockquote { background: rgba(0,229,160,0.05); color: #aaa; }
     html:not(.dark) .prose blockquote { background: rgba(0,180,125,0.05); color: #666; }
+
+    /* === 图片样式 === */
+    .prose img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      cursor: zoom-in;
+      transition: transform 0.2s;
+      display: block;
+      margin: 1.5em auto;
+    }
+    .prose img:hover {
+      transform: scale(1.02);
+    }
 
     /* === 表格 === */
     .prose table { width: 100%; border-collapse: collapse; margin: 1.5em 0; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
@@ -154,6 +272,14 @@
       list-style: none; display: flex; align-items: center; gap: 8px; user-select: none;
     }
     .collapse-summary::-webkit-details-marker { display: none; }
+    .collapse-icon {
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 0.7em;
+    }
+    details[open] .collapse-icon {
+      transform: rotate(90deg);
+    }
     .dark .collapse-summary { background: #1a1a1a; color: #ccc; }
     .dark .collapse-summary:hover { background: #222; }
     html:not(.dark) .collapse-summary { background: #f8f8f8; color: #444; }
@@ -163,11 +289,15 @@
     html:not(.dark) .collapse-content { background: #fdfdfd; color: #666; }
 
     /* === TOC === */
-    .toc-link { display: block; padding: 4px 12px; font-size: 0.8rem; color: #666; text-decoration: none; border-left: 2px solid transparent; transition: all 0.2s; }
+    .toc-link { display: block; padding: 4px 12px; font-size: 0.8rem; color: #666; text-decoration: none; transition: color 0.2s; position: relative; }
     .toc-link:hover { color: #00e5a0; }
-    .toc-link.active { color: #00e5a0; border-left-color: #00e5a0; }
+    .toc-link.active { color: #00e5a0; }
     html:not(.dark) .toc-link { color: #999; }
-    html:not(.dark) .toc-link.active { color: #00a870; border-left-color: #00a870; }
+    html:not(.dark) .toc-link.active { color: #00a870; }
+
+    .toc-nav { position: relative; }
+    .toc-indicator { position: absolute; left: 0; width: 2px; background: #00e5a0; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s; opacity: 0; pointer-events: none; }
+    html:not(.dark) .toc-indicator { background: #00a870; }
 
     /* === 搜索弹窗 === */
     .search-overlay { position: fixed; inset: 0; z-index: 100; display: none; align-items: flex-start; justify-content: center; padding-top: 15vh; }
@@ -227,6 +357,85 @@
     .roadmap-dot.pending { border-color: #444; background: transparent; }
     html:not(.dark) .roadmap-dot.pending { border-color: #ccc; }
 
+    /* === 代码块复制按钮 === */
+
+    /* 分享按钮样式 */
+    .share-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .dark .share-btn {
+      border-color: #333;
+      color: #666;
+    }
+    html:not(.dark) .share-btn {
+      border-color: #ddd;
+      color: #999;
+    }
+    .dark .share-btn:hover {
+      background: #1e1e1e;
+      border-color: #444;
+      color: #fff;
+    }
+    html:not(.dark) .share-btn:hover {
+      background: #f5f5f5;
+      border-color: #ccc;
+      color: #333;
+    }
+
+    /* Toast 动画 */
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+    @keyframes slideUp {
+      from {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+      }
+    }
+
+    /* === 页面切换动画 === */
+    @keyframes pageEnter {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .page-transition {
+      animation: pageEnter 0.4s ease-out;
+    }
+
+    /* === 暗色模式切换动画 === */
+    html {
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    * {
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    }
+
     /* === hljs 覆盖 === */
     .hljs-keyword { color: #c678dd; }
     .hljs-string { color: #98c379; }
@@ -265,8 +474,16 @@
     html:not(.dark) ::-webkit-scrollbar-track { background: #fafaf9; }
     html:not(.dark) ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
 
-    /* === 文章图片 === */
-    .prose img { border-radius: 8px; cursor: zoom-in; margin: 1.5em 0; max-width: 100%; }
+    /* === 加载动画 === */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    #page-loader {
+      --bg-color: #050505;
+    }
+    html:not(.dark) #page-loader {
+      --bg-color: #fafaf9;
+    }
 
     @media (prefers-reduced-motion: reduce) {
       *, .reveal, #app { animation: none !important; transition: none !important; opacity: 1 !important; transform: none !important; }
@@ -274,6 +491,11 @@
   </style>
 </head>
 <body class="dark:bg-[#050505] bg-[#fafaf9] dark:text-[#e5e5e5] text-[#1a1a1a] min-h-screen">
+
+  <!-- 加载动画 -->
+  <div id="page-loader" style="position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: var(--bg-color); transition: opacity 0.3s;">
+    <div style="width: 40px; height: 40px; border: 3px solid rgba(0,229,160,0.2); border-top-color: #00e5a0; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+  </div>
 
   <!-- 阅读进度条 -->
   <div id="progress-bar"></div>
@@ -289,6 +511,7 @@
       <div class="hidden md:flex items-center gap-1">
         <a href="#/" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">首页</a>
         <a href="#/categories" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">分类</a>
+        <a href="#/tags" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">标签</a>
         <a href="#/projects" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">作品</a>
         <a href="#/about" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">关于</a>
         <div class="w-px h-4 dark:bg-[#2a2a2a] bg-[#ddd] mx-2"></div>
@@ -310,6 +533,7 @@
     <div id="mobile-menu" class="mobile-menu flex-col border-t dark:border-[#1a1a1a] border-[#eee] dark:bg-[rgba(5,5,5,0.95)] bg-[rgba(250,250,249,0.95)] px-6 py-3">
       <a href="#/" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">首页</a>
       <a href="#/categories" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">分类</a>
+      <a href="#/tags" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">标签</a>
       <a href="#/projects" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">作品</a>
       <a href="#/about" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">关于</a>
       <div class="flex items-center gap-2 py-2">
@@ -356,115 +580,8 @@ const categories = [
 
 let posts = [];
 
-// 作品集数据
-let projectsData = [
-  {
-    slug: 'rag-copilot-platform',
-    title: '企业知识库 RAG Copilot',
-    subtitle: '私域知识问答平台，支持权限检索与引用溯源',
-    cover: 'https://picsum.photos/seed/rag-copilot/1200/700',
-    status: '已上线',
-    period: '2025 Q4',
-    tags: ['RAG', 'LangGraph', 'Supabase', '权限系统'],
-    summary: '将文档、FAQ、工单统一索引，构建可审计的企业问答助手。',
-    architecture: [
-      '数据层：Supabase Postgres + pgvector，支持租户隔离',
-      '检索层：Hybrid Search + rerank，提升召回稳定性',
-      '编排层：LangGraph 工作流，支持工具调用与追问',
-      '观测层：请求级 tracing，统计命中率与幻觉率',
-    ],
-    features: [
-      '多知识库切换与细粒度角色权限',
-      '答案引用原文片段，可一键跳转定位',
-      '低置信度时自动澄清而非强行回答',
-      '后台可视化评测集，支持版本回归对比',
-    ],
-    metrics: [
-      'Top-5 召回率：89.7%',
-      '首字响应时间：1.3s',
-      '人工评测准确率：+21%',
-    ],
-    screenshots: [
-      'https://picsum.photos/seed/rag-shot-1/1200/760',
-      'https://picsum.photos/seed/rag-shot-2/1200/760',
-    ],
-    links: {
-      github: 'https://github.com/',
-      demo: 'https://example.com/',
-      docs: 'https://example.com/docs',
-    },
-  },
-  {
-    slug: 'llm-eval-studio',
-    title: 'LLM Eval Studio',
-    subtitle: '模型评测与提示词回归平台',
-    cover: 'https://picsum.photos/seed/eval-studio/1200/700',
-    status: '迭代中',
-    period: '2026 Q1',
-    tags: ['Evaluation', 'PromptOps', 'A/B Test'],
-    summary: '围绕真实业务样本做离线评测，建立 Prompt 与模型变更的质量闸门。',
-    architecture: [
-      '样本层：标准化 case schema，支持多轮对话',
-      '执行层：并行调用多模型并缓存结果',
-      '评判层：规则分 + LLM as Judge 组合打分',
-      '报告层：可视化对比基线，自动生成评测报告',
-    ],
-    features: [
-      '支持一键复跑历史版本并做回归差异分析',
-      '分场景评分：事实性、指令遵循、格式稳定性',
-      '失败用例自动聚类，快速定位系统性问题',
-    ],
-    metrics: [
-      '评测耗时降低：63%',
-      '上线前缺陷拦截率：+34%',
-      'Prompt 回归定位时间：从 2 小时降至 25 分钟',
-    ],
-    screenshots: [
-      'https://picsum.photos/seed/eval-shot-1/1200/760',
-      'https://picsum.photos/seed/eval-shot-2/1200/760',
-    ],
-    links: {
-      github: 'https://github.com/',
-      demo: 'https://example.com/',
-      docs: 'https://example.com/docs',
-    },
-  },
-  {
-    slug: 'multi-agent-ops',
-    title: '多智能体运营自动化系统',
-    subtitle: '内容规划、投放分析、复盘建议的 Agent 协同',
-    cover: 'https://picsum.photos/seed/agent-ops/1200/700',
-    status: '概念验证',
-    period: '2026 Q2',
-    tags: ['Multi-Agent', 'Tool Calling', 'Workflow'],
-    summary: '通过角色化 Agent 协作，把运营分析流程从天级缩短到小时级。',
-    architecture: [
-      'Planner Agent：拆解目标与执行计划',
-      'Analyst Agent：调用 BI API 产出诊断',
-      'Writer Agent：生成复盘文案与行动建议',
-      'Supervisor：统一校验输出结构与风险提示',
-    ],
-    features: [
-      '支持人工确认节点，避免错误自动扩散',
-      '工具调用失败自动降级并回填解释',
-      '可追溯每一步 Agent 决策链路',
-    ],
-    metrics: [
-      '周报生产时间：8h -> 1.5h',
-      '异常归因覆盖率：78%',
-      '人工修改率：下降 42%',
-    ],
-    screenshots: [
-      'https://picsum.photos/seed/agent-shot-1/1200/760',
-      'https://picsum.photos/seed/agent-shot-2/1200/760',
-    ],
-    links: {
-      github: 'https://github.com/',
-      demo: 'https://example.com/',
-      docs: 'https://example.com/docs',
-    },
-  },
-];
+// 作品集数据（从 manifest.json 加载）
+let projectsData = [];
 
 const postDataSource = {
   manifestPath: './content/posts/manifest.json',
@@ -473,7 +590,7 @@ const postDataSource = {
 
 const projectDataSource = {
   manifestPath: './content/projects/manifest.json',
-  fallbackToEmbedded: true,
+  fallbackToEmbedded: false,
 };
 
 const siteMeta = {
@@ -646,9 +763,125 @@ function renderSkillStack() {
 }
 
 function stripFrontmatter(markdownText) {
-  if (!markdownText || !markdownText.startsWith('---')) return markdownText || '';
-  const matched = markdownText.match(/^---[\s\S]*?---\s*/);
-  return matched ? markdownText.slice(matched[0].length) : markdownText;
+  const normalizedText = (markdownText || '').replace(/^\uFEFF/, '');
+  if (!normalizedText.startsWith('---')) return normalizedText;
+  const matched = normalizedText.match(/^---[\s\S]*?---\s*/);
+  return matched ? normalizedText.slice(matched[0].length) : normalizedText;
+}
+
+// 加载动画控制
+function showLoader() {
+  const loader = document.getElementById('page-loader');
+  if (loader) {
+    loader.style.display = 'flex';
+    loader.style.opacity = '1';
+  }
+}
+
+function hideLoader() {
+  const loader = document.getElementById('page-loader');
+  if (loader) {
+    loader.style.opacity = '0';
+    setTimeout(() => {
+      loader.style.display = 'none';
+    }, 300);
+  }
+}
+
+// 阅读进度保存和恢复
+function saveReadingProgress(slug) {
+  const scrollPosition = window.scrollY;
+  const progress = {
+    slug: slug,
+    position: scrollPosition,
+    timestamp: Date.now()
+  };
+  localStorage.setItem(`reading_progress_${slug}`, JSON.stringify(progress));
+}
+
+function restoreReadingProgress(slug) {
+  const saved = localStorage.getItem(`reading_progress_${slug}`);
+  if (!saved) return;
+
+  try {
+    const progress = JSON.parse(saved);
+    // 只恢复7天内的阅读进度
+    const daysSince = (Date.now() - progress.timestamp) / (1000 * 60 * 60 * 24);
+    if (daysSince > 7) {
+      localStorage.removeItem(`reading_progress_${slug}`);
+      return;
+    }
+
+    // 延迟恢复滚动位置，确保内容已渲染
+    setTimeout(() => {
+      window.scrollTo({
+        top: progress.position,
+        behavior: 'smooth'
+      });
+    }, 100);
+  } catch (e) {
+    console.error('Failed to restore reading progress:', e);
+  }
+}
+
+function initReadingProgressTracking(slug) {
+  let saveTimer;
+  const handleScroll = () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveReadingProgress(slug);
+    }, 1000); // 1秒后保存
+  };
+
+  window.addEventListener('scroll', handleScroll);
+
+  // 页面卸载时保存
+  const cleanup = () => {
+    window.removeEventListener('scroll', handleScroll);
+    saveReadingProgress(slug);
+  };
+
+  return cleanup;
+}
+
+// 初始化 Giscus 评论系统
+function initGiscus() {
+  const container = document.getElementById('giscus-container');
+  if (!container) return;
+
+  // 清空容器
+  container.innerHTML = '';
+
+  // 创建 script 标签
+  const script = document.createElement('script');
+  script.src = 'https://giscus.app/client.js';
+  script.setAttribute('data-repo', 'tangentllm/weblog'); // 替换为你的 GitHub 仓库
+  script.setAttribute('data-repo-id', 'YOUR_REPO_ID'); // 需要配置
+  script.setAttribute('data-category', 'Announcements');
+  script.setAttribute('data-category-id', 'YOUR_CATEGORY_ID'); // 需要配置
+  script.setAttribute('data-mapping', 'pathname');
+  script.setAttribute('data-strict', '0');
+  script.setAttribute('data-reactions-enabled', '1');
+  script.setAttribute('data-emit-metadata', '0');
+  script.setAttribute('data-input-position', 'bottom');
+  script.setAttribute('data-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+  script.setAttribute('data-lang', 'zh-CN');
+  script.setAttribute('crossorigin', 'anonymous');
+  script.async = true;
+
+  container.appendChild(script);
+}
+
+// 更新 Giscus 主题
+function updateGiscusTheme() {
+  const iframe = document.querySelector('iframe.giscus-frame');
+  if (!iframe) return;
+
+  const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  iframe.contentWindow.postMessage(
+    { giscus: { setConfig: { theme } } },
+    'https://giscus.app'
+  );
 }
 
 function estimateReadTimeFromMarkdown(markdownText) {
@@ -674,6 +907,119 @@ function buildExcerptFromMarkdown(markdownText) {
   return plain.slice(0, 92) + (plain.length > 92 ? '...' : '');
 }
 
+function resolveAssetUrl(inputUrl) {
+  const raw = String(inputUrl || '').trim();
+  if (!raw) return raw;
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw;
+  const cleaned = raw.replace(/^\.\//, '');
+  try {
+    if (window.location.protocol === 'file:') {
+      const decodedPath = decodeURIComponent(window.location.pathname || '');
+      const normalizedCurrent = decodedPath.replace(/\\/g, '/');
+      const currentDir = normalizedCurrent.endsWith('/index.html')
+        ? normalizedCurrent.slice(0, -'/index.html'.length)
+        : normalizedCurrent.replace(/\/[^/]*$/, '');
+      const targetPath = `${currentDir}/${cleaned.replace(/^\/+/, '')}`
+        .replace(/\/{2,}/g, '/');
+      return `file://${targetPath.startsWith('/') ? '' : '/'}${targetPath}`;
+    }
+
+    if (cleaned.startsWith('/')) {
+      return new URL(cleaned, window.location.origin).toString();
+    }
+
+    const pathname = window.location.pathname || '/';
+    const basePath = pathname.endsWith('/index.html')
+      ? pathname.slice(0, -'/index.html'.length)
+      : pathname.endsWith('/')
+        ? pathname
+        : `${pathname}/`;
+    return new URL(`${basePath}${cleaned}`, window.location.origin).toString();
+  } catch {
+    return raw;
+  }
+}
+
+function buildImageUrlCandidates(inputUrl) {
+  const raw = String(inputUrl || '').trim();
+  if (!raw) return [];
+  if (/^(https?:|data:|blob:|file:)/i.test(raw)) return [raw];
+
+  const cleaned = raw.replace(/^\.\//, '');
+  const candidates = new Set();
+
+  const push = (value) => {
+    if (value && typeof value === 'string') candidates.add(value);
+  };
+
+  push(resolveAssetUrl(raw));
+  push(`${window.location.origin}/${cleaned.replace(/^\/+/, '')}`);
+  push(new URL(`/${cleaned.replace(/^\/+/, '')}`, window.location.origin).toString());
+
+  const pathname = window.location.pathname || '/';
+  const basePath = pathname.endsWith('/index.html')
+    ? pathname.slice(0, -'/index.html'.length)
+    : pathname.endsWith('/')
+      ? pathname
+      : `${pathname}/`;
+  push(new URL(`${basePath}${cleaned.replace(/^\/+/, '')}`, window.location.origin).toString());
+
+  return Array.from(candidates);
+}
+
+function installImageFallbacks(scope = document) {
+  const imgs = scope.querySelectorAll('img');
+  imgs.forEach((img) => {
+    if (img.dataset.fallbackInstalled === '1') return;
+    img.dataset.fallbackInstalled = '1';
+
+    const original = img.getAttribute('src') || '';
+    const candidates = buildImageUrlCandidates(original);
+    if (candidates.length > 0) {
+      img.setAttribute('src', candidates[0]);
+    }
+
+    let idx = 0;
+    img.addEventListener('error', () => {
+      idx += 1;
+      if (idx < candidates.length) {
+        img.src = candidates[idx];
+        return;
+      }
+      img.src = buildInlineCoverDataUrl(img.alt || 'LLM Notes');
+    });
+  });
+}
+
+function buildInlineCoverDataUrl(titleText) {
+  const safeTitle = String(titleText || 'LLM Notes').slice(0, 42);
+  const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1220"/>
+      <stop offset="0.55" stop-color="#0D1B2E"/>
+      <stop offset="1" stop-color="#0A1020"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6EE7FF"/>
+      <stop offset="0.55" stop-color="#7C87FF"/>
+      <stop offset="1" stop-color="#45E3C8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="600" fill="url(#bg)"/>
+  <g opacity="0.4" stroke="#1B2A45" stroke-width="1">
+    <path d="M0 110H1200M0 190H1200M0 270H1200M0 350H1200M0 430H1200M0 510H1200"/>
+    <path d="M120 0V600M240 0V600M360 0V600M480 0V600M600 0V600M720 0V600M840 0V600M960 0V600M1080 0V600"/>
+  </g>
+  <rect x="96" y="150" width="1008" height="300" rx="24" fill="#0E1A2E" stroke="#1D3356" stroke-width="2"/>
+  <path d="M144 238H360" stroke="url(#accent)" stroke-width="6" stroke-linecap="round"/>
+  <text x="144" y="316" fill="#EAF2FF" font-size="54" font-weight="700" font-family="system-ui,Segoe UI,Roboto,PingFang SC,Microsoft YaHei,sans-serif">${safeTitle}</text>
+  <text x="144" y="366" fill="#B8C6E6" font-size="24" font-weight="500" font-family="system-ui,Segoe UI,Roboto,PingFang SC,Microsoft YaHei,sans-serif">Inline fallback cover</text>
+</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 function normalizeLoadedPost(item, markdownText, index) {
   const safeSlug = item.slug || `post-${index + 1}`;
   const contentMarkdown = stripFrontmatter(markdownText);
@@ -686,7 +1032,7 @@ function normalizeLoadedPost(item, markdownText, index) {
     tags: Array.isArray(item.tags) ? item.tags : [],
     category: item.category || '随想与思考',
     pinned: Boolean(item.pinned),
-    cover: item.cover || `https://picsum.photos/seed/${safeSlug}/800/400.jpg`,
+    cover: resolveAssetUrl(item.cover || `https://picsum.photos/seed/${safeSlug}/800/400.jpg`),
     content: typeof marked === 'undefined'
       ? contentMarkdown
       : marked.parse(contentMarkdown),
@@ -703,7 +1049,7 @@ function normalizeLoadedProject(item, markdownText, index) {
     slug: safeSlug,
     title: item.title || safeSlug,
     subtitle: item.subtitle || '',
-    cover: item.cover || `https://picsum.photos/seed/${safeSlug}/1200/700`,
+    cover: resolveAssetUrl(item.cover || `https://picsum.photos/seed/${safeSlug}/1200/700`),
     status: item.status || '进行中',
     period: item.period || '2026',
     tags: Array.isArray(item.tags) ? item.tags : [],
@@ -823,6 +1169,11 @@ function router() {
   } else if (hash.startsWith('#/category/')) {
     const name = decodeURIComponent(hash.replace('#/category/', ''));
     renderCategoryPosts(app, name);
+  } else if (hash === '#/tags') {
+    renderTags(app);
+  } else if (hash.startsWith('#/tag/')) {
+    const tag = decodeURIComponent(hash.replace('#/tag/', ''));
+    renderTagPosts(app, tag);
   } else if (hash === '#/projects') {
     renderProjects(app);
   } else if (hash.startsWith('#/project/')) {
@@ -831,19 +1182,27 @@ function router() {
   } else if (hash === '#/about') {
     renderAbout(app);
   } else {
-    renderHome(app);
+    render404(app);
   }
 
   const isPostRoute = hash.startsWith('#/post/');
   const isProjectRoute = hash.startsWith('#/project/');
   const runImmediateEnhancements = () => {
     renderLucideIconsSafely();
+    installImageFallbacks(app);
     // 立即初始化 reveal，避免关于页内容延迟出现
     initReveal();
   };
   const runDeferredEnhancements = () => {
     if ((isPostRoute || isProjectRoute) && typeof renderMathInElement === 'function') {
       renderMathInElement(app, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false });
+    }
+    if (isPostRoute || isProjectRoute) {
+      renderMermaidDiagrams(app);
+    }
+    if (isPostRoute || isProjectRoute) {
+      wrapCodeBlocks(app);
+      styleDetailsElements(app);
     }
     if ((isPostRoute || isProjectRoute) && typeof hljs !== 'undefined') {
       app.querySelectorAll('pre code').forEach(block => { hljs.highlightElement(block); });
@@ -852,6 +1211,8 @@ function router() {
       initImageLightbox();
       initPostToc();
     }
+    // 初始化懒加载
+    initLazyLoading();
   };
   requestAnimationFrame(runImmediateEnhancements);
   if (typeof requestIdleCallback === 'function') {
@@ -861,10 +1222,10 @@ function router() {
   }
 
   window.scrollTo({top: 0, behavior: 'instant'});
-  // 重新触发动画
-  app.style.animation = 'none';
-  app.offsetHeight;
-  app.style.animation = '';
+  // 添加页面切换动画
+  app.classList.remove('page-transition');
+  app.offsetHeight; // 强制重排
+  app.classList.add('page-transition');
 }
 
 /* ============================
@@ -873,6 +1234,15 @@ function router() {
 
 // 首页
 function renderHome(app) {
+  // 重置 SEO meta 标签为默认值
+  updateMetaTags({
+    title: 'LLM Notes — 未来已来',
+    description: '专注于大模型技术的学习笔记、实践经验与项目分享。涵盖 Transformer、RAG、Agent、微调等核心技术。',
+    keywords: '大模型,LLM,Transformer,RAG,Agent,微调,SFT,LoRA,Prompt Engineering',
+    url: 'https://tangentllm.github.io/weblog/',
+    type: 'website'
+  });
+
   const pinned = posts.filter(p => p.pinned);
   const recent = posts.filter(p => !p.pinned);
   const hasPosts = posts.length > 0;
@@ -974,35 +1344,89 @@ function renderPost(app, slug) {
   const post = posts.find(p => p.slug === slug);
   if (!post) { app.innerHTML = '<div class="max-w-3xl mx-auto px-6 pt-32 text-center dark:text-[#888] text-[#999]">文章不存在</div>'; return; }
 
+  // 初始化阅读进度跟踪
+  let cleanupProgress = null;
+  setTimeout(() => {
+    cleanupProgress = initReadingProgressTracking(slug);
+    restoreReadingProgress(slug);
+  }, 500);
+
+  // 更新 SEO meta 标签
+  const baseUrl = 'https://tangentllm.github.io/weblog/';
+  updateMetaTags({
+    title: `${post.title} - LLM Notes`,
+    description: post.excerpt || post.title,
+    keywords: post.tags.join(','),
+    url: `${baseUrl}#/post/${post.slug}`,
+    image: post.cover ? (post.cover.startsWith('http') ? post.cover : baseUrl + post.cover.replace('./', '')) : baseUrl + 'og-image.png',
+    type: 'article'
+  });
+
   // 提取标题用于TOC
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = post.content;
   const headings = [...tempDiv.querySelectorAll('h2, h3')].map((h, i) => ({
     id: 'heading-' + i,
-    tag: h.tagName,
+    tag: h.tagName.toLowerCase(),
     text: h.textContent
   }));
+
+  // 为每个标题添加ID
   let contentWithIds = post.content;
-  headings.forEach((h, i) => {
-    const regex = new RegExp(`<${h.tag}>(.*?)</${h.tag}>`);
-    contentWithIds = contentWithIds.replace(regex, `<${h.tag} id="heading-${i}">$1</${h.tag}>`);
+  let headingIndex = 0;
+  contentWithIds = contentWithIds.replace(/<(h[23])>(.*?)<\/\1>/gi, (match, tag, content) => {
+    const id = `heading-${headingIndex}`;
+    headingIndex++;
+    return `<${tag} id="${id}">${content}</${tag}>`;
   });
 
   const prevPost = posts[posts.indexOf(post) - 1] || null;
   const nextPost = posts[posts.indexOf(post) + 1] || null;
 
   app.innerHTML = `
-    <article class="max-w-3xl mx-auto px-6 pt-24 md:pt-28 pb-20">
+    <article class="max-w-6xl mx-auto px-6 pt-24 md:pt-28 pb-20">
       <!-- 文章头部 -->
       <header class="reveal mb-12">
-        <div class="flex flex-wrap gap-2 mb-4">${post.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+        ${post.series ? `
+        <div class="mb-4 p-3 rounded-lg dark:bg-[rgba(0,229,160,0.05)] bg-[rgba(0,180,125,0.04)] border dark:border-[rgba(0,229,160,0.2)] border-[rgba(0,180,125,0.15)]">
+          <div class="flex items-center gap-2 text-sm">
+            <svg class="w-4 h-4 dark:text-[#00e5a0] text-[#00a870]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            <span class="dark:text-[#00e5a0] text-[#00a870] font-medium">系列文章：${post.series}</span>
+            ${post.seriesOrder ? `<span class="dark:text-[#666] text-[#999]">第 ${post.seriesOrder} 篇</span>` : ''}
+          </div>
+        </div>
+        ` : ''}
+        <div class="flex flex-wrap gap-2 mb-4" role="list" aria-label="文章标签">
+          ${post.tags.map(t => `<span class="tag" role="listitem">${t}</span>`).join('')}
+        </div>
         <h1 class="font-serif text-3xl md:text-4xl font-bold leading-tight dark:text-white text-[#111] mb-4">${post.title}</h1>
-        <div class="flex items-center gap-3 text-sm dark:text-[#666] text-[#999]">
-          <span>${formatDate(post.date)}</span>
-          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+        <div class="flex items-center gap-3 text-sm dark:text-[#666] text-[#999] mb-6" role="contentinfo" aria-label="文章元信息">
+          <time datetime="${post.date}">${formatDate(post.date)}</time>
+          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
           <span>${post.readTime}</span>
-          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
           <span>${post.category}</span>
+          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
+          <span id="view-count-${post.slug}" class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            <span>加载中...</span>
+          </span>
+        </div>
+        <!-- 分享按钮 -->
+        <div class="flex items-center gap-2 pt-4 border-t dark:border-[#1e1e1e] border-[#eee]" role="group" aria-label="分享选项">
+          <span class="text-sm dark:text-[#666] text-[#999] mr-2">分享：</span>
+          <button onclick="shareToWeChat('${post.slug}')" class="share-btn" title="分享到微信" aria-label="分享到微信">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/></svg>
+          </button>
+          <button onclick="shareToTwitter('${post.slug}', '${post.title.replace(/'/g, "\\'")}', '${post.tags.join(' ')}')" class="share-btn" title="分享到 Twitter" aria-label="分享到 Twitter">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </button>
+          <button onclick="shareToLinkedIn('${post.slug}', '${post.title.replace(/'/g, "\\'")}', '${post.excerpt.replace(/'/g, "\\'")}')" class="share-btn" title="分享到 LinkedIn" aria-label="分享到 LinkedIn">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+          </button>
+          <button onclick="copyShareLink('${post.slug}')" class="share-btn" title="复制链接" aria-label="复制链接">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </button>
         </div>
       </header>
 
@@ -1018,32 +1442,105 @@ function renderPost(app, slug) {
         </div>
         <!-- TOC 侧栏 -->
         ${headings.length > 2 ? `
-        <aside id="toc-sidebar" class="hidden lg:block w-48 shrink-0 sticky top-20 self-start">
+        <aside id="toc-sidebar" class="hidden lg:block w-48 shrink-0 sticky top-20 self-start z-10" role="navigation" aria-label="文章目录">
           <p class="text-xs font-mono dark:text-[#555] text-[#bbb] uppercase tracking-widest mb-3">目录</p>
-          <nav class="space-y-0.5 max-h-[70vh] overflow-y-auto">
-            ${headings.map(h => `<a href="#${h.id}" class="toc-link ${h.tag === 'h3' ? 'pl-6' : ''}" data-target="${h.id}">${h.text}</a>`).join('')}
+          <nav class="toc-nav space-y-0.5 max-h-[70vh] overflow-y-auto">
+            ${headings.map(h => `<a href="javascript:void(0)" class="toc-link ${h.tag === 'h3' ? 'pl-6' : ''}" data-target="${h.id}" aria-label="跳转到 ${h.text}">${h.text}</a>`).join('')}
           </nav>
         </aside>
         ` : ''}
       </div>
 
+      ${post.series ? (() => {
+        const seriesPosts = posts.filter(p => p.series === post.series).sort((a, b) => (a.seriesOrder || 0) - (b.seriesOrder || 0));
+        if (seriesPosts.length > 1) {
+          return `
+          <!-- 系列文章导航 -->
+          <div class="mt-16 pt-8 border-t dark:border-[#1e1e1e] border-[#eee]">
+            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-6">系列文章：${post.series}</h2>
+            <div class="space-y-2">
+              ${seriesPosts.map((p, idx) => `
+                <div class="flex items-start gap-3 p-3 rounded-lg ${p.slug === post.slug ? 'dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:border-[rgba(0,229,160,0.3)] border-[rgba(0,180,125,0.2)] border' : 'dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border'}">
+                  <div class="flex-shrink-0 w-6 h-6 rounded-full ${p.slug === post.slug ? 'dark:bg-[#00e5a0] bg-[#00a870]' : 'dark:bg-[#1a1a1a] bg-[#f0f0f0]'} flex items-center justify-center text-xs font-bold ${p.slug === post.slug ? 'text-[#000]' : 'dark:text-[#666] text-[#999]'}">
+                    ${idx + 1}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    ${p.slug === post.slug
+                      ? `<p class="text-sm font-medium dark:text-[#00e5a0] text-[#00a870] line-clamp-2">${p.title} <span class="text-xs dark:text-[#666] text-[#999]">(当前)</span></p>`
+                      : `<a href="#/post/${p.slug}" class="text-sm font-medium dark:text-[#aaa] text-[#555] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors line-clamp-2">${p.title}</a>`
+                    }
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          `;
+        }
+        return '';
+      })() : ''}
+
       <!-- 上下篇导航 -->
-      <div class="mt-16 pt-8 border-t dark:border-[#1e1e1e] border-[#eee] grid grid-cols-2 gap-4">
+      <div class="mt-16 pt-8 border-t dark:border-[#1e1e1e] border-[#eee] grid grid-cols-2 gap-4" role="navigation" aria-label="文章导航">
         ${prevPost ? `
-        <a href="#/post/${prevPost.slug}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors">
+        <a href="#/post/${prevPost.slug}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors" aria-label="上一篇：${prevPost.title}">
           <p class="text-xs dark:text-[#555] text-[#bbb] mb-1">上一篇</p>
           <p class="text-sm font-medium dark:text-[#aaa] text-[#555] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-1">${prevPost.title}</p>
         </a>
         ` : '<div></div>'}
         ${nextPost ? `
-        <a href="#/post/${nextPost.slug}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors text-right">
+        <a href="#/post/${nextPost.slug}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors text-right" aria-label="下一篇：${nextPost.title}">
           <p class="text-xs dark:text-[#555] text-[#bbb] mb-1">下一篇</p>
           <p class="text-sm font-medium dark:text-[#aaa] text-[#555] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-1">${nextPost.title}</p>
         </a>
         ` : '<div></div>'}
       </div>
+
+      <!-- 相关推荐 -->
+      ${(() => {
+        const relatedPosts = getRelatedPosts(post, 3);
+        if (relatedPosts.length === 0) return '';
+        return `
+        <div class="mt-16 pt-8 border-t dark:border-[#1e1e1e] border-[#eee]">
+          <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-6">相关推荐</h2>
+          <div class="grid md:grid-cols-3 gap-4">
+            ${relatedPosts.map(p => `
+              <a href="#/post/${p.slug}" class="group block rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all p-4">
+                <div class="flex flex-wrap gap-1.5 mb-2">
+                  ${p._relatedMeta && p._relatedMeta.commonTags.length > 0
+                    ? p._relatedMeta.commonTags.slice(0, 2).map(tag => `<span class="text-[10px] px-2 py-0.5 rounded-full dark:bg-[rgba(0,229,160,0.12)] bg-[rgba(0,180,125,0.1)] dark:text-[#00e5a0] text-[#00a870] font-medium">${tag}</span>`).join('')
+                    : p.tags.slice(0, 2).map(tag => `<span class="text-[10px] px-2 py-0.5 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${tag}</span>`).join('')
+                  }
+                </div>
+                <h3 class="font-semibold text-sm dark:text-white text-[#111] leading-snug mb-1.5 group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-2">${p.title}</h3>
+                <p class="text-xs dark:text-[#666] text-[#999] line-clamp-2">${p.excerpt}</p>
+                <div class="flex items-center gap-2 mt-3 text-[10px] dark:text-[#555] text-[#bbb]">
+                  <span>${formatDate(p.date)}</span>
+                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+                  <span>${p.readTime}</span>
+                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+                  <span id="view-count-related-${p.slug}" class="flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <span>--</span>
+                  </span>
+                </div>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+        `;
+      })()}
     </article>
   `;
+
+  // 初始化浏览量统计
+  setTimeout(() => {
+    updateViewCount(post.slug);
+    // 初始化相关推荐的浏览量显示
+    const relatedPosts = getRelatedPosts(post, 3);
+    relatedPosts.forEach(p => {
+      displayViewCount(p.slug, `view-count-related-${p.slug}`);
+    });
+  }, 500);
 }
 
 // 分类页
@@ -1111,6 +1608,147 @@ function renderCategoryPosts(app, categoryName) {
   `;
 }
 
+// 标签页
+function renderTags(app) {
+  // 统计所有标签及其文章数量
+  const tagMap = new Map();
+  posts.forEach(post => {
+    post.tags.forEach(tag => {
+      if (!tagMap.has(tag)) {
+        tagMap.set(tag, []);
+      }
+      tagMap.get(tag).push(post);
+    });
+  });
+
+  // 按文章数量排序
+  const sortedTags = Array.from(tagMap.entries())
+    .sort((a, b) => b[1].length - a[1].length);
+
+  // 计算标签的字体大小（基于文章数量）
+  const maxCount = Math.max(...sortedTags.map(([_, posts]) => posts.length));
+  const minCount = Math.min(...sortedTags.map(([_, posts]) => posts.length));
+
+  const getFontSize = (count) => {
+    if (maxCount === minCount) return 1;
+    const ratio = (count - minCount) / (maxCount - minCount);
+    return 0.875 + ratio * 0.75; // 0.875rem ~ 1.625rem
+  };
+
+  app.innerHTML = `
+    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
+      <div class="reveal mb-12">
+        <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">TAGS</p>
+        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111] mb-4">标签云</h1>
+        <p class="dark:text-[#888] text-[#777] mb-8 max-w-xl">通过标签快速找到感兴趣的主题，每个标签代表一个技术领域或知识点。</p>
+
+        <!-- 统计信息 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="p-4 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border">
+            <div class="text-2xl font-bold dark:text-white text-[#111] mb-1">${sortedTags.length}</div>
+            <div class="text-xs dark:text-[#666] text-[#999]">标签总数</div>
+          </div>
+          <div class="p-4 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border">
+            <div class="text-2xl font-bold dark:text-white text-[#111] mb-1">${posts.length}</div>
+            <div class="text-xs dark:text-[#666] text-[#999]">文章总数</div>
+          </div>
+          <div class="p-4 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border">
+            <div class="text-2xl font-bold dark:text-white text-[#111] mb-1">${maxCount}</div>
+            <div class="text-xs dark:text-[#666] text-[#999]">最热标签</div>
+          </div>
+          <div class="p-4 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border">
+            <div class="text-2xl font-bold dark:text-white text-[#111] mb-1">${(posts.length / sortedTags.length).toFixed(1)}</div>
+            <div class="text-xs dark:text-[#666] text-[#999]">平均文章数</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 标签云 -->
+      <div class="reveal p-8 rounded-xl dark:bg-[#0a0a0a] bg-[#fafafa] dark:border-[#1a1a1a] border-[#eee] border">
+        <div class="flex flex-wrap items-center justify-center gap-4 leading-relaxed">
+          ${sortedTags.map(([tag, tagPosts]) => {
+            const fontSize = getFontSize(tagPosts.length);
+            const opacity = 0.6 + (fontSize - 0.875) / 0.75 * 0.4;
+            return `
+              <a href="#/tag/${encodeURIComponent(tag)}"
+                 class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full dark:bg-[rgba(0,229,160,0.05)] bg-[rgba(0,180,125,0.04)] dark:hover:bg-[rgba(0,229,160,0.12)] hover:bg-[rgba(0,180,125,0.08)] transition-all hover:scale-110"
+                 style="font-size: ${fontSize}rem; opacity: ${opacity};">
+                <span class="font-medium dark:text-[#00e5a0] text-[#00a870]">#${tag}</span>
+                <span class="text-[0.7em] opacity-70">${tagPosts.length}</span>
+              </a>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- 热门标签 -->
+      <div class="reveal mt-12">
+        <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-6">热门标签</h2>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${sortedTags.slice(0, 6).map(([tag, tagPosts]) => `
+            <a href="#/tag/${encodeURIComponent(tag)}" class="group p-5 rounded-xl dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#00e5a0] hover:border-[#00a870] transition-all">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-lg font-semibold dark:text-white text-[#111] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">#${tag}</span>
+                <span class="text-sm px-2.5 py-1 rounded-full dark:bg-[rgba(0,229,160,0.1)] bg-[rgba(0,180,125,0.08)] dark:text-[#00e5a0] text-[#00a870] font-medium">${tagPosts.length}</span>
+              </div>
+              <div class="space-y-1.5">
+                ${tagPosts.slice(0, 2).map(post => `
+                  <div class="text-xs dark:text-[#666] text-[#999] line-clamp-1">${post.title}</div>
+                `).join('')}
+                ${tagPosts.length > 2 ? `<div class="text-xs dark:text-[#555] text-[#bbb]">+${tagPosts.length - 2} 更多</div>` : ''}
+              </div>
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+// 标签文章列表页
+function renderTagPosts(app, tag) {
+  const tagPosts = posts.filter(post => post.tags.includes(tag));
+
+  app.innerHTML = `
+    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
+      <div class="reveal mb-10">
+        <a href="#/tags" class="inline-flex items-center gap-1 text-sm dark:text-[#666] text-[#999] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors mb-6">
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 返回标签列表
+        </a>
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-2xl">#</span>
+          <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111]">${tag}</h1>
+          <span class="text-sm px-3 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${tagPosts.length} 篇</span>
+        </div>
+      </div>
+      ${tagPosts.length === 0 ? `
+        <div class="reveal text-center py-20">
+          <p class="dark:text-[#666] text-[#999]">该标签下暂无文章</p>
+        </div>
+      ` : `
+        <div class="space-y-0 dark:divide-y dark:divide-[#1a1a1a] divide-y divide-[#eee]">
+          ${tagPosts.map(post => `
+            <a href="#/post/${post.slug}" class="reveal group flex flex-col md:flex-row md:items-center gap-3 md:gap-6 py-6">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-semibold text-base dark:text-[#ddd] text-[#333] leading-snug group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h3>
+                <p class="text-sm dark:text-[#666] text-[#999] mt-1.5 line-clamp-2">${post.excerpt}</p>
+                <div class="flex flex-wrap gap-2 mt-2">
+                  ${post.tags.map(t => `<span class="text-[10px] px-2 py-0.5 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${t}</span>`).join('')}
+                </div>
+              </div>
+              <div class="flex items-center gap-3 text-xs dark:text-[#555] text-[#bbb] shrink-0">
+                <span>${formatDate(post.date)}</span>
+                <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
+                <span>${post.readTime}</span>
+              </div>
+            </a>
+          `).join('')}
+        </div>
+      `}
+    </section>
+  `;
+}
+
 // 作品列表页
 function renderProjects(app) {
   const hashQuery = location.hash.includes('?')
@@ -1138,6 +1776,7 @@ function renderProjects(app) {
         <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111] mb-4">作品集</h1>
         <p class="dark:text-[#888] text-[#777] max-w-2xl">这里是我做过的大模型项目。每个项目都包含架构设计、关键功能、效果展示与结果指标。</p>
       </div>
+      ${projectsData.length > 0 ? `
       <div class="reveal mb-8 grid md:grid-cols-3 gap-3">
         <label class="text-sm dark:text-[#888] text-[#666]">
           <span class="block text-xs mb-1 dark:text-[#666] text-[#999]">按状态筛选</span>
@@ -1158,49 +1797,75 @@ function renderProjects(app) {
           </select>
         </label>
       </div>
-      <div class="grid md:grid-cols-2 gap-6">
-        ${filteredProjects.map((project) => `
-          <a href="#/project/${project.slug}" class="reveal group block rounded-xl overflow-hidden dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all">
-            <div class="aspect-[16/10] overflow-hidden">
-              <img src="${project.cover}" alt="${project.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-            </div>
-            <div class="p-5">
-              <div class="flex items-center justify-between gap-3 mb-3">
-                <span class="text-[11px] px-2 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${project.status}</span>
-                <span class="text-xs dark:text-[#666] text-[#999]">${project.period}</span>
-              </div>
-              <h2 class="font-semibold text-lg dark:text-white text-[#111] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${project.title}</h2>
-              <p class="text-sm dark:text-[#888] text-[#777] mt-1.5">${project.subtitle}</p>
-              <p class="text-sm dark:text-[#666] text-[#999] mt-3 line-clamp-2">${project.summary}</p>
-              <div class="mt-4 flex flex-wrap gap-2">
-                ${project.tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}
-              </div>
-            </div>
-          </a>
-        `).join('')}
-      </div>
-      ${filteredProjects.length === 0 ? `
-        <div class="mt-8 text-center text-sm dark:text-[#666] text-[#999]">
-          没有匹配项目，试试调整筛选条件。
-        </div>
       ` : ''}
+      ${projectsData.length === 0 ? `
+        <div class="reveal text-center py-20">
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full dark:bg-[#1a1a1a] bg-[#f5f5f5] mb-6">
+            <i data-lucide="folder-open" class="w-10 h-10 dark:text-[#444] text-[#ccc]"></i>
+          </div>
+          <h3 class="text-xl font-semibold dark:text-[#888] text-[#999] mb-2">暂无作品</h3>
+          <p class="text-sm dark:text-[#666] text-[#aaa]">作品集正在筹备中，敬请期待</p>
+        </div>
+      ` : `
+        <div class="grid md:grid-cols-2 gap-6">
+          ${filteredProjects.map((project) => `
+            <a href="#/project/${project.slug}" class="reveal group block rounded-xl overflow-hidden dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all">
+              <div class="aspect-[16/10] overflow-hidden dark:bg-[#0b1220] bg-[#0b1220]">
+                <img src="${project.cover}" alt="${project.title}" class="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-500" loading="lazy" />
+              </div>
+              <div class="p-5">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                  <span class="text-[11px] px-2 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${project.status}</span>
+                  <span class="text-xs dark:text-[#666] text-[#999]">${project.period}</span>
+                </div>
+                <h2 class="font-semibold text-lg dark:text-white text-[#111] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${project.title}</h2>
+                <p class="text-sm dark:text-[#888] text-[#777] mt-1.5">${project.subtitle}</p>
+                <p class="text-sm dark:text-[#666] text-[#999] mt-3 line-clamp-2">${project.summary}</p>
+                <div class="mt-3 flex items-center gap-2 text-xs dark:text-[#555] text-[#bbb]">
+                  <span id="view-count-card-${project.slug}" class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <span>--</span>
+                  </span>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  ${project.tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}
+                </div>
+              </div>
+            </a>
+          `).join('')}
+        </div>
+        ${filteredProjects.length === 0 ? `
+          <div class="mt-8 text-center text-sm dark:text-[#666] text-[#999]">
+            没有匹配项目，试试调整筛选条件。
+          </div>
+        ` : ''}
+      `}
     </section>
   `;
 
-  const statusSelect = document.getElementById('projectFilterStatus');
-  const tagSelect = document.getElementById('projectFilterTag');
-  const yearSelect = document.getElementById('projectFilterYear');
-  const bindFilterEvent = () => {
-    const next = new URLSearchParams();
-    if (statusSelect.value !== '全部') next.set('status', statusSelect.value);
-    if (tagSelect.value !== '全部') next.set('tag', tagSelect.value);
-    if (yearSelect.value !== '全部') next.set('year', yearSelect.value);
-    const query = next.toString();
-    location.hash = query ? `#/projects?${query}` : '#/projects';
-  };
-  statusSelect.addEventListener('change', bindFilterEvent);
-  tagSelect.addEventListener('change', bindFilterEvent);
-  yearSelect.addEventListener('change', bindFilterEvent);
+  if (projectsData.length > 0) {
+    const statusSelect = document.getElementById('projectFilterStatus');
+    const tagSelect = document.getElementById('projectFilterTag');
+    const yearSelect = document.getElementById('projectFilterYear');
+    const bindFilterEvent = () => {
+      const next = new URLSearchParams();
+      if (statusSelect.value !== '全部') next.set('status', statusSelect.value);
+      if (tagSelect.value !== '全部') next.set('tag', tagSelect.value);
+      if (yearSelect.value !== '全部') next.set('year', yearSelect.value);
+      const query = next.toString();
+      location.hash = query ? `#/projects?${query}` : '#/projects';
+    };
+    statusSelect.addEventListener('change', bindFilterEvent);
+    tagSelect.addEventListener('change', bindFilterEvent);
+    yearSelect.addEventListener('change', bindFilterEvent);
+  }
+
+  // 初始化项目卡片的浏览量显示
+  setTimeout(() => {
+    filteredProjects.forEach(project => {
+      displayViewCount(project.slug, `view-count-card-${project.slug}`);
+    });
+  }, 100);
 }
 
 // 作品详情页
@@ -1211,6 +1876,17 @@ function renderProjectDetail(app, slug) {
     return;
   }
 
+  // 更新 SEO meta 标签
+  const baseUrl = 'https://tangentllm.github.io/weblog/';
+  updateMetaTags({
+    title: `${project.title} - LLM Notes`,
+    description: project.summary || project.subtitle,
+    keywords: project.tags.join(','),
+    url: `${baseUrl}#/project/${project.slug}`,
+    image: project.cover ? (project.cover.startsWith('http') ? project.cover : baseUrl + project.cover.replace('./', '')) : baseUrl + 'og-image.png',
+    type: 'article'
+  });
+
   app.innerHTML = `
     <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
       <div class="reveal mb-6">
@@ -1220,13 +1896,18 @@ function renderProjectDetail(app, slug) {
         <div class="flex flex-wrap items-center gap-2 mb-3">
           <span class="text-[11px] px-2 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${project.status}</span>
           <span class="text-xs dark:text-[#666] text-[#999]">${project.period}</span>
+          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
+          <span id="view-count-${project.slug}" class="flex items-center gap-1 text-xs dark:text-[#666] text-[#999]">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            <span>加载中...</span>
+          </span>
         </div>
         <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111]">${project.title}</h1>
         <p class="dark:text-[#888] text-[#777] mt-3">${project.subtitle}</p>
       </div>
 
-      <div class="reveal rounded-xl overflow-hidden mb-10">
-        <img src="${project.cover}" alt="${project.title}" class="w-full aspect-[16/8] object-cover" />
+      <div class="reveal rounded-xl overflow-hidden mb-10 dark:bg-[#0b1220] bg-[#0b1220]">
+        <img src="${project.cover}" alt="${project.title}" class="w-full aspect-[16/8] object-contain" />
       </div>
       <div class="reveal mb-10 flex flex-wrap gap-3">
         <a href="${project.links?.github || '#'}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold dark:bg-[#121212] bg-white dark:text-[#d8fff2] text-[#11664f] border dark:border-[#2a6a56] border-[#89d7bf] hover:dark:border-[#00e5a0] hover:border-[#00a870] transition-colors">
@@ -1308,6 +1989,10 @@ function renderProjectDetail(app, slug) {
     </section>
   `;
 
+  // 初始化浏览量统计
+  setTimeout(() => {
+    updateViewCount(project.slug);
+  }, 500);
 }
 
 // 关于页
@@ -1323,7 +2008,7 @@ function renderAbout(app) {
       <div class="reveal dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border rounded-xl p-8 mb-8">
         <div class="flex flex-col sm:flex-row gap-6 items-start">
           <div class="w-20 h-20 rounded-full dark:bg-[#1a1a1a] bg-[#eee] overflow-hidden shrink-0">
-            <img src="https://picsum.photos/seed/avatar-llm/200/200.jpg" alt="头像" class="w-full h-full object-cover">
+            <img src="./content/assets/avatar.svg" alt="头像" class="w-full h-full object-cover">
           </div>
           <div>
             <h2 class="font-semibold text-xl dark:text-white text-[#111] mb-2">一个对大模型充满好奇的工程师</h2>
@@ -1337,7 +2022,7 @@ function renderAbout(app) {
               需要说明的是,由于我之前的GitHub账号无法继续使用，因此重新创建了当前账号以记录和分享我的技术学习历程。
             </p>
             <p class="dark:text-[#888] text-[#666] leading-relaxed">
-              我相信 <strong class="dark:text-[#ccc] text-[#333]">理解原理是写好代码的前提</strong>，所以每学一个技术，我都会先搞清楚"为什么"再动手。这个博客就是这段旅程的副产品。
+              我相信理解原理是写好代码的前提，所以每学一个技术，我都会先搞清楚"为什么"再动手。这个博客就是这段旅程的副产品。
             </p>
           </div>
         </div>
@@ -1386,6 +2071,41 @@ function renderAbout(app) {
             <svg viewBox="0 0 24 24" aria-hidden="true" class="w-5 h-5 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
             <span class="text-[11px] font-medium">Email</span>
           </a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function render404(app) {
+  app.innerHTML = `
+    <section class="max-w-3xl mx-auto px-6 pt-32 pb-20 text-center">
+      <div class="reveal">
+        <div class="text-8xl font-bold dark:text-[#1a1a1a] text-[#f5f5f5] mb-4">404</div>
+        <h1 class="font-serif text-3xl font-bold dark:text-white text-[#111] mb-4">页面未找到</h1>
+        <p class="dark:text-[#888] text-[#666] mb-8 max-w-md mx-auto">
+          抱歉，您访问的页面不存在。可能是链接已失效，或者页面已被移除。
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <a href="#/" class="px-6 py-3 dark:bg-[#1a1a1a] bg-[#111] dark:text-white text-white rounded-lg hover:opacity-80 transition-opacity">
+            返回首页
+          </a>
+          <button onclick="openSearch()" class="px-6 py-3 dark:border-[#333] border-[#ddd] border dark:text-[#888] text-[#666] rounded-lg hover:dark:border-[#555] hover:border-[#999] transition-colors">
+            搜索内容
+          </button>
+        </div>
+
+        <div class="dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border rounded-xl p-8 max-w-md mx-auto">
+          <h2 class="font-semibold dark:text-white text-[#111] mb-4">您可能感兴趣的内容</h2>
+          <div class="space-y-3 text-left">
+            ${posts.slice(0, 3).map(post => `
+              <a href="#/post/${post.slug}" class="block dark:hover:bg-[#1a1a1a] hover:bg-[#f5f5f5] p-3 rounded-lg transition-colors">
+                <div class="font-medium dark:text-white text-[#111] mb-1">${post.title}</div>
+                <div class="text-sm dark:text-[#666] text-[#999]">${post.category} · ${post.readTime}</div>
+              </a>
+            `).join('')}
+          </div>
         </div>
       </div>
     </section>
@@ -1521,9 +2241,368 @@ function initReveal() {
   document.querySelectorAll('.reveal:not(.visible)').forEach((el) => observer.observe(el));
 }
 
+// 代码块复制功能
+
+// 动态更新 SEO meta 标签
+function updateMetaTags(data) {
+  const baseUrl = 'https://tangentllm.github.io/weblog/';
+
+  // 更新 title
+  document.title = data.title || 'LLM Notes — 未来已来';
+
+  // 更新 description
+  updateMetaTag('name', 'description', data.description || '专注于大模型技术的学习笔记、实践经验与项目分享。');
+
+  // 更新 keywords
+  if (data.keywords) {
+    updateMetaTag('name', 'keywords', data.keywords);
+  }
+
+  // 更新 canonical URL
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) {
+    canonical.href = data.url || baseUrl;
+  }
+
+  // 更新 Open Graph
+  updateMetaTag('property', 'og:title', data.title || 'LLM Notes — 未来已来');
+  updateMetaTag('property', 'og:description', data.description || '专注于大模型技术的学习笔记、实践经验与项目分享。');
+  updateMetaTag('property', 'og:url', data.url || baseUrl);
+  updateMetaTag('property', 'og:image', data.image || baseUrl + 'og-image.png');
+  updateMetaTag('property', 'og:type', data.type || 'website');
+
+  // 更新 Twitter Card
+  updateMetaTag('name', 'twitter:title', data.title || 'LLM Notes — 未来已来');
+  updateMetaTag('name', 'twitter:description', data.description || '专注于大模型技术的学习笔记、实践经验与项目分享。');
+  updateMetaTag('name', 'twitter:url', data.url || baseUrl);
+  updateMetaTag('name', 'twitter:image', data.image || baseUrl + 'og-image.png');
+}
+
+function updateMetaTag(attr, attrValue, content) {
+  let tag = document.querySelector(`meta[${attr}="${attrValue}"]`);
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute(attr, attrValue);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute('content', content);
+}
+
+// 获取相关推荐文章（基于标签匹配）
+function getRelatedPosts(currentPost, limit = 3) {
+  if (!currentPost || !currentPost.tags || currentPost.tags.length === 0) {
+    return [];
+  }
+
+  // 计算每篇文章与当前文章的相关度
+  const scored = posts
+    .filter(p => p.slug !== currentPost.slug) // 排除当前文章
+    .map(p => {
+      let score = 0;
+
+      // 1. 标签关联度分析（使用 Jaccard 相似度）
+      const currentTags = new Set(currentPost.tags.map(t => t.toLowerCase()));
+      const postTags = new Set(p.tags.map(t => t.toLowerCase()));
+      const intersection = new Set([...currentTags].filter(x => postTags.has(x)));
+      const union = new Set([...currentTags, ...postTags]);
+      const jaccardSimilarity = intersection.size / union.size;
+      score += jaccardSimilarity * 100; // 标签相似度权重最高
+
+      // 2. 共同标签数量加分
+      const commonTags = intersection.size;
+      score += commonTags * 15;
+
+      // 3. 同分类加分
+      if (p.category === currentPost.category) {
+        score += 20;
+      }
+
+      // 4. 同系列加分（如果有 series 字段）
+      if (currentPost.series && p.series && currentPost.series === p.series) {
+        score += 50;
+      }
+
+      // 5. 时间接近度加分（越新越好）
+      const daysDiff = Math.abs(new Date(p.date) - new Date(currentPost.date)) / (1000 * 60 * 60 * 24);
+      if (daysDiff < 30) score += 5;
+      else if (daysDiff < 90) score += 3;
+      else if (daysDiff < 180) score += 1;
+
+      return {
+        post: p,
+        score,
+        commonTags: Array.from(intersection),
+        similarity: jaccardSimilarity
+      };
+    })
+    .filter(item => item.score > 0) // 只保留有相关性的
+    .sort((a, b) => b.score - a.score) // 按分数降序
+    .slice(0, limit) // 取前 N 篇
+    .map(item => ({
+      ...item.post,
+      _relatedMeta: {
+        score: item.score,
+        commonTags: item.commonTags,
+        similarity: item.similarity
+      }
+    }));
+
+  return scored;
+}
+
+// 分享到微信（显示二维码）
+function shareToWeChat(slug) {
+  const baseUrl = 'https://tangentllm.github.io/weblog/';
+  const url = `${baseUrl}#/post/${slug}`;
+
+  // 创建模态框
+  const modal = document.createElement('div');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'qr-title');
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  `;
+
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: ${document.documentElement.classList.contains('dark') ? '#111' : '#fff'};
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 90%;
+  `;
+
+  content.innerHTML = `
+    <p id="qr-title" style="margin-bottom: 16px; color: ${document.documentElement.classList.contains('dark') ? '#ccc' : '#333'};">
+      使用微信扫描二维码分享
+    </p>
+    <div id="qrcode" style="display: inline-block;"></div>
+    <p style="margin-top: 16px; font-size: 0.875rem; color: #999;">
+      点击任意处关闭
+    </p>
+  `;
+
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+
+  // 生成二维码
+  const qrcodeDiv = content.querySelector('#qrcode');
+  const qrcodeImg = document.createElement('img');
+  qrcodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+  qrcodeImg.alt = '微信分享二维码';
+  qrcodeImg.style.cssText = 'width: 200px; height: 200px; border: 2px solid #eee; border-radius: 8px;';
+
+  // 添加加载状态
+  qrcodeImg.onload = () => {
+    qrcodeImg.style.opacity = '1';
+  };
+  qrcodeImg.onerror = () => {
+    qrcodeDiv.innerHTML = '<p style="color: #ff4444;">二维码加载失败</p>';
+  };
+  qrcodeImg.style.opacity = '0';
+  qrcodeImg.style.transition = 'opacity 0.3s';
+
+  qrcodeDiv.appendChild(qrcodeImg);
+
+  // 点击关闭
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  });
+
+  // ESC 键关闭
+  const handleEsc = (e) => {
+    if (e.key === 'Escape') {
+      document.body.removeChild(modal);
+      document.removeEventListener('keydown', handleEsc);
+    }
+  };
+  document.addEventListener('keydown', handleEsc);
+}
+
+// 分享到 Twitter
+function shareToTwitter(slug, title, tags) {
+  const baseUrl = 'https://tangentllm.github.io/weblog/';
+  const url = `${baseUrl}#/post/${slug}`;
+  const text = `${title} ${tags}`;
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  window.open(twitterUrl, '_blank', 'width=550,height=420');
+}
+
+// 分享到 LinkedIn
+function shareToLinkedIn(slug, title, summary) {
+  const baseUrl = 'https://tangentllm.github.io/weblog/';
+  const url = `${baseUrl}#/post/${slug}`;
+  const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+  window.open(linkedInUrl, '_blank', 'width=550,height=420');
+}
+
+// 浏览量统计
+function updateViewCount(slug) {
+  const STORAGE_KEY = 'llm_notes_views';
+  const VIEW_COUNT_API = 'https://api.countapi.xyz/hit/tangentllm-blog/';
+
+  // 获取本地存储的浏览量数据
+  let viewData = {};
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      viewData = JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('读取浏览量数据失败:', e);
+  }
+
+  // 初始化当前文章的浏览量
+  if (!viewData[slug]) {
+    viewData[slug] = 0;
+  }
+
+  // 增加浏览量
+  viewData[slug]++;
+
+  // 保存到本地存储
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(viewData));
+  } catch (e) {
+    console.error('保存浏览量数据失败:', e);
+  }
+
+  // 更新显示
+  const viewCountEl = document.getElementById(`view-count-${slug}`);
+  if (viewCountEl) {
+    const count = viewData[slug];
+    const formattedCount = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count;
+    viewCountEl.innerHTML = `
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+      </svg>
+      <span>${formattedCount} 次浏览</span>
+    `;
+  }
+
+  // 可选：同步到远程 API（使用 CountAPI 或自建服务）
+  // 这里使用 CountAPI 作为示例，你可以替换为自己的统计服务
+  fetch(`${VIEW_COUNT_API}${slug}`)
+    .then(res => res.json())
+    .then(data => {
+      // 可以选择使用远程数据覆盖本地数据
+      // console.log('远程浏览量:', data.value);
+    })
+    .catch(err => {
+      // 静默失败，使用本地数据
+      console.log('远程统计服务不可用，使用本地数据');
+    });
+}
+
+// 获取文章浏览量（用于列表页显示）
+function getViewCount(slug) {
+  const STORAGE_KEY = 'llm_notes_views';
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const viewData = JSON.parse(stored);
+      return viewData[slug] || 0;
+    }
+  } catch (e) {
+    console.error('读取浏览量数据失败:', e);
+  }
+  return 0;
+}
+
+// 显示浏览量（不增加计数，用于卡片显示）
+function displayViewCount(slug, elementId) {
+  const count = getViewCount(slug);
+  const viewCountEl = document.getElementById(elementId);
+  if (viewCountEl) {
+    const formattedCount = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count;
+    viewCountEl.innerHTML = `
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+      </svg>
+      <span>${formattedCount}</span>
+    `;
+  }
+}
+
+// 复制分享链接
+async function copyShareLink(slug) {
+  const baseUrl = 'https://tangentllm.github.io/weblog/';
+  const url = `${baseUrl}#/post/${slug}`;
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      // 降级方案
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+
+    // 显示成功提示
+    showToast('链接已复制到剪贴板');
+  } catch (err) {
+    console.error('复制失败:', err);
+    showToast('复制失败，请手动复制', 'error');
+  }
+}
+
+// Toast 提示
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    z-index: 10000;
+    animation: slideDown 0.3s ease;
+    ${type === 'success'
+      ? 'background: #00e5a0; color: #000;'
+      : 'background: #ff4444; color: #fff;'}
+  `;
+  toast.textContent = message;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'slideUp 0.3s ease';
+    setTimeout(() => document.body.removeChild(toast), 300);
+  }, 2000);
+}
+
 // 图片灯箱
 function initImageLightbox() {
   document.querySelectorAll('.prose img').forEach(img => {
+    const original = img.getAttribute('src') || '';
+    const resolved = resolveAssetUrl(original);
+    if (resolved && resolved !== original) {
+      img.setAttribute('src', resolved);
+    }
     img.addEventListener('click', () => {
       const lb = document.getElementById('lightbox');
       document.getElementById('lightbox-img').src = img.src;
@@ -1532,27 +2611,225 @@ function initImageLightbox() {
   });
 }
 
+// 图片懒加载
+function initLazyLoading() {
+  if ('IntersectionObserver' in window) {
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          const src = img.getAttribute('data-src');
+          if (src) {
+            img.src = src;
+            img.removeAttribute('data-src');
+          }
+          observer.unobserve(img);
+        }
+      });
+    }, {
+      rootMargin: '50px'
+    });
+
+    document.querySelectorAll('img[data-src]').forEach(img => {
+      imageObserver.observe(img);
+    });
+  } else {
+    // 不支持 IntersectionObserver 时直接加载所有图片
+    document.querySelectorAll('img[data-src]').forEach(img => {
+      img.src = img.getAttribute('data-src');
+      img.removeAttribute('data-src');
+    });
+  }
+}
+
+function wrapCodeBlocks(scope = document) {
+  const preTags = scope.querySelectorAll('.prose pre:not(.code-block pre)');
+  preTags.forEach(pre => {
+    const code = pre.querySelector('code');
+    if (!code) return;
+
+    // 跳过已经被包装的
+    if (pre.parentElement?.classList.contains('code-block')) return;
+
+    // 获取语言类型
+    const langMatch = code.className.match(/language-(\w+)/);
+    const lang = langMatch ? langMatch[1] : 'text';
+
+    // 创建包装器
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block';
+
+    // 创建头部（只显示语言，不显示复制按钮）
+    const header = document.createElement('div');
+    header.className = 'code-header';
+    header.innerHTML = `<span>${lang}</span>`;
+
+    // 包装代码块
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(header);
+    wrapper.appendChild(pre);
+  });
+}
+
+function styleDetailsElements(scope = document) {
+  const detailsElements = scope.querySelectorAll('.prose details');
+  detailsElements.forEach(details => {
+    if (!details.classList.contains('collapse-details')) {
+      details.classList.add('collapse-details');
+    }
+
+    const summary = details.querySelector('summary');
+    if (summary && !summary.classList.contains('collapse-summary')) {
+      summary.classList.add('collapse-summary');
+
+      // 添加展开/收起图标
+      if (!summary.querySelector('.collapse-icon')) {
+        const icon = document.createElement('span');
+        icon.className = 'collapse-icon';
+        icon.textContent = '▶';
+        summary.insertBefore(icon, summary.firstChild);
+      }
+    }
+
+    // 为 summary 之后的所有内容添加包装
+    const children = Array.from(details.children);
+    const summaryIndex = children.indexOf(summary);
+    if (summaryIndex !== -1 && summaryIndex < children.length - 1) {
+      // 检查是否已经有 collapse-content 包装
+      const hasWrapper = children.some(child =>
+        child.classList && child.classList.contains('collapse-content')
+      );
+
+      if (!hasWrapper) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'collapse-content';
+
+        // 将 summary 之后的所有元素移到 wrapper 中
+        for (let i = summaryIndex + 1; i < children.length; i++) {
+          wrapper.appendChild(children[i]);
+        }
+
+        details.appendChild(wrapper);
+      }
+    }
+  });
+}
+
+function renderMermaidDiagrams(scope = document) {
+  if (typeof mermaid === 'undefined') return;
+  if (!renderMermaidDiagrams.initialized) {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
+      securityLevel: 'loose',
+    });
+    renderMermaidDiagrams.initialized = true;
+  }
+
+  const blocks = scope.querySelectorAll('pre code.language-mermaid');
+  blocks.forEach((codeNode, idx) => {
+    const pre = codeNode.closest('pre');
+    if (!pre) return;
+    const div = document.createElement('div');
+    div.className = 'mermaid';
+    div.id = `mermaid-${Date.now()}-${idx}`;
+    div.textContent = codeNode.textContent || '';
+    pre.replaceWith(div);
+  });
+
+  const nodes = scope.querySelectorAll('.mermaid');
+  if (nodes.length > 0) {
+    mermaid.run({ nodes });
+  }
+}
+
 // 文章TOC跟随
 function initPostToc() {
   const sidebar = document.getElementById('toc-sidebar');
   if (!sidebar) return;
+  const tocNav = sidebar.querySelector('.toc-nav');
   const links = sidebar.querySelectorAll('.toc-link');
   if (links.length === 0) return;
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
+  // 创建指示条元素
+  const indicator = document.createElement('div');
+  indicator.className = 'toc-indicator';
+  tocNav.appendChild(indicator);
+
+  // 更新指示条位置
+  function updateIndicator(activeLink) {
+    if (!activeLink) {
+      indicator.style.opacity = '0';
+      return;
+    }
+    const linkRect = activeLink.getBoundingClientRect();
+    const navRect = tocNav.getBoundingClientRect();
+    const offsetTop = activeLink.offsetTop;
+    const height = linkRect.height;
+
+    indicator.style.height = `${height}px`;
+    indicator.style.transform = `translateY(${offsetTop}px)`;
+    indicator.style.opacity = '1';
+  }
+
+  // 添加点击事件处理，阻止默认跳转
+  links.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = link.dataset.target;
+      const target = document.getElementById(targetId);
+      if (target) {
+        const headerOffset = 80; // 顶部导航栏高度
+        const elementPosition = target.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+
+        // 更新 active 状态和指示条
         links.forEach(l => l.classList.remove('active'));
-        const active = sidebar.querySelector(`[data-target="${entry.target.id}"]`);
-        if (active) active.classList.add('active');
+        link.classList.add('active');
+        updateIndicator(link);
       }
     });
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    // 找到所有正在相交的条目
+    const intersectingEntries = entries.filter(entry => entry.isIntersecting);
+
+    if (intersectingEntries.length > 0) {
+      // 如果有多个相交，选择最靠近顶部的那个
+      const topmost = intersectingEntries.reduce((prev, curr) => {
+        return curr.boundingClientRect.top < prev.boundingClientRect.top ? curr : prev;
+      });
+
+      links.forEach(l => l.classList.remove('active'));
+      const active = sidebar.querySelector(`[data-target="${topmost.target.id}"]`);
+      if (active) {
+        active.classList.add('active');
+        updateIndicator(active);
+      }
+    }
   }, { rootMargin: '-80px 0px -70% 0px' });
 
   links.forEach(link => {
     const target = document.getElementById(link.dataset.target);
     if (target) observer.observe(target);
   });
+
+  // 初始化指示条位置
+  setTimeout(() => {
+    const activeLink = sidebar.querySelector('.toc-link.active');
+    if (activeLink) {
+      updateIndicator(activeLink);
+    } else if (links.length > 0) {
+      links[0].classList.add('active');
+      updateIndicator(links[0]);
+    }
+  }, 100);
 }
 
 // 复制代码
@@ -1590,6 +2867,8 @@ window.addEventListener('hashchange', router);
 window.addEventListener('load', () => {
   // 避免首次打开时图标脚本晚到导致漏渲染
   renderLucideIconsSafely();
+  // 隐藏初始加载动画
+  hideLoader();
 });
 
 // 初始化

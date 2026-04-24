@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="claudeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4a574;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c77c4c;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#claudeGrad)"/>
+
+  <!-- Terminal window -->
+  <g transform="translate(600, 250)">
+    <rect x="-250" y="-120" width="500" height="240" rx="12" fill="rgba(0,0,0,0.3)"/>
+
+    <!-- Terminal header -->
+    <rect x="-250" y="-120" width="500" height="35" rx="12" fill="rgba(0,0,0,0.2)"/>
+    <circle cx="-220" cy="-102" r="6" fill="#ff5f56"/>
+    <circle cx="-195" cy="-102" r="6" fill="#ffbd2e"/>
+    <circle cx="-170" cy="-102" r="6" fill="#27c93f"/>
+
+    <!-- Terminal content -->
+    <text x="-230" y="-60" font-family="monospace" font-size="18" fill="#4ade80" font-weight="bold">$ claude</text>
+    <text x="-230" y="-25" font-family="monospace" font-size="16" fill="white" opacity="0.8">&gt; Agent orchestration</text>
+    <text x="-230" y="5" font-family="monospace" font-size="16" fill="white" opacity="0.8">&gt; MCP integration</text>
+    <text x="-230" y="35" font-family="monospace" font-size="16" fill="white" opacity="0.8">&gt; Skill system</text>
+    <text x="-230" y="65" font-family="monospace" font-size="16" fill="white" opacity="0.8">&gt; Hook automation</text>
+
+    <!-- Cursor -->
+    <rect x="-230" y="75" width="12" height="20" fill="#4ade80" opacity="0.7"/>
+  </g>
+
+  <!-- Code brackets decoration -->
+  <text x="200" y="200" font-family="monospace" font-size="80" fill="white" opacity="0.2" font-weight="bold">{</text>
+  <text x="950" y="400" font-family="monospace" font-size="80" fill="white" opacity="0.2" font-weight="bold">}</text>
+
+  <!-- Title -->
+  <text x="600" y="500" font-family="Arial, sans-serif" font-size="48" fill="white" text-anchor="middle" font-weight="bold">Everything Claude Code</text>
+  <text x="600" y="550" font-family="Arial, sans-serif" font-size="26" fill="white" text-anchor="middle" opacity="0.9">完整使用教程与实践指南</text>
+</svg>
