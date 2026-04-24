@@ -531,11 +531,11 @@
     </div>
     <!-- 移动端菜单 -->
     <div id="mobile-menu" class="mobile-menu flex-col border-t dark:border-[#1a1a1a] border-[#eee] dark:bg-[rgba(5,5,5,0.95)] bg-[rgba(250,250,249,0.95)] px-6 py-3">
-      <a href="#/" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">首页</a>
-      <a href="#/categories" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">分类</a>
-      <a href="#/tags" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">标签</a>
-      <a href="#/projects" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">作品</a>
-      <a href="#/about" onclick="closeMobileMenu()" class="py-2 text-sm dark:text-[#aaa] text-[#666]">关于</a>
+      <a href="#/" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">首页</a>
+      <a href="#/categories" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">分类</a>
+      <a href="#/tags" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">标签</a>
+      <a href="#/projects" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">作品</a>
+      <a href="#/about" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">关于</a>
       <div class="flex items-center gap-2 py-2">
         <button onclick="toggleTheme();closeMobileMenu()" class="text-sm dark:text-[#aaa] text-[#666]">切换主题</button>
       </div>
@@ -1144,42 +1144,97 @@ async function loadProjectsFromManifest() {
    ============================ */
 function router() {
   const hash = location.hash || '#/';
+  const hashPath = hash.split('?')[0];
   const app = document.getElementById('app');
 
-  // 高亮当前导航
+  // 统一导航高亮（桌面 + 移动）
+  let activeNavHref = '';
+  if (hashPath === '#/' || hashPath.startsWith('#/post/')) {
+    activeNavHref = '#/';
+  } else if (hashPath === '#/categories' || hashPath.startsWith('#/category/')) {
+    activeNavHref = '#/categories';
+  } else if (hashPath === '#/tags' || hashPath.startsWith('#/tag/')) {
+    activeNavHref = '#/tags';
+  } else if (hashPath === '#/projects' || hashPath.startsWith('#/project/')) {
+    activeNavHref = '#/projects';
+  } else if (hashPath === '#/about') {
+    activeNavHref = '#/about';
+  }
+
   document.querySelectorAll('.nav-link').forEach(link => {
     const href = link.getAttribute('href');
-    if (href === hash || (hash.startsWith(href) && href !== '#/')) {
-      link.classList.add('dark:text-white', 'text-[#111]', 'font-medium');
+    const isActive = href === activeNavHref;
+    if (isActive) {
+      link.classList.add(
+        'dark:text-white',
+        'text-[#111]',
+        'font-medium',
+        'dark:bg-[rgba(255,255,255,0.08)]',
+        'bg-[rgba(0,0,0,0.05)]'
+      );
       link.classList.remove('dark:text-[#888]', 'text-[#888]');
     } else {
-      link.classList.remove('dark:text-white', 'text-[#111]', 'font-medium');
+      link.classList.remove(
+        'dark:text-white',
+        'text-[#111]',
+        'font-medium',
+        'dark:bg-[rgba(255,255,255,0.08)]',
+        'bg-[rgba(0,0,0,0.05)]'
+      );
       link.classList.add('dark:text-[#888]', 'text-[#888]');
     }
   });
 
+  document.querySelectorAll('.mobile-nav-link').forEach(link => {
+    const href = link.getAttribute('href');
+    const isActive = href === activeNavHref;
+    if (isActive) {
+      link.classList.add(
+        'dark:text-white',
+        'text-[#111]',
+        'font-medium',
+        'dark:bg-[rgba(255,255,255,0.08)]',
+        'bg-[rgba(0,0,0,0.05)]',
+        'rounded-md',
+        'px-2'
+      );
+      link.classList.remove('dark:text-[#aaa]', 'text-[#666]');
+    } else {
+      link.classList.remove(
+        'dark:text-white',
+        'text-[#111]',
+        'font-medium',
+        'dark:bg-[rgba(255,255,255,0.08)]',
+        'bg-[rgba(0,0,0,0.05)]',
+        'rounded-md',
+        'px-2'
+      );
+      link.classList.add('dark:text-[#aaa]', 'text-[#666]');
+    }
+  });
+
   // 解析路由
-  if (hash === '#/' || hash === '') {
+  if (hashPath === '#/' || hashPath === '') {
     renderHome(app);
-  } else if (hash.startsWith('#/post/')) {
+  } else if (hashPath.startsWith('#/post/')) {
     const slug = hash.replace('#/post/', '');
     renderPost(app, slug);
-  } else if (hash === '#/categories') {
+  } else if (hashPath === '#/categories') {
     renderCategories(app);
-  } else if (hash.startsWith('#/category/')) {
+  } else if (hashPath.startsWith('#/category/')) {
     const name = decodeURIComponent(hash.replace('#/category/', ''));
     renderCategoryPosts(app, name);
-  } else if (hash === '#/tags') {
+  } else if (hashPath === '#/tags') {
     renderTags(app);
-  } else if (hash.startsWith('#/tag/')) {
+  } else if (hashPath.startsWith('#/tag/')) {
     const tag = decodeURIComponent(hash.replace('#/tag/', ''));
     renderTagPosts(app, tag);
-  } else if (hash === '#/projects') {
+  } else if (hashPath === '#/projects') {
     renderProjects(app);
-  } else if (hash.startsWith('#/project/')) {
+  } else if (hashPath.startsWith('#/project/')) {
     const slug = hash.replace('#/project/', '');
     renderProjectDetail(app, slug);
-  } else if (hash === '#/about') {
+  } else if (hashPath === '#/about') {
     renderAbout(app);
   } else {
     render404(app);
@@ -1407,7 +1462,7 @@ function renderPost(app, slug) {
           <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
           <span>${post.category}</span>
           <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
-          <span id="view-count-${post.slug}" class="flex items-center gap-1">
+          <span id="view-count-${post.slug}" class="hidden flex items-center gap-1">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             <span>加载中...</span>
           </span>
@@ -1518,7 +1573,7 @@ function renderPost(app, slug) {
                   <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
                   <span>${p.readTime}</span>
                   <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  <span id="view-count-related-${p.slug}" class="flex items-center gap-1">
+                  <span id="view-count-related-${p.slug}" class="hidden flex items-center gap-1">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                     <span>--</span>
                   </span>
@@ -1822,7 +1877,7 @@ function renderProjects(app) {
                 <p class="text-sm dark:text-[#888] text-[#777] mt-1.5">${project.subtitle}</p>
                 <p class="text-sm dark:text-[#666] text-[#999] mt-3 line-clamp-2">${project.summary}</p>
                 <div class="mt-3 flex items-center gap-2 text-xs dark:text-[#555] text-[#bbb]">
-                  <span id="view-count-card-${project.slug}" class="flex items-center gap-1">
+                  <span id="view-count-card-${project.slug}" class="hidden flex items-center gap-1">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                     <span>--</span>
                   </span>
@@ -1897,7 +1952,7 @@ function renderProjectDetail(app, slug) {
           <span class="text-[11px] px-2 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${project.status}</span>
           <span class="text-xs dark:text-[#666] text-[#999]">${project.period}</span>
           <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
-          <span id="view-count-${project.slug}" class="flex items-center gap-1 text-xs dark:text-[#666] text-[#999]">
+          <span id="view-count-${project.slug}" class="hidden flex items-center gap-1 text-xs dark:text-[#666] text-[#999]">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             <span>加载中...</span>
           </span>
@@ -2450,61 +2505,7 @@ function shareToLinkedIn(slug, title, summary) {
 
 // 浏览量统计
 function updateViewCount(slug) {
-  const STORAGE_KEY = 'llm_notes_views';
-  const VIEW_COUNT_API = 'https://api.countapi.xyz/hit/tangentllm-blog/';
-
-  // 获取本地存储的浏览量数据
-  let viewData = {};
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      viewData = JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error('读取浏览量数据失败:', e);
-  }
-
-  // 初始化当前文章的浏览量
-  if (!viewData[slug]) {
-    viewData[slug] = 0;
-  }
-
-  // 增加浏览量
-  viewData[slug]++;
-
-  // 保存到本地存储
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(viewData));
-  } catch (e) {
-    console.error('保存浏览量数据失败:', e);
-  }
-
-  // 更新显示
-  const viewCountEl = document.getElementById(`view-count-${slug}`);
-  if (viewCountEl) {
-    const count = viewData[slug];
-    const formattedCount = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count;
-    viewCountEl.innerHTML = `
-      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-      </svg>
-      <span>${formattedCount} 次浏览</span>
-    `;
-  }
-
-  // 可选：同步到远程 API（使用 CountAPI 或自建服务）
-  // 这里使用 CountAPI 作为示例，你可以替换为自己的统计服务
-  fetch(`${VIEW_COUNT_API}${slug}`)
-    .then(res => res.json())
-    .then(data => {
-      // 可以选择使用远程数据覆盖本地数据
-      // console.log('远程浏览量:', data.value);
-    })
-    .catch(err => {
-      // 静默失败，使用本地数据
-      console.log('远程统计服务不可用，使用本地数据');
-    });
+  return;
 }
 
 // 获取文章浏览量（用于列表页显示）
@@ -2524,18 +2525,7 @@ function getViewCount(slug) {
 
 // 显示浏览量（不增加计数，用于卡片显示）
 function displayViewCount(slug, elementId) {
-  const count = getViewCount(slug);
-  const viewCountEl = document.getElementById(elementId);
-  if (viewCountEl) {
-    const formattedCount = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count;
-    viewCountEl.innerHTML = `
-      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-      </svg>
-      <span>${formattedCount}</span>
-    `;
-  }
+  return;
 }
 
 // 复制分享链接
