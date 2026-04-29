@@ -1,8 +1,23 @@
 [
   {
+    "slug": "attention-from-scratch",
+    "title": "我是怎么从零写一个多头注意力层的，以及中间踩的那些坑",
+    "date": "2025-03-25",
+    "readTime": "15 分钟",
+    "category": "基础原理",
+    "tags": [
+      "Transformer",
+      "Attention",
+      "PyTorch"
+    ],
+    "cover": "./content/assets/posts/covers/attention.svg",
+    "excerpt": "从实现细节而非公式推导出发，复盘手写多头注意力时在 mask、shape、内存布局与性能取舍上的关键踩坑与经验。",
+    "file": "./content/posts/attention.md"
+  },
+  {
     "slug": "everything-claude-code-zh-guide",
     "title": "Everything Claude Code 中文版 - 完整使用教程",
-    "date": "2026-04-22",
+    "date": "2025-03-22",
     "readTime": "35 分钟",
     "category": "工程实践",
     "tags": [
@@ -19,7 +34,7 @@
   {
     "slug": "tech-thinking-ai-engineer",
     "title": "技术随想：大模型时代，工程师如何建立长期优势",
-    "date": "2026-04-20",
+    "date": "2025-03-20",
     "readTime": "10 分钟",
     "category": "随想与思考",
     "tags": [
@@ -34,7 +49,7 @@
   {
     "slug": "paper-rag-survey",
     "title": "论文解读：Retrieval-Augmented Generation 的演化路径",
-    "date": "2026-04-18",
+    "date": "2025-03-18",
     "readTime": "14 分钟",
     "category": "论文解读",
     "tags": [
@@ -49,7 +64,7 @@
   {
     "slug": "llm-sft-note",
     "title": "LLM 微调实战笔记：SFT + LoRA + 评估闭环",
-    "date": "2026-04-14",
+    "date": "2025-03-14",
     "readTime": "16 分钟",
     "category": "微调与对齐",
     "tags": [
@@ -64,7 +79,7 @@
   {
     "slug": "transformer-in-depth",
     "title": "Transformer 原理解析：从注意力到可扩展建模",
-    "date": "2026-04-10",
+    "date": "2025-03-10",
     "readTime": "18 分钟",
     "category": "基础原理",
     "tags": [

@@ -1,7 +1,7 @@
 ---
 title: 论文解读：Retrieval-Augmented Generation 的演化路径
 slug: paper-rag-survey
-date: 2026-04-18
+date: 2025-03-18
 readTime: 14 分钟
 category: 论文解读
 tags: RAG, Retrieval, Knowledge

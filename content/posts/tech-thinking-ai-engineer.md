@@ -1,7 +1,7 @@
 ---
 title: 技术随想：大模型时代，工程师如何建立长期优势
 slug: tech-thinking-ai-engineer
-date: 2026-04-20
+date: 2025-03-20
 readTime: 10 分钟
 category: 随想与思考
 tags: Career, AI Engineering, Thinking

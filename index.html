@@ -2242,8 +2242,16 @@ function toggleTheme() {
 }
 function initTheme() {
   const saved = localStorage.getItem('theme');
-  if (saved === 'light') document.documentElement.classList.remove('dark');
-  else document.documentElement.classList.add('dark');
+  // Do not follow system color scheme.
+  // Default to dark unless user explicitly switched to light.
+  if (saved === 'light') {
+    document.documentElement.classList.remove('dark');
+    return;
+  }
+  document.documentElement.classList.add('dark');
+  if (saved !== 'dark') {
+    localStorage.setItem('theme', 'dark');
+  }
 }
 
 // 移动端菜单

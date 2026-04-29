@@ -1,7 +1,7 @@
 ---
 title: LLM 微调实战笔记：SFT + LoRA + 评估闭环
 slug: llm-sft-note
-date: 2026-04-14
+date: 2025-03-14
 readTime: 16 分钟
 category: 微调与对齐
 tags: SFT, LoRA, DPO

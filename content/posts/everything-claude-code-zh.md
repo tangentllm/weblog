@@ -1,7 +1,7 @@
 ---
 title: Everything Claude Code 中文版 - 完整使用教程
 slug: everything-claude-code-zh-guide
-date: 2026-04-22
+date: 2025-03-22
 readTime: 35 分钟
 category: 工程实践
 tags: Claude Code, MCP, Skill, Agent, Function Calling

@@ -1,7 +1,7 @@
 ---
 title: Transformer 原理解析：从注意力到可扩展建模
 slug: transformer-in-depth
-date: 2026-04-10
+date: 2025-03-10
 readTime: 18 分钟
 category: 基础原理
 tags: Transformer, Attention, Pretraining
