@@ -1,5 +1,51 @@
 [
   {
+    "slug": "embedding-from-scratch",
+    "title": "重新理解了一个「只有十几行」的 Embedding 层",
+    "date": "2025-04-28",
+    "readTime": "12 分钟",
+    "category": "基础原理",
+    "tags": [
+      "Transformer",
+      "Embedding",
+      "PyTorch"
+    ],
+    "cover": "./content/assets/posts/covers/embedding.png",
+    "excerpt": "从初始化、缩放与 padding 细节出发，复盘 Embedding 层在训练稳定性中的关键作用。",
+    "file": "./content/posts/embedding.md"
+  },
+  {
+    "slug": "layernorm-from-scratch",
+    "title": "我为什么要手写一遍 LayerNorm",
+    "date": "2025-04-26",
+    "readTime": "11 分钟",
+    "category": "基础原理",
+    "tags": [
+      "Transformer",
+      "LayerNorm",
+      "PyTorch"
+    ],
+    "cover": "./content/assets/posts/covers/layernorm.png",
+    "excerpt": "围绕 eps、方差估计与精度问题，拆解 LayerNorm 的实现细节与工程踩坑经验。",
+    "file": "./content/posts/layernorm.md"
+  },
+  {
+    "slug": "tokenization-guide",
+    "title": "大模型分词器完全指南：从原理到实践",
+    "date": "2025-04-24",
+    "readTime": "18 分钟",
+    "category": "基础原理",
+    "tags": [
+      "Tokenization",
+      "BPE",
+      "WordPiece",
+      "SentencePiece"
+    ],
+    "cover": "./content/assets/posts/covers/tokenization.png",
+    "excerpt": "系统讲清词级、字符级与子词级分词，以及 BPE、WordPiece、SentencePiece 的差异与实践要点。",
+    "file": "./content/posts/tokenization.md"
+  },
+  {
     "slug": "attention-from-scratch",
     "title": "我是怎么从零写一个多头注意力层的，以及中间踩的那些坑",
     "date": "2025-03-25",
