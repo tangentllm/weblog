@@ -1,0 +1,43 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="90" y1="70" x2="1110" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0C1326"/>
+      <stop offset="1" stop-color="#1A2A52"/>
+    </linearGradient>
+    <linearGradient id="acc" x1="220" y1="360" x2="980" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="72" y="70" width="1056" height="490" rx="24" fill="#0E1730" stroke="#395A9D" stroke-width="2"/>
+
+  <!-- Use numeric character references to avoid encoding issues -->
+  <text x="140" y="168" fill="#7DD3FC" font-size="34" font-family="Segoe UI, Microsoft YaHei">
+    &#x57FA;&#x7840;&#x539F;&#x7406;
+  </text>
+  <text x="140" y="246" fill="#FFFFFF" font-size="62" font-weight="700" font-family="Segoe UI, Microsoft YaHei">
+    FFN &#x91CC;&#x7684;&#x5DE5;&#x7A0B;&#x7EC6;&#x8282;
+  </text>
+  <text x="140" y="306" fill="#CBD5E1" font-size="34" font-family="Segoe UI, Microsoft YaHei">
+    Dropout &#x00B7; GELU &#x00B7; SwiGLU
+  </text>
+
+  <rect x="220" y="360" width="200" height="92" rx="14" fill="#14244B" stroke="#5EA9FF"/>
+  <rect x="500" y="360" width="200" height="92" rx="14" fill="#14244B" stroke="#5EA9FF"/>
+  <rect x="780" y="360" width="200" height="92" rx="14" fill="#14244B" stroke="#5EA9FF"/>
+  <path d="M420 406H500M700 406H780" stroke="url(#acc)" stroke-width="4" stroke-linecap="round"/>
+
+  <text x="320" y="418" text-anchor="middle" fill="#E7F1FF" font-size="26" font-family="Segoe UI, Microsoft YaHei">
+    &#x6269;&#x5C55;
+  </text>
+  <text x="600" y="418" text-anchor="middle" fill="#E7F1FF" font-size="26" font-family="Segoe UI, Microsoft YaHei">
+    &#x6FC0;&#x6D3B;
+  </text>
+  <text x="880" y="418" text-anchor="middle" fill="#E7F1FF" font-size="26" font-family="Segoe UI, Microsoft YaHei">
+    &#x6B63;&#x5219;
+  </text>
+
+  <path d="M980 470C1040 470 1060 520 1020 552C970 592 860 560 868 500" stroke="#A78BFA" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,37 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="60" x2="1120" y2="580" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A1F2B"/>
+      <stop offset="1" stop-color="#123A4A"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="160" y1="410" x2="1040" y2="410" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2DD4BF"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="72" y="70" width="1056" height="490" rx="24" fill="#0C2E3D" stroke="#2A6077" stroke-width="2"/>
+
+  <!-- Use numeric character references to avoid encoding issues -->
+  <text x="140" y="168" fill="#9BE7FF" font-size="34" font-family="Segoe UI, Microsoft YaHei">
+    &#x57FA;&#x7840;&#x539F;&#x7406;
+  </text>
+  <text x="140" y="246" fill="#FFFFFF" font-size="58" font-weight="700" font-family="Segoe UI, Microsoft YaHei">
+    &#x6B63;&#x4F59;&#x5F26;&#x4F4D;&#x7F6E;&#x7F16;&#x7801;
+  </text>
+  <text x="140" y="306" fill="#B8E9F8" font-size="34" font-family="Segoe UI, Microsoft YaHei">
+    Sinusoidal Positional Encoding
+  </text>
+
+  <path d="M160 420C240 360 320 360 400 420C480 480 560 480 640 420C720 360 800 360 880 420C960 480 1000 480 1040 450" stroke="url(#wave)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M160 470C240 410 320 410 400 470C480 530 560 530 640 470C720 410 800 410 880 470C960 530 1000 530 1040 500" stroke="#2DD4BF" stroke-opacity="0.55" stroke-width="4" stroke-linecap="round"/>
+
+  <rect x="830" y="360" width="250" height="112" rx="16" fill="#103848" stroke="#38BDF8"/>
+  <text x="955" y="408" text-anchor="middle" fill="#D7F7FF" font-size="26" font-family="Segoe UI, Microsoft YaHei">
+    &#x7EBF;&#x6027;&#x53D8;&#x6362;&#x6027;&#x8D28;
+  </text>
+  <text x="955" y="442" text-anchor="middle" fill="#B8E9F8" font-size="22" font-family="Segoe UI, Microsoft YaHei">
+    &#x76F8;&#x5BF9;&#x4F4D;&#x79FB;&#x53EF;&#x5B66;&#x4E60;
+  </text>
+</svg>
