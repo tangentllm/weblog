@@ -1336,22 +1336,25 @@ function renderHome(app) {
       </div>
     </section>
 
-    <!-- 置顶文章 -->
+    <!-- 置顶文章：统一卡片、对称 2×2 网格（视觉权重一致） -->
     ${pinned.length > 0 ? `
     <section class="max-w-5xl mx-auto px-6 pb-16">
       <div class="reveal">
-        <p class="text-xs font-mono dark:text-[#555] text-[#bbb] uppercase tracking-widest mb-6">Pinned</p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-          ${pinned.map(post => `
-            <a href="#/post/${post.slug}" class="group block rounded-xl overflow-hidden dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all">
-              <div class="aspect-[2/1] overflow-hidden">
-                <img src="${post.cover}" alt="${post.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+        <div class="mb-8 border-b dark:border-[#1e1e1e] border-[#eee] pb-6">
+          <p class="text-xs font-mono dark:text-[#555] text-[#bbb] uppercase tracking-widest">Pinned</p>
+          <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mt-2">置顶文章</h2>
+        </div>
+        <div class="grid grid-cols-1 ${pinned.length === 1 ? 'sm:max-w-xl sm:mx-auto' : 'sm:grid-cols-2'} gap-8 sm:gap-x-8 sm:gap-y-10">
+          ${pinned.map((post) => `
+            <a href="#/post/${post.slug}" class="group flex flex-col h-full rounded-2xl overflow-hidden dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border border-[#eee] shadow-sm hover:shadow-md hover:dark:border-[#2a2a2a] hover:border-[#ddd] transition-all duration-300">
+              <div class="shrink-0 w-full overflow-hidden dark:bg-[#1a1a1a] bg-[#f0f0f0]">
+                <img src="${post.cover}" alt="${post.title}" class="w-full aspect-[2/1] object-cover object-center group-hover:scale-[1.02] transition-transform duration-500" loading="lazy">
               </div>
-              <div class="p-5">
-                <div class="flex flex-wrap gap-2 mb-3">${post.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
-                <h2 class="font-semibold text-base dark:text-white text-[#111] leading-snug mb-2 group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h2>
-                <p class="text-sm dark:text-[#777] text-[#999] line-clamp-2 leading-relaxed">${post.excerpt}</p>
-                <div class="flex items-center flex-wrap gap-x-3 gap-y-1 mt-4 text-xs dark:text-[#555] text-[#bbb]">
+              <div class="p-5 flex flex-col flex-1 min-h-0">
+                <div class="flex flex-wrap gap-1.5 mb-3">${post.tags.slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                <h3 class="font-semibold text-[15px] leading-snug dark:text-white text-[#111] line-clamp-2 group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h3>
+                <p class="text-sm dark:text-[#777] text-[#888] line-clamp-2 leading-relaxed mt-2 flex-1">${post.excerpt}</p>
+                <div class="flex items-center flex-wrap gap-x-3 gap-y-1 mt-4 pt-4 border-t dark:border-[#1a1a1a] border-[#f0f0f0] text-xs dark:text-[#555] text-[#bbb]">
                   <span>${formatDate(post.date)}</span>
                   <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
                   <span>${post.readTime}</span>
