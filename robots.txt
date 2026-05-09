@@ -1,4 +1,4 @@
-# robots.txt for LLM Notes Blog
+# robots.txt for Tangentllm Notes Blog
 
 # 允许所有搜索引擎爬取
 User-agent: *
