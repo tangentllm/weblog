@@ -1,23 +1,25 @@
 [
   {
-    "slug": "sinusoidal-positional-encoding",
-    "title": "正余弦位置编码（Sinusoidal Positional Encoding）深度解析",
-    "date": "2026-05-02",
-    "readTime": "14 分钟",
-    "category": "基础原理",
+    "slug": "rag-production-refactor",
+    "title": "RAG 系统重构实战：从 Demo 到生产的那些坑",
+    "date": "2025-05-08",
+    "readTime": "18 分钟",
+    "category": "工程实践",
     "tags": [
-      "Transformer",
-      "Positional Encoding",
-      "RoPE"
+      "RAG",
+      "LlamaIndex",
+      "FAISS",
+      "Embedding",
+      "生产落地"
     ],
-    "cover": "./content/assets/posts/covers/position.svg",
-    "excerpt": "从“Attention 天然不感知顺序”出发，推导正余弦位置编码公式与线性变换性质，并结合 PyTorch 实现逐行拆解。",
-    "file": "./content/posts/position.md"
+    "cover": "./content/assets/posts/covers/rag-production.svg",
+    "excerpt": "金融研报问答系统上线后的成本与中文召回问题复盘：切换 bge-m3、Reranker 精排、索引持久化与工具路由的取舍与坑点。",
+    "file": "./content/posts/rag.md"
   },
   {
     "slug": "ffn-hidden-details",
     "title": "一个 FFN 实现里藏着的那些事",
-    "date": "2026-05-02",
+    "date": "2025-05-02",
     "readTime": "9 分钟",
     "category": "基础原理",
     "tags": [
@@ -30,6 +32,21 @@
     "cover": "./content/assets/posts/covers/ffn.svg",
     "excerpt": "从两次 Dropout 的真实踩坑出发，重新审视 FFN 的激活函数选择、正则位置与“记忆存储”的解释框架。",
     "file": "./content/posts/ffn.md"
+  },
+  {
+    "slug": "sinusoidal-positional-encoding",
+    "title": "正余弦位置编码（Sinusoidal Positional Encoding）深度解析",
+    "date": "2025-05-01",
+    "readTime": "14 分钟",
+    "category": "基础原理",
+    "tags": [
+      "Transformer",
+      "Positional Encoding",
+      "RoPE"
+    ],
+    "cover": "./content/assets/posts/covers/position.svg",
+    "excerpt": "从“Attention 天然不感知顺序”出发，推导正余弦位置编码公式与线性变换性质，并结合 PyTorch 实现逐行拆解。",
+    "file": "./content/posts/position.md"
   },
   {
     "slug": "embedding-from-scratch",

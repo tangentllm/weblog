@@ -1,7 +1,7 @@
 ---
 title: 一个 FFN 实现里藏着的那些事
 slug: ffn-hidden-details
-date: 2026-05-02
+date: 2025-05-02
 readTime: 9 分钟
 category: 基础原理
 tags: Transformer, FFN, Dropout, GELU, SwiGLU

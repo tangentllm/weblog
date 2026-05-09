@@ -1,7 +1,7 @@
 ---
 title: 正余弦位置编码（Sinusoidal Positional Encoding）深度解析
 slug: sinusoidal-positional-encoding
-date: 2026-05-02
+date: 2025-05-01
 readTime: 14 分钟
 category: 基础原理
 tags: Transformer, Positional Encoding, RoPE

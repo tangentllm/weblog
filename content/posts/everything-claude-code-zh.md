@@ -36,13 +36,13 @@ excerpt: 从安装配置到代理、技能、钩子、规则与 MCP 的完整实
 
 ### 1.1 什么是 Everything Claude Code
 
-Everything Claude Code 是一个由 Anthropic 黑客马拉松获胜者创建的开源项目，包含了生产级的 Claude Code 配置集合。这些配置经过 10 多个月的密集日常使用演化而来，涵盖了智能体（Agents）、技能（Skills）、钩子（Hooks）、命令（Commands）、规则（Rules）以及 MCP 配置。
+Everything Claude Code 是一个由 Anthropic 黑客马拉松获奖者维护的开源项目，整理了面向 Claude Code 的生产级配置集合。仓库随工具链公开发布后的版本迭代与社群反馈持续演进，覆盖了智能体（Agents）、技能（Skills）、钩子（Hooks）、命令（Commands）、规则（Rules）以及 MCP 配置等主题。
 
 该项目的核心价值在于提供了一套经过实战检验的工作流配置，帮助开发者极大提升使用 Claude Code 进行软件开发的效率。通过这些配置，Claude Code 能够更好地理解项目上下文、遵循编码规范、自动化重复性工作，并与各种外部服务进行集成。
 
 ### 1.2 项目来源与背景
 
-该项目最初由 Affaan Mustafa 创建，他凭借使用 Claude Code 构建的 zenith.chat 项目赢得了 Anthropic x Forum Ventures 黑客马拉松。在长达 10 个月的日常使用中，他不断优化和完善这些配置，最终形成了这套完整的配置集合。
+该项目最初由 Affaan Mustafa 创建，他曾在 Anthropic x Forum Ventures 黑客马拉松中以 zenith.chat 等项目展示智能体方向的工程实践；随后在项目推进与 Claude Code 进入公开可用的阶段里，将这些实践沉淀并逐步扩展成可复用的配置体系。
 
 中文版项目由社区维护，提供了完整的中文文档和本地化支持，使得中文用户能够更方便地理解和使用这些配置。
 
