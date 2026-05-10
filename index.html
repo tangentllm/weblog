@@ -919,6 +919,17 @@ function buildExcerptFromMarkdown(markdownText) {
   return plain.slice(0, 92) + (plain.length > 92 ? '...' : '');
 }
 
+/** 分享/Open Graph 用的绝对图址；data: 内联封面无法被社交平台抓取，退回默认 og 图 */
+function coverUrlForOpenGraph(cover, baseUrl) {
+  const b = typeof baseUrl === 'string' ? baseUrl : '';
+  const fallback = `${b}og-image.png`;
+  if (!cover || typeof cover !== 'string') return fallback;
+  const c = cover.trim();
+  if (!c || c.startsWith('data:')) return fallback;
+  if (/^https?:\/\//i.test(c)) return c;
+  return b + c.replace(/^\.\//, '');
+}
+
 function rootBasePathPrefix() {
   const pathname = window.location.pathname || '/';
   let basePath = pathname.endsWith('/index.html')
@@ -1100,6 +1111,43 @@ function applyPostDerivedState() {
   }
 }
 
+/**
+ * 将同源 SVG 封面内联为 data URL，缓解子路径托管与部分环境对外链 SVG 作 <img> 时的兼容问题。
+ * 拉取失败时保留原始 URL（由 installImageFallbacks 再尝试备选路径）。
+ */
+async function hydrateCoversSvgToDataUrls(items) {
+  if (!items || !items.length) return;
+  const urls = [
+    ...new Set(
+      items
+        .map((it) => (typeof it.cover === 'string' ? it.cover.trim() : ''))
+        .filter((u) => u && /\.svg(\?|#|$)/i.test(u) && !/^data:/i.test(u)),
+    ),
+  ];
+  if (!urls.length) return;
+  const pairs = await Promise.all(
+    urls.map(async (url) => {
+      try {
+        const r = await fetch(url, { cache: 'no-store', credentials: 'omit' });
+        if (!r.ok) return [url, null];
+        let text = await r.text();
+        text = text.replace(/^\uFEFF/, '');
+        if (!/<\s*svg[\s>]/i.test(text)) return [url, null];
+        const dataUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(text)}`;
+        return [url, dataUrl];
+      } catch (_) {
+        return [url, null];
+      }
+    }),
+  );
+  const map = new Map(pairs);
+  items.forEach((it) => {
+    const u = typeof it.cover === 'string' ? it.cover.trim() : '';
+    const data = map.get(u);
+    if (data) it.cover = data;
+  });
+}
+
 async function loadPostsFromManifest() {
   const response = await fetch(postDataSource.manifestPath, {
     cache: 'no-store',
@@ -1125,6 +1173,7 @@ async function loadPostsFromManifest() {
   );
   posts = fetchedPosts;
   applyPostDerivedState();
+  await hydrateCoversSvgToDataUrls(posts);
 }
 
 async function loadProjectsFromManifest() {
@@ -1152,6 +1201,7 @@ async function loadProjectsFromManifest() {
     }),
   );
   projectsData = fetchedProjects;
+  await hydrateCoversSvgToDataUrls(projectsData);
 }
 
 /* ============================
@@ -1450,7 +1500,7 @@ function renderPost(app, slug) {
     description: post.excerpt || post.title,
     keywords: post.tags.join(','),
     url: `${baseUrl}#/post/${post.slug}`,
-    image: post.cover ? (post.cover.startsWith('http') ? post.cover : baseUrl + post.cover.replace('./', '')) : baseUrl + 'og-image.png',
+    image: coverUrlForOpenGraph(post.cover, baseUrl),
     type: 'article'
   });
 
@@ -2007,7 +2057,7 @@ function renderProjectDetail(app, slug) {
     description: project.summary || project.subtitle,
     keywords: project.tags.join(','),
     url: `${baseUrl}#/project/${project.slug}`,
-    image: project.cover ? (project.cover.startsWith('http') ? project.cover : baseUrl + project.cover.replace('./', '')) : baseUrl + 'og-image.png',
+    image: coverUrlForOpenGraph(project.cover, baseUrl),
     type: 'article'
   });
 
