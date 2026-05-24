@@ -43,7 +43,7 @@ async function main() {
       continue;
     }
     const slug = meta.slug || fileName.replace(/\.md$/, "");
-    manifest.push({
+    const entry = {
       slug,
       title: meta.title || slug,
       date: meta.date || "2026-01-01",
@@ -53,7 +53,10 @@ async function main() {
       cover: meta.cover || `https://picsum.photos/seed/${slug}/1000/500`,
       excerpt: meta.excerpt || "",
       file: `./content/posts/${fileName}`,
-    });
+    };
+    if (meta.format) entry.format = meta.format;
+    if (meta.htmlFile) entry.htmlFile = meta.htmlFile;
+    manifest.push(entry);
   }
 
   manifest.sort((a, b) => new Date(b.date) - new Date(a.date));
