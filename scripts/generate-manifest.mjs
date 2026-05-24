@@ -56,6 +56,7 @@ async function main() {
     };
     if (meta.format) entry.format = meta.format;
     if (meta.htmlFile) entry.htmlFile = meta.htmlFile;
+    if (meta.pinned === "true" || meta.pinned === true) entry.pinned = true;
     manifest.push(entry);
   }
 

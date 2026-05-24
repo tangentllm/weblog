@@ -1,5 +1,24 @@
 [
   {
+    "slug": "mcp-kw-guide",
+    "title": "深入理解 MCP — Model Context Protocol 完全技术指南",
+    "date": "2025-05-10",
+    "readTime": "20 分钟",
+    "category": "工程实践",
+    "tags": [
+      "MCP",
+      "Agent",
+      "Protocol",
+      "Anthropic"
+    ],
+    "cover": "./content/assets/posts/covers/mcp-kw.svg",
+    "excerpt": "从 N×M 集成困境到统一标准协议，全面剖析 MCP 的架构、通信机制、工程实践与未来边界。",
+    "file": "./content/posts/mcp_kw.md",
+    "format": "html",
+    "htmlFile": "./content/posts/mcp_kw.html",
+    "pinned": true
+  },
+  {
     "slug": "rag-production-refactor",
     "title": "RAG 系统重构实战：从 Demo 到生产的那些坑",
     "date": "2025-05-08",
@@ -93,24 +112,6 @@
     "cover": "./content/assets/posts/covers/tokenization.png",
     "excerpt": "系统讲清词级、字符级与子词级分词，以及 BPE、WordPiece、SentencePiece 的差异与实践要点。",
     "file": "./content/posts/tokenization.md"
-  },
-  {
-    "slug": "mcp-kw-guide",
-    "title": "深入理解 MCP — Model Context Protocol 完全技术指南",
-    "date": "2025-04-18",
-    "readTime": "20 分钟",
-    "category": "工程实践",
-    "tags": [
-      "MCP",
-      "Agent",
-      "Protocol",
-      "Anthropic"
-    ],
-    "cover": "./content/assets/posts/covers/mcp-kw.svg",
-    "excerpt": "从 N×M 集成困境到统一标准协议，全面剖析 MCP 的架构、通信机制、工程实践与未来边界。",
-    "file": "./content/posts/mcp_kw.md",
-    "format": "html",
-    "htmlFile": "./content/posts/mcp_kw.html"
   },
   {
     "slug": "attention-from-scratch",

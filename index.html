@@ -474,15 +474,36 @@
     html:not(.dark) ::-webkit-scrollbar-track { background: #fafaf9; }
     html:not(.dark) ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
 
-    /* 内联 HTML 长文（如 MCP 指南） */
-    .html-article-embed {
-      width: 100%;
-      border-radius: 12px;
-      overflow: hidden;
+    /* HTML 长文：iframe 原样渲染独立 HTML */
+    .html-article-page {
+      max-width: none !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      background: #0d0d1a;
     }
     .html-article-shell {
-      max-width: 920px;
-      margin: 0 auto;
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 0;
+      background: #0d0d1a;
+    }
+    .html-article-frame {
+      display: block;
+      width: 100%;
+      min-height: 480px;
+      border: 0;
+      border-radius: 0;
+      overflow: hidden;
+      background: #0d0d1a;
+      vertical-align: top;
+    }
+    .html-article-nav {
+      max-width: 1100px;
+      margin-left: auto;
+      margin-right: auto;
+      padding-left: clamp(28px, 5vw, 72px);
+      padding-right: clamp(28px, 5vw, 72px);
     }
 
     /* === 加载动画 === */
@@ -806,32 +827,68 @@ function parsePostFrontmatter(markdownText) {
   return data;
 }
 
-/** 将独立 HTML 文章内联进站点，并限定样式作用域 */
-function prepareHtmlArticleContent(htmlText) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(String(htmlText || '').replace(/^\uFEFF/, ''), 'text/html');
-  let css = doc.querySelector('style')?.textContent || '';
-  css = css
-    .replace(/:root\b/g, '.html-article-embed')
-    .replace(/\bbody\b/g, '.html-article-embed');
-  const wrap = doc.querySelector('.wrap');
-  const inner = wrap ? wrap.innerHTML : doc.body.innerHTML;
-  return `<style>${css}</style><div class="html-article-embed">${inner}</div>`;
+/** HTML 长文 iframe 地址（embed=1 启用原文内的嵌入样式修正） */
+function htmlArticleFrameSrc(htmlFile) {
+  const base = resolveAssetUrl(htmlFile);
+  if (!base) return '';
+  return `${base}${base.includes('?') ? '&' : '?'}embed=1`;
 }
 
-function initHtmlArticleAnchors(scope) {
-  if (!scope) return;
-  scope.querySelectorAll('.html-article-embed a[href^="#"]').forEach((anchor) => {
-    const href = anchor.getAttribute('href') || '';
-    const id = href.slice(1);
-    if (!id || anchor.dataset.hashFixed === '1') return;
-    anchor.dataset.hashFixed = '1';
-    anchor.addEventListener('click', (event) => {
-      event.preventDefault();
-      const target = scope.querySelector(`#${CSS.escape(id)}`);
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  });
+function escapeHtmlAttr(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;');
+}
+
+/** 按原文档高度自适应 iframe，保持与独立打开 mcp_kw.html 相同的排版 */
+function initHtmlArticleFrame(scope) {
+  const frame = scope?.querySelector('.html-article-frame');
+  if (!frame) return;
+
+  let resizeObserver = null;
+  const errorEl = scope.querySelector('.html-article-frame-error');
+
+  const fitHeight = () => {
+    try {
+      const doc = frame.contentDocument;
+      if (!doc) return;
+      const height = Math.max(
+        doc.documentElement?.scrollHeight || 0,
+        doc.body?.scrollHeight || 0,
+        480,
+      );
+      frame.style.height = `${height}px`;
+    } catch (_) {
+      /* 跨域时无法读高度，保留 min-height */
+    }
+  };
+
+  const onLoad = () => {
+    try {
+      const doc = frame.contentDocument;
+      const ok = Boolean(doc?.querySelector('.wrap'));
+      if (!ok) {
+        frame.classList.add('hidden');
+        errorEl?.classList.remove('hidden');
+        return;
+      }
+      errorEl?.classList.add('hidden');
+      frame.classList.remove('hidden');
+      fitHeight();
+      if (typeof ResizeObserver !== 'undefined' && doc.body) {
+        resizeObserver?.disconnect();
+        resizeObserver = new ResizeObserver(fitHeight);
+        resizeObserver.observe(doc.documentElement);
+        resizeObserver.observe(doc.body);
+      }
+    } catch (_) {
+      fitHeight();
+    }
+  };
+
+  frame.addEventListener('load', onLoad);
+  window.addEventListener('resize', fitHeight);
 }
 
 // 加载动画控制
@@ -1114,7 +1171,7 @@ function normalizeLoadedPost(item, markdownText, index) {
     readTime: item.readTime || fm.readTime || estimateReadTimeFromMarkdown(contentMarkdown),
     tags: Array.isArray(item.tags) && item.tags.length ? item.tags : parseTagsFromMeta(fm.tags),
     category: item.category || fm.category || '随想与思考',
-    pinned: Boolean(item.pinned),
+    pinned: Boolean(item.pinned || fm.pinned === 'true' || fm.pinned === true),
     cover: resolveAssetUrl(item.cover || fm.cover || `https://picsum.photos/seed/${safeSlug}/800/400.jpg`),
     format: isHtml ? 'html' : 'markdown',
     htmlFile: isHtml ? htmlFile : '',
@@ -1170,13 +1227,27 @@ function applyPostDerivedState() {
     cat.count = categoryCountMap[cat.name] || 0;
   });
 
-  const hasPinned = posts.some((post) => post.pinned);
-  if (!hasPinned) {
-    posts
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .forEach((post, idx) => {
-        post.pinned = idx < 4;
-      });
+  posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const explicitPinned = new Set(
+    posts.filter((post) => post.pinned).map((post) => post.slug),
+  );
+  if (explicitPinned.size === 0) {
+    posts.forEach((post, idx) => {
+      post.pinned = idx < 4;
+    });
+  } else {
+    posts.forEach((post) => {
+      if (!explicitPinned.has(post.slug)) post.pinned = false;
+    });
+    let pinSlots = explicitPinned.size;
+    for (const post of posts) {
+      if (pinSlots >= 4) break;
+      if (!post.pinned) {
+        post.pinned = true;
+        pinSlots += 1;
+      }
+    }
   }
 }
 
@@ -1239,17 +1310,7 @@ async function loadPostsFromManifest() {
         : '';
       const post = normalizeLoadedPost(item, markdownText, index);
       if (post.format === 'html' && post.htmlFile) {
-        try {
-          const htmlResponse = await fetch(resolveAssetUrl(post.htmlFile), { cache: 'no-store' });
-          if (htmlResponse.ok) {
-            post.content = prepareHtmlArticleContent(await htmlResponse.text());
-          } else {
-            post.content = '<p class="text-center py-12 dark:text-[#888] text-[#999]">HTML 正文加载失败（HTTP ' + htmlResponse.status + '）。</p>';
-          }
-        } catch (error) {
-          console.warn('HTML post load failed:', post.slug, error);
-          post.content = '<p class="text-center py-12 dark:text-[#888] text-[#999]">HTML 正文加载失败，请检查网络或文件路径。</p>';
-        }
+        post.content = '';
       }
       return post;
     }),
@@ -1365,7 +1426,7 @@ function router() {
   if (hashPath === '#/' || hashPath === '') {
     renderHome(app);
   } else if (hashPath.startsWith('#/post/')) {
-    const slug = hash.replace('#/post/', '');
+    const slug = decodeURIComponent(hashPath.replace(/^#\/post\//, ''));
     renderPost(app, slug);
   } else if (hashPath === '#/categories') {
     renderCategories(app);
@@ -1396,7 +1457,7 @@ function router() {
   const runImmediateEnhancements = () => {
     renderLucideIconsSafely();
     installImageFallbacks(app);
-    if (isHtmlPostRoute) initHtmlArticleAnchors(app);
+    if (isHtmlPostRoute) initHtmlArticleFrame(app);
     // 立即初始化 reveal，避免关于页内容延迟出现
     initReveal();
   };
@@ -1517,7 +1578,10 @@ function renderHome(app) {
       <div class="reveal">
         <div class="flex items-center justify-between mb-8">
           <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111]">最新文章</h2>
-          <a href="#/categories" class="text-sm dark:text-[#666] text-[#999] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors">查看全部</a>
+          <div class="flex items-center gap-3 text-sm dark:text-[#666] text-[#999]">
+            <span>共 ${posts.length} 篇</span>
+            <a href="#/categories" class="hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors">查看全部</a>
+          </div>
         </div>
         ${hasPosts ? `
           <div class="space-y-0 dark:divide-y dark:divide-[#1a1a1a] divide-y divide-[#eee]">
@@ -1599,37 +1663,19 @@ function renderPost(app, slug) {
 
   if (post.format === 'html') {
     app.innerHTML = `
-    <article class="max-w-6xl mx-auto px-6 pt-24 md:pt-28 pb-20">
-      <header class="reveal mb-8">
-        <div class="flex flex-wrap gap-2 mb-4" role="list" aria-label="文章标签">
-          ${post.tags.map(t => `<span class="tag" role="listitem">${t}</span>`).join('')}
-        </div>
-        <div class="flex items-center gap-3 text-sm dark:text-[#666] text-[#999] mb-4" role="contentinfo" aria-label="文章元信息">
-          <time datetime="${post.date}">${formatDate(post.date)}</time>
-          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
-          <span>${post.readTime}</span>
-          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
-          <span>${post.category}</span>
-          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
-          <span id="view-count-${post.slug}" class="hidden flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            <span>加载中...</span>
-          </span>
-        </div>
-        <div class="flex items-center gap-2 pt-4 border-t dark:border-[#1e1e1e] border-[#eee]" role="group" aria-label="分享选项">
-          <span class="text-sm dark:text-[#666] text-[#999] mr-2">分享：</span>
-          <button onclick="shareToWeChat('${post.slug}')" class="share-btn" title="分享到微信" aria-label="分享到微信">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/></svg>
-          </button>
-          <button onclick="copyShareLink('${post.slug}')" class="share-btn" title="复制链接" aria-label="复制链接">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-          </button>
-        </div>
-      </header>
-      <div class="reveal html-article-shell">
-        ${post.content}
+    <article class="html-article-page w-full mx-0 pt-20 md:pt-24 pb-10">
+      <div class="html-article-shell">
+        <p class="html-article-frame-error hidden text-center py-12 text-[#a09ec0]">HTML 正文加载失败，请用本地静态服务打开（勿用 file:// 直接打开）。</p>
+        <iframe
+          class="html-article-frame"
+          src="${htmlArticleFrameSrc(post.htmlFile)}"
+          title="${escapeHtmlAttr(post.title)}"
+          loading="lazy"
+          referrerpolicy="no-referrer"
+          scrolling="no"
+        ></iframe>
       </div>
-      <div class="mt-16 pt-8 border-t dark:border-[#1e1e1e] border-[#eee] grid grid-cols-2 gap-4" role="navigation" aria-label="文章导航">
+      <div class="html-article-nav mt-10 pt-8 border-t border-[rgba(255,255,255,0.07)] grid grid-cols-2 gap-4" role="navigation" aria-label="文章导航">
         ${prevPost ? `
         <a href="#/post/${prevPost.slug}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors" aria-label="上一篇：${prevPost.title}">
           <p class="text-xs dark:text-[#555] text-[#bbb] mb-1">上一篇</p>
@@ -1647,7 +1693,7 @@ function renderPost(app, slug) {
     `;
     updateViewCount(post.slug);
     queueMicrotask(() => {
-      initHtmlArticleAnchors(app);
+      initHtmlArticleFrame(app);
       installImageFallbacks(app);
     });
     return;
@@ -3450,6 +3496,7 @@ async function initApp() {
     console.log('作品自动加载失败，回退内置数据。', error);
   }
   router();
+  hideLoader();
 }
 
 initApp();
