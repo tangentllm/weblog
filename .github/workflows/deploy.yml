@@ -35,6 +35,12 @@ jobs:
       - name: Generate projects manifest
         run: node scripts/generate-project-manifest.mjs
 
+      - name: Generate sitemap and prerender posts
+        run: |
+          node scripts/generate-sitemap.mjs
+          node scripts/prerender-posts.mjs
+          node scripts/copy-spa-fallback.mjs
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

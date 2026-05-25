@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>论文解读：Retrieval-Augmented Generation 的演化路径 - Tangentllm Notes</title>
+  <meta name="description" content="梳理 RAG 在检索粒度、索引结构和训练范式上的关键演进，并总结落地启发。">
+  <link rel="canonical" href="https://tangentllm.github.io/weblog/post/paper-rag-survey/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="论文解读：Retrieval-Augmented Generation 的演化路径">
+  <meta property="og:description" content="梳理 RAG 在检索粒度、索引结构和训练范式上的关键演进，并总结落地启发。">
+  <meta property="og:url" content="https://tangentllm.github.io/weblog/post/paper-rag-survey/">
+  <meta property="og:locale" content="zh_CN">
+  <meta name="robots" content="index, follow">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"论文解读：Retrieval-Augmented Generation 的演化路径","description":"梳理 RAG 在检索粒度、索引结构和训练范式上的关键演进，并总结落地启发。","datePublished":"2025-03-18","inLanguage":"zh-CN","author":{"@type":"Person","name":"tangentllm"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://tangentllm.github.io/weblog/post/paper-rag-survey/"},"url":"https://tangentllm.github.io/weblog/post/paper-rag-survey/"}</script>
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:48rem;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222}
+    a{color:#00a870}
+    .meta{color:#666;font-size:.9rem}
+    article{margin-top:1.5rem}
+    code{background:#f4f4f4;padding:.1em .35em;border-radius:4px}
+  </style>
+</head>
+<body>
+  <p class="meta"><a href="https://tangentllm.github.io/weblog/">Tangentllm Notes</a> · 2025-03-18</p>
+  <h1>论文解读：Retrieval-Augmented Generation 的演化路径</h1>
+  <p>梳理 RAG 在检索粒度、索引结构和训练范式上的关键演进，并总结落地启发。</p>
+  <p><a href="https://tangentllm.github.io/weblog/?view=post&slug=paper-rag-survey">在交互式阅读器中打开全文 →</a></p>
+  <article><p><br><h2>论文背景</h2><br><br>RAG 的根本问题是：如何在不重训大模型参数的前提下，提升事实性与可更新性。<br><br>&gt; “Parametric memory is powerful but stale; non-parametric memory is fresh but noisy.”  <br>&gt; —— 来自多篇 RAG 系列工作的共同观点<br><br><h2>方法主线</h2><br><br>1. 先检索后生成（retrieve-then-read）<br>2. 生成中动态检索（interleaved retrieval）<br>3. 多跳检索与证据聚合<br><br>``<code>mermaid<br>flowchart LR<br>    A[Raw Docs] --&gt; B[Chunking]<br>    B --&gt; C[Embedding]<br>    C --&gt; D[Vector DB]<br>    Q[User Query] --&gt; E[Retriever]<br>    D --&gt; E<br>    E --&gt; F[Reranker]<br>    F --&gt; G[LLM Generator]<br>    G --&gt; H[Cited Answer]<br></code>``<br><br>*图1：RAG 标准流水线，从文档处理到带引用回答*<br><br><h2>结果解读</h2><br><br>多数任务中，召回质量决定上限，重排质量决定稳定性。生成模型能力越强，越容易放大检索错误，因此”检索质量控制”比”换更大模型”更重要。<br><br><h2>我的实践启发</h2><br><br>- 先做语料治理，再做向量索引参数调优。  <br>- 引入引用标注与证据可视化，用户信任度提升明显。  <br>- 评估时必须分离“检索错”与“生成错”。<br></p></article>
+  <script>location.replace("https://tangentllm.github.io/weblog/?view=post&slug=paper-rag-survey");</script>
+</body>
+</html>

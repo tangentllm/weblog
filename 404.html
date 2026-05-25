@@ -2765,7 +2765,9 @@ function initReveal() {
 // 动态更新 SEO meta 标签
 function updateMetaTags(data) {
   const defaultUrl = absolutePageUrl();
-  const defaultImage = `${SITE_ORIGIN}${getSiteBasePath() || ''}/og-image.png`.replace('//og', '/og');
+  const defaultImage = absolutePageUrl('og-image.png').replace(/\/$/, '') === `${SITE_ORIGIN}/weblog/og-image.png`
+    ? `${SITE_ORIGIN}/weblog/og-image.png`
+    : `${SITE_ORIGIN}${getSiteBasePath()}/og-image.png`;
 
   document.title = data.title || 'Tangentllm Notes — 未来已来';
   updateMetaTag('name', 'description', data.description || '专注于大模型技术的学习笔记、实践经验与项目分享。');

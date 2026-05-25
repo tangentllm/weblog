@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM 微调实战笔记：SFT + LoRA + 评估闭环 - Tangentllm Notes</title>
+  <meta name="description" content="从数据构造、训练参数到离线评估，记录一次可复现的指令微调流程与常见坑。">
+  <link rel="canonical" href="https://tangentllm.github.io/weblog/post/llm-sft-note/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="LLM 微调实战笔记：SFT + LoRA + 评估闭环">
+  <meta property="og:description" content="从数据构造、训练参数到离线评估，记录一次可复现的指令微调流程与常见坑。">
+  <meta property="og:url" content="https://tangentllm.github.io/weblog/post/llm-sft-note/">
+  <meta property="og:locale" content="zh_CN">
+  <meta name="robots" content="index, follow">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"LLM 微调实战笔记：SFT + LoRA + 评估闭环","description":"从数据构造、训练参数到离线评估，记录一次可复现的指令微调流程与常见坑。","datePublished":"2025-03-14","inLanguage":"zh-CN","author":{"@type":"Person","name":"tangentllm"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://tangentllm.github.io/weblog/post/llm-sft-note/"},"url":"https://tangentllm.github.io/weblog/post/llm-sft-note/"}</script>
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:48rem;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222}
+    a{color:#00a870}
+    .meta{color:#666;font-size:.9rem}
+    article{margin-top:1.5rem}
+    code{background:#f4f4f4;padding:.1em .35em;border-radius:4px}
+  </style>
+</head>
+<body>
+  <p class="meta"><a href="https://tangentllm.github.io/weblog/">Tangentllm Notes</a> · 2025-03-14</p>
+  <h1>LLM 微调实战笔记：SFT + LoRA + 评估闭环</h1>
+  <p>从数据构造、训练参数到离线评估，记录一次可复现的指令微调流程与常见坑。</p>
+  <p><a href="https://tangentllm.github.io/weblog/?view=post&slug=llm-sft-note">在交互式阅读器中打开全文 →</a></p>
+  <article><p><br><h2>任务定义</h2><br><br>目标：让基础模型在“技术问答 + 代码解释”场景下提升可控性与稳定性。<br><br>``<code>mermaid<br>flowchart LR<br>    A[Instruction Data] --&gt; B[SFT]<br>    B --&gt; C[LoRA Adapter]<br>    C --&gt; D[Offline Eval]<br>    D --&gt; E[Online A/B]<br>    E --&gt; F[Failure Replay Set]<br>    F --&gt; A<br></code>`<code><br><br>*图1：SFT + LoRA 的训练与评估回流闭环*<br><br><h2>数据准备</h2><br><br></code>`<code>json<br>{<br>  &quot;instruction&quot;: &quot;解释梯度裁剪的意义&quot;,<br>  &quot;input&quot;: &quot;&quot;,<br>  &quot;output&quot;: &quot;梯度裁剪可以限制梯度范数，避免训练早期出现梯度爆炸。&quot;<br>}<br></code>`<code><br><br><h2>训练配置（LoRA）</h2><br><br></code>`<code>bash<br>python train.py \<br>  --model_name_or_path meta-llama/Llama-3-8b \<br>  --lora_r 64 --lora_alpha 128 \<br>  --learning_rate 2e-5 \<br>  --per_device_train_batch_size 2 \<br>  --gradient_accumulation_steps 16<br></code>``<br><br>&lt;details&gt;<br>&lt;summary&gt;参数选择经验（展开查看）&lt;/summary&gt;<br><br>- 对小数据集，优先减小学习率，避免过拟合到模板化表达。  <br>- 对长回答任务，增大 max_seq_length 并配合 packing。  <br>- 先做烟雾测试，再做完整训练，能节省大量排障时间。  <br><br>&lt;/details&gt;<br><br><h2>评估闭环</h2><br><br>1. 离线：抽样高价值问题做人审打分。  <br>2. 在线：灰度 A/B 对比平均回复长度与用户停留时间。  <br>3. 回流：将低分样本与拒答失败样本纳入下一轮训练。  <br><br></p></article>
+  <script>location.replace("https://tangentllm.github.io/weblog/?view=post&slug=llm-sft-note");</script>
+</body>
+</html>
