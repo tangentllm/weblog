@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="ccBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="50%" stop-color="#161b22"/>
+      <stop offset="100%" stop-color="#1f2937"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#ccBg)"/>
+  <g opacity="0.14" stroke="#58a6ff" stroke-width="1" fill="none">
+    <line x1="0" y1="210" x2="1200" y2="210"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+  </g>
+  <g transform="translate(600, 255)" font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <rect x="-260" y="-95" width="520" height="190" rx="14" fill="#21262d" stroke="#58a6ff" stroke-width="2"/>
+    <circle cx="-220" cy="-72" r="6" fill="#ff5f56"/>
+    <circle cx="-195" cy="-72" r="6" fill="#ffbd2e"/>
+    <circle cx="-170" cy="-72" r="6" fill="#3fb950"/>
+    <text x="0" y="-25" font-size="48" fill="#58a6ff" font-weight="800">Claude Code</text>
+    <text x="0" y="25" font-size="28" fill="#e6edf3" font-weight="700">Best Practices</text>
+    <text x="0" y="62" font-size="16" fill="#8b949e" font-weight="500">2026 productivity guide</text>
+  </g>
+  <text x="600" y="520" font-family="Arial, Helvetica, sans-serif" font-size="30" fill="#58a6ff" text-anchor="middle" font-weight="800">Claude Code deep dive</text>
+  <text x="600" y="560" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#8b949e" text-anchor="middle">CLAUDE.md, Plan Mode, subagents</text>
+</svg>

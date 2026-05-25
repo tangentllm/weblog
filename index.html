@@ -867,7 +867,7 @@ function initHtmlArticleFrame(scope) {
   const onLoad = () => {
     try {
       const doc = frame.contentDocument;
-      const ok = Boolean(doc?.querySelector('.wrap'));
+      const ok = Boolean(doc?.querySelector('.wrap, .container'));
       if (!ok) {
         frame.classList.add('hidden');
         errorEl?.classList.remove('hidden');
