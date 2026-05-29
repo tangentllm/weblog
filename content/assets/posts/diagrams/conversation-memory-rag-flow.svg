@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="580" height="340" viewBox="0 0 580 340" role="img" aria-labelledby="title desc">
+  <title id="title">Retrieval-augmented conversation memory flow</title>
+  <desc id="desc">Turns stored to vector index; each user message triggers search and top-k injection into prompt.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="580" height="340" fill="#f8fafc" rx="8"/>
+  <text x="290" y="26" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#0f172a">Conversation history as RAG index</text>
+  <rect x="30" y="50" width="120" height="44" fill="#dbeafe" stroke="#2563eb" rx="6"/>
+  <text x="90" y="77" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#1e40af">new turn</text>
+  <line x1="150" y1="72" x2="175" y2="72" stroke="#64748b" marker-end="url(#arrow)"/>
+  <rect x="180" y="50" width="130" height="44" fill="#e0e7ff" stroke="#4f46e5" rx="6"/>
+  <text x="245" y="70" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#312e81">chunk + embed</text>
+  <text x="245" y="84" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#312e81">(bge / FAISS)</text>
+  <line x1="310" y1="72" x2="335" y2="72" stroke="#64748b" marker-end="url(#arrow)"/>
+  <rect x="340" y="50" width="120" height="44" fill="#fef3c7" stroke="#d97706" rx="6"/>
+  <text x="400" y="77" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#92400e">vector store</text>
+  <rect x="30" y="140" width="120" height="44" fill="#dbeafe" stroke="#2563eb" rx="6"/>
+  <text x="90" y="167" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#1e40af">user query</text>
+  <line x1="150" y1="162" x2="200" y2="162" stroke="#64748b" marker-end="url(#arrow)"/>
+  <rect x="205" y="140" width="110" height="44" fill="#fce7f3" stroke="#db2777" rx="6"/>
+  <text x="260" y="167" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#9d174d">semantic search</text>
+  <line x1="315" y1="162" x2="340" y2="162" stroke="#64748b" marker-end="url(#arrow)"/>
+  <rect x="345" y="140" width="115" height="44" fill="#d1fae5" stroke="#059669" rx="6"/>
+  <text x="402" y="167" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#065f46">top-k snippets</text>
+  <line x1="402" y1="184" x2="402" y2="210" stroke="#64748b" marker-end="url(#arrow)"/>
+  <rect x="180" y="215" width="220" height="50" fill="#1e293b" rx="6"/>
+  <text x="290" y="238" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#fff">ContextBuilder.build()</text>
+  <text x="290" y="254" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#94a3b8">system + retrieved + recent window</text>
+  <line x1="290" y1="265" x2="290" y2="285" stroke="#64748b" marker-end="url(#arrow)"/>
+  <rect x="230" y="290" width="120" height="36" fill="#2563eb" rx="6"/>
+  <text x="290" y="312" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#fff">LLM API</text>
+  <text x="480" y="100" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#64748b">Same stack as</text>
+  <text x="480" y="115" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#64748b">production RAG</text>
+</svg>
