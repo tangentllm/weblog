@@ -1211,7 +1211,10 @@ function buildImageUrlCandidates(inputUrl) {
   }
   const prefix = siteBase ? `${siteBase}/` : '/';
   push(new URL(`${prefix}${rel}`, window.location.origin).toString());
-  push(`${window.location.origin}/${rel}`);
+  // GitHub Pages 子路径部署时不要回退到缺 /weblog/ 的根路径，否则会 404
+  if (!siteBase) {
+    push(`${window.location.origin}/${rel}`);
+  }
 
   return Array.from(candidates);
 }

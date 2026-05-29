@@ -1205,7 +1205,9 @@ function buildImageUrlCandidates(inputUrl) {
   const prefix = siteBase ? `${siteBase}/` : '/';
   const rel = cleaned.replace(/^\/+/, '');
   push(new URL(`${prefix}${rel}`, window.location.origin).toString());
-  push(`${window.location.origin}/${rel}`);
+  if (!siteBase) {
+    push(`${window.location.origin}/${rel}`);
+  }
 
   return Array.from(candidates);
 }
