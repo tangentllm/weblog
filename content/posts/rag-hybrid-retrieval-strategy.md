@@ -657,7 +657,7 @@ https://www.youtube.com/watch?v=EaOQc8ppJdU
 - [论文解读：RAG 的演化路径](https://tangentllm.github.io/weblog/post/paper-rag-survey/)：检索增强生成背景 
 - [RAG 系统重构实战：从 Demo 到生产的那些坑](https://tangentllm.github.io/weblog/post/rag-production-refactor/)：bge-m3、FAISS、切块与索引持久化 
 - [RAG 系统重构实战（Reranker 一节）](https://tangentllm.github.io/weblog/post/rag-production-refactor/)：bge-reranker-v2-m3 与 top-10/top-3 
- 
+- [Embedding 模型微调：提升 RAG 领域检索](https://tangentllm.github.io/weblog/post/embedding-finetune-domain-rag/)：混合检索与 Reranker 仍不足时的向量空间领域适配
 
 ---
 
