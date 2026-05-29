@@ -1235,6 +1235,14 @@ function installImageFallbacks(scope = document) {
         img.src = candidates[idx];
         return;
       }
+      const srcNow = img.getAttribute('src') || '';
+      const isDiagramAsset = /\/diagrams\//i.test(original) || /\/diagrams\//i.test(srcNow);
+      if (isDiagramAsset) {
+        img.alt = (img.alt || 'Diagram') + ' (load failed)';
+        img.style.minHeight = '120px';
+        img.style.background = 'rgba(128,128,128,0.12)';
+        return;
+      }
       img.src = buildInlineCoverDataUrl(img.alt || 'Tangentllm Notes');
     });
   });

@@ -219,7 +219,7 @@ flowchart BT
 
 ![RAG 四级缓存金字塔：Query Embedding、检索结果、语义答案、全链路快照 - Tangentllm Notes](./content/assets/posts/diagrams/rag-cache-layers.svg)
 
-*图 4b：金字塔示意（与站点其余配图路径一致，便于 SPA 解析）。*
+*图 4b：四级缓存金字塔示意（SVG 内文为英文标签，避免损坏编码导致浏览器无法加载）。*
 
 | 层级 | 缓存什么 | 命中收益 | 一致性风险 |
 |---|---|---|---|
