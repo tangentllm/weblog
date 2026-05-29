@@ -615,11 +615,22 @@ results = client.hybrid_search(
 
 ---
 
-## 视频：Hybrid Search 直观讲解
+## Hybrid Search 直觉图（团队 onboarding）
 
-Weaviate 对 hybrid search（稀疏 + 稠密 + 融合）有简短可视化说明，适合给团队做 onboarding：
+给评审或新同学讲解时，可先用下图对齐概念：**两路并行召回、分数不可直接相加、RRF 做秩融合**。细节与参数见上文「图 2」流水线。
 
-https://www.youtube.com/watch?v=EaOQc8ppJdU
+*图 7：混合检索最小心智模型（无外链视频依赖）。*
+
+```mermaid
+flowchart LR
+  Q["User Query"] --> SP["BM25 稀疏路"]
+  Q --> DE["稠密向量路"]
+  SP --> FUSE["RRF 秩融合"]
+  DE --> FUSE
+  FUSE --> OUT["Top-K_f 候选"]
+  OUT --> RK["可选 Reranker"]
+  RK --> CTX["送入 LLM Context"]
+```
 
 ---
 

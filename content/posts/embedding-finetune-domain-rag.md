@@ -34,6 +34,17 @@ excerpt: 通用 bge 搜不准领域文档？从对比学习、难负例到 Recal
 4. **训练与早停**：MNRL、batch≥64、验证集 Recall 不再升则停。
 5. **re-embed 上线**：新索引版本、A/B、保留回滚路径。
 
+*图 0：从评测到上线的五步闭环；任何一步跳过都容易「训练集好看、线上崩盘」。*
+
+```mermaid
+flowchart LR
+  A["1 建评测集"] --> B["2 跑基线 Recall@K"]
+  B --> C["3 造训练对 + 难负例"]
+  C --> D["4 MNRL 训练 / 早停"]
+  D --> E["5 re-embed + A/B"]
+  E -->|指标回退| B
+```
+
 ---
 
 ## 前置知识
@@ -104,6 +115,8 @@ $$
 
 训练时 batch 越大，负例越多，判别边界往往越清晰；显存允许时 **batch ≥ 64** 是常见起点（[Sentence Transformers 训练文档](https://www.sbert.net/docs/training/overview.html)）。
 
+*图 2：微调前 query 与正文档距离远、难负例易混淆；微调后正例拉近、难负例被推远。*
+
 ![Embedding 模型微调前后领域检索向量空间对比](/weblog/content/assets/posts/diagrams/embedding-finetune-vector-space.svg)
 
 
@@ -121,6 +134,23 @@ $$
 1. **搜索/客服日志**：真实 query + 点击或人工标注的正确 chunk。
 2. **人工标注**：贵但最稳，适合法务、医疗等高风险域。
 3. **LLM 合成**：从文档块反推问题，成本低，必须做分布控制（见下）。
+
+*图 3：训练数据从语料到 (query, doc+) 对的数据流；held-out 必须按文档 ID 隔离。*
+
+```mermaid
+flowchart TB
+  CORP["领域语料 / Chunk"] --> SRC{"数据来源"}
+  SRC --> LOG["搜索 / 客服日志"]
+  SRC --> ANN["人工标注"]
+  SRC --> SYN["LLM 合成 query"]
+  LOG --> PAIR["(query, 正 chunk)"]
+  ANN --> PAIR
+  SYN --> PAIR
+  PAIR --> HARD["难负例挖掘 Top-50"]
+  HARD --> TRAIN["MNRL 训练集"]
+  CORP --> HOLD["held-out 文档 20%"]
+  HOLD -.->|不参与训练| EVAL["跨域 Recall@K 评测"]
+```
 
 ### 合成数据 pipeline（示例）
 
@@ -314,6 +344,20 @@ ML Journey 归纳：技术语料上对比学习微调 **Recall@10 提升 10%～2
 
 小陈在 re-embed 窗口用了双索引：旧索引服务读，新索引异步构建，切换凌晨低峰一次 alias 翻转，避免白天检索空洞。
 
+*图 4：微调模型接入生产的索引版本与双写切换；向量路与 BM25 路需同版本发布。*
+
+```mermaid
+flowchart TB
+  FT["微调后 Encoder"] --> ENC["全量 re-embed chunks"]
+  ENC --> NEW["FAISS v2 + BM25 同版本"]
+  OLD["FAISS v1 在线读"] --> TRAFFIC["生产流量"]
+  NEW --> BUILD["异步构建 / 校验 Recall"]
+  BUILD -->|"低峰 alias 切换"| TRAFFIC
+  TRAFFIC --> RRF["RRF 混合召回"]
+  RRF --> RR["Reranker"]
+  RR --> LLM["LLM 生成"]
+```
+
 ### 成本粗算（做到心里有数）
 
 设 chunk 数 $N$，维度 $d$，仅编码（不含训练）：
@@ -347,12 +391,24 @@ RAG 里二者正交：检索不到，生成再好也胡编。
 
 ---
 
-## 视频参考：Sentence Transformers 微调流程
+## Sentence Transformers 训练流程（可视化）
 
-以下视频演示了 Sentence Transformers 的训练与评估流程，可与本文代码对照（英文，字幕可开自动翻译）：
+下图对应上文 `train_embedding.py` 与难负例挖掘：先固定评测集，再在 batch 内用 MNRL 做对比学习；**验证集 Recall 不升则早停**，通过后再进入 re-embed。
 
-<!-- 配图 alt 建议：Embedding 模型微调训练流程示意图 -->
-<iframe width="560" height="315" src="https://www.youtube.com/embed/B87Uqljfjdk" title="Embedding 模型微调：Sentence Transformer 训练与评估演示" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+*图 5：训练与评估闭环（替代外链视频，便于评审与 onboarding）。*
+
+```mermaid
+flowchart TB
+  EVAL0["held-out 评测集"] --> BASE["基线 Recall@K"]
+  BASE --> DATA["(query, doc+) + hard negatives"]
+  DATA --> BATCH["DataLoader batch >= 64"]
+  BATCH --> MNRL["MultipleNegativesRankingLoss"]
+  MNRL --> CKPT["保存 checkpoint"]
+  CKPT --> VAL{"验证集 Recall 提升?"}
+  VAL -->|否| STOP["早停 / 调 lr 或数据"]
+  VAL -->|是| RE["全量 re-embed + 索引 v2"]
+  STOP --> DATA
+```
 
 ---
 
