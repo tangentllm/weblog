@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="prodBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e3f2fd"/>
+      <stop offset="45%" stop-color="#e0f7fa"/>
+      <stop offset="100%" stop-color="#fffde7"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#prodBg)"/>
+
+  <g opacity="0.35" stroke="#90caf9" stroke-width="1" fill="none">
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="0" y1="520" x2="1200" y2="520"/>
+    <line x1="200" y1="0" x2="200" y2="630"/>
+    <line x1="400" y1="0" x2="400" y2="630"/>
+    <line x1="800" y1="0" x2="800" y2="630"/>
+    <line x1="1000" y1="0" x2="1000" y2="630"/>
+  </g>
+
+  <g transform="translate(120, 200)">
+    <rect x="0" y="0" width="100" height="130" rx="8" fill="#ffffff" opacity="0.92" stroke="#4fc3f7" stroke-width="2"/>
+    <rect x="18" y="22" width="64" height="6" rx="2" fill="#29b6f6" opacity="0.55"/>
+    <rect x="18" y="38" width="52" height="6" rx="2" fill="#29b6f6" opacity="0.4"/>
+    <rect x="18" y="54" width="58" height="6" rx="2" fill="#29b6f6" opacity="0.35"/>
+    <text x="50" y="118" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#01579b" text-anchor="middle" font-weight="600">Report corpus</text>
+  </g>
+
+  <g fill="#0288d1" opacity="0.9">
+    <path d="M420 242h36v12h-36z"/>
+    <path d="M456 236l14 12-14 12z"/>
+    <path d="M588 242h36v12h-36z"/>
+    <path d="M624 236l14 12-14 12z"/>
+    <path d="M778 242h36v12h-36z"/>
+    <path d="M814 236l14 12-14 12z"/>
+    <path d="M940 242h36v12h-36z"/>
+    <path d="M976 236l14 12-14 12z"/>
+  </g>
+
+  <g font-family="Arial, Helvetica, sans-serif">
+    <g transform="translate(290, 220)">
+      <rect width="130" height="56" rx="10" fill="#ffffff" opacity="0.95" stroke="#26c6da" stroke-width="2"/>
+      <text x="65" y="26" font-size="14" fill="#006064" text-anchor="middle" font-weight="700">Local embedding</text>
+      <text x="65" y="46" font-size="11" fill="#00838f" text-anchor="middle">bge-m3</text>
+    </g>
+    <g transform="translate(478, 220)">
+      <rect width="110" height="56" rx="10" fill="#ffffff" opacity="0.95" stroke="#66bb6a" stroke-width="2"/>
+      <text x="55" y="26" font-size="15" fill="#1b5e20" text-anchor="middle" font-weight="700">FAISS</text>
+      <text x="55" y="46" font-size="10" fill="#2e7d32" text-anchor="middle">coarse top-k</text>
+    </g>
+    <g transform="translate(646, 220)">
+      <rect width="132" height="56" rx="10" fill="#ffffff" opacity="0.95" stroke="#ffa726" stroke-width="2"/>
+      <text x="66" y="26" font-size="15" fill="#e65100" text-anchor="middle" font-weight="700">Reranker</text>
+      <text x="66" y="46" font-size="10" fill="#ef6c00" text-anchor="middle">to top-3</text>
+    </g>
+    <g transform="translate(836, 206)">
+      <polygon points="0,28 52,0 104,28 104,92 52,120 0,92" fill="#ffffff" opacity="0.95" stroke="#ff7043" stroke-width="2"/>
+      <text x="52" y="58" font-size="13" fill="#bf360c" text-anchor="middle" font-weight="700">Tool router</text>
+      <text x="52" y="80" font-size="9" fill="#d84315" text-anchor="middle">vector / summary</text>
+    </g>
+    <g transform="translate(998, 220)">
+      <rect width="100" height="56" rx="12" fill="#ffffff" opacity="0.95" stroke="#ffca28" stroke-width="2"/>
+      <text x="50" y="36" font-size="15" fill="#f57f17" text-anchor="middle" font-weight="800">Answer</text>
+    </g>
+  </g>
+
+  <g transform="translate(120, 380)">
+    <rect width="140" height="44" rx="22" fill="#ffffff" opacity="0.95" stroke="#29b6f6" stroke-width="2"/>
+    <text x="70" y="29" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#01579b" text-anchor="middle" font-weight="600">User query</text>
+  </g>
+  <path d="M260 402 L320 402 L320 248 L290 248" stroke="#0288d1" stroke-width="2" fill="none" opacity="0.55" stroke-dasharray="6 5"/>
+
+  <text x="600" y="520" font-family="Arial, Helvetica, sans-serif" font-size="38" fill="#0d47a1" text-anchor="middle" font-weight="800">RAG in production</text>
+  <text x="600" y="566" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#1565c0" text-anchor="middle" opacity="0.92">From demo: index, rerank, route</text>
+</svg>

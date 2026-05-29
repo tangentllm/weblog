@@ -103,7 +103,7 @@ flowchart TB
 
 ## RAG 混合检索架构：Retrieve 阶段完整流水线
 
-[RAG 系统重构实战](https://tangentllm.github.io/weblog/post/rag-production-refactor/) 里，Retrieve 常被简化成 `similarity_search(k=5)`。生产级 **RAG 混合检索策略** 应至少包含四层：
+[RAG 系统重构实战](https://tangentllm.github.io/weblog/post/rag-production-refactor/) 里，Retrieve 常被简化成 `similarity_search(k=5)`。生产级 **RAG 混合检索策略** 应至少包含四层（上线后并行检索与 Rerank 的延迟取舍见 [RAG 生产性能优化](https://tangentllm.github.io/weblog/post/rag-production-performance-optimization/)）：
 
 1. **并行召回**：稠密 Top-\(K_d\)，稀疏 Top-\(K_s\)（常各取 50–100）
 2. **融合**：RRF 合并为 Top-\(K_f\)（如 20）

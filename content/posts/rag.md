@@ -25,7 +25,7 @@ excerpt: 金融研报问答系统上线后的成本与中文召回问题复盘�
 
 换成 `bge-m3` 之后这两个问题都解决了。bge 是本地模型，跑在自己服务器上，embedding 的成本从按量付费的 API 费用转变为固定的硬件资源成本。对于我们这种持久化负载，总拥有成本（TCO）显著降低。而且它是在中文语料上预训练的，对金融领域的术语敏感度明显更高。唯一的代价是首次加载模型要占 2GB 显存，不过这点资源对我们来说不是问题。
 
-若 bge-m3 加上 [混合检索](https://tangentllm.github.io/weblog/post/rag-hybrid-retrieval-strategy/) 与 Reranker 后，专有名词、口语 query 仍长期召回不准，下一步通常是 [Embedding 模型微调](https://tangentllm.github.io/weblog/post/embedding-finetune-domain-rag/)（用领域 query-doc 对重塑向量空间），而不是先换更大的生成模型。
+若 bge-m3 加上 [混合检索](https://tangentllm.github.io/weblog/post/rag-hybrid-retrieval-strategy/) 与 Reranker 后，专有名词、口语 query 仍长期召回不准，下一步通常是 [Embedding 模型微调](https://tangentllm.github.io/weblog/post/embedding-finetune-domain-rag/)（用领域 query-doc 对重塑向量空间），而不是先换更大的生成模型。链路跑稳后若 **P95 延迟** 超标，见 [RAG 生产性能优化](https://tangentllm.github.io/weblog/post/rag-production-performance-optimization/)（延迟预算、Rerank 与缓存）。
 
 ```python
 # 之前：每次查询都要调 API
