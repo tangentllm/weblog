@@ -8,8 +8,8 @@
     </linearGradient>
   </defs>
   <rect width="1200" height="630" fill="url(#embBg)"/>
-  <text x="600" y="300" text-anchor="middle" font-family="system-ui,sans-serif" font-size="42" font-weight="700" fill="#1565c0">Embedding !‹®</text>
-  <text x="600" y="360" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" fill="#37474f">RAG †ßÀ" · BGE · Recall@K</text>
+  <text x="600" y="300" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" fill="#1565c0">Embedding Fine-Tuning</text>
+  <text x="600" y="360" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#37474f">Domain RAG Retrieval Â· BGE Â· Recall@K</text>
   <circle cx="320" cy="420" r="18" fill="#42a5f5"/>
   <circle cx="380" cy="400" r="18" fill="#66bb6a"/>
   <circle cx="820" cy="200" r="18" fill="#42a5f5"/>

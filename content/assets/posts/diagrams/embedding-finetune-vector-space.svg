@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
-  <title id="title">Embedding !‹®M†ßÀ"ÏzôùÔ</title>
-  <desc id="desc">®Måâc‡c(Ïzô-Ý»ƒÜ®ŒÉÑ¾‹«¨Ü</desc>
+  <title id="title">Embedding fine-tuning: vector space before and after domain retrieval</title>
+  <desc id="desc">Before fine-tuning, query and positive doc are far apart; after MNRL training, query-positive pairs cluster and hard negatives separate.</desc>
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#f3f8ff"/>
@@ -9,29 +9,27 @@
     </linearGradient>
   </defs>
   <rect width="960" height="420" fill="url(#bg)" rx="12"/>
-  <text x="240" y="36" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" font-weight="600" fill="#1565c0">®M( bge	</text>
-  <text x="720" y="36" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" font-weight="600" fill="#2e7d32">®†ßM	</text>
+  <text x="240" y="36" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#1565c0">Before (generic BGE)</text>
+  <text x="720" y="36" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#2e7d32">After (domain-tuned)</text>
   <rect x="40" y="52" width="400" height="340" rx="10" fill="#fff" stroke="#90caf9" stroke-width="2"/>
   <rect x="520" y="52" width="400" height="340" rx="10" fill="#fff" stroke="#81c784" stroke-width="2"/>
-  <!-- before -->
   <circle cx="140" cy="120" r="28" fill="#42a5f5" opacity="0.9"/>
-  <text x="140" y="125" text-anchor="middle" font-size="12" fill="#fff" font-family="system-ui">Q</text>
+  <text x="140" y="125" text-anchor="middle" font-size="12" fill="#fff" font-family="Arial, Helvetica, sans-serif">Q</text>
   <circle cx="300" cy="260" r="28" fill="#66bb6a" opacity="0.9"/>
-  <text x="300" y="265" text-anchor="middle" font-size="12" fill="#fff" font-family="system-ui">D+</text>
+  <text x="300" y="265" text-anchor="middle" font-size="12" fill="#fff" font-family="Arial, Helvetica, sans-serif">D+</text>
   <circle cx="200" cy="280" r="22" fill="#ef5350" opacity="0.85"/>
-  <text x="200" y="285" text-anchor="middle" font-size="11" fill="#fff" font-family="system-ui">D-</text>
+  <text x="200" y="285" text-anchor="middle" font-size="11" fill="#fff" font-family="Arial, Helvetica, sans-serif">D-</text>
   <line x1="140" y1="120" x2="300" y2="260" stroke="#90a4ae" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="220" y="175" font-size="11" fill="#546e7a" font-family="system-ui">Cosine ON</text>
-  <!-- after -->
+  <text x="220" y="175" font-size="11" fill="#546e7a" font-family="Arial, Helvetica, sans-serif">Cosine low</text>
   <circle cx="620" cy="180" r="28" fill="#42a5f5" opacity="0.9"/>
-  <text x="620" y="185" text-anchor="middle" font-size="12" fill="#fff" font-family="system-ui">Q</text>
+  <text x="620" y="185" text-anchor="middle" font-size="12" fill="#fff" font-family="Arial, Helvetica, sans-serif">Q</text>
   <circle cx="700" cy="200" r="28" fill="#66bb6a" opacity="0.9"/>
-  <text x="700" y="205" text-anchor="middle" font-size="12" fill="#fff" font-family="system-ui">D+</text>
+  <text x="700" y="205" text-anchor="middle" font-size="12" fill="#fff" font-family="Arial, Helvetica, sans-serif">D+</text>
   <circle cx="820" cy="120" r="22" fill="#ef5350" opacity="0.85"/>
-  <text x="820" y="125" text-anchor="middle" font-size="11" fill="#fff" font-family="system-ui">D-</text>
+  <text x="820" y="125" text-anchor="middle" font-size="11" fill="#fff" font-family="Arial, Helvetica, sans-serif">D-</text>
   <line x1="620" y1="180" x2="700" y2="200" stroke="#2e7d32" stroke-width="3"/>
-  <text x="660" y="168" font-size="11" fill="#2e7d32" font-family="system-ui">ÉÑ</text>
+  <text x="660" y="168" font-size="11" fill="#2e7d32" font-family="Arial, Helvetica, sans-serif">pull closer</text>
   <line x1="620" y1="180" x2="820" y2="120" stroke="#c62828" stroke-width="1.5" stroke-dasharray="4 3"/>
-  <text x="760" y="140" font-size="11" fill="#c62828" font-family="system-ui">¾‹¨Ü</text>
-  <text x="480" y="400" text-anchor="middle" font-size="12" fill="#37474f" font-family="system-ui">ùÔf`MNRL	ÍQÀ"zôÄKå Recall@K :Æ</text>
+  <text x="760" y="140" font-size="11" fill="#c62828" font-family="Arial, Helvetica, sans-serif">push away</text>
+  <text x="480" y="400" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial, Helvetica, sans-serif">MNRL contrastive learning · validate with Recall@K</text>
 </svg>
