@@ -104,7 +104,7 @@ $$
 
 训练时 batch 越大，负例越多，判别边界往往越清晰；显存允许时 **batch ≥ 64** 是常见起点（[Sentence Transformers 训练文档](https://www.sbert.net/docs/training/overview.html)）。
 
-![Embedding 模型微调前后领域检索向量空间对比](./content/assets/posts/diagrams/embedding-finetune-vector-space.svg)
+![Embedding 模型微调前后领域检索向量空间对比](/weblog/content/assets/posts/diagrams/embedding-finetune-vector-space.svg)
 
 
 

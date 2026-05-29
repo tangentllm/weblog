@@ -20,8 +20,27 @@ function stripFrontmatter(text) {
   return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').replace(/^\uFEFF/, '');
 }
 
+function markdownImageToHtml(alt, src) {
+  const abs = src.startsWith('http')
+    ? src
+    : src.startsWith('/')
+      ? `${ORIGIN}${src}`
+      : `${ORIGIN}${BASE}/${src.replace(/^\.\//, '')}`;
+  return `<img src="${escapeHtml(abs)}" alt="${escapeHtml(alt)}" loading="lazy" style="max-width:100%;height:auto" />`;
+}
+
 function markdownToPlainHtml(md) {
-  let html = escapeHtml(stripFrontmatter(md));
+  const imageHtml = [];
+  let body = stripFrontmatter(md);
+  body = body.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => {
+    const id = imageHtml.length;
+    imageHtml.push(markdownImageToHtml(alt, src.trim()));
+    return `___BLOGIMG_${id}___`;
+  });
+  let html = escapeHtml(body);
+  imageHtml.forEach((img, id) => {
+    html = html.replace(`___BLOGIMG_${id}___`, img);
+  });
   html = html
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')

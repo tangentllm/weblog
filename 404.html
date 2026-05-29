@@ -1177,9 +1177,11 @@ function resolveAssetUrl(inputUrl) {
       return new URL(cleaned, window.location.origin).toString();
     }
 
-    const basePath = rootBasePathPrefix();
+    // 静态资源始终相对站点根（/weblog/），勿用当前文章路径 /weblog/post/slug/
+    const siteBase = getSiteBasePath();
+    const prefix = siteBase ? `${siteBase}/` : '/';
     const rel = cleaned.replace(/^\/+/, '');
-    return new URL(`${basePath}${rel}`, window.location.origin).toString();
+    return new URL(`${prefix}${rel}`, window.location.origin).toString();
   } catch {
     return raw;
   }
@@ -1198,12 +1200,12 @@ function buildImageUrlCandidates(inputUrl) {
   };
 
   push(resolveAssetUrl(raw));
-  push(`${window.location.origin}/${cleaned.replace(/^\/+/, '')}`);
-  push(new URL(`/${cleaned.replace(/^\/+/, '')}`, window.location.origin).toString());
 
-  const basePath = rootBasePathPrefix();
+  const siteBase = getSiteBasePath();
+  const prefix = siteBase ? `${siteBase}/` : '/';
   const rel = cleaned.replace(/^\/+/, '');
-  push(new URL(`${basePath}${rel}`, window.location.origin).toString());
+  push(new URL(`${prefix}${rel}`, window.location.origin).toString());
+  push(`${window.location.origin}/${rel}`);
 
   return Array.from(candidates);
 }
@@ -2765,9 +2767,7 @@ function initReveal() {
 // 动态更新 SEO meta 标签
 function updateMetaTags(data) {
   const defaultUrl = absolutePageUrl();
-  const defaultImage = absolutePageUrl('og-image.png').replace(/\/$/, '') === `${SITE_ORIGIN}/weblog/og-image.png`
-    ? `${SITE_ORIGIN}/weblog/og-image.png`
-    : `${SITE_ORIGIN}${getSiteBasePath()}/og-image.png`;
+  const defaultImage = `${SITE_ORIGIN}${getSiteBasePath() || ''}/og-image.png`.replace('//og', '/og');
 
   document.title = data.title || 'Tangentllm Notes — 未来已来';
   updateMetaTag('name', 'description', data.description || '专注于大模型技术的学习笔记、实践经验与项目分享。');
