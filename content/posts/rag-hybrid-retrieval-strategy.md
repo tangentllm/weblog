@@ -1,4 +1,4 @@
----
+﻿---
 title: RAG 混合检索策略深度解析：从 BM25+向量到 RRF 与生产取舍
 slug: rag-hybrid-retrieval-strategy
 date: 2025-05-20
@@ -669,4 +669,4 @@ https://www.youtube.com/watch?v=EaOQc8ppJdU
 
 ---
 
-**下一步**：按本文手算 + `rrf.py` 在你的评测集上跑四组消融；若 Hit@5 提升明显，再把索引迁到 Qdrant / Milvus 原生 hybrid。若你也在做金融/中文长文档 RAG，建议对照 [RAG 系统重构实战](https://tangentllm.github.io/weblog/post/rag-production-refactor/) 里的 bge-m3 + Reranker 配置。
+**下一步**：按本文手算 + `rrf.py` 在你的评测集上跑四组消融；若 Hit@5 提升明显，再把索引迁到 Qdrant / Milvus 原生 hybrid。若混合检索与 Reranker 仍拉不上去、且语料术语密集，可再读 [Embedding 模型微调](https://tangentllm.github.io/weblog/post/embedding-finetune-domain-rag/)。若你也在做金融/中文长文档 RAG，建议对照 [RAG 生产实战](https://tangentllm.github.io/weblog/post/rag-production-refactor/) 里的 bge-m3 + Reranker 配置。

@@ -33,9 +33,30 @@ function markdownToPlainHtml(md) {
   return `<p>${html}</p>`;
 }
 
-function buildPage({ title, description, slug, date, bodyHtml, isHtmlArticle }) {
+function extractFaqJsonLd(md) {
+  const re = /<script type="application\/ld\+json">\s*([\s\S]*?)\s*<\/script>/gi;
+  let match;
+  while ((match = re.exec(md)) !== null) {
+    try {
+      const obj = JSON.parse(match[1]);
+      if (obj['@type'] === 'FAQPage') return obj;
+    } catch {
+      /* skip invalid blocks */
+    }
+  }
+  return null;
+}
+
+function stripFaqScript(md) {
+  return md.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>\s*/gi, '');
+}
+
+function buildPage({ title, description, slug, date, bodyHtml, isHtmlArticle, faqJsonLd }) {
   const canonical = `${ORIGIN}${BASE}/post/${slug}/`;
   const appUrl = `${ORIGIN}${BASE}/?view=post&slug=${encodeURIComponent(slug)}`;
+  const faqScript = faqJsonLd
+    ? `\n  <script type="application/ld+json">${JSON.stringify(faqJsonLd)}</script>`
+    : '';
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -62,7 +83,7 @@ function buildPage({ title, description, slug, date, bodyHtml, isHtmlArticle }) 
   <meta property="og:url" content="${canonical}">
   <meta property="og:locale" content="zh_CN">
   <meta name="robots" content="index, follow">
-  <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+  <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>${faqScript}
   <style>
     body{font-family:system-ui,sans-serif;max-width:48rem;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222}
     a{color:#00a870}
@@ -90,12 +111,15 @@ function main() {
     mkdirSync(dir, { recursive: true });
     let bodyHtml = '';
     const isHtmlArticle = post.format === 'html' && post.htmlFile;
+    let faqJsonLd = null;
     if (!isHtmlArticle && post.file) {
       const mdPath = post.file.replace(/^\.\//, '');
       try {
         const md = readFileSync(mdPath, 'utf-8');
         const plain = stripFrontmatter(md);
-        bodyHtml = markdownToPlainHtml(plain.slice(0, 12000));
+        faqJsonLd = extractFaqJsonLd(plain);
+        const bodyMd = stripFaqScript(plain);
+        bodyHtml = markdownToPlainHtml(bodyMd.slice(0, 12000));
       } catch {
         bodyHtml = '<p></p>';
       }
@@ -107,6 +131,7 @@ function main() {
       date: post.date,
       bodyHtml,
       isHtmlArticle,
+      faqJsonLd,
     });
     writeFileSync(path.join(dir, 'index.html'), html, 'utf-8');
     count += 1;

@@ -25,6 +25,8 @@ excerpt: 金融研报问答系统上线后的成本与中文召回问题复盘�
 
 换成 `bge-m3` 之后这两个问题都解决了。bge 是本地模型，跑在自己服务器上，embedding 的成本从按量付费的 API 费用转变为固定的硬件资源成本。对于我们这种持久化负载，总拥有成本（TCO）显著降低。而且它是在中文语料上预训练的，对金融领域的术语敏感度明显更高。唯一的代价是首次加载模型要占 2GB 显存，不过这点资源对我们来说不是问题。
 
+若 bge-m3 加上 [混合检索](https://tangentllm.github.io/weblog/post/rag-hybrid-retrieval-strategy/) 与 Reranker 后，专有名词、口语 query 仍长期召回不准，下一步通常是 [Embedding 模型微调](https://tangentllm.github.io/weblog/post/embedding-finetune-domain-rag/)（用领域 query-doc 对重塑向量空间），而不是先换更大的生成模型。
+
 ```python
 # 之前：每次查询都要调 API
 Settings.embed_model = OpenAIEmbedding(
@@ -199,6 +201,8 @@ tools = [
 ## 最后
 
 这套方案跑了半年，目前日均查询量 5000 次左右，P95 响应时间 3 秒，用户满意度从 60% 涨到了 85%。成本方面，embedding 从按量计费转为固定硬件成本，LLM 调用费用降了 30%（因为 Reranker 过滤掉了很多无效 chunk，减少了 LLM 的输入 token）。
+
+检索层升级路径可对照：[RAG 混合检索策略](https://tangentllm.github.io/weblog/post/rag-hybrid-retrieval-strategy/)（BM25 + 向量 + RRF）与 [Embedding 领域微调](https://tangentllm.github.io/weblog/post/embedding-finetune-domain-rag/)。
 
 但我不觉得这是终态。还有个问题一直没解决好：多跳推理。比如用户问"XX电路和XX电子哪家增长更快"，现在的系统只能分别召回两家的数据，然后让 LLM 对比，但如果问题涉及三家、四家公司，召回策略就得重新设计了。一个可能的方向是 Agentic RAG，让 LLM 把复杂问题拆解成多个子查询，每个子查询独立检索后再汇总，不过这会显著增加延迟和成本，需要仔细权衡。
 

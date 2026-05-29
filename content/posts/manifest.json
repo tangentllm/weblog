@@ -18,6 +18,23 @@
     "htmlFile": "./content/posts/claude-code-best-practices.html"
   },
   {
+    "slug": "embedding-finetune-domain-rag",
+    "title": "Embedding 模型微调：如何提升 RAG 领域检索效果（原理与实战）",
+    "date": "2025-09-28",
+    "readTime": "24 分钟",
+    "category": "工程实践",
+    "tags": [
+      "RAG",
+      "Embedding",
+      "微调",
+      "BGE",
+      "检索"
+    ],
+    "cover": "./content/assets/posts/covers/embedding-finetune-domain-rag.svg",
+    "excerpt": "通用 bge 搜不准领域文档？从对比学习、难负例到 Recall@K 评测与 FAISS re-embed 上线，讲清何时该做 Embedding 模型微调。",
+    "file": "./content/posts/embedding-finetune-domain-rag.md"
+  },
+  {
     "slug": "rag-hybrid-retrieval-strategy",
     "title": "RAG 混合检索策略深度解析：从 BM25+向量到 RRF 与生产取舍",
     "date": "2025-05-20",
