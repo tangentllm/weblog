@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="420" viewBox="0 0 800 420" role="img" aria-labelledby="title">
+  <title id="title">PPO and RLHF four models</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e3a5f"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <rect width="800" height="420" fill="url(#bg)"/>
+  <text x="400" y="72" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700" fill="#f8fafc">PPO� Clip 0 RLHF �!�</text>
+  <text x="400" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#94a3b8">Actor � Reference � Reward � Critic</text>
+  <circle cx="200" cy="240" r="48" fill="#2563eb"/>
+  <text x="200" y="245" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#fff">Actor</text>
+  <circle cx="340" cy="240" r="40" fill="#64748b"/>
+  <text x="340" y="245" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#fff">Ref</text>
+  <circle cx="480" cy="240" r="40" fill="#7c3aed"/>
+  <text x="480" y="245" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#fff">RM</text>
+  <circle cx="620" cy="240" r="44" fill="#059669"/>
+  <text x="620" y="245" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#fff">Critic</text>
+  <path d="M248 240 H292 M380 240 H440 M520 240 H576" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+</svg>

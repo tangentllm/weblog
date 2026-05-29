@@ -35,6 +35,56 @@
     "file": "./content/posts/embedding-finetune-domain-rag.md"
   },
   {
+    "slug": "multi-turn-context-management-three-approaches",
+    "title": "多轮对话上下文管理：滑动窗口、摘要压缩与检索注入三种实现",
+    "date": "2025-09-28",
+    "readTime": "18 分钟",
+    "category": "工程实践",
+    "tags": [
+      "Agent",
+      "上下文管理",
+      "RAG",
+      "LangChain",
+      "对话记忆"
+    ],
+    "cover": "./content/assets/posts/covers/multi-turn-context-management.svg",
+    "excerpt": "在有限 context window 下，多轮对话上下文管理靠滑动窗口、摘要压缩与检索注入三种方案。含对比表、ContextBuilder 模板与 Agent 工具膨胀踩坑。",
+    "file": "./content/posts/multi-turn-context-management-three-approaches.md"
+  },
+  {
+    "slug": "ppo-proximal-policy-optimization-pytorch",
+    "title": "一文彻底理解 PPO：从原理到 PyTorch 实现",
+    "date": "2025-09-18",
+    "readTime": "30 分钟",
+    "category": "微调与对齐",
+    "tags": [
+      "PPO",
+      "RLHF",
+      "PyTorch",
+      "强化学习"
+    ],
+    "cover": "./content/assets/posts/covers/ppo-rlhf-cover.svg",
+    "excerpt": "用厨师团队类比搞懂 RLHF 四模型与 PPO 训练流程；讲清近端策略优化 Clip、GAE 公式，附 CartPole 可运行 PyTorch 代码，适合要对齐与强化学习落地的工程师。",
+    "file": "./content/posts/ppo-proximal-policy-optimization-pytorch.md"
+  },
+  {
+    "slug": "rag-production-performance-optimization",
+    "title": "生产级 RAG 系统性能优化实战：延迟预算、并行检索与推理瓶颈",
+    "date": "2025-09-15",
+    "readTime": "22 分钟",
+    "category": "工程实践",
+    "tags": [
+      "RAG",
+      "性能优化",
+      "FAISS",
+      "延迟",
+      "TTFT"
+    ],
+    "cover": "./content/assets/posts/covers/rag-production-performance-optimization.svg",
+    "excerpt": "准确率上去了 P95 却爆了？用延迟瀑布拆 Embed、FAISS、Rerank 与 LLM 瓶颈，附并行混合检索、四级缓存与改前改后 ms 表。",
+    "file": "./content/posts/rag-production-performance-optimization.md"
+  },
+  {
     "slug": "rag-hybrid-retrieval-strategy",
     "title": "RAG 混合检索策略深度解析：从 BM25+向量到 RRF 与生产取舍",
     "date": "2025-05-20",
