@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="hybridBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a237e"/>
+      <stop offset="45%" stop-color="#311b92"/>
+      <stop offset="100%" stop-color="#4a148c"/>
+    </linearGradient>
+    <linearGradient id="denseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#26c6da"/>
+      <stop offset="100%" stop-color="#00acc1"/>
+    </linearGradient>
+    <linearGradient id="sparseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffb74d"/>
+      <stop offset="100%" stop-color="#ff9800"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#hybridBg)"/>
+
+  <g opacity="0.12" stroke="#ffffff" stroke-width="1" fill="none">
+    <line x1="0" y1="105" x2="1200" y2="105"/>
+    <line x1="0" y1="210" x2="1200" y2="210"/>
+    <line x1="0" y1="315" x2="1200" y2="315"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="150" y1="0" x2="150" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="1050" y1="0" x2="1050" y2="630"/>
+  </g>
+
+  <!-- Query -->
+  <g transform="translate(600, 118)">
+    <rect x="-72" y="-26" width="144" height="52" rx="26" fill="#ffffff" opacity="0.95"/>
+    <text x="0" y="8" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#311b92" text-anchor="middle" font-weight="700">User Query</text>
+  </g>
+
+  <!-- Arrows down -->
+  <g fill="#ffffff" opacity="0.85">
+    <path d="M318 168 L318 198 L312 198 L324 214 L336 198 L330 198 L330 168 Z"/>
+    <path d="M882 168 L882 198 L876 198 L888 214 L900 198 L894 198 L894 168 Z"/>
+  </g>
+
+  <!-- BM25 path (left) -->
+  <g transform="translate(210, 240)">
+    <rect width="220" height="120" rx="14" fill="url(#sparseGrad)" opacity="0.92"/>
+    <text x="110" y="38" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#ffffff" text-anchor="middle" font-weight="800">BM25</text>
+    <text x="110" y="64" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#fff3e0" text-anchor="middle">Sparse · Keywords</text>
+    <g transform="translate(36, 78)">
+      <rect width="48" height="22" rx="4" fill="#ffffff" opacity="0.35"/>
+      <rect x="58" width="56" height="22" rx="4" fill="#ffffff" opacity="0.35"/>
+      <rect x="128" width="40" height="22" rx="4" fill="#ffffff" opacity="0.35"/>
+      <text x="24" y="15" font-family="monospace" font-size="10" fill="#ffffff" text-anchor="middle">SKU</text>
+      <text x="86" y="15" font-family="monospace" font-size="10" fill="#ffffff" text-anchor="middle">0x4A2</text>
+      <text x="148" y="15" font-family="monospace" font-size="10" fill="#ffffff" text-anchor="middle">API</text>
+    </g>
+  </g>
+
+  <!-- Dense path (right) -->
+  <g transform="translate(770, 240)">
+    <rect width="220" height="120" rx="14" fill="url(#denseGrad)" opacity="0.92"/>
+    <text x="110" y="38" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#ffffff" text-anchor="middle" font-weight="800">Dense</text>
+    <text x="110" y="64" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#e0f7fa" text-anchor="middle">Vector · Semantic</text>
+    <g transform="translate(50, 82)" fill="#ffffff" opacity="0.5">
+      <circle cx="0" cy="0" r="5"/>
+      <circle cx="24" cy="-8" r="5"/>
+      <circle cx="48" cy="6" r="5"/>
+      <circle cx="72" cy="-4" r="5"/>
+      <circle cx="96" cy="8" r="5"/>
+      <circle cx="120" cy="0" r="5"/>
+    </g>
+    <text x="110" y="108" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#e0f7fa" text-anchor="middle" opacity="0.9">bge-m3 · ANN</text>
+  </g>
+
+  <!-- Arrows to RRF -->
+  <g fill="#ffffff" opacity="0.85">
+    <path d="M320 360 L320 388 L314 388 L326 404 L338 388 L332 388 L332 360 Z"/>
+    <path d="M880 360 L880 388 L874 388 L886 404 L898 388 L892 388 L892 360 Z"/>
+  </g>
+
+  <!-- RRF fusion center -->
+  <g transform="translate(600, 430)">
+    <circle cx="0" cy="0" r="58" fill="#ffffff" opacity="0.95" stroke="#7e57c2" stroke-width="3"/>
+    <text x="0" y="-6" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#4527a0" text-anchor="middle" font-weight="800">RRF</text>
+    <text x="0" y="18" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#5e35b1" text-anchor="middle">k = 60</text>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="548" font-family="Arial, Helvetica, sans-serif" font-size="40" fill="#ffffff" text-anchor="middle" font-weight="800">Hybrid Retrieval</text>
+  <text x="600" y="592" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#ce93d8" text-anchor="middle">BM25 + Dense ’ RRF ’ Rerank</text>
+</svg>

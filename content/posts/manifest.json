@@ -1,5 +1,22 @@
 [
   {
+    "slug": "rag-hybrid-retrieval-strategy",
+    "title": "RAG 混合检索策略深度解析：从 BM25+向量到 RRF 与生产取舍",
+    "date": "2026-05-29",
+    "readTime": "24 分钟",
+    "category": "工程实践",
+    "tags": [
+      "RAG",
+      "BM25",
+      "Hybrid Search",
+      "RRF",
+      "检索增强生成"
+    ],
+    "cover": "./content/assets/posts/covers/rag-hybrid-retrieval.svg",
+    "excerpt": "纯向量 RAG 常漏 SKU 与错误码？详解 BM25 与稠密检索如何互补、RRF 为何是生产默认融合，含中文 jieba 分词要点、Python 示例与消融评测清单。",
+    "file": "./content/posts/rag-hybrid-retrieval-strategy.md"
+  },
+  {
     "slug": "claude-code-best-practices",
     "title": "Claude Code 最佳实践：2026 年 10 倍生产力指南",
     "date": "2026-05-25",

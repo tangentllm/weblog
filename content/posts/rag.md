@@ -74,6 +74,8 @@ query_engine = RetrieverQueryEngine.from_args(
 
 有个坑是 `FlagEmbeddingReranker` 不在 LlamaIndex 的默认依赖里，需要单独装 FlagEmbedding 的 Git 版本。我第一次部署到生产环境时忘了这事儿，服务起来后第一个查询就报 ImportError，回滚重装浪费了半小时。
 
+> **延伸阅读**：[RAG 混合检索策略深度解析](https://tangentllm.github.io/weblog/post/rag-hybrid-retrieval-strategy/) — 在向量 + Reranker 之上，补上 BM25 稀疏路与 RRF 融合，专门解决 SKU、错误码、条款号等「向量耻辱柱」查询。
+
 ## 索引持久化的权衡
 
 最早的版本每次启动服务都要重新构建索引，15 万个 chunk 跑一遍 embedding 要 20 分钟。这在开发阶段还能忍，但上生产后每次发版都要停机 20 分钟，运维那边直接炸了。
