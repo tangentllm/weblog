@@ -1,5 +1,22 @@
 [
   {
+    "slug": "rag-hybrid-retrieval-strategies",
+    "title": "RAG 混合检索策略深度解析：BM25、向量与 RRF 的生产级决策手册",
+    "date": "2026-05-29",
+    "readTime": "22 分钟",
+    "category": "工程实践",
+    "tags": [
+      "RAG",
+      "BM25",
+      "RRF",
+      "混合检索",
+      "召回优化"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "生产 RAG 默认 BM25+向量双路召回，RRF 融合后再 Rerank。讲清混合检索何时有效、如何评测、中文技术文档常见坑，附实施清单与 FAQ。",
+    "file": "./content/posts/rag-hybrid-retrieval-strategies.md"
+  },
+  {
     "slug": "claude-code-best-practices",
     "title": "Claude Code 最佳实践：2026 年 10 倍生产力指南",
     "date": "2026-05-25",
