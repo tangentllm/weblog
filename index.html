@@ -1199,11 +1199,17 @@ function buildImageUrlCandidates(inputUrl) {
     if (value && typeof value === 'string') candidates.add(value);
   };
 
-  push(resolveAssetUrl(raw));
+  const resolved = resolveAssetUrl(raw);
+  push(resolved);
 
   const siteBase = getSiteBasePath();
-  const prefix = siteBase ? `${siteBase}/` : '/';
+  const baseNoSlash = siteBase ? siteBase.replace(/^\//, '') : '';
   const rel = cleaned.replace(/^\/+/, '');
+  // 已是 /weblog/... 绝对站内路径时，勿再拼 prefix，避免 /weblog/weblog/... 404
+  if (baseNoSlash && rel.startsWith(`${baseNoSlash}/`)) {
+    return Array.from(candidates);
+  }
+  const prefix = siteBase ? `${siteBase}/` : '/';
   push(new URL(`${prefix}${rel}`, window.location.origin).toString());
   push(`${window.location.origin}/${rel}`);
 

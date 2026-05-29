@@ -206,9 +206,20 @@ Cross-Encoder（如 **bge-reranker-v2-m3**）对 query 与 doc **成对打分**�
 
 ### 四级缓存
 
-![RAG 四级缓存金字塔：Query Embedding、检索结果、语义答案、全链路快照 - Tangentllm Notes](/weblog/content/assets/posts/diagrams/rag-cache-layers.svg)
+```mermaid
+flowchart BT
+  L4["L4 全链路快照<br/>完整 JSON 响应"]
+  L3["L3 语义缓存<br/>相似 Query → 答案"]
+  L2["L2 Redis<br/>融合后 Top-K doc id"]
+  L1["L1 进程内<br/>Query Embedding"]
+  L4 --> L3 --> L2 --> L1
+```
 
-*图 4：由快到慢的缓存层级；索引版本变更必须失效 L2–L4。*
+*图 4a：四级缓存由慢到快；索引版本变更须失效 L2–L4。*
+
+![RAG 四级缓存金字塔：Query Embedding、检索结果、语义答案、全链路快照 - Tangentllm Notes](./content/assets/posts/diagrams/rag-cache-layers.svg)
+
+*图 4b：金字塔示意（与站点其余配图路径一致，便于 SPA 解析）。*
 
 | 层级 | 缓存什么 | 命中收益 | 一致性风险 |
 |---|---|---|---|
