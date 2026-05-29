@@ -1,7 +1,7 @@
 ---
 title: RAG 混合检索策略深度解析：从 BM25+向量到 RRF 与生产取舍
 slug: rag-hybrid-retrieval-strategy
-date: 2026-05-29
+date: 2025-05-20
 readTime: 24 分钟
 category: 工程实践
 tags: RAG, BM25, Hybrid Search, RRF, 检索增强生成
