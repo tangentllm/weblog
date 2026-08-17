@@ -76,8 +76,7 @@
   <script>
     (function () {
       var saved = localStorage.getItem('theme');
-      var isDark = saved === 'dark'
-        || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      var isDark = saved === 'dark';
       document.documentElement.classList.toggle('dark', isDark);
       document.documentElement.classList.add('josh-site');
       document.documentElement.setAttribute('data-color-mode', isDark ? 'dark' : 'light');
@@ -1297,7 +1296,11 @@ let appBootstrapped = false;
 
 function router() {
   if (!appBootstrapped) return;
-  const route = parseRoute();
+  let route = parseRoute();
+  if (!JOSH_SHOW_PROJECTS && (route.type === 'projects' || route.type === 'project')) {
+    history.replaceState(null, '', Routes.home());
+    route = { type: 'home' };
+  }
   const app = document.getElementById('app');
   if (typeof joshHomeCleanup === 'function') {
     joshHomeCleanup();
@@ -1513,7 +1516,9 @@ function setSearchHasResults(hasResults) {
 
 function renderSearchIntro() {
   const results = document.getElementById('search-results');
-  results.innerHTML = '<p class="josh-search__intro">搜索本站所有文章与作品。</p>';
+  results.innerHTML = JOSH_SHOW_PROJECTS
+    ? '<p class="josh-search__intro">搜索本站所有文章与作品。</p>'
+    : '<p class="josh-search__intro">搜索本站所有文章。</p>';
   setSearchHasResults(false);
 }
 
@@ -1615,14 +1620,14 @@ function handleSearch(query) {
     p.excerpt.toLowerCase().includes(q) ||
     p.category.toLowerCase().includes(q)
   );
-  const matchedProjects = projectsData.filter(project =>
+  const matchedProjects = JOSH_SHOW_PROJECTS ? projectsData.filter(project =>
     project.title.toLowerCase().includes(q) ||
     (project.subtitle || '').toLowerCase().includes(q) ||
     (project.summary || '').toLowerCase().includes(q) ||
     (project.tags || []).some(t => t.toLowerCase().includes(q)) ||
     (project.status || '').toLowerCase().includes(q) ||
     (project.period || '').toLowerCase().includes(q)
-  );
+  ) : [];
 
   if (matchedPosts.length === 0 && matchedProjects.length === 0) {
     results.innerHTML = '<p class="josh-search__empty"><strong>没有找到结果。</strong> 抱歉，站内似乎没有相关内容！</p>';
@@ -1671,8 +1676,7 @@ function toggleTheme() {
 }
 function initTheme() {
   const saved = localStorage.getItem('theme');
-  const isDark = saved === 'dark'
-    || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const isDark = saved === 'dark';
   document.documentElement.classList.toggle('dark', isDark);
   if (typeof syncJoshColorMode === 'function') syncJoshColorMode();
 }

@@ -1,5 +1,9 @@
 /* Josh W. Comeau site shell — shared across all pages */
 
+/* Feature flags — set true to re-enable nav / chrome entries */
+var JOSH_SHOW_PROJECTS = false;
+var JOSH_SHOW_GITHUB = false;
+
 const JOSH_MASCOT_LIGHT = 'https://www.joshwcomeau.com/images/josh/josh-happy-light.png';
 const JOSH_MASCOT_DARK = 'https://www.joshwcomeau.com/images/josh/josh-happy-dark.png';
 const JOSH_MASCOT_HEAD_VERY_LIGHT = 'https://www.joshwcomeau.com/images/josh/head-very-happy-light.png';
@@ -324,7 +328,7 @@ function joshNavLinks(activeHref) {
   const links = [
     { href: Routes.categories(), label: '分类' },
     { href: Routes.tags(), label: '标签' },
-    { href: Routes.projects(), label: '作品' },
+    ...(JOSH_SHOW_PROJECTS ? [{ href: Routes.projects(), label: '作品' }] : []),
     { href: Routes.about(), label: '关于' },
   ];
   const normalize = (h) => (h || '').replace(/\/$/, '');
@@ -340,7 +344,7 @@ function joshMobileNavLinks(activeHref) {
     { href: Routes.home(), label: '首页' },
     { href: Routes.categories(), label: '分类' },
     { href: Routes.tags(), label: '标签' },
-    { href: Routes.projects(), label: '作品' },
+    ...(JOSH_SHOW_PROJECTS ? [{ href: Routes.projects(), label: '作品' }] : []),
     { href: Routes.about(), label: '关于' },
   ];
   const normalize = (h) => (h || '').replace(/\/$/, '');
@@ -352,6 +356,7 @@ function joshMobileNavLinks(activeHref) {
 }
 
 function joshGithubLinkMarkup() {
+  if (!JOSH_SHOW_GITHUB) return '';
   return `<a class="josh-icon-btn" href="https://github.com/tangentllm/weblog" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/></svg>
   </a>`;
@@ -475,7 +480,7 @@ function buildJoshFooterMarkup(options = {}) {
             <h2 class="josh-footer__col-title">站点导航</h2>
             <ul class="josh-footer__stack">
               <li><a href="${Routes.home()}">全部文章</a></li>
-              <li><a href="${Routes.projects()}">作品展示</a></li>
+              ${JOSH_SHOW_PROJECTS ? `<li><a href="${Routes.projects()}">作品展示</a></li>` : ''}
               <li><a href="${Routes.about()}">关于作者</a></li>
             </ul>
           </div>
@@ -484,7 +489,7 @@ function buildJoshFooterMarkup(options = {}) {
             <ul class="josh-footer__stack">
               <li><a href="${Routes.about()}">关于本站</a></li>
               <li><a href="${Routes.home()}">返回首页</a></li>
-              <li><a href="https://github.com/tangentllm/weblog" target="_blank" rel="noopener noreferrer">GitHub<span class="josh-footer__ext" aria-hidden="true"> ↗</span></a></li>
+              ${JOSH_SHOW_GITHUB ? `<li><a href="https://github.com/tangentllm/weblog" target="_blank" rel="noopener noreferrer">GitHub<span class="josh-footer__ext" aria-hidden="true"> ↗</span></a></li>` : ''}
             </ul>
           </div>
         </div>
@@ -981,7 +986,7 @@ function joshProjectProseLinksMarkup(project) {
   if (!joshIsPlaceholderLink(links.demo)) {
     items.push(`<a href="${links.demo}" target="_blank" rel="noopener noreferrer">${joshProjectDemoLabel(links.demo)}</a>`);
   }
-  if (links.github && links.github !== '#') {
+  if (JOSH_SHOW_GITHUB && links.github && links.github !== '#') {
     items.push(`<a href="${links.github}" target="_blank" rel="noopener noreferrer">GitHub</a>`);
   }
   if (!joshIsPlaceholderLink(links.docs)) {
@@ -1537,7 +1542,7 @@ function joshProjectLinkButtonsMarkup(project) {
   if (!joshIsPlaceholderLink(links.demo)) {
     buttons.push(`<a class="josh-btn josh-btn--primary" href="${links.demo}" target="_blank" rel="noopener noreferrer">${joshProjectDemoLabel(links.demo)}</a>`);
   }
-  if (links.github && links.github !== '#') {
+  if (JOSH_SHOW_GITHUB && links.github && links.github !== '#') {
     buttons.push(`<a class="josh-btn" href="${links.github}" target="_blank" rel="noopener noreferrer">
       <svg viewBox="0 0 24 24" aria-hidden="true" class="fill-current"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.3c-3.3.7-4-1.6-4-1.6-.6-1.5-1.4-1.9-1.4-1.9-1.2-.8.1-.8.1-.8 1.3.1 2 1.4 2 1.4 1.2 2 3.1 1.4 3.9 1.1.1-.9.5-1.4.8-1.8-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.3-3.1-.1-.3-.6-1.5.1-3.1 0 0 1.1-.3 3.4 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.6 3.4-1.2 3.4-1.2.7 1.6.2 2.8.1 3.1.8.8 1.3 1.8 1.3 3.1 0 4.4-2.7 5.4-5.3 5.7.5.4.9 1.2.9 2.4v3.5c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z"/></svg>
       GitHub

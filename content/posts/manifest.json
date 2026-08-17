@@ -35,6 +35,40 @@
     "subtitle": "探索宏大的新 `animation-timeline` API"
   },
   {
+    "slug": "r1-distill-medical-lora-200-steps",
+    "title": "用 200 步 LoRA 给 DeepSeek-R1-Distill-Llama-8B 灌点中文医学知识，到底改变了什么",
+    "date": "2026-01-20",
+    "readTime": "10 分钟",
+    "category": "微调与对齐",
+    "tags": [
+      "LoRA",
+      "Unsloth",
+      "R1-Distill",
+      "医学",
+      "微调"
+    ],
+    "cover": "./content/assets/posts/covers/sft.svg",
+    "excerpt": "T4 上用 Unsloth + LoRA 对 R1-Distill-Llama-8B 训 200 步中文医学数据，对照微调前后三道临床题与 loss，看清到底改了什么。",
+    "file": "./content/posts/r1-distill-medical-lora-200-steps.md"
+  },
+  {
+    "slug": "bert-intent-recognition",
+    "title": "从零搭建中文意图识别系统：BERT 微调实战全记录",
+    "date": "2026-01-12",
+    "readTime": "18 分钟",
+    "category": "微调与对齐",
+    "tags": [
+      "BERT",
+      "意图识别",
+      "微调",
+      "NLP",
+      "PyTorch"
+    ],
+    "cover": "./content/assets/posts/covers/sft.svg",
+    "excerpt": "基于 SMP2017-ECDT，用 bert-base-chinese 做 31 类意图分类；验证集 Accuracy 94.2%、F1-Macro 0.93，从数据解析到部署完整复现。",
+    "file": "./content/posts/bert-intent-recognition.md"
+  },
+  {
     "slug": "embedding-finetune-domain-rag",
     "title": "Embedding 模型微调：如何提升 RAG 领域检索效果（原理与实战）",
     "date": "2025-09-28",
