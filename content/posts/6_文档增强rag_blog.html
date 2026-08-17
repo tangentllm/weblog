@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（六）：文档增强 RAG——通过问题生成进行文档增强</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle { color: var(--text-muted); font-size: 1.05rem; }
+  header .meta { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+  header .meta span { margin: 0 0.5rem; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .toc a:hover { color: var(--accent); }
+
+  h2 {
+    font-size: 1.6rem; font-weight: 700;
+    margin: 2.5rem 0 1rem; padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border); color: var(--text);
+  }
+  h3 { font-size: 1.25rem; font-weight: 600; margin: 1.8rem 0 0.8rem; color: var(--accent); }
+
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: var(--accent2); }
+  em { color: var(--accent3); font-style: normal; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+    margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.88rem; }
+  p code, li code {
+    background: var(--tag-bg); padding: 0.15rem 0.4rem;
+    border-radius: 4px; font-size: 0.85rem; color: var(--accent3);
+  }
+
+  .callout {
+    background: var(--surface); border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .callout.warning { border-left-color: var(--accent3); }
+  .callout.success { border-left-color: var(--accent2); }
+  .callout .callout-title { font-weight: 700; margin-bottom: 0.3rem; font-size: 0.95rem; }
+
+  .diagram-container {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+    text-align: center; overflow-x: auto;
+  }
+  .diagram-container .caption {
+    font-size: 0.85rem; color: var(--text-muted); margin-top: 0.8rem; text-align: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--border); padding: 0.6rem 1rem; text-align: left; }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+  }
+  .compare-card h4 { font-size: 1rem; margin-bottom: 0.6rem; }
+  .compare-card.bad h4 { color: var(--accent3); }
+  .compare-card.good h4 { color: var(--accent2); }
+  .compare-card ul { padding-left: 1rem; }
+
+  .score-highlight {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.5rem 1rem; margin: 0.3rem;
+    font-size: 1.1rem; font-weight: 700;
+  }
+  .score-highlight.up { border-color: var(--accent2); color: var(--accent2); }
+
+  .chart-wrapper {
+    max-width: 500px; margin: 1.5rem auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem;
+  }
+
+  footer {
+    margin-top: 3rem; padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center; color: var(--text-muted); font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  .series-nav { display: flex; justify-content: space-between; margin-top: 2rem; gap: 1rem; }
+  .series-nav a {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.8rem 1.2rem; color: var(--accent);
+    text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .series-nav a:hover { border-color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header h1 { font-size: 1.5rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 6 篇</div>
+  <h1>文档增强 RAG：通过问题生成进行文档增强</h1>
+  <p class="subtitle">换个角度嵌入——为每个文本块生成"可被回答的问题"，让检索命中更精准</p>
+  <div class="meta">
+    <span>📅 2026-07-10</span>
+    <span>·</span>
+    <span>🏷️ RAG / 问题生成 / 文档增强 / QA 对</span>
+    <span>·</span>
+    <span>⏱️ 阅读约 15 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#motivation">问题动机：用户的"问"与文档的"述"之间的鸿沟</a></li>
+    <li><a href="#comparison">朴素 RAG vs 文档增强 RAG：架构对比</a></li>
+    <li><a href="#principle">核心原理：用 LLM 生成"可被回答的问题"</a></li>
+    <li><a href="#pipeline">完整流水线</a></li>
+    <li><a href="#data-structure">数据结构变化：从单一条目到双重类型</a></li>
+    <li><a href="#code-questions">代码解读：LLM 生成问题</a></li>
+    <li><a href="#code-vectorstore">代码解读：SimpleVectorStore 向量存储</a></li>
+    <li><a href="#code-process">代码解读：文档增强处理管道</a></li>
+    <li><a href="#code-context">代码解读：上下文准备与回复生成</a></li>
+    <li><a href="#code-eval">代码解读：评估与对比</a></li>
+    <li><a href="#demo">效果演示</a></li>
+    <li><a href="#score-compare">跨篇评分对比</a></li>
+    <li><a href="#proscons">优缺点与适用场景</a></li>
+    <li><a href="#summary">本篇小结</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== 1. 动机 ===================== -->
+<h2 id="motivation">一、问题动机：用户的"问"与文档的"述"之间的鸿沟</h2>
+
+<p>在前面的篇章中，我们用了<a href="2_语义分块_blog.html">语义分块</a>、<a href="3_切块大小选择_blog.html">切块大小调优</a>、<a href="4_上下文增强检索_blog.html">上下文邻居检索</a>、<a href="5_上下文片段标题提取_blog.html">CCH 标题提取</a>等多种手段来改善检索。但所有这些方法都面临一个根本矛盾：</p>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 类比理解</div>
+  <p>想象你去图书馆找书。你问管理员："中国政府对 AI 大模型有哪些支持政策？"管理员却只能从书架上抽出一本本<strong>陈述句</strong>写成的报告来逐页翻找。报告里写的是"我国高度重视人工智能的发展，将其上升为国家战略，出台一系列扶持政策……"——内容完全匹配，但<strong>表达方式</strong>截然不同：你用的是<strong>疑问句</strong>，文档用的是<strong>陈述句</strong>。</p>
+</div>
+
+<p>嵌入模型虽然能捕捉语义相似性，但当查询是疑问句而文档是陈述句时，向量空间中的距离可能比预期更远。<strong>文档增强 RAG（Document Augmented RAG）</strong>的核心思路就是：既然用户用"问题"来检索，那我们就在向量存储里也放入"问题"——用 LLM 为每个文本块生成<strong>可以被该块回答的问题</strong>，然后将这些问题的嵌入也存入向量存储。</p>
+
+<!-- ===================== 2. 架构对比 ===================== -->
+<h2 id="comparison">二、朴素 RAG vs 文档增强 RAG：架构对比</h2>
+
+<div class="compare-grid">
+  <div class="compare-card bad">
+    <h4>❌ 朴素 RAG</h4>
+    <ul>
+      <li>向量存储中<strong>只有文本块</strong></li>
+      <li>用户查询直接与<strong>陈述性文本</strong>做相似度匹配</li>
+      <li>疑问句 vs 陈述句的<strong>表达鸿沟</strong>可能导致漏检</li>
+      <li>35 个块 → 35 条向量记录</li>
+    </ul>
+  </div>
+  <div class="compare-card good">
+    <h4>✅ 文档增强 RAG</h4>
+    <ul>
+      <li>向量存储中同时包含<strong>文本块 + 生成的问题</strong></li>
+      <li>用户查询可以匹配到<strong>语义更接近的问题</strong></li>
+      <li>问题充当"语义桥梁"，弥合疑问句与陈述句的差距</li>
+      <li>35 个块 → 35 + 35×3 = <strong>140 条</strong>向量记录</li>
+    </ul>
+  </div>
+</div>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+    subgraph naive["朴素 RAG"]
+      direction TB
+      C1["文本块 ×35"] --> E1["嵌入模型"]
+      E1 --> V1["35 条向量"]
+      V1 --> S1["查询 vs 文本块"]
+    end
+    subgraph enhanced["文档增强 RAG"]
+      direction TB
+      C2["文本块 ×35"] --> LLM["LLM 生成问题"]
+      LLM --> Q["问题 ×105"]
+      C2 --> E2["嵌入模型"]
+      Q --> E3["嵌入模型"]
+      E2 --> V2["文本块向量 ×35"]
+      E3 --> V3["问题向量 ×105"]
+      V2 --> S2["查询 vs 块+问题"]
+      V3 --> S2
+    end
+    naive ~~~ enhanced
+  </div>
+  <div class="caption">图 1：朴素 RAG 只有文本块嵌入；文档增强 RAG 额外为每个块生成问题并分别嵌入，向量存储规模扩大 4 倍</div>
+</div>
+
+<!-- ===================== 3. 核心原理 ===================== -->
+<h2 id="principle">三、核心原理：用 LLM 生成"可被回答的问题"</h2>
+
+<p>文档增强 RAG 的关键创新可以概括为<strong>一个转换</strong>：把"这段文本说了什么"变成"这段文本能回答什么"。</p>
+
+<h3>3.1 索引阶段：从陈述到疑问</h3>
+
+<p>对每个文本块，调用 LLM 生成 N 个<strong>可以被该块直接回答的问题</strong>。这些问题与用户可能提出的查询在<strong>表达方式上高度一致</strong>（都是疑问句），因此在嵌入空间中距离更近。</p>
+
+<div class="diagram-container">
+  <div style="font-family: monospace; font-size: 0.85rem; color: var(--text); text-align: left; display: inline-block;">
+    <pre style="border:none; background:transparent; margin:0; padding:0; color: var(--text);">
+原始文本块 (陈述句)
+┌──────────────────────────────────────────────────────────────────┐
+│ 我国高度重视人工智能的发展，将其上升为国家战略，                     │
+│ 出台一系列扶持政策和规划，为 AI 大模型产业发展创造了良好的环境。      │
+│ 2024年《政府工作报告》中提出开展"人工智能+"行动……                  │
+└──────────────────────────────────────────────────────────────────┘
+                        │
+                        ▼  LLM (gpt-4o, temperature=0.7)
+                        │
+┌──────────────────────────────────────────────────────────────────┐
+│ 生成的问题 (疑问句):                                              │
+│  Q1: 我国在人工智能发展方面采取了哪些措施来支持AI大模型产业的发展？   │
+│  Q2: 我国在人工智能发展中有哪些重要政策支持措施？                    │
+│  Q3: 深圳市在人工智能高质量发展方面有哪些支持政策？                   │
+└──────────────────────────────────────────────────────────────────┘
+    </pre>
+  </div>
+  <div class="caption">图 2：LLM 将陈述性文本转换为多个疑问句——这些疑问句与用户查询的表达方式天然更接近</div>
+</div>
+
+<h3>3.2 检索阶段：双重类型匹配</h3>
+
+<p>向量存储中同时存在<strong>两种类型的记录</strong>：文本块（chunk）和生成的问题（question）。检索时，用户查询同时与这两种记录做余弦相似度匹配。由于问题与查询在表达形式上更接近（都是疑问句），问题匹配往往能提供更高的相似度分数，从而<strong>通过 metadata 回溯</strong>到对应的原始文本块。</p>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    Q["用户查询：中国政府对AI大模型<br/>发展有哪些支持政策？"] --> QE["查询嵌入"]
+    QE --> VS["向量存储 (140 条记录)"]
+    VS --> R1["问题匹配 (sim=0.9389)<br/>我国在人工智能发展方面采取了哪些<br/>措施来支持AI大模型产业的发展？"]
+    VS --> R2["问题匹配 (sim=0.9376)<br/>我国在人工智能发展中有哪些<br/>重要政策支持措施？"]
+    VS --> R3["块匹配 (sim=0.91xx)<br/>原始文本块内容..."]
+    R1 --> META["通过 metadata.chunk_index<br/>回溯到原始块 #0"]
+    R2 --> META2["通过 metadata.chunk_index<br/>回溯到原始块 #3"]
+    R3 --> MERGE["合并去重 → 上下文"]
+    META --> MERGE
+    META2 --> MERGE
+    MERGE --> LLM["LLM 生成回答"]
+
+    style Q fill:#1f6feb,stroke:#388bfd,color:#fff
+    style VS fill:#a371f7,stroke:#bc8cff,color:#fff
+    style LLM fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 3：检索流程——用户查询同时匹配文本块和生成的问题，问题匹配往往获得更高相似度，再通过 metadata 回溯到原始块</div>
+</div>
+
+<div class="callout success">
+  <div class="callout-title">💡 关键洞察</div>
+  <p>在本 notebook 的实际运行中，查询"中国政府对AI大模型发展有哪些支持政策？"检索到的<strong>最高相似度记录是问题匹配</strong>（0.9389），而非直接的文本块匹配。这证明了"问题"确实充当了用户查询与文档内容之间的<strong>语义桥梁</strong>。</p>
+</div>
+
+<!-- ===================== 4. 完整流水线 ===================== -->
+<h2 id="pipeline">四、完整流水线</h2>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    A["📄 PDF 文档"] --> B["文本提取<br/>(PyMuPDF)"]
+    B --> C["重叠分块<br/>(n=1000, overlap=200)<br/>→ 35 个块"]
+    C --> D["🌟 LLM 生成问题<br/>(gpt-4o, 每块 3 个问题)<br/>→ 105 个问题"]
+    D --> E["双重嵌入<br/>(text-embedding-ada-002)<br/>块嵌入 ×35 + 问题嵌入 ×105"]
+    E --> F["SimpleVectorStore<br/>共 140 条记录"]
+    F --> G["用户查询"]
+    G --> H["查询嵌入"]
+    H --> I["余弦相似度检索<br/>Top-K = 10"]
+    I --> J["prepare_context<br/>合并去重 → 原始块上下文"]
+    J --> K["LLM 生成回答<br/>(gpt-4o)"]
+    K --> L["LLM 评估打分<br/>(gpt-4o)"]
+
+    style A fill:#1f6feb,stroke:#388bfd,color:#fff
+    style D fill:#a371f7,stroke:#bc8cff,color:#fff
+    style F fill:#f0883e,stroke:#d29922,color:#fff
+    style K fill:#238636,stroke:#3fb950,color:#fff
+    style L fill:#da3633,stroke:#f85149,color:#fff
+  </div>
+  <div class="caption">图 4：文档增强 RAG 完整流水线——紫色高亮的"LLM 生成问题"是核心创新，橙色高亮的向量存储包含双重类型记录</div>
+</div>
+
+<!-- ===================== 5. 数据结构变化 ===================== -->
+<h2 id="data-structure">五、数据结构变化：从单一条目到双重类型</h2>
+
+<div class="diagram-container">
+  <div style="font-family: monospace; font-size: 0.85rem; color: var(--text); text-align: left; display: inline-block;">
+    <pre style="border:none; background:transparent; margin:0; padding:0; color: var(--text);">
+向量存储中的记录结构：
+
+朴素 RAG (35 条记录):
+┌──────────────────────────────────────────────────────┐
+│ {                                                    │
+│   text: "我国高度重视人工智能的发展……",                 │
+│   embedding: [0.012, -0.034, ...],  ← 1536 维        │
+│   metadata: { index: 0 }                             │
+│ }                                                    │
+└──────────────────────────────────────────────────────┘
+
+文档增强 RAG (140 条记录):
+┌──────────────────────────────────────────────────────┐
+│ 类型 A — 文本块记录 (×35):                             │
+│ {                                                    │
+│   text: "我国高度重视人工智能的发展……",                 │
+│   embedding: [0.012, -0.034, ...],                   │
+│   metadata: { type: "chunk", index: 0 }              │
+│ }                                                    │
+├──────────────────────────────────────────────────────┤
+│ 类型 B — 问题记录 (×105):                              │
+│ {                                                    │
+│   text: "我国在人工智能发展方面采取了哪些措施……？",      │
+│   embedding: [0.023, -0.011, ...],                   │
+│   metadata: {                                        │
+│     type: "question",                                │
+│     chunk_index: 0,       ← 指向原始块               │
+│     original_chunk: "..." ← 携带原始块全文             │
+│   }                                                  │
+│ }                                                    │
+└──────────────────────────────────────────────────────┘
+    </pre>
+  </div>
+  <div class="caption">图 5：数据结构对比——文档增强 RAG 引入了 type 字段区分 chunk 和 question，question 记录通过 chunk_index 回溯到原始块</div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">🔍 设计要点</div>
+  <ul>
+    <li><strong>metadata.type</strong>：区分记录是"文本块"还是"问题"，便于后续分类处理</li>
+    <li><strong>metadata.chunk_index</strong>：问题记录指向其来源的块索引，检索命中问题后可以回溯到原始块</li>
+    <li><strong>metadata.original_chunk</strong>：问题记录直接携带原始块全文，避免二次查找</li>
+  </ul>
+</div>
+
+<!-- ===================== 6. 代码：生成问题 ===================== -->
+<h2 id="code-questions">六、代码解读：LLM 生成问题</h2>
+
+<p>这是文档增强 RAG 最核心的函数——用 <code>gpt-4o</code> 为每个文本块生成可以被该块回答的问题：</p>
+
+<pre><code class="language-python">def generate_questions(text_chunk, num_questions=5, model="gpt-4o"):
+    """根据给定的文本块生成可以被该块直接回答的问题。"""
+    system_prompt = (
+        "你是一名擅长从文本中提炼关键信息并生成相关问题的专家。"
+        "请只用中文，根据给定文本生成可以用该文本直接回答的简明问题，"
+        "聚焦于核心信息和重要概念。"
+    )
+
+    user_prompt = f"""
+请根据以下文本内容，生成 {num_questions} 个不同的问题，
+这些问题都可以仅通过该文本内容来回答：
+
+{text_chunk}
+
+请只用中文作答，输出格式为编号的问题列表，不要有其他多余内容。
+"""
+
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0.7,       # 适度随机，让问题更多样
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+
+    # 从回复中提取并清理问题
+    questions_text = response.choices[0].message.content.strip()
+    questions = []
+    for line in questions_text.split('\n'):
+        cleaned_line = re.sub(r'^\d+\.\s*', '', line.strip())
+        if cleaned_line and cleaned_line.endswith('？'):
+            questions.append(cleaned_line)
+    return questions</code></pre>
+
+<div class="callout">
+  <div class="callout-title">🔍 设计要点</div>
+  <ul>
+    <li><strong>temperature=0.7</strong>：与 CCH 标题生成（temperature=0）不同，这里刻意引入随机性，让同一块生成的多个问题<strong>更多样化</strong>，覆盖不同角度的查询</li>
+    <li><strong>中文 prompt</strong>：因为目标文档和预期用户查询都是中文，用中文 prompt 确保生成的问题与用户查询的语言风格一致</li>
+    <li><strong>正则提取</strong>：LLM 输出格式为"1. xxx？\n2. xxx？"，用正则 <code>^\d+\.\s*</code> 去除编号，只保留问题文本</li>
+    <li><strong>过滤条件</strong>：只保留以"？"结尾的行，过滤掉可能的多余输出</li>
+  </ul>
+</div>
+
+<!-- ===================== 7. 代码：向量存储 ===================== -->
+<h2 id="code-vectorstore">七、代码解读：SimpleVectorStore 向量存储</h2>
+
+<p>由于需要同时存储两种类型的记录（chunk 和 question），notebook 用 NumPy 实现了一个轻量级向量存储：</p>
+
+<pre><code class="language-python">class SimpleVectorStore:
+    """使用 NumPy 实现的简单向量存储。"""
+    def __init__(self):
+        self.vectors = []    # 嵌入向量列表
+        self.texts = []      # 原始文本列表
+        self.metadata = []   # 元数据列表
+
+    def add_item(self, text, embedding, metadata=None):
+        """添加一条记录：文本 + 嵌入 + 元数据。"""
+        self.vectors.append(np.array(embedding))
+        self.texts.append(text)
+        self.metadata.append(metadata or {})
+
+    def similarity_search(self, query_embedding, k=5):
+        """用余弦相似度查找最相似的 top-k 条记录。"""
+        query_vector = np.array(query_embedding)
+        similarities = []
+        for i, vector in enumerate(self.vectors):
+            similarity = np.dot(query_vector, vector) / (
+                np.linalg.norm(query_vector) * np.linalg.norm(vector)
+            )
+            similarities.append((i, similarity))
+
+        similarities.sort(key=lambda x: x[1], reverse=True)
+
+        results = []
+        for i in range(min(k, len(similarities))):
+            idx, score = similarities[i]
+            results.append({
+                "text": self.texts[idx],
+                "metadata": self.metadata[idx],
+                "similarity": score
+            })
+        return results</code></pre>
+
+<div class="callout">
+  <div class="callout-title">🔍 设计要点</div>
+  <ul>
+    <li><strong>统一存储</strong>：chunk 和 question 记录存在同一个列表中，检索时<strong>统一排序</strong>，不做类型区分</li>
+    <li><strong>metadata 区分类型</strong>：通过 <code>metadata["type"]</code> 区分"chunk"和"question"，后续处理时分类</li>
+    <li><strong>余弦相似度</strong>：标准的向量相似度度量，适合归一化后的嵌入向量</li>
+    <li><strong>轻量实现</strong>：生产环境中可替换为 FAISS、Chroma、Pinecone 等专用向量数据库</li>
+  </ul>
+</div>
+
+<!-- ===================== 8. 代码：文档处理管道 ===================== -->
+<h2 id="code-process">八、代码解读：文档增强处理管道</h2>
+
+<p><code>process_document</code> 函数将所有步骤整合为一个完整的管道：</p>
+
+<pre><code class="language-python">def process_document(pdf_path, chunk_size=1000, chunk_overlap=200,
+                     questions_per_chunk=5):
+    """处理带有问题增强的文档。"""
+    # 1. 提取文本
+    extracted_text = extract_text_from_pdf(pdf_path)
+
+    # 2. 重叠分块
+    text_chunks = chunk_text(extracted_text, chunk_size, chunk_overlap)
+    print(f"Created {len(text_chunks)} text chunks")
+
+    vector_store = SimpleVectorStore()
+
+    # 3. 逐块处理：嵌入 + 生成问题 + 问题嵌入
+    for i, chunk in enumerate(tqdm(text_chunks, desc="Processing Chunks")):
+        # 为块本身创建嵌入
+        chunk_embedding = create_embeddings(chunk).data[0].embedding
+        vector_store.add_item(
+            text=chunk,
+            embedding=chunk_embedding,
+            metadata={"type": "chunk", "index": i}
+        )
+
+        # 为该块生成问题
+        questions = generate_questions(
+            chunk, num_questions=questions_per_chunk
+        )
+
+        # 为每个问题创建嵌入并添加到向量存储
+        for question in questions:
+            question_embedding = create_embeddings(question).data[0].embedding
+            vector_store.add_item(
+                text=question,
+                embedding=question_embedding,
+                metadata={
+                    "type": "question",
+                    "chunk_index": i,
+                    "original_chunk": chunk
+                }
+            )
+
+    return text_chunks, vector_store</code></pre>
+
+<p>实际运行结果：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>参数</th>
+      <th>值</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>chunk_size</td>
+      <td>1000</td>
+      <td>每块 1000 字符</td>
+    </tr>
+    <tr>
+      <td>chunk_overlap</td>
+      <td>200</td>
+      <td>相邻块重叠 200 字符</td>
+    </tr>
+    <tr>
+      <td>questions_per_chunk</td>
+      <td>3</td>
+      <td>每块生成 3 个问题</td>
+    </tr>
+    <tr>
+      <td>文本块数</td>
+      <td><strong>35</strong></td>
+      <td>PDF 分块结果</td>
+    </tr>
+    <tr>
+      <td>生成问题数</td>
+      <td><strong>105</strong></td>
+      <td>35 × 3 = 105</td>
+    </tr>
+    <tr>
+      <td>向量存储记录数</td>
+      <td><strong>140</strong></td>
+      <td>35 (块) + 105 (问题)</td>
+    </tr>
+    <tr>
+      <td>处理耗时</td>
+      <td>~2 分 22 秒</td>
+      <td>含 35 次问题生成 + 140 次嵌入调用</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 成本提醒</div>
+  <p>每个块需要 1 次 gpt-4o 调用（生成问题）+ 1 次嵌入调用（块嵌入）+ 3 次嵌入调用（问题嵌入）= <strong>5 次 API 调用/块</strong>。35 个块总计 <strong>175 次 API 调用</strong>。相比朴素 RAG 的 35 次嵌入调用，API 成本增加了约 5 倍。在生产环境中需要权衡效果提升与成本。</p>
+</div>
+
+<!-- ===================== 9. 代码：上下文准备 ===================== -->
+<h2 id="code-context">九、代码解读：上下文准备与回复生成</h2>
+
+<p>检索结果中混合了 chunk 和 question 两种类型。<code>prepare_context</code> 函数的职责是将它们<strong>统一回溯到原始块</strong>并去重：</p>
+
+<pre><code class="language-python">def prepare_context(search_results):
+    """从搜索结果中准备统一的上下文。"""
+    chunk_indices = set()
+    context_chunks = []
+
+    # 先添加直接匹配的文本块
+    for result in search_results:
+        if result["metadata"]["type"] == "chunk":
+            chunk_indices.add(result["metadata"]["index"])
+            context_chunks.append(
+                f"Chunk {result['metadata']['index']}:\n{result['text']}"
+            )
+
+    # 再通过问题回溯到原始块（去重）
+    for result in search_results:
+        if result["metadata"]["type"] == "question":
+            chunk_idx = result["metadata"]["chunk_index"]
+            if chunk_idx not in chunk_indices:
+                chunk_indices.add(chunk_idx)
+                context_chunks.append(
+                    f"Chunk {chunk_idx} "
+                    f"(referenced by question '{result['text']}'):\n"
+                    f"{result['metadata']['original_chunk']}"
+                )
+
+    return "\n\n".join(context_chunks)</code></pre>
+
+<div class="callout success">
+  <div class="callout-title">💡 设计巧妙之处</div>
+  <p>无论查询匹配到的是文本块本身还是生成的问题，最终送入 LLM 的上下文都是<strong>原始文本块</strong>。问题只是"检索入口"，真正的"答案来源"还是原始文档内容。通过 <code>chunk_indices</code> 集合去重，避免同一块被重复送入上下文。</p>
+</div>
+
+<p>回复生成函数与前面篇章类似，使用 <code>gpt-4o</code> 基于合并后的上下文生成回答：</p>
+
+<pre><code class="language-python">def generate_response(query, context, model="gpt-4o"):
+    """根据查询和上下文生成回复。"""
+    system_prompt = (
+        "You are an AI assistant that strictly answers based on "
+        "the given context. If the answer cannot be derived directly "
+        "from the provided context, respond with: 'I do not have "
+        "enough information to answer that.'"
+    )
+    user_prompt = f"""
+        Context:
+        {context}
+
+        Question: {query}
+
+        Please answer the question based only on the context provided
+        above. Be concise and accurate.
+    """
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+    return response.choices[0].message.content</code></pre>
+
+<!-- ===================== 10. 代码：评估 ===================== -->
+<h2 id="code-eval">十、代码解读：评估与对比</h2>
+
+<p>notebook 中做了两组对比实验：文档增强 RAG 和朴素 RAG（只用块嵌入），使用相同的验证问题和评估方法。</p>
+
+<pre><code class="language-python">def evaluate_response(query, response, reference_answer, model="gpt-4o"):
+    """对 AI 回复与参考答案进行评估。"""
+    evaluate_system_prompt = """你是一个智能评测系统...
+请根据以下评分标准打分（0~1分）：
+- 1.0：内容和含义完全一致
+- 0.8：非常好，仅有轻微遗漏或差异
+- 0.6：较好，覆盖主要要点但遗漏部分细节
+- 0.4：部分回答，存在明显遗漏
+- 0.2：仅有极少相关信息
+- 0.0：内容错误或完全无关
+"""
+    # ... LLM 评估调用 ...
+    return eval_response.choices[0].message.content</code></pre>
+
+<p>评估结果对比：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>方案</th>
+      <th>评估分数</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>朴素 RAG（只用块嵌入）</td>
+      <td><strong style="color: var(--accent3);">0.5</strong></td>
+      <td>回答部分正确，存在明显遗漏</td>
+    </tr>
+    <tr>
+      <td><a href="5_上下文片段标题提取_blog.html">第 5 篇：CCH 标题提取</a></td>
+      <td><strong style="color: var(--accent2);">1.0</strong></td>
+      <td>回答与标准答案高度一致</td>
+    </tr>
+    <tr>
+      <td><strong>第 6 篇：文档增强 RAG</strong></td>
+      <td><strong style="color: var(--accent);">0.8</strong></td>
+      <td>非常好，仅有轻微遗漏</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">💡 评估详情（文档增强 RAG）</div>
+  <p><strong>评分：0.8</strong></p>
+  <p>理由：AI 助手的回复准确地提到了中国政府对 AI 大模型发展的支持政策，包括将人工智能上升为国家战略、出台一系列扶持政策和规划、地方政府的支持政策等。这些内容与参考答案中的"'人工智能+'行动、支持通用与行业大模型研发、加快公共算力中心建设、推动算法和开源平台"等政策方向是一致的。然而，AI 助手的回复中没有具体提到"支持通用与行业大模型研发"和"加快公共算力中心建设"这两个具体政策点，因此存在轻微遗漏。</p>
+</div>
+
+<!-- ===================== 11. 效果演示 ===================== -->
+<h2 id="demo">十一、效果演示</h2>
+
+<h3>11.1 检索结果展示</h3>
+
+<div class="callout">
+  <div class="callout-title">📝 查询问题</div>
+  <p>中国政府对AI大模型发展有哪些支持政策？</p>
+</div>
+
+<p>设置 <code>k=10</code>，检索返回了 10 条最相关的记录。按类型分类：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>排名</th>
+      <th>类型</th>
+      <th>内容</th>
+      <th>相似度</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>#1</td>
+      <td><em>问题</em></td>
+      <td>我国在人工智能发展方面采取了哪些措施来支持AI大模型产业的发展？</td>
+      <td><strong style="color: var(--accent2);">0.9389</strong></td>
+    </tr>
+    <tr>
+      <td>#2</td>
+      <td><em>问题</em></td>
+      <td>我国在人工智能发展中有哪些重要政策支持措施？</td>
+      <td><strong>0.9376</strong></td>
+    </tr>
+    <tr>
+      <td>#3</td>
+      <td><em>问题</em></td>
+      <td>深圳市在人工智能高质量发展方面有哪些支持政策？</td>
+      <td><strong>0.9342</strong></td>
+    </tr>
+    <tr>
+      <td>#4</td>
+      <td><em>问题</em></td>
+      <td>哪些城市发布了关于 AI 大模型的相关政策？</td>
+      <td>0.9156</td>
+    </tr>
+    <tr>
+      <td>#5</td>
+      <td><em>问题</em></td>
+      <td>中国 AI 大模型产业发展面临哪些挑战？</td>
+      <td>0.9147</td>
+    </tr>
+    <tr>
+      <td>#6</td>
+      <td><em>问题</em></td>
+      <td>中国 AI 大模型产业发展的市场驱动力是什么？</td>
+      <td>0.9141</td>
+    </tr>
+    <tr>
+      <td>#7</td>
+      <td><em>问题</em></td>
+      <td>中国 AI 大模型产业发展的市场驱动力来自哪些领域的需求？</td>
+      <td>0.9085</td>
+    </tr>
+    <tr>
+      <td>#8</td>
+      <td><em>问题</em></td>
+      <td>《政府工作报告》中提出了什么行动来促进人工智能高水平应用的发展？</td>
+      <td>0.9055</td>
+    </tr>
+    <tr>
+      <td>#9</td>
+      <td><em>问题</em></td>
+      <td>北京市在大模型产业方面发布了哪些具体政策和措施？</td>
+      <td>0.9053</td>
+    </tr>
+    <tr>
+      <td>#10</td>
+      <td><em>问题</em></td>
+      <td>中国 AI 大模型产业在算力方面面临哪些挑战？</td>
+      <td>0.9046</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout success">
+  <div class="callout-title">🎯 关键发现</div>
+  <p>Top-10 检索结果中，<strong>全部是问题匹配</strong>（而非直接的文本块匹配），最高相似度达 <strong>0.9389</strong>。这充分证明了"问题"作为检索入口的有效性——生成的问题与用户查询在嵌入空间中的距离，远比原始陈述性文本更近。</p>
+</div>
+
+<h3>11.2 生成结果</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>类别</th>
+      <th>内容</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>AI 生成的回答</strong></td>
+      <td>中国政府对AI大模型发展的支持政策包括：将人工智能上升为国家战略，出台一系列扶持政策和规划，如国务院于2017年发布《新一代人工智能发展规划》，科技部等六部门于2022年印发《关于加快场景创新 以人工智能高水平应用促进经济高质量发展的指导意见》，以及2024年《政府工作报告》中提出的"人工智能+"行动。此外，各地方政府也出台了相关支持政策，加快大模型产业的持续发展。例如，北京、深圳、杭州、成都等地发布了关于AI大模型的相关政策，推动技术创新和产业生态建设。</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 12. 评分对比图表 ===================== -->
+<h2 id="score-compare">十二、跨篇评分对比</h2>
+
+<p>将使用相同验证问题的各篇评估分数放在一起对比：</p>
+
+<div class="chart-wrapper">
+  <canvas id="scoreChart"></canvas>
+</div>
+<div class="diagram-container" style="border:none; background:transparent; padding:0;">
+  <div class="caption">图 6：相同验证问题在不同 RAG 改进方案下的评估分数对比</div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">💡 趋势分析</div>
+  <p>从朴素 RAG（0.5）到 CCH 标题提取（1.0），再到文档增强 RAG（0.8），每种方法都相对朴素 RAG 有显著提升。文档增强 RAG 的 0.8 分略低于 CCH 的 1.0 分，主要原因是评估标准更细粒度（0/0.2/0.4/0.6/0.8/1.0 六级 vs 0/0.5/1.0 三级），且回答中遗漏了"支持通用与行业大模型研发"和"加快公共算力中心建设"等具体政策点。但相比朴素 RAG 的 0.5 分，文档增强 RAG 仍有 <strong>60%</strong> 的提升。</p>
+</div>
+
+<!-- ===================== 13. 优缺点 ===================== -->
+<h2 id="proscons">十三、优缺点与适用场景</h2>
+
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>✅ 优点</h4>
+    <ul>
+      <li><strong>语义桥梁</strong>：生成的问题与用户查询在表达方式上高度一致，弥合了疑问句与陈述句的鸿沟</li>
+      <li><strong>检索精度提升</strong>：问题匹配的最高相似度（0.9389）远高于朴素 RAG 的块匹配</li>
+      <li><strong>多角度覆盖</strong>：每个块生成多个问题，覆盖不同角度的查询意图</li>
+      <li><strong>实现直观</strong>：核心逻辑简单——生成问题、嵌入问题、统一检索</li>
+      <li><strong>可与其他技术叠加</strong>：可与 CCH、邻居检索、重排序等组合使用</li>
+    </ul>
+  </div>
+  <div class="compare-card bad">
+    <h4>❌ 缺点</h4>
+    <ul>
+      <li><strong>索引成本大幅增加</strong>：每块需要 1 次 LLM 调用 + 4 次嵌入调用 = 5 次 API 调用</li>
+      <li><strong>存储膨胀</strong>：向量存储从 35 条膨胀到 140 条（4 倍），大规模场景下更显著</li>
+      <li><strong>检索延迟增加</strong>：更大的向量空间意味着更长的相似度计算时间</li>
+      <li><strong>问题质量依赖 LLM</strong>：如果生成的问题偏离了块的核心内容，可能引入噪声</li>
+      <li><strong>temperature 调参</strong>：问题生成的 temperature 需要调优——太低则问题雷同，太高则问题偏离</li>
+    </ul>
+  </div>
+</div>
+
+<h3>适用场景</h3>
+<table>
+  <thead>
+    <tr>
+      <th>✅ 适合</th>
+      <th>❌ 不适合</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>用户查询以疑问句为主的场景</td>
+      <td>关键词匹配即可满足的简单检索</td>
+    </tr>
+    <tr>
+      <td>文档为陈述性长文本（报告、论文）</td>
+      <td>文档本身已是 FAQ 格式</td>
+    </tr>
+    <tr>
+      <td>对检索召回率要求高的场景</td>
+      <td>对索引成本和延迟极度敏感的场景</td>
+    </tr>
+    <tr>
+      <td>查询角度多样、难以预测用户怎么问</td>
+      <td>查询模式固定、可枚举的场景</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>与 CCH（第 5 篇）的对比</h3>
+<table>
+  <thead>
+    <tr>
+      <th>维度</th>
+      <th>CCH 标题提取（第 5 篇）</th>
+      <th>文档增强 RAG（本篇）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LLM 生成内容</td>
+      <td>1 个描述性<strong>标题</strong></td>
+      <td>N 个可回答的<strong>问题</strong></td>
+    </tr>
+    <tr>
+      <td>每块 API 调用数</td>
+      <td>1 次 LLM + 2 次嵌入</td>
+      <td>1 次 LLM + (1+N) 次嵌入</td>
+    </tr>
+    <tr>
+      <td>向量存储膨胀</td>
+      <td>2 倍（块 + 标题）</td>
+      <td>(1+N) 倍（块 + N 个问题）</td>
+    </tr>
+    <tr>
+      <td>检索方式</td>
+      <td>双重相似度取平均</td>
+      <td>统一检索 + metadata 回溯</td>
+    </tr>
+    <tr>
+      <td>核心作用</td>
+      <td>为块添加"语义锚点"</td>
+      <td>为块添加"语义桥梁"</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 14. 小结 ===================== -->
+<h2 id="summary">十四、本篇小结</h2>
+
+<p>文档增强 RAG 的核心思想可以用一句话概括：</p>
+
+<div class="callout success">
+  <div class="callout-title">🎯 核心 takeaway</div>
+  <p>既然用户用"问题"来检索，那就在向量存储里也放入"问题"。用 LLM 为每个文本块生成可以被该块回答的问题，然后将问题和原文一起嵌入向量存储。检索时，用户查询可以匹配到语义更接近的问题，再通过 metadata 回溯到原始文本块。问题充当了用户"疑问句"与文档"陈述句"之间的<strong>语义桥梁</strong>。</p>
+</div>
+
+<p>技术要点回顾：</p>
+<ol>
+  <li><strong>LLM 生成问题</strong>：用 <code>gpt-4o</code>（temperature=0.7）为每个块生成 3 个可回答的问题</li>
+  <li><strong>双重类型嵌入</strong>：文本块和生成的问题分别用 <code>text-embedding-ada-002</code> 嵌入</li>
+  <li><strong>统一向量存储</strong>：35 块 + 105 问题 = <strong>140 条记录</strong>，通过 metadata.type 区分</li>
+  <li><strong>metadata 回溯</strong>：问题匹配通过 <code>chunk_index</code> 回溯到原始块，确保上下文来自原文</li>
+  <li><strong>效果提升</strong>：评估分数从朴素 RAG 的 0.5 提升到 0.8（提升 60%）</li>
+</ol>
+
+<p>本篇的文档增强技术与<a href="5_上下文片段标题提取_blog.html">第 5 篇</a>的 CCH 技术思路相似但策略不同：CCH 生成的是"标题"（描述块说了什么），本篇生成的是"问题"（块能回答什么）。两者可以叠加使用——用标题做语义锚点，用问题做检索桥梁，进一步提升检索质量。</p>
+
+<p>下一篇我们将介绍<strong>查询转换（Query Transformation）</strong>——在检索之前对用户查询进行变换，让查询本身更适合向量检索。敬请期待！</p>
+
+<!-- Series navigation -->
+<div class="series-nav">
+  <a href="5_上下文片段标题提取_blog.html">← 第 5 篇：上下文片段标题提取 (CCH)</a>
+  <a href="#">第 7 篇：查询转换 →</a>
+</div>
+
+</div>
+
+<footer>
+  <p>「从零到 RAG 大师」系列 · 第 6 篇 · 文档增强 RAG</p>
+  <p>对应 Notebook：<code>6_文档增强的rag.ipynb</code></p>
+  <p style="margin-top: 0.5rem;">
+    <a href="#">系列首页</a> · 
+    <a href="5_上下文片段标题提取_blog.html">上一篇</a> · 
+    <a href="#">下一篇</a>
+  </p>
+</footer>
+
+<script>
+  // Mermaid 初始化（暗色主题）
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1f6feb',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#388bfd',
+      lineColor: '#8b949e',
+      secondaryColor: '#161b22',
+      tertiaryColor: '#0d1117',
+      noteBkgColor: '#161b22',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d'
+    },
+    flowchart: { htmlLabels: true, curve: 'basis' }
+  });
+
+  // highlight.js 初始化
+  hljs.highlightAll();
+
+  // Chart.js 跨篇评分对比
+  const ctx = document.getElementById('scoreChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['第 4 篇\n上下文增强检索', '第 5 篇\nCCH 标题提取', '第 6 篇\n文档增强 RAG'],
+      datasets: [{
+        label: '评估分数',
+        data: [0.5, 1.0, 0.8],
+        backgroundColor: [
+          'rgba(240, 136, 62, 0.7)',
+          'rgba(63, 185, 80, 0.7)',
+          'rgba(88, 166, 255, 0.7)'
+        ],
+        borderColor: [
+          'rgba(240, 136, 62, 1)',
+          'rgba(63, 185, 80, 1)',
+          'rgba(88, 166, 255, 1)'
+        ],
+        borderWidth: 2,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return '评分: ' + context.parsed.y;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 1.2,
+          ticks: {
+            color: '#8b949e',
+            stepSize: 0.2,
+            callback: function(value) { return value.toFixed(1); }
+          },
+          grid: { color: 'rgba(48, 54, 61, 0.5)' }
+        },
+        x: {
+          ticks: {
+            color: '#8b949e',
+            font: { size: 11 }
+          },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

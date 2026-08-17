@@ -12,6 +12,10 @@ demo: https://example.com/
 docs: https://example.com/docs
 ---
 
+通过 Planner / Analyst / Writer / Supervisor 四角色分工，把运营分析从目标拆解、跨系统取数到复盘报告串成一条可观测链路。LangGraph 状态机负责编排与人工接管，统一 Tool Registry 对接 BI、埋点与文档系统，把原本天级的分析流程压缩到小时级。
+
+这篇记录会把架构设计、各 Agent 职责划分、关键指标，以及从 PoC 到可运维部署时的取舍与踩坑一并展开。
+
 ## 问题定义
 
 运营分析链路跨多个系统，人工汇总耗时且容易遗漏上下文。

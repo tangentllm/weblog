@@ -1,0 +1,709 @@
+/* Josh W. Comeau design tokens — site-wide */
+
+
+
+@property --josh-top-color {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #a0d4ee;
+
+}
+
+
+
+@property --josh-nav-scroll-progress {
+
+  syntax: '<number>';
+
+  inherits: true;
+
+  initial-value: 0;
+
+}
+
+
+
+@property --josh-color-sky-from {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #a0d4ee;
+
+}
+
+
+
+@property --josh-color-sky-to {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #7dc4e8;
+
+}
+
+
+
+@property --josh-color-cloud-300 {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #ddeef8;
+
+}
+
+
+
+@property --josh-color-cloud-500 {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #b1dff6;
+
+}
+
+
+
+@property --josh-color-background {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #fff;
+
+}
+
+
+
+@property --josh-color-text {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #0a0c10;
+
+}
+
+
+
+@property --josh-syntax-bg {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(213deg 80% 95%);
+
+}
+
+
+
+@property --josh-syntax-highlight {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(225deg 25% 93%);
+
+}
+
+
+
+@property --josh-syntax-txt {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(0deg 0% 16%);
+
+}
+
+
+
+@property --josh-syntax-comment {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(225deg 15% 42%);
+
+}
+
+
+
+@property --josh-syntax-prop {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(327deg 100% 43%);
+
+}
+
+
+
+@property --josh-syntax-bool {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(302deg 100% 37%);
+
+}
+
+
+
+@property --josh-syntax-val {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(200deg 15% 40%);
+
+}
+
+
+
+@property --josh-syntax-str {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(259deg 100% 56%);
+
+}
+
+
+
+@property --josh-syntax-name {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(280deg 100% 50%);
+
+}
+
+
+
+@property --josh-syntax-del {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(0deg 100% 67%);
+
+}
+
+
+
+@property --josh-syntax-fn {
+
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: hsl(231deg 99% 62%);
+
+}
+
+
+
+:root {
+
+  --josh-max-width: 68.75rem;
+
+  --josh-layout-gutter: 0;
+
+  --josh-layout-width: 100%;
+
+  --josh-viewport-padding: 2rem;
+
+  --josh-font-family: Wotfard, Wotfard-fallback, 'Noto Sans SC', system-ui, sans-serif;
+
+  --josh-font-family-mono: 'Cartograph CF', ui-monospace, monospace;
+
+  --josh-font-weight-light: 400;
+
+  --josh-font-weight-medium: 500;
+
+  --josh-font-weight-bold: 600;
+
+  --josh-line-height-body: calc(0.95 + 0.62rem);
+
+  --josh-color-primary: #4242fa;
+
+  --josh-color-action: #4242fa;
+
+  --josh-color-outline: #222222;
+
+  --josh-color-secondary: #e60067;
+
+  --josh-color-tertiary: hsl(255deg 85% 30%);
+
+  --josh-color-decorative: hsl(200deg 75% 65%);
+
+  --josh-color-gray-500: #9295a0;
+
+  --josh-color-gray-700: #5a6072;
+
+  --josh-color-gray-900: #262d40;
+
+  --josh-color-info-100: #e8f1fc;
+
+  --josh-color-info-500: #4242fa;
+
+  --josh-color-success-100: #ecf8f4;
+
+  --josh-color-success-500: #008035;
+
+  --josh-color-warning-100: #fbf4d0;
+
+  --josh-color-warning-500: #ff9d00;
+
+  --josh-color-cloud-100: hsl(213deg 80% 98%);
+
+  --josh-color-cloud-400: hsl(213deg 55% 88%);
+
+  --josh-color-cloud-700: hsl(213deg 40% 72%);
+
+  --josh-color-secondary-text: hsl(200deg 35% 28%);
+
+  --josh-color-sky-from: #a0d4ee;
+
+  --josh-color-sky-to: #7dc4e8;
+
+  --josh-color-sky-subtle: #c5eafc;
+
+  --josh-color-archive-bg: #ebf4fa;
+
+  --josh-heart-lower: #b6bac9;
+
+  --josh-heart-upper: #cdd4ea;
+
+  --josh-heart-face: rgba(13, 15, 18, 0.5);
+
+  --josh-color-cloud-300: #ddeef8;
+
+  --josh-color-cloud-500: #b1dff6;
+
+  --josh-color-background: hsl(0deg 0% 100%);
+
+  --josh-color-text: #0a0c10;
+
+  --josh-color-code-bg: #e8f1fc;
+
+  --josh-color-blurred-background: hsl(0deg 0% 95% / 0.75);
+
+  --josh-color-muted-background: hsl(200deg 45% 76% / 0.85);
+
+  --josh-scrollbar-bg: var(--josh-color-background);
+
+  --josh-scrollbar-thumb: var(--josh-color-cloud-700);
+
+  --josh-scrollbar-thumb-hover: var(--josh-color-gray-500);
+
+  --josh-kbd-bg: hsl(213deg 30% 92%);
+
+  --josh-kbd-border: hsl(213deg 25% 82%);
+
+  --josh-color-swap-duration: 0.35s;
+
+  --josh-color-swap-timing-function: cubic-bezier(0.41, 0.1, 0.13, 1);
+
+  --josh-spring-easing: cubic-bezier(0.17, 0.67, 0.34, 1);
+
+  --josh-springy-spring-duration: 833ms;
+
+  --josh-springy-spring-easing: linear(
+    0,
+    0.1407 4.43%,
+    0.9383 16.72%,
+    1.0774 20.43%,
+    1.1493 24.31%,
+    1.1629 26.95%,
+    1.1536 29.93%,
+    1.0168 43.09%,
+    0.9766 51%,
+    1.0033 76.88%,
+    1
+  );
+
+  --josh-selection-bg: #ffec8f;
+
+  --josh-selection-text: #000;
+
+  --josh-prose-width: 42.875rem;
+
+  --josh-toc-width: 21.875rem;
+
+  /* Josh post subgrid side gutters — grows on wide viewports to keep prose+TOC centered */
+  --josh-post-gutter: max(
+    0px,
+    calc((100% - var(--josh-prose-width) - var(--josh-toc-width)) / 2)
+  );
+
+  --josh-syntax-bg: hsl(213deg 80% 95%);
+
+  --josh-syntax-highlight: hsl(225deg 25% 93%);
+
+  --josh-syntax-txt: hsl(0deg 0% 16%);
+
+  --josh-syntax-comment: hsl(225deg 15% 42%);
+
+  --josh-syntax-prop: hsl(327deg 100% 43%);
+
+  --josh-syntax-bool: hsl(302deg 100% 37%);
+
+  --josh-syntax-val: hsl(200deg 15% 40%);
+
+  --josh-syntax-str: hsl(259deg 100% 56%);
+
+  --josh-syntax-name: hsl(280deg 100% 50%);
+
+  --josh-syntax-del: hsl(0deg 100% 67%);
+
+  --josh-syntax-fn: hsl(231deg 99% 62%);
+
+}
+
+
+
+html.josh-site {
+
+  --josh-top-color: #a0d4ee;
+
+  scrollbar-gutter: stable;
+
+  font-family: var(--josh-font-family);
+
+  color: var(--josh-color-text);
+
+  background: var(--josh-color-background);
+
+  transition:
+    --josh-top-color var(--josh-color-swap-duration) var(--josh-color-swap-timing-function),
+    --josh-color-sky-from var(--josh-color-swap-duration) var(--josh-color-swap-timing-function),
+    --josh-color-sky-to var(--josh-color-swap-duration) var(--josh-color-swap-timing-function),
+    --josh-color-cloud-300 var(--josh-color-swap-duration) var(--josh-color-swap-timing-function),
+    --josh-color-cloud-500 var(--josh-color-swap-duration) var(--josh-color-swap-timing-function),
+    --josh-color-background var(--josh-color-swap-duration) var(--josh-color-swap-timing-function),
+    --josh-color-text var(--josh-color-swap-duration) var(--josh-color-swap-timing-function),
+    --josh-syntax-bg var(--josh-color-swap-duration) var(--josh-color-swap-timing-function),
+    --josh-syntax-highlight var(--josh-color-swap-duration) var(--josh-color-swap-timing-function);
+
+  -webkit-font-smoothing: antialiased;
+
+  font-variant-ligatures: no-common-ligatures;
+
+  font-feature-settings: 'liga', 'clig' off;
+
+}
+
+/* Instant theme swap — avoids post-page layout jitter from border/height transitions */
+html.josh-site.josh-theme-swapping {
+  scroll-behavior: auto !important;
+}
+
+html.josh-site.josh-theme-swapping,
+html.josh-site.josh-theme-swapping *,
+html.josh-site.josh-theme-swapping *::before,
+html.josh-site.josh-theme-swapping *::after {
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+
+
+
+html.josh-site.dark,
+
+html.josh-site[data-color-mode="dark"] {
+
+  color-scheme: dark;
+
+  --josh-top-color: #111b27;
+
+  --josh-color-text: hsl(210deg 10% 90%);
+
+  --josh-color-background: #0d0f12;
+
+  --josh-color-primary: #809fff;
+
+  --josh-color-action: hsl(240deg 95% 62%);
+
+  --josh-color-outline: #000000;
+
+  --josh-color-cloud-300: #0e1620;
+
+  --josh-color-cloud-500: #121d2b;
+
+  --josh-color-cloud-100: hsl(210deg 15% 8%);
+
+  --josh-color-cloud-400: hsl(210deg 12% 14%);
+
+  --josh-color-cloud-700: hsl(210deg 15% 22%);
+
+  --josh-color-sky-from: #111b27;
+
+  --josh-color-sky-to: #265973;
+
+  --josh-color-sky-subtle: #182939;
+
+  --josh-color-archive-bg: #0d0f12;
+
+  --josh-heart-lower: rgba(182, 186, 201, 0.5);
+
+  --josh-heart-upper: rgba(205, 212, 234, 0.5);
+
+  --josh-heart-face: rgba(13, 15, 18, 0.9);
+
+  --josh-color-gray-500: hsl(210deg 10% 55%);
+
+  --josh-color-gray-700: hsl(210deg 12% 65%);
+
+  --josh-color-gray-900: hsl(210deg 10% 90%);
+
+  --josh-color-secondary-text: #afcfde;
+
+  --josh-color-secondary: #ff1981;
+
+  --josh-color-tertiary: hsl(280deg 100% 85%);
+
+  --josh-color-info-100: hsl(214deg 40% 15%);
+
+  --josh-color-info-500: hsl(225deg 100% 60%);
+
+  --josh-color-success-100: hsl(176deg 35% 10%);
+
+  --josh-color-success-500: hsl(160deg 100% 40%);
+
+  --josh-color-warning-100: hsl(30deg 25% 11%);
+
+  --josh-color-warning-500: hsl(40deg 100% 50%);
+
+  --josh-color-code-bg: #121d2b;
+
+  --josh-color-blurred-background: hsl(210deg 15% 6% / 0.75);
+
+  --josh-color-muted-background: hsl(210deg 38% 15% / 0.85);
+
+  --josh-scrollbar-bg: var(--josh-color-background);
+
+  --josh-scrollbar-thumb: var(--josh-color-cloud-700);
+
+  --josh-scrollbar-thumb-hover: var(--josh-color-gray-500);
+
+  --josh-kbd-bg: hsl(210deg 9% 40%);
+
+  --josh-kbd-border: hsl(210deg 10% 30%);
+
+  --josh-selection-bg: rgba(139, 133, 173, 0.35);
+
+  --josh-selection-text: inherit;
+
+  --josh-syntax-bg: hsl(210deg 15% 6%);
+
+  --josh-syntax-highlight: hsl(210deg 30% 18%);
+
+  --josh-syntax-txt: hsl(0deg 0% 100%);
+
+  --josh-syntax-comment: hsl(200deg 18% 51%);
+
+  --josh-syntax-prop: hsl(326deg 100% 61%);
+
+  --josh-syntax-bool: hsl(50deg 100% 50%);
+
+  --josh-syntax-val: hsl(210deg 12% 65%);
+
+  --josh-syntax-str: hsl(259deg 100% 71%);
+
+  --josh-syntax-name: hsl(280deg 100% 66%);
+
+  --josh-syntax-del: hsl(0deg 100% 67%);
+
+  --josh-syntax-fn: hsl(195deg 100% 50%);
+
+}
+
+
+
+html.josh-site body {
+
+  margin: 0;
+
+  min-height: 100vh;
+
+  color: var(--josh-color-text);
+
+  background: var(--josh-color-background);
+
+  font-family: inherit;
+
+  line-height: var(--josh-line-height-body);
+
+  overflow-x: clip;
+
+}
+
+
+
+html.josh-site body::before,
+
+html.josh-site body::after {
+
+  display: none;
+
+}
+
+
+
+html.josh-site #back-to-top {
+
+  display: none !important;
+
+}
+
+
+
+html.josh-site #page-loader > div,
+html.josh-site .josh-page-loader__ring {
+
+  border-color: color-mix(in srgb, var(--josh-color-primary) 22%, transparent) !important;
+
+  border-top-color: var(--josh-color-primary) !important;
+
+}
+
+
+
+html.josh-site #app {
+
+  padding-top: 0 !important;
+
+  width: 100%;
+
+  max-width: var(--josh-layout-width, 79.0625rem);
+
+  overflow-x: clip;
+
+  animation: none;
+
+}
+
+
+
+html.josh-site ::selection {
+
+  background: var(--josh-selection-bg);
+
+  color: var(--josh-selection-text);
+
+}
+
+
+
+html.josh-site ::-webkit-scrollbar {
+
+  width: 6px;
+
+}
+
+
+
+html.josh-site ::-webkit-scrollbar-track {
+
+  background: var(--josh-scrollbar-bg);
+
+}
+
+
+
+html.josh-site ::-webkit-scrollbar-thumb {
+
+  background: var(--josh-scrollbar-thumb);
+
+  border-radius: 3px;
+
+}
+
+
+
+html.josh-site ::-webkit-scrollbar-thumb:hover {
+
+  background: var(--josh-scrollbar-thumb-hover);
+
+}
+
+
+
+@media (max-width: 35.1875rem) {
+
+  html.josh-site {
+
+    --josh-viewport-padding: 1rem;
+
+  }
+
+}
+
+
+
+@media (prefers-reduced-motion: reduce) {
+
+  html.josh-site .josh-footer__mascot-figure,
+
+  html.josh-site .josh-sky__mascot-spring,
+
+  html.josh-site .josh-article.is-entering {
+
+    animation: none !important;
+
+  }
+
+}
+
+
+
+/* Progress bar */
+
+html.josh-site #progress-bar {
+
+  background: var(--josh-color-primary);
+
+  height: 3px;
+
+}
+
+/* Article + About pages — no progress strip over hero sky */
+html.josh-site:has(.josh-page--post) #progress-bar,
+html.josh-site:has(.josh-page--about) #progress-bar,
+html.josh-site:has(.josh-page--blog-archive) #progress-bar {
+  display: none;
+}
+
+
+
+/* Search overlay — see josh-components.css (.josh-search) */
+
+

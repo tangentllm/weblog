@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（十三）：自适应 RAG（Self-RAG）</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle { color: var(--text-muted); font-size: 1.05rem; }
+  header .meta { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+  header .meta span { margin: 0 0.5rem; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .toc a:hover { color: var(--accent); }
+
+  h2 {
+    font-size: 1.6rem; font-weight: 700;
+    margin: 2.5rem 0 1rem; padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border); color: var(--text);
+  }
+  h3 { font-size: 1.25rem; font-weight: 600; margin: 1.8rem 0 0.8rem; color: var(--accent); }
+
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: var(--accent2); }
+  em { color: var(--accent3); font-style: normal; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+    margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.88rem; }
+  p code, li code {
+    background: var(--tag-bg); padding: 0.15rem 0.4rem;
+    border-radius: 4px; font-size: 0.85rem; color: var(--accent3);
+  }
+
+  .callout {
+    background: var(--surface); border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .callout.warning { border-left-color: var(--accent3); }
+  .callout.success { border-left-color: var(--accent2); }
+  .callout .callout-title { font-weight: 700; margin-bottom: 0.3rem; font-size: 0.95rem; }
+
+  .diagram-container {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+    text-align: center; overflow-x: auto;
+  }
+  .diagram-container .caption {
+    font-size: 0.85rem; color: var(--text-muted); margin-top: 0.8rem; text-align: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--border); padding: 0.6rem 1rem; text-align: left; }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+  }
+  .compare-card h4 { font-size: 1rem; margin-bottom: 0.6rem; }
+  .compare-card.bad h4 { color: var(--accent3); }
+  .compare-card.good h4 { color: var(--accent2); }
+  .compare-card ul { padding-left: 1rem; }
+
+  .score-highlight {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.5rem 1rem; margin: 0.3rem;
+    font-size: 1.1rem; font-weight: 700;
+  }
+  .score-highlight.up { border-color: var(--accent2); color: var(--accent2); }
+
+  .chart-wrapper {
+    max-width: 500px; margin: 1.5rem auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem;
+  }
+
+  .step-flow {
+    display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center;
+    margin: 1.5rem 0;
+  }
+  .step-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 0.4rem 1rem; font-size: 0.85rem;
+    font-weight: 600; color: var(--text);
+  }
+  .step-badge .num {
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff; width: 22px; height: 22px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700;
+  }
+
+  footer {
+    margin-top: 3rem; padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center; color: var(--text-muted); font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  .series-nav { display: flex; justify-content: space-between; margin-top: 2rem; gap: 1rem; }
+  .series-nav a {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.8rem 1.2rem; color: var(--accent);
+    text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .series-nav a:hover { border-color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header h1 { font-size: 1.5rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+    .step-flow { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 13 篇</div>
+  <h1>自适应 RAG（Self-RAG）</h1>
+  <p class="subtitle">让 RAG 学会"自省"——在检索与生成中嵌入反思点，动态决定何时检索、如何评估、怎样取舍</p>
+  <div class="meta">
+    <span>📅 2026-07-10</span>
+    <span>·</span>
+    <span>🏷️ RAG / Self-RAG / 自适应检索 / 反思机制</span>
+    <span>·</span>
+    <span>⏱️ 阅读约 18 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#motivation">问题动机：传统 RAG 的"盲目"检索</a></li>
+    <li><a href="#comparison">传统 RAG vs Self-RAG：架构对比</a></li>
+    <li><a href="#principle">核心原理：六个反思点</a></li>
+    <li><a href="#pipeline">完整流水线：六步决策流</a></li>
+    <li><a href="#code-retrieval">代码解读：检索决策</a></li>
+    <li><a href="#code-relevance">代码解读：相关性评估</a></li>
+    <li><a href="#code-support">代码解读：支持度评估</a></li>
+    <li><a href="#code-utility">代码解读：实用性评估</a></li>
+    <li><a href="#code-pipeline">代码解读：完整 Self-RAG 管道</a></li>
+    <li><a href="#demo">效果演示：三个示例查询</a></li>
+    <li><a href="#bug-analysis">踩坑分析：中英文匹配陷阱</a></li>
+    <li><a href="#scoring">评分机制详解</a></li>
+    <li><a href="#proscons">优缺点与适用场景</a></li>
+    <li><a href="#summary">本篇小结</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== 1. 动机 ===================== -->
+<h2 id="motivation">一、问题动机：传统 RAG 的"盲目"检索</h2>
+
+<p>在前面的系列中，我们逐步优化了 RAG 的各个环节——从<a href="2_语义分块_blog.html">语义分块</a>、<a href="3_切块大小选择_blog.html">切块大小调优</a>到<a href="4_上下文增强检索_blog.html">上下文增强检索</a>，核心目标都是<strong>让检索更精准</strong>。然而，这些方案都建立在一个隐含假设上：<strong>每次查询都需要检索</strong>。</p>
+
+<p>但现实中并非如此。考虑以下场景：</p>
+
+<ul>
+  <li>用户问"你好"——这显然不需要检索任何文档</li>
+  <li>用户问"什么是神经网络"——这是常识性问题，LLM 自身知识就足够</li>
+  <li>用户问"2024 年中国 AI 政策有哪些"——这需要检索最新信息</li>
+</ul>
+
+<p>传统 RAG 对所有查询一视同仁：<strong>检索 → 拼接 → 生成</strong>。这带来两个问题：</p>
+
+<ol>
+  <li><strong>不必要的检索</strong>：浪费时间和 token，还可能引入噪声干扰 LLM 生成</li>
+  <li><strong>缺乏质量把控</strong>：检索到的文档可能不相关，生成的回复可能缺乏依据，但系统不会"反思"这些问题</li>
+</ol>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 类比理解</div>
+  <p>想象一个学生参加考试。传统 RAG 就像一个"逢题必翻书"的学生——不管题目是"1+1=?"还是"量子力学原理"，他都要翻一遍教科书。更糟的是，翻到相关段落后，他可能抄了一段不相关的内容当答案，却从不检查自己写的是否正确。<strong>Self-RAG 就是教会这个学生：先判断要不要翻书，翻到的内容是否相关，写完答案后还要检查一遍。</strong></p>
+</div>
+
+<p><strong>Self-RAG（自适应 RAG）</strong>的核心思路是：在检索和生成过程中引入<strong>反思点（reflection points）</strong>，让系统能够动态决策——是否需要检索、检索到的文档是否相关、生成的回复是否有据可依、整体质量如何。</p>
+
+<!-- ===================== 2. 架构对比 ===================== -->
+<h2 id="comparison">二、传统 RAG vs Self-RAG：架构对比</h2>
+
+<div class="compare-grid">
+  <div class="compare-card bad">
+    <h4>❌ 传统 RAG</h4>
+    <ul>
+      <li><strong>固定流程</strong>：每个查询都执行"检索→生成"</li>
+      <li><strong>无检索决策</strong>：不判断是否需要检索</li>
+      <li><strong>无质量评估</strong>：不检查文档相关性</li>
+      <li><strong>无自我反思</strong>：不评估回复是否有据可依</li>
+      <li><strong>噪声敏感</strong>：不相关文档可能误导生成</li>
+    </ul>
+  </div>
+  <div class="compare-card good">
+    <h4>✅ Self-RAG（自适应 RAG）</h4>
+    <ul>
+      <li><strong>动态决策</strong>：按需检索，简单问题直接回答</li>
+      <li><strong>相关性过滤</strong>：逐个评估文档是否相关</li>
+      <li><strong>支持度检查</strong>：验证回复是否被上下文支持</li>
+      <li><strong>实用性评分</strong>：对回复质量打 1-5 分</li>
+      <li><strong>最优选择</strong>：从多个候选中选出最佳回复</li>
+    </ul>
+  </div>
+</div>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+    subgraph traditional["传统 RAG"]
+      direction TB
+      T1["用户查询"] --> T2["总是检索\nTop-K 文档"]
+      T2 --> T3["拼接所有文档"]
+      T3 --> T4["LLM 生成回复"]
+    end
+    subgraph selfrag["Self-RAG"]
+      direction TB
+      S1["用户查询"] --> S2{"需要检索?"}
+      S2 -->|"是"| S3["检索 Top-K"]
+      S2 -->|"否"| S7["直接生成"]
+      S3 --> S4{"文档相关?"}
+      S4 -->|"相关"| S5["生成 + 评估"]
+      S4 -->|"不相关"| S6["丢弃"]
+      S5 --> S8{"最佳回复?"}
+      S6 --> S4
+      S8 -->|"是"| S9["返回最佳"]
+      S8 -->|"否"| S5
+    end
+    traditional ~~~ selfrag
+  </div>
+  <div class="caption">图 1：传统 RAG 的线性流程 vs Self-RAG 的多步决策流——后者在每个关键环节都有"检查站"</div>
+</div>
+
+<!-- ===================== 3. 核心原理 ===================== -->
+<h2 id="principle">三、核心原理：六个反思点</h2>
+
+<p>Self-RAG 的精髓在于引入了<strong>六个反思点</strong>，将传统的"检索→生成"两步流程扩展为一个带有自我评估能力的多步决策管道：</p>
+
+<div class="step-flow">
+  <div class="step-badge"><span class="num">1</span> 检索决策</div>
+  <div class="step-badge"><span class="num">2</span> 文档检索</div>
+  <div class="step-badge"><span class="num">3</span> 相关性评估</div>
+  <div class="step-badge"><span class="num">4</span> 回复生成</div>
+  <div class="step-badge"><span class="num">5</span> 支持评估</div>
+  <div class="step-badge"><span class="num">6</span> 实用性评估</div>
+</div>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    RP1["🔍 反思点 1<br/><b>检索决策</b><br/>这个查询需要检索吗？"]
+    RP2["📚 反思点 2<br/><b>文档检索</b><br/>获取 Top-K 候选文档"]
+    RP3["🎯 反思点 3<br/><b>相关性评估</b><br/>这个文档与查询相关吗？"]
+    RP4["✍️ 反思点 4<br/><b>回复生成</b><br/>基于相关上下文生成回复"]
+    RP5["🔗 反思点 5<br/><b>支持评估</b><br/>回复被上下文支持吗？"]
+    RP6["⭐ 反思点 6<br/><b>实用性评估</b><br/>回复有用吗？1-5 分"]
+
+    RP1 -->|"需要"| RP2
+    RP1 -->|"不需要"| DIRECT["直接生成回复"]
+    RP2 --> RP3
+    RP3 -->|"相关"| RP4
+    RP3 -->|"不相关"| DISCARD["丢弃，检查下一个"]
+    DISCARD --> RP3
+    RP4 --> RP5
+    RP5 --> RP6
+    RP6 --> COMPARE{"比较所有候选<br/>选最佳回复"}
+    COMPARE -->|"有合适候选"| BEST["返回最佳回复"]
+    COMPARE -->|"无合适候选"| DIRECT
+
+    style RP1 fill:#1f6feb,stroke:#388bfd,color:#fff
+    style RP2 fill:#388bfd,stroke:#58a6ff,color:#fff
+    style RP3 fill:#a371f7,stroke:#bc8cff,color:#fff
+    style RP4 fill:#238636,stroke:#3fb950,color:#fff
+    style RP5 fill:#f0883e,stroke:#d29922,color:#fff
+    style RP6 fill:#da3633,stroke:#f85149,color:#fff
+    style DIRECT fill:#484f58,stroke:#6e7681,color:#fff
+    style BEST fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 2：Self-RAG 的六个反思点——每个环节都有 LLM 参与的"自检"机制</div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">💡 关键洞察</div>
+  <p>每个反思点本质上都是一次 <strong>LLM 调用</strong>。系统用 <code>gpt-4o</code>（temperature=0）来执行每个判断——是否需要检索、文档是否相关、回复是否有据可依、质量如何。这种"LLM 评估 LLM"的模式虽然增加了 API 调用次数，但显著提升了回复的可靠性和准确性。</p>
+</div>
+
+<!-- ===================== 4. 完整流水线 ===================== -->
+<h2 id="pipeline">四、完整流水线：六步决策流</h2>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    A["📄 PDF 文档"] --> B["文本提取<br/>(PyMuPDF)"]
+    B --> C["重叠分块<br/>(n=1000, overlap=200)"]
+    C --> D["创建嵌入<br/>(text-embedding-ada-002)"]
+    D --> E["存入向量存储<br/>(SimpleVectorStore)"]
+
+    E --> F["用户查询"]
+    F --> G["Step 1: 检索决策<br/>determine_if_retrieval_needed()"]
+    G -->|"需要检索"| H["Step 2: 文档检索<br/>similarity_search(k=3)"]
+    G -->|"不需要"| FINAL_NO["直接生成回复<br/>generate_response()"]
+    H --> I["Step 3: 逐个评估相关性<br/>evaluate_relevance()"]
+    I -->|"相关"| J["收集到相关上下文列表"]
+    I -->|"不相关"| K["丢弃该文档"]
+    K --> I
+    J --> L["Step 4: 对每个相关上下文<br/>生成候选回复"]
+    L --> M["Step 5: 评估支持度<br/>assess_support()"]
+    M --> N["Step 6: 评估实用性<br/>rate_utility()"]
+    N --> O["计算综合得分<br/>support_score × 5 + utility"]
+    O --> P{"遍历所有候选"}
+    P -->|"还有候选"| L
+    P -->|"全部完成"| Q{"最佳得分 > 0?"}
+    Q -->|"是"| R["返回最佳回复"]
+    Q -->|"否"| FINAL_NO
+
+    style A fill:#1f6feb,stroke:#388bfd,color:#fff
+    style G fill:#a371f7,stroke:#bc8cff,color:#fff
+    style I fill:#a371f7,stroke:#bc8cff,color:#fff
+    style M fill:#f0883e,stroke:#d29922,color:#fff
+    style N fill:#f0883e,stroke:#d29922,color:#fff
+    style R fill:#238636,stroke:#3fb950,color:#fff
+    style FINAL_NO fill:#484f58,stroke:#6e7681,color:#fff
+  </div>
+  <div class="caption">图 3：Self-RAG 完整流水线——上半部分是离线索引，下半部分是在线查询（含六步决策）</div>
+</div>
+
+<!-- ===================== 5. 代码：检索决策 ===================== -->
+<h2 id="code-retrieval">五、代码解读：检索决策</h2>
+
+<p>Self-RAG 的第一步是<strong>判断查询是否需要检索</strong>。这是一个二分类问题——LLM 只需回答"是"或"否"：</p>
+
+<pre><code class="language-python">def determine_if_retrieval_needed(query):
+    """判断给定的查询是否需要检索。"""
+    system_prompt = """你是一名AI助手，负责判断回答一个查询时是否需要检索外部信息。
+    如果是事实性问题、具体信息请求，或关于事件、人物、概念的问题，请回答"是"。
+    如果是观点、假设场景，或常识性简单问题，请回答"否"。
+    只需回答"是"或"否"，不要包含其他内容。"""
+
+    user_prompt = f"查询：{query}\n\n准确回答该问题是否需要检索？"
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0  # 确保判断的一致性
+    )
+
+    answer = response.choices[0].message.content.strip().lower()
+    return "是" in answer</code></pre>
+
+<div class="callout">
+  <div class="callout-title">🔍 设计要点</div>
+  <ul>
+    <li><strong>temperature=0</strong>：确保同样的查询总是得到同样的判断结果</li>
+    <li><strong>判断标准明确</strong>：事实性问题 → 需要检索；观点/常识 → 不需要</li>
+    <li><strong>返回布尔值</strong>：简单 True/False，下游逻辑据此分支</li>
+  </ul>
+</div>
+
+<!-- ===================== 6. 代码：相关性评估 ===================== -->
+<h2 id="code-relevance">六、代码解读：相关性评估</h2>
+
+<p>检索到 Top-K 文档后，Self-RAG 不是直接使用它们，而是<strong>逐个评估每个文档与查询的相关性</strong>：</p>
+
+<pre><code class="language-python">def evaluate_relevance(query, context):
+    """评估上下文与查询的相关性。"""
+    system_prompt = """你是一名AI助手，负责判断文档内容是否与查询相关。
+    请判断文档中是否包含有助于回答查询的信息。
+    只需回答"相关"或"不相关"，不要包含其他内容。"""
+
+    # 截断过长上下文，避免超出 token 限制
+    max_context_length = 2000
+    if len(context) > max_context_length:
+        context = context[:max_context_length] + "... [已截断]"
+
+    user_prompt = f"""查询：{query}
+    文档内容：
+    {context}
+
+    该文档内容是否与查询相关？只需回答"相关"或"不相关"。"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0
+    )
+
+    answer = response.choices[0].message.content.strip().lower()
+    return answer  # 返回 "相关" 或 "不相关"</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 注意：返回值是中文</div>
+  <p>这个函数返回的是<strong>中文字符串</strong>——<code>"相关"</code> 或 <code>"不相关"</code>，而不是英文的 <code>"relevant"</code>。这个细节在下游代码中引发了一个重要的匹配问题，我们将在<a href="#bug-analysis">踩坑分析</a>章节详细讨论。</p>
+</div>
+
+<!-- ===================== 7. 代码：支持度评估 ===================== -->
+<h2 id="code-support">七、代码解读：支持度评估</h2>
+
+<p>生成回复后，Self-RAG 会检查：<strong>这个回复是否有上下文作为依据？</strong> 这是防止 LLM "幻觉"的关键机制。</p>
+
+<pre><code class="language-python">def assess_support(response, context):
+    """判断生成的回复是否由上下文充分支持。"""
+    system_prompt = """你是一名AI助手，负责判断回复内容是否由给定的上下文充分支持。
+    请评估回复中的事实、论断和信息是否都能在上下文中找到依据。
+    只需从以下三个选项中选择一个作为答案：
+    - "完全支持"：回复中的所有信息都能被上下文直接支持。
+    - "部分支持"：回复中有些信息能被上下文支持，但有些不能。
+    - "不支持"：回复中有大量信息在上下文中找不到或与上下文相矛盾。"""
+
+    max_context_length = 2000
+    if len(context) > max_context_length:
+        context = context[:max_context_length] + "... [已截断]"
+
+    user_prompt = f"""上下文：
+    {context}
+
+    回复：
+    {response}
+
+    该回复在多大程度上得到上下文的支持？只需回答"完全支持"、"部分支持"或"不支持"。"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0
+    )
+
+    return response.choices[0].message.content.strip().lower()
+    # 返回 "完全支持" / "部分支持" / "不支持"</code></pre>
+
+<div class="diagram-container">
+  <div style="font-family: monospace; font-size: 0.85rem; color: var(--text); text-align: left; display: inline-block;">
+    <pre style="border:none; background:transparent; margin:0; padding:0; color: var(--text);">
+支持度评估的三种结果：
+
+┌─────────────────────────────────────────────────────────────────┐
+│  ✅ 完全支持 (fully supported)                                   │
+│     回复中所有信息都能在上下文中找到依据                              │
+│     → support_score = 3                                         │
+├─────────────────────────────────────────────────────────────────┤
+│  ⚠️ 部分支持 (partially supported)                               │
+│     部分信息有依据，部分信息来自 LLM 自身知识                        │
+│     → support_score = 1                                         │
+├─────────────────────────────────────────────────────────────────┤
+│  ❌ 不支持 (no support)                                          │
+│     大量信息在上下文中找不到，或与上下文矛盾                          │
+│     → support_score = 0                                         │
+└─────────────────────────────────────────────────────────────────┘
+    </pre>
+  </div>
+  <div class="caption">图 4：支持度评估的三级分类——这是 Self-RAG 防止"幻觉"的核心机制</div>
+</div>
+
+<!-- ===================== 8. 代码：实用性评估 ===================== -->
+<h2 id="code-utility">八、代码解读：实用性评估</h2>
+
+<p>除了检查回复是否有据可依，Self-RAG 还会对回复的<strong>整体实用性</strong>打分（1-5 分）：</p>
+
+<pre><code class="language-python">def rate_utility(query, response):
+    """对回复的质量进行评分（1-5 分）。"""
+    system_prompt = """你是一名AI助手，负责对回复对于查询的有用性进行评分。
+    请考虑回复对问题的解答程度、完整性、正确性和帮助性。
+    按照1到5分的标准进行评分，其中：
+    - 1：完全无用
+    - 2：略有用
+    - 3：一般有用
+    - 4：非常有用
+    - 5：极其有用
+    只需返回1到5中的一个数字，不要包含其他内容。"""
+
+    user_prompt = f"""查询：{query}
+    回复：
+    {response}
+
+    请对该回复的有用性按1到5分进行评分："""
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0
+    )
+
+    rating = response.choices[0].message.content.strip()
+    rating_match = re.search(r'[1-5]', rating)
+    if rating_match:
+        return int(rating_match.group())
+    return 3  # 解析失败时返回中间值</code></pre>
+
+<div class="callout">
+  <div class="callout-title">🔍 设计要点</div>
+  <ul>
+    <li><strong>多维度评估</strong>：评分标准涵盖解答程度、完整性、正确性和帮助性</li>
+    <li><strong>容错处理</strong>：如果 LLM 返回了非标准格式，用正则提取数字，失败则回退到默认值 3</li>
+    <li><strong>与支持度互补</strong>：支持度关注"是否有据"，实用性关注"是否有用"——一个回复可以有据但无用（如只重复上下文），也可以有用但缺乏依据（如 LLM 自身知识丰富）</li>
+  </ul>
+</div>
+
+<!-- ===================== 9. 代码：完整管道 ===================== -->
+<h2 id="code-pipeline">九、代码解读：完整 Self-RAG 管道</h2>
+
+<p>将所有反思点串联起来，就是完整的 Self-RAG 管道。核心逻辑是：<strong>对每个相关上下文生成候选回复，评估后选最佳</strong>。</p>
+
+<pre><code class="language-python">def self_rag(query, vector_store, top_k=3):
+    """实现完整的 Self-RAG 管道。"""
+    # Step 1: 判断是否需要检索
+    retrieval_needed = determine_if_retrieval_needed(query)
+
+    best_response = None
+    best_score = -1
+    metrics = {
+        "retrieval_needed": retrieval_needed,
+        "documents_retrieved": 0,
+        "relevant_documents": 0,
+        "response_support_ratings": [],
+        "utility_ratings": []
+    }
+
+    if retrieval_needed:
+        # Step 2: 检索 Top-K 文档
+        query_embedding = create_embeddings(query)
+        results = vector_store.similarity_search(query_embedding, k=top_k)
+        metrics["documents_retrieved"] = len(results)
+
+        # Step 3: 逐个评估相关性
+        relevant_contexts = []
+        for i, result in enumerate(results):
+            relevance = evaluate_relevance(query, result["text"])
+            if relevance == "relevant":       # ⚠️ 注意：这里用英文判断
+                relevant_contexts.append(result["text"])
+
+        metrics["relevant_documents"] = len(relevant_contexts)
+
+        if relevant_contexts:
+            # Step 4-6: 对每个相关上下文生成回复并评估
+            for context in relevant_contexts:
+                response = generate_response(query, context)       # Step 4
+                support = assess_support(response, context)        # Step 5
+                utility = rate_utility(query, response)            # Step 6
+
+                # 计算综合得分
+                support_score = {
+                    "fully supported": 3,
+                    "partially supported": 1,
+                    "no support": 0
+                }.get(support, 0)
+                overall_score = support_score * 5 + utility
+
+                if overall_score > best_score:
+                    best_response = response
+                    best_score = overall_score
+
+        # 如果没有相关上下文或得分太低，回退到直接生成
+        if not relevant_contexts or best_score <= 0:
+            best_response = generate_response(query)
+    else:
+        best_response = generate_response(query)
+
+    return {"query": query, "response": best_response, "metrics": metrics}</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 关键 Bug 位置</div>
+  <p>注意第 3 步中的判断条件 <code>relevance == "relevant"</code>——但 <code>evaluate_relevance()</code> 返回的是中文 <code>"相关"</code>！这个中英文不匹配导致<strong>所有文档都被判定为"不相关"</strong>，系统始终回退到直接生成模式。这是一个典型的<strong>隐性 Bug</strong>，我们将在<a href="#bug-analysis">踩坑分析</a>中详细讨论。</p>
+</div>
+
+<!-- ===================== 10. 效果演示 ===================== -->
+<h2 id="demo">十、效果演示：三个示例查询</h2>
+
+<p>我们使用三个不同类型的查询来演示 Self-RAG 的行为。文档源为 <code>2024年AI行业报告.pdf</code>。</p>
+
+<h3>示例 1：事实性查询——"中国政府对AI大模型发展有哪些支持政策？"</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>步骤</th>
+      <th>结果</th>
+      <th>详情</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Step 1: 检索决策</td>
+      <td><strong>需要检索</strong> ✅</td>
+      <td>事实性问题，判断正确</td>
+    </tr>
+    <tr>
+      <td>Step 2: 文档检索</td>
+      <td>检索到 <strong>3</strong> 个文档</td>
+      <td>Top-3 余弦相似度结果</td>
+    </tr>
+    <tr>
+      <td>Step 3: 相关性评估</td>
+      <td>2 个"相关"，1 个"不相关"</td>
+      <td>但代码匹配失败（见踩坑分析）</td>
+    </tr>
+    <tr>
+      <td>最终结果</td>
+      <td><strong>回退到直接生成</strong></td>
+      <td>相关文档数被错误计为 0</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>示例 2：概念性查询——"AI大模型的主要技术驱动力有哪些？"</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>步骤</th>
+      <th>结果</th>
+      <th>详情</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Step 1: 检索决策</td>
+      <td><strong>需要检索</strong> ✅</td>
+      <td>具体信息请求，判断正确</td>
+    </tr>
+    <tr>
+      <td>Step 2: 文档检索</td>
+      <td>检索到 <strong>3</strong> 个文档</td>
+      <td>Top-3 余弦相似度结果</td>
+    </tr>
+    <tr>
+      <td>Step 3: 相关性评估</td>
+      <td>2 个"相关"，1 个"不相关"</td>
+      <td>同样因匹配失败被忽略</td>
+    </tr>
+    <tr>
+      <td>最终结果</td>
+      <td><strong>回退到直接生成</strong></td>
+      <td>相关文档数被错误计为 0</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>示例 3：无关查询——"从新加坡去香港怎么玩，制定一个计划"</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>步骤</th>
+      <th>结果</th>
+      <th>详情</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Step 1: 检索决策</td>
+      <td><strong>需要检索</strong> ✅</td>
+      <td>具体信息请求（旅行计划）</td>
+    </tr>
+    <tr>
+      <td>Step 2: 文档检索</td>
+      <td>检索到 <strong>3</strong> 个文档</td>
+      <td>Top-3 余弦相似度结果</td>
+    </tr>
+    <tr>
+      <td>Step 3: 相关性评估</td>
+      <td>3 个都"不相关"</td>
+      <td>AI 报告与香港旅游无关，判断正确</td>
+    </tr>
+    <tr>
+      <td>最终结果</td>
+      <td><strong>回退到直接生成</strong></td>
+      <td>正确行为——文档确实不相关</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">📊 观察总结</div>
+  <p>三个查询的检索决策（Step 1）都正确——这些都是需要外部信息的事实性问题。相关性评估（Step 3）的判断结果也合理：AI 报告确实包含与查询 1、2 相关的内容，而与查询 3 无关。但由于代码中的中英文匹配 Bug，系统实际上<strong>始终回退到直接生成模式</strong>，Self-RAG 的反思机制未能真正发挥作用。</p>
+</div>
+
+<!-- ===================== 11. 踩坑分析 ===================== -->
+<h2 id="bug-analysis">十一、踩坑分析：中英文匹配陷阱</h2>
+
+<p>这是本 notebook 中最值得深入分析的"意外发现"。让我们追踪这个 Bug 的完整链路：</p>
+
+<div class="diagram-container">
+  <div style="font-family: monospace; font-size: 0.85rem; color: var(--text); text-align: left; display: inline-block;">
+    <pre style="border:none; background:transparent; margin:0; padding:0; color: var(--text);">
+Bug 链路追踪：
+
+evaluate_relevance() 返回:
+  → "相关"   (中文, 因为 prompt 要求回答"相关"或"不相关")
+  → "不相关"
+
+self_rag() 中的判断:
+  → if relevance == "relevant":     ← 英文 "relevant"
+      relevant_contexts.append(...)
+
+匹配结果:
+  → "相关"   != "relevant"   ❌ 永远不匹配！
+  → "不相关" != "relevant"   ❌ 永远不匹配！
+
+后果:
+  → relevant_contexts 始终为空列表 []
+  → 系统始终进入 "No suitable context found" 分支
+  → 回退到 generate_response(query) —— 无上下文直接生成
+  → Self-RAG 退化为"带检索决策的传统 RAG"
+    </pre>
+  </div>
+  <div class="caption">图 5：中英文匹配 Bug 的完整链路——一个字符串比较导致整个反思机制失效</div>
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 修复方案</div>
+  <p>修复很简单——将判断条件改为匹配中文：</p>
+</div>
+
+<pre><code class="language-python"># 修复前（Bug）
+if relevance == "relevant":
+    relevant_contexts.append(context)
+
+# 修复后（方案 A：匹配中文）
+if relevance == "相关":
+    relevant_contexts.append(context)
+
+# 修复后（方案 B：让 evaluate_relevance 返回英文）
+# 修改 system_prompt 为 "Answer 'relevant' or 'irrelevant'"
+if relevance == "relevant":
+    relevant_contexts.append(context)</code></pre>
+
+<div class="callout success">
+  <div class="callout-title">💡 教训</div>
+  <p>在使用 LLM 做分类任务时，<strong>返回值语言必须与下游代码的判断逻辑一致</strong>。这是一个典型的"隐性 Bug"——代码不报错、不崩溃，但核心功能完全失效。在生产环境中，这类 Bug 比显式错误更危险，因为它可能长期潜伏而不被发现。建议：要么在 prompt 中明确指定英文返回值，要么在判断时同时支持中英文。</p>
+</div>
+
+<!-- ===================== 12. 评分机制 ===================== -->
+<h2 id="scoring">十二、评分机制详解</h2>
+
+<p>Self-RAG 使用一个<strong>综合评分公式</strong>来选择最佳回复：</p>
+
+<div class="diagram-container">
+  <div style="font-family: monospace; font-size: 1rem; color: var(--text); text-align: center; display: inline-block;">
+    <pre style="border:none; background:transparent; margin:0; padding:0; color: var(--text);">
+overall_score = support_score × 5 + utility_rating
+
+其中:
+  support_score:
+    "完全支持" (fully supported)    → 3
+    "部分支持" (partially supported) → 1
+    "不支持"   (no support)         → 0
+
+  utility_rating: 1 ~ 5
+
+得分范围: 0 × 5 + 1 = 1  ~  3 × 5 + 5 = 20
+    </pre>
+  </div>
+  <div class="caption">图 6：综合评分公式——支持度权重（×5）远大于实用性，体现"有据可依"的优先级</div>
+</div>
+
+<h3>评分示例</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>支持度</th>
+      <th>support_score</th>
+      <th>实用性</th>
+      <th>overall_score</th>
+      <th>解读</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>完全支持</td>
+      <td>3</td>
+      <td>5</td>
+      <td><strong style="color: var(--accent2);">20</strong></td>
+      <td>理想回复：有据且有用</td>
+    </tr>
+    <tr>
+      <td>完全支持</td>
+      <td>3</td>
+      <td>3</td>
+      <td><strong>18</strong></td>
+      <td>有据但一般有用</td>
+    </tr>
+    <tr>
+      <td>部分支持</td>
+      <td>1</td>
+      <td>5</td>
+      <td><strong>10</strong></td>
+      <td>有用但部分缺乏依据</td>
+    </tr>
+    <tr>
+      <td>部分支持</td>
+      <td>1</td>
+      <td>3</td>
+      <td><strong>8</strong></td>
+      <td>一般</td>
+    </tr>
+    <tr>
+      <td>不支持</td>
+      <td>0</td>
+      <td>4</td>
+      <td><strong style="color: var(--accent3);">4</strong></td>
+      <td>有用但完全无依据（可能是幻觉）</td>
+    </tr>
+    <tr>
+      <td>不支持</td>
+      <td>0</td>
+      <td>1</td>
+      <td><strong style="color: var(--accent3);">1</strong></td>
+      <td>最差：无据且无用</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">💡 设计哲学</div>
+  <p>支持度权重（×5）远大于实用性（×1），这意味着 <strong>Self-RAG 优先考虑"有据可依"而非"听起来有用"</strong>。一个完全无依据但"听起来很好"的回复（0×5+5=5）得分低于一个有据但一般有用的回复（1×5+3=8）。这正是 Self-RAG 区别于传统 RAG 的核心理念：<strong>宁可有据但平淡，不可无据而花哨</strong>。</p>
+</div>
+
+<!-- ===================== 13. 优缺点 ===================== -->
+<h2 id="proscons">十三、优缺点与适用场景</h2>
+
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>✅ 优点</h4>
+    <ul>
+      <li><strong>动态检索决策</strong>：避免不必要的检索，节省时间并减少噪声</li>
+      <li><strong>相关性过滤</strong>：丢弃不相关文档，避免误导生成</li>
+      <li><strong>幻觉抑制</strong>：支持度评估能检测回复是否"有据可依"</li>
+      <li><strong>质量把控</strong>：实用性评分帮助从多个候选中选最优</li>
+      <li><strong>回退机制</strong>：当检索结果不佳时，自动回退到直接生成</li>
+      <li><strong>可解释性</strong>：每个反思点的判断结果都可追踪</li>
+    </ul>
+  </div>
+  <div class="compare-card bad">
+    <h4>❌ 缺点</h4>
+    <ul>
+      <li><strong>API 成本高</strong>：每个查询需要多次 LLM 调用（决策 + 评估 × K 个文档）</li>
+      <li><strong>延迟显著</strong>：六步流程远慢于传统 RAG 的单次检索+生成</li>
+      <li><strong>语言一致性陷阱</strong>：LLM 返回值的语言必须与代码逻辑一致</li>
+      <li><strong>评估本身可能出错</strong>：LLM 判断相关性/支持度也可能不准确</li>
+      <li><strong>过度保守风险</strong>：可能错误丢弃相关文档，导致回退到直接生成</li>
+      <li><strong>评分公式需调优</strong>：support_score 的权重（×5）是经验值，未必适用于所有场景</li>
+    </ul>
+  </div>
+</div>
+
+<h3>适用场景</h3>
+<table>
+  <thead>
+    <tr>
+      <th>✅ 适合</th>
+      <th>❌ 不适合</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>对回复准确性要求极高的场景（医疗、法律、金融）</td>
+      <td>对延迟敏感的实时对话系统</td>
+    </tr>
+    <tr>
+      <td>查询类型多样（事实性 + 常识性混合）</td>
+      <td>查询类型单一（全部需要或全部不需要检索）</td>
+    </tr>
+    <tr>
+      <td>需要可解释性和审计追踪的企业应用</td>
+      <td>API 预算有限的项目</td>
+    </tr>
+    <tr>
+      <td>文档质量参差不齐，噪声较多</td>
+      <td>文档库小且质量统一的场景</td>
+    </tr>
+    <tr>
+      <td>需要防止幻觉的关键任务</td>
+      <td>创意写作等不需要严格依据的场景</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Self-RAG vs 前几篇技术对比</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>维度</th>
+      <th><a href="12_自适应检索_blog.html">第 12 篇：意图识别</a></th>
+      <th>第 13 篇：Self-RAG</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>核心思路</td>
+      <td>根据查询意图决定是否检索</td>
+      <td>全流程反思：检索决策 + 相关性 + 支持度 + 实用性</td>
+    </tr>
+    <tr>
+      <td>反思点数量</td>
+      <td>1 个（检索前）</td>
+      <td>6 个（检索前 + 检索后 + 生成后）</td>
+    </tr>
+    <tr>
+      <td>质量把控</td>
+      <td>仅控制"是否检索"</td>
+      <td>全链路控制（检索 → 过滤 → 生成 → 评估 → 选优）</td>
+    </tr>
+    <tr>
+      <td>API 调用次数</td>
+      <td>1 次额外（意图判断）</td>
+      <td>3 + 3×K 次额外（K 为相关文档数）</td>
+    </tr>
+    <tr>
+      <td>回退机制</td>
+      <td>有（直接生成）</td>
+      <td>有（直接生成）</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 14. 小结 ===================== -->
+<h2 id="summary">十四、本篇小结</h2>
+
+<p>Self-RAG 的核心思想可以用一句话概括：</p>
+
+<div class="callout success">
+  <div class="callout-title">🎯 核心 takeaway</div>
+  <p>让 RAG 学会"自省"。传统 RAG 是"检索→生成"的单向管道，Self-RAG 在管道中嵌入了六个反思点——<strong>要不要检索、文档是否相关、回复是否有据、质量如何</strong>——让系统能够动态决策、自我纠错、选出最优回复。这种"LLM 评估 LLM"的模式虽然增加了成本，但显著提升了回复的可靠性和准确性。</p>
+</div>
+
+<p>技术要点回顾：</p>
+<ol>
+  <li><strong>六个反思点</strong>：检索决策 → 文档检索 → 相关性评估 → 回复生成 → 支持评估 → 实用性评估</li>
+  <li><strong>综合评分公式</strong>：<code>overall_score = support_score × 5 + utility_rating</code>，支持度优先</li>
+  <li><strong>回退机制</strong>：当检索结果不佳时自动回退到直接生成</li>
+  <li><strong>中英文匹配 Bug</strong>：LLM 返回中文"相关"/"不相关"，代码用英文"relevant"判断——导致反思机制完全失效</li>
+  <li><strong>与第 12 篇的关系</strong>：第 12 篇的意图识别是 Self-RAG 的"简化版"（只有检索决策），Self-RAG 是完整的多步反思管道</li>
+</ol>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 实践建议</div>
+  <p>如果你要在生产环境中实现 Self-RAG，请务必注意：</p>
+  <ul>
+    <li>确保 LLM 返回值的<strong>语言与代码逻辑一致</strong>（建议在 prompt 中指定英文返回值）</li>
+    <li>考虑<strong>缓存</strong>反思点的判断结果，减少重复 API 调用</li>
+    <li>对<strong>延迟敏感</strong>的场景，可以只保留部分反思点（如只做检索决策 + 相关性过滤）</li>
+    <li>评分公式中的权重需要根据实际场景<strong>调优</strong></li>
+  </ul>
+</div>
+
+<p>下一篇我们将介绍<strong>命题分块（Proposition Chunking）</strong>——将文本拆解为独立的事实命题，让每个块都包含一个完整的、可验证的知识点。敬请期待！</p>
+
+<!-- Series navigation -->
+<div class="series-nav">
+  <a href="#">← 第 12 篇：自适应检索（意图识别）</a>
+  <a href="#">第 14 篇：命题分块 →</a>
+</div>
+
+</div>
+
+<footer>
+  <p>从零到 RAG 大师 · 第 13 篇 · 自适应 RAG（Self-RAG）</p>
+  <p>本系列教程配套 notebook 见 <a href="https://github.com/">GitHub 仓库</a></p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1f6feb',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#388bfd',
+      lineColor: '#58a6ff',
+      secondaryColor: '#161b22',
+      tertiaryColor: '#0d1117',
+      noteBkgColor: '#161b22',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d'
+    },
+    flowchart: { htmlLabels: true, curve: 'basis' }
+  });
+  hljs.highlightAll();
+</script>
+
+</body>
+</html>

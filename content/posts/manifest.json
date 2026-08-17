@@ -4,7 +4,7 @@
     "title": "Claude Code 最佳实践：2026 年 10 倍生产力指南",
     "date": "2026-05-25",
     "readTime": "25 分钟",
-    "category": "工程实践",
+    "category": "智能体",
     "tags": [
       "Claude Code",
       "Agent",
@@ -18,11 +18,28 @@
     "htmlFile": "./content/posts/claude-code-best-practices.html"
   },
   {
+    "slug": "scroll-driven-animations",
+    "title": "滚动驱动动画：深入理解 `animation-timeline` API",
+    "date": "2026-04-28",
+    "readTime": "22 分钟",
+    "category": "基础原理",
+    "tags": [
+      "CSS",
+      "Animation",
+      "Scroll",
+      "animation-timeline"
+    ],
+    "cover": "./content/assets/posts/covers/scroll-driven-animations.svg",
+    "excerpt": "用原生 CSS 把关键帧动画绑定到滚动距离而非时间——从 view() 与 scroll() 入门，到 animation-range、联动时间线与 fill-mode 踩坑。",
+    "file": "./content/posts/scroll-driven-animations.md",
+    "subtitle": "探索宏大的新 `animation-timeline` API"
+  },
+  {
     "slug": "embedding-finetune-domain-rag",
     "title": "Embedding 模型微调：如何提升 RAG 领域检索效果（原理与实战）",
     "date": "2025-09-28",
     "readTime": "24 分钟",
-    "category": "工程实践",
+    "category": "RAG 与检索",
     "tags": [
       "RAG",
       "Embedding",
@@ -39,7 +56,7 @@
     "title": "多轮对话上下文管理：滑动窗口、摘要压缩与检索注入三种实现",
     "date": "2025-09-28",
     "readTime": "18 分钟",
-    "category": "工程实践",
+    "category": "智能体",
     "tags": [
       "Agent",
       "上下文管理",
@@ -72,7 +89,7 @@
     "title": "生产级 RAG 系统性能优化实战：延迟预算、并行检索与推理瓶颈",
     "date": "2025-09-15",
     "readTime": "22 分钟",
-    "category": "工程实践",
+    "category": "RAG 与检索",
     "tags": [
       "RAG",
       "性能优化",
@@ -89,7 +106,7 @@
     "title": "RAG 混合检索策略深度解析：从 BM25+向量到 RRF 与生产取舍",
     "date": "2025-05-20",
     "readTime": "24 分钟",
-    "category": "工程实践",
+    "category": "RAG 与检索",
     "tags": [
       "RAG",
       "BM25",
@@ -106,7 +123,7 @@
     "title": "深入理解 MCP — Model Context Protocol 完全技术指南",
     "date": "2025-05-10",
     "readTime": "20 分钟",
-    "category": "工程实践",
+    "category": "智能体",
     "tags": [
       "MCP",
       "Agent",
@@ -125,7 +142,7 @@
     "title": "RAG 系统重构实战：从 Demo 到生产的那些坑",
     "date": "2025-05-08",
     "readTime": "18 分钟",
-    "category": "工程实践",
+    "category": "RAG 与检索",
     "tags": [
       "RAG",
       "LlamaIndex",
@@ -235,7 +252,7 @@
     "title": "Everything Claude Code 中文版 - 完整使用教程",
     "date": "2025-03-22",
     "readTime": "35 分钟",
-    "category": "工程实践",
+    "category": "智能体",
     "tags": [
       "Claude Code",
       "MCP",
@@ -306,5 +323,445 @@
     "cover": "./content/assets/posts/covers/transformer.svg",
     "excerpt": "系统梳理自注意力、位置编码、前馈网络与训练策略，给出公式推导与工程实现细节。",
     "file": "./content/posts/transformer-in-depth.md"
+  },
+  {
+    "slug": "rag-master-21-rl-rag",
+    "title": "从零到 RAG 大师（二十一）：强化学习增强 RAG",
+    "date": "2025-01-22",
+    "readTime": "20 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "用强化学习训练 RAG Agent 自主决策检索时机、策略与工具调用，全系列收官篇。",
+    "file": "./content/posts/rag-master-21-rl-rag.md",
+    "format": "html",
+    "htmlFile": "./content/posts/21_强化学习增强rag_blog.html",
+    "subtitle": "让 Agent 自主学习最优检索策略",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 21
+  },
+  {
+    "slug": "rag-master-20-crag",
+    "title": "从零到 RAG 大师（二十）：动态纠正 RAG（CRAG）",
+    "date": "2025-01-21",
+    "readTime": "17 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Corrective RAG：评估检索质量，低质量时触发网络搜索或知识库重写，动态纠正信息源。",
+    "file": "./content/posts/rag-master-20-crag.md",
+    "format": "html",
+    "htmlFile": "./content/posts/20_动态纠正rag_blog.html",
+    "subtitle": "检索质量评估与动态纠正",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 20
+  },
+  {
+    "slug": "rag-master-19-hyde",
+    "title": "从零到 RAG 大师（十九）：假设文档嵌入 HyDE",
+    "date": "2025-01-20",
+    "readTime": "15 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Hypothetical Document Embeddings：用 LLM 生成假设答案再检索，提升 query-document 语义对齐。",
+    "file": "./content/posts/rag-master-19-hyde.md",
+    "format": "html",
+    "htmlFile": "./content/posts/19_假设文档嵌入rag_blog.html",
+    "subtitle": "用「假答案」弥合语义鸿沟",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 19
+  },
+  {
+    "slug": "rag-master-18-hierarchical-rag",
+    "title": "从零到 RAG 大师（十八）：分层索引检索（Hierarchical RAG）",
+    "date": "2025-01-19",
+    "readTime": "17 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Hierarchical RAG：构建父子层级索引，先粗筛文档再精确定位 chunk，兼顾效率与精度。",
+    "file": "./content/posts/rag-master-18-hierarchical-rag.md",
+    "format": "html",
+    "htmlFile": "./content/posts/18_分层检索rag_blog.html",
+    "subtitle": "父子层级索引与两阶段检索",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 18
+  },
+  {
+    "slug": "rag-master-17-graph-rag",
+    "title": "从零到 RAG 大师（十七）：图增强型 RAG（Graph RAG）",
+    "date": "2025-01-18",
+    "readTime": "20 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Graph RAG：从文档构建知识图谱，用社区摘要与图遍历增强多跳推理能力。",
+    "file": "./content/posts/rag-master-17-graph-rag.md",
+    "format": "html",
+    "htmlFile": "./content/posts/17_图rag_blog.html",
+    "subtitle": "知识图谱与社区摘要增强检索",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 17
+  },
+  {
+    "slug": "rag-master-16-fusion-retrieval",
+    "title": "从零到 RAG 大师（十六）：融合检索（Fusion Retrieval）",
+    "date": "2025-01-17",
+    "readTime": "16 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "稠密 + 稀疏 + 多查询多路召回，用 RRF 等算法融合排名，兼顾语义与关键词匹配。",
+    "file": "./content/posts/rag-master-16-fusion-retrieval.md",
+    "format": "html",
+    "htmlFile": "./content/posts/16_融合检索_blog.html",
+    "subtitle": "多路召回与 RRF 排名融合",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 16
+  },
+  {
+    "slug": "rag-master-15-multimodal-rag",
+    "title": "从零到 RAG 大师（十五）：多模态 RAG 与图像描述",
+    "date": "2025-01-16",
+    "readTime": "19 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "多模态 RAG 架构：图像描述生成、跨模态嵌入与图文联合检索的工程实践。",
+    "file": "./content/posts/rag-master-15-multimodal-rag.md",
+    "format": "html",
+    "htmlFile": "./content/posts/15_多模态rag_blog.html",
+    "subtitle": "图文混合知识库的检索增强",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 15
+  },
+  {
+    "slug": "rag-master-14-proposition-chunking",
+    "title": "从零到 RAG 大师（十四）：命题分块",
+    "date": "2025-01-15",
+    "readTime": "16 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Proposition-based Chunking：将文档分解为独立可验证的原子命题，提升细粒度检索精度。",
+    "file": "./content/posts/rag-master-14-proposition-chunking.md",
+    "format": "html",
+    "htmlFile": "./content/posts/14_命题分块_blog.html",
+    "subtitle": "让每个原子事实独立可检索",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 14
+  },
+  {
+    "slug": "rag-master-13-self-rag",
+    "title": "从零到 RAG 大师（十三）：自适应 RAG（Self-RAG）",
+    "date": "2025-01-14",
+    "readTime": "18 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Self-RAG：模型自主决定何时检索、如何检索，并对生成结果进行自我批判与修正。",
+    "file": "./content/posts/rag-master-13-self-rag.md",
+    "format": "html",
+    "htmlFile": "./content/posts/13_自适应rag_blog.html",
+    "subtitle": "检索、生成与自我批判的一体化",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 13
+  },
+  {
+    "slug": "rag-master-12-adaptive-retrieval-intent",
+    "title": "从零到 RAG 大师（十二）：自适应检索——意图识别",
+    "date": "2025-01-13",
+    "readTime": "17 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "识别用户查询意图，在向量检索、关键词检索与混合策略间自适应切换。",
+    "file": "./content/posts/rag-master-12-adaptive-retrieval-intent.md",
+    "format": "html",
+    "htmlFile": "./content/posts/12_自适应检索_blog.html",
+    "subtitle": "按查询意图动态选择检索策略",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 12
+  },
+  {
+    "slug": "rag-master-11-feedback-loop",
+    "title": "从零到 RAG 大师（十一）：反馈回路机制",
+    "date": "2025-01-12",
+    "readTime": "16 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "用户反馈与检索质量闭环：如何收集信号并持续优化索引与检索策略。",
+    "file": "./content/posts/rag-master-11-feedback-loop.md",
+    "format": "html",
+    "htmlFile": "./content/posts/11_反馈回路_blog.html",
+    "subtitle": "让 RAG 越用越聪明",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 11
+  },
+  {
+    "slug": "rag-master-10-contextual-compression",
+    "title": "从零到 RAG 大师（十）：上下文压缩 Contextual Compression",
+    "date": "2025-01-11",
+    "readTime": "15 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "用 LLM 压缩检索结果，去除冗余，在 context window 内最大化有效信息量。",
+    "file": "./content/posts/rag-master-10-contextual-compression.md",
+    "format": "html",
+    "htmlFile": "./content/posts/10_上下文压缩_blog.html",
+    "subtitle": "在有限窗口内塞入更多有效信息",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 10
+  },
+  {
+    "slug": "rag-master-09-rse",
+    "title": "从零到 RAG 大师（九）：相关段落提取 (RSE)",
+    "date": "2025-01-10",
+    "readTime": "14 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Relevant Segment Extraction：在检索到的长文档中精确定位与 query 最相关的段落。",
+    "file": "./content/posts/rag-master-09-rse.md",
+    "format": "html",
+    "htmlFile": "./content/posts/9_相关段落提取_blog.html",
+    "subtitle": "从长文档中定位最相关段落",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 9
+  },
+  {
+    "slug": "rag-master-08-reranking",
+    "title": "从零到 RAG 大师（八）：重排序（Reranking）",
+    "date": "2025-01-09",
+    "readTime": "15 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Bi-Encoder 召回 + Cross-Encoder 精排：Reranker 原理、选型与生产部署要点。",
+    "file": "./content/posts/rag-master-08-reranking.md",
+    "format": "html",
+    "htmlFile": "./content/posts/8_重排序_blog.html",
+    "subtitle": "Cross-Encoder 精排提升 Top-K 质量",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 8
+  },
+  {
+    "slug": "rag-master-07-query-transformation",
+    "title": "从零到 RAG 大师（七）：查询转换 Query Transformation",
+    "date": "2025-01-08",
+    "readTime": "16 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "查询改写、多查询扩展与分解策略，弥合用户问题与文档表述之间的语义鸿沟。",
+    "file": "./content/posts/rag-master-07-query-transformation.md",
+    "format": "html",
+    "htmlFile": "./content/posts/7_查询转换_blog.html",
+    "subtitle": "Multi-Query、HyDE 与查询分解",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 7
+  },
+  {
+    "slug": "rag-master-06-doc-enhancement",
+    "title": "从零到 RAG 大师（六）：文档增强 RAG",
+    "date": "2025-01-07",
+    "readTime": "18 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "用 LLM 为文档生成假设性问题，扩展索引维度，提升多样 query 的召回率。",
+    "file": "./content/posts/rag-master-06-doc-enhancement.md",
+    "format": "html",
+    "htmlFile": "./content/posts/6_文档增强rag_blog.html",
+    "subtitle": "通过问题生成进行文档增强",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 6
+  },
+  {
+    "slug": "rag-master-05-cch",
+    "title": "从零到 RAG 大师（五）：上下文片段标题提取 (CCH)",
+    "date": "2025-01-06",
+    "readTime": "14 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Contextual Chunk Headers：用 LLM 为 chunk 生成标题，增强可检索性与可解释性。",
+    "file": "./content/posts/rag-master-05-cch.md",
+    "format": "html",
+    "htmlFile": "./content/posts/5_上下文片段标题提取_blog.html",
+    "subtitle": "为每个片段生成描述性标题",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 5
+  },
+  {
+    "slug": "rag-master-04-contextual-retrieval",
+    "title": "从零到 RAG 大师（四）：上下文增强检索 RAG",
+    "date": "2025-01-05",
+    "readTime": "17 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Anthropic 式 Contextual Retrieval：切块时附加上下文，显著降低检索失败率。",
+    "file": "./content/posts/rag-master-04-contextual-retrieval.md",
+    "format": "html",
+    "htmlFile": "./content/posts/4_上下文增强检索_blog.html",
+    "subtitle": "为每个 chunk 注入文档级上下文",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 4
+  },
+  {
+    "slug": "rag-master-03-chunk-size",
+    "title": "从零到 RAG 大师（三）：切块大小选择",
+    "date": "2025-01-04",
+    "readTime": "15 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "切块大小如何影响召回与生成质量？实验对比与工程选型建议。",
+    "file": "./content/posts/rag-master-03-chunk-size.md",
+    "format": "html",
+    "htmlFile": "./content/posts/3_切块大小选择_blog.html",
+    "subtitle": "检索精度与上下文完整性的平衡",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 3
+  },
+  {
+    "slug": "rag-master-02-semantic-chunking",
+    "title": "从零到 RAG 大师（二）：语义分块",
+    "date": "2025-01-03",
+    "readTime": "16 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "告别固定长度切分：用语义边界切块，提升检索精度与上下文连贯性。",
+    "file": "./content/posts/rag-master-02-semantic-chunking.md",
+    "format": "html",
+    "htmlFile": "./content/posts/2_语义分块_blog.html",
+    "subtitle": "让检索更「懂」文本",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 2
+  },
+  {
+    "slug": "rag-master-01-simple-rag",
+    "title": "从零到 RAG 大师（一）：Simple RAG 入门指南",
+    "date": "2025-01-02",
+    "readTime": "18 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "从零搭建 Simple RAG：文档加载、切块、向量化、检索与生成，理解 RAG 的核心工作流。",
+    "file": "./content/posts/rag-master-01-simple-rag.md",
+    "format": "html",
+    "htmlFile": "./content/posts/1_基础rag_blog.html",
+    "subtitle": "最基础的检索增强生成管道",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 1
+  },
+  {
+    "slug": "rag-master-preface",
+    "title": "从零到 RAG 大师 · 前言：检索增强生成技术全景导读",
+    "date": "2025-01-01",
+    "readTime": "20 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "检索增强生成",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "从 Naive RAG 到 Agentic RAG，系统梳理检索增强生成的技术全景、演进脉络与 21 篇系列教程学习路线。",
+    "file": "./content/posts/rag-master-preface.md",
+    "format": "html",
+    "htmlFile": "./content/posts/0_前言.html",
+    "subtitle": "21 篇系列教程全景地图与学习路线",
+    "series": "从零到 RAG 大师",
+    "seriesOrder": 0
   }
 ]

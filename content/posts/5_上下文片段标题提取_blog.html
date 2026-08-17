@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（五）：上下文片段标题提取 (CCH)</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle { color: var(--text-muted); font-size: 1.05rem; }
+  header .meta { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+  header .meta span { margin: 0 0.5rem; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .toc a:hover { color: var(--accent); }
+
+  h2 {
+    font-size: 1.6rem; font-weight: 700;
+    margin: 2.5rem 0 1rem; padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border); color: var(--text);
+  }
+  h3 { font-size: 1.25rem; font-weight: 600; margin: 1.8rem 0 0.8rem; color: var(--accent); }
+
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: var(--accent2); }
+  em { color: var(--accent3); font-style: normal; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+    margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.88rem; }
+  p code, li code {
+    background: var(--tag-bg); padding: 0.15rem 0.4rem;
+    border-radius: 4px; font-size: 0.85rem; color: var(--accent3);
+  }
+
+  .callout {
+    background: var(--surface); border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .callout.warning { border-left-color: var(--accent3); }
+  .callout.success { border-left-color: var(--accent2); }
+  .callout .callout-title { font-weight: 700; margin-bottom: 0.3rem; font-size: 0.95rem; }
+
+  .diagram-container {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+    text-align: center; overflow-x: auto;
+  }
+  .diagram-container .caption {
+    font-size: 0.85rem; color: var(--text-muted); margin-top: 0.8rem; text-align: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--border); padding: 0.6rem 1rem; text-align: left; }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+  }
+  .compare-card h4 { font-size: 1rem; margin-bottom: 0.6rem; }
+  .compare-card.bad h4 { color: var(--accent3); }
+  .compare-card.good h4 { color: var(--accent2); }
+  .compare-card ul { padding-left: 1rem; }
+
+  .score-highlight {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.5rem 1rem; margin: 0.3rem;
+    font-size: 1.1rem; font-weight: 700;
+  }
+  .score-highlight.up { border-color: var(--accent2); color: var(--accent2); }
+
+  .chart-wrapper {
+    max-width: 500px; margin: 1.5rem auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem;
+  }
+
+  footer {
+    margin-top: 3rem; padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center; color: var(--text-muted); font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  .series-nav { display: flex; justify-content: space-between; margin-top: 2rem; gap: 1rem; }
+  .series-nav a {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.8rem 1.2rem; color: var(--accent);
+    text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .series-nav a:hover { border-color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header h1 { font-size: 1.5rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 5 篇</div>
+  <h1>上下文片段标题提取 (CCH)</h1>
+  <p class="subtitle">给每个文本块取个"名字"——用 LLM 生成的标题为检索注入语义锚点</p>
+  <div class="meta">
+    <span>📅 2026-07-10</span>
+    <span>·</span>
+    <span>🏷️ RAG / 标题增强 / 双嵌入检索</span>
+    <span>·</span>
+    <span>⏱️ 阅读约 14 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#motivation">问题动机：分块丢了"主题"怎么办？</a></li>
+    <li><a href="#comparison">朴素 RAG vs CCH RAG：架构对比</a></li>
+    <li><a href="#principle">核心原理：LLM 生成标题 + 双重嵌入检索</a></li>
+    <li><a href="#pipeline">完整流水线</a></li>
+    <li><a href="#code-header">代码解读：LLM 生成块标题</a></li>
+    <li><a href="#code-chunk">代码解读：带标题的分块流程</a></li>
+    <li><a href="#code-embed">代码解读：双重嵌入创建</a></li>
+    <li><a href="#code-search">代码解读：双重相似度检索</a></li>
+    <li><a href="#code-generate">代码解读：回复生成</a></li>
+    <li><a href="#code-eval">代码解读：评估与分数对比</a></li>
+    <li><a href="#demo">效果演示</a></li>
+    <li><a href="#score-compare">跨篇评分对比</a></li>
+    <li><a href="#proscons">优缺点与适用场景</a></li>
+    <li><a href="#summary">本篇小结</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== 1. 动机 ===================== -->
+<h2 id="motivation">一、问题动机：分块丢了"主题"怎么办？</h2>
+
+<p>在前几篇中，我们陆续用<strong>重叠分块</strong>（<a href="2_语义分块_blog.html">第 2 篇</a>）、<strong>切块大小调优</strong>（<a href="3_切块大小选择_blog.html">第 3 篇</a>）、<strong>上下文邻居检索</strong>（<a href="4_上下文增强检索_blog.html">第 4 篇</a>）改善了检索质量。但这些方案都围绕一个假设：<strong>文本块本身的内容足以表达它的语义</strong>。</p>
+
+<p>现实往往不是这样。考虑一个 1000 字符的文本块，它可能从某段话的中间开始，缺少主语、缺少主题句。当你把它送入嵌入模型时，向量反映的是一段"无头"文本的语义——这显然不够准确。</p>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 类比理解</div>
+  <p>想象你在书店找书。管理员不告诉你书名，只让你随机翻开一页读一段话，然后让你判断"这本书是不是你要找的"。如果你先看到书名——哪怕只是一句话的标题——你的判断会准确得多。</p>
+</div>
+
+<p><strong>上下文片段标题（Context Chunk Headers, CCH）</strong>的核心思路就是：在嵌入每个块之前，先用 LLM 为它生成一个<strong>描述性标题</strong>，然后把标题和正文<strong>分别嵌入</strong>，检索时<strong>同时匹配标题和正文</strong>，取平均相似度排序。</p>
+
+<!-- ===================== 2. 架构对比 ===================== -->
+<h2 id="comparison">二、朴素 RAG vs CCH RAG：架构对比</h2>
+
+<div class="compare-grid">
+  <div class="compare-card bad">
+    <h4>❌ 朴素 RAG</h4>
+    <ul>
+      <li>每个块只有<strong>一个向量</strong>（正文嵌入）</li>
+      <li>检索只看<strong>正文相似度</strong></li>
+      <li>块缺少"主题标签"，语义表达不完整</li>
+      <li>当块从段落中间开始时，语义更加模糊</li>
+    </ul>
+  </div>
+  <div class="compare-card good">
+    <h4>✅ CCH RAG</h4>
+    <ul>
+      <li>每个块有<strong>两个向量</strong>（正文嵌入 + 标题嵌入）</li>
+      <li>检索同时计算<strong>正文相似度 + 标题相似度</strong>，取平均</li>
+      <li>标题充当"语义锚点"，浓缩了块的主题</li>
+      <li>即使正文被截断，标题仍能传达核心主题</li>
+    </ul>
+  </div>
+</div>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+    subgraph naive["朴素 RAG 数据流"]
+      direction TB
+      C1["文本块"] --> E1["嵌入模型"]
+      E1 --> V1["1 个向量"]
+      V1 --> S1["单一相似度"]
+    end
+    subgraph cch["CCH RAG 数据流"]
+      direction TB
+      C2["文本块"] --> LLM["LLM 生成标题"]
+      LLM --> H["标题"]
+      C2 --> E2a["嵌入模型"]
+      H --> E2b["嵌入模型"]
+      E2a --> V2a["正文向量"]
+      E2b --> V2b["标题向量"]
+      V2a --> S2["平均相似度"]
+      V2b --> S2
+    end
+    naive ~~~ cch
+  </div>
+  <div class="caption">图 1：朴素 RAG 只有单一路径；CCH RAG 为每个块额外生成标题并分别嵌入，检索时融合两路相似度</div>
+</div>
+
+<!-- ===================== 3. 核心原理 ===================== -->
+<h2 id="principle">三、核心原理：LLM 生成标题 + 双重嵌入检索</h2>
+
+<p>CCH 的创新可以拆成两个关键步骤：</p>
+
+<h3>3.1 分块阶段：为每个块生成描述性标题</h3>
+
+<p>对每个文本块，调用 LLM（本 notebook 使用 <code>gpt-4o</code>）生成一个简洁、信息丰富的标题。这个标题相当于给块打了一个<strong>语义标签</strong>。</p>
+
+<div class="diagram-container">
+  <div style="font-family: monospace; font-size: 0.85rem; color: var(--text); text-align: left; display: inline-block;">
+    <pre style="border:none; background:transparent; margin:0; padding:0; color: var(--text);">
+原始文本块 (1000 字符)
+┌──────────────────────────────────────────────────────┐
+│ systems. Explainable AI (XAI)                        │
+│ techniques aim to make AI decisions more...          │
+│ Privacy and Data Protection                          │
+│ AI systems often rely on large amounts of data...    │
+│ ...                                                  │
+│ Chapter 20: Building Trust in AI                     │
+│ Transparency and Explainability                      │
+│ ...                                                  │
+└──────────────────────────────────────────────────────┘
+                        │
+                        ▼  LLM (gpt-4o)
+                        │
+┌──────────────────────────────────────────────────────┐
+│ 生成标题:                                             │
+│ "Building Trust in AI: Explainability, Privacy,      │
+│  and Accountability"                                  │
+└──────────────────────────────────────────────────────┘
+    </pre>
+  </div>
+  <div class="caption">图 2：LLM 从一段"无头"文本中提炼出描述性标题，作为该块的语义锚点</div>
+</div>
+
+<h3>3.2 检索阶段：双重相似度融合</h3>
+
+<p>检索时，对用户查询分别计算它与<strong>正文嵌入</strong>和<strong>标题嵌入</strong>的余弦相似度，然后取<strong>算术平均值</strong>作为最终排序分数。</p>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    Q["用户查询"] --> QE["查询嵌入"]
+    QE --> ST["sim_text = cos(查询, 正文向量)"]
+    QE --> SH["sim_header = cos(查询, 标题向量)"]
+    ST --> AVG["avg_sim = (sim_text + sim_header) / 2"]
+    SH --> AVG
+    AVG --> SORT["按 avg_sim 降序排序"]
+    SORT --> TOP["返回 Top-K 个块"]
+
+    style AVG fill:#1f6feb,stroke:#388bfd,color:#fff
+    style TOP fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 3：双重相似度融合——查询同时匹配正文和标题，取平均后排序</div>
+</div>
+
+<div class="callout success">
+  <div class="callout-title">💡 为什么取平均而不是拼接？</div>
+  <p>拼接（concat）会让标题向量在整体表示中占比过小（标题通常只有几个词，正文有几百个词）。取平均则让标题和正文<strong>权重相等</strong>，确保标题的语义信号不会被正文淹没。这是一种简单但有效的融合策略。</p>
+</div>
+
+<!-- ===================== 4. 完整流水线 ===================== -->
+<h2 id="pipeline">四、完整流水线</h2>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    A["📄 PDF 文档"] --> B["文本提取<br/>(PyMuPDF)"]
+    B --> C["重叠分块<br/>(n=1000, overlap=200)"]
+    C --> D["🌟 LLM 生成标题<br/>(gpt-4o, 逐块调用)"]
+    D --> E["双重嵌入<br/>(正文 + 标题分别嵌入)"]
+    E --> F["用户查询"]
+    F --> G["查询嵌入"]
+    G --> H["双重相似度计算<br/>sim_text + sim_header"]
+    H --> I["取平均 → 排序 → Top-K"]
+    I --> J["拼接标题 + 正文 + 查询"]
+    J --> K["LLM 生成回答<br/>(gpt-3.5-turbo)"]
+    K --> L["LLM 评估打分"]
+
+    style A fill:#1f6feb,stroke:#388bfd,color:#fff
+    style D fill:#a371f7,stroke:#bc8cff,color:#fff
+    style K fill:#238636,stroke:#3fb950,color:#fff
+    style L fill:#da3633,stroke:#f85149,color:#fff
+  </div>
+  <div class="caption">图 4：CCH RAG 完整流水线——紫色高亮的"LLM 生成标题"是与前几篇的核心差异</div>
+</div>
+
+<!-- ===================== 5. 代码：生成标题 ===================== -->
+<h2 id="code-header">五、代码解读：LLM 生成块标题</h2>
+
+<p>这是 CCH 方案最核心的函数——用 <code>gpt-4o</code> 为每个文本块生成一个简洁标题：</p>
+
+<pre><code class="language-python">def generate_chunk_header(chunk, model="gpt-4o"):
+    """使用 LLM 为给定的文本块生成描述性标题。"""
+    system_prompt = "Generate a concise and informative title for the given text."
+
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": chunk}
+        ]
+    )
+    return response.choices[0].message.content.strip()</code></pre>
+
+<div class="callout">
+  <div class="callout-title">🔍 设计要点</div>
+  <ul>
+    <li><strong>temperature=0</strong>：确保标题生成的一致性，同样的块总是得到同样的标题</li>
+    <li><strong>system prompt 极简</strong>：只要求"简洁且有信息量的标题"，不做过多约束</li>
+    <li><strong>使用 gpt-4o</strong>：标题生成需要较强的理解和概括能力，gpt-4o 比 gpt-3.5-turbo 更擅长此任务</li>
+  </ul>
+</div>
+
+<p>实际生成的标题示例：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>文本块内容（前几个词）</th>
+      <th>LLM 生成的标题</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>Understanding Artificial Intelligence... Chapter 1: Introduction...</code></td>
+      <td><em>"Introduction to Artificial Intelligence: Historical Context and Development"</em></td>
+    </tr>
+    <tr>
+      <td><code>systems. Explainable AI (XAI) techniques aim to...</code></td>
+      <td><em>"Building Trust in AI: Explainability, Privacy, and Accountability"</em></td>
+    </tr>
+    <tr>
+      <td><code>inability. Many AI systems, particularly deep learning...</code></td>
+      <td><em>"Challenges and Ethical Concerns in AI Development and Deployment"</em></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>可以看到，即使文本块从句子中间开始（如"systems."、"inability."），LLM 仍然能准确提炼出该块的核心主题。</p>
+
+<!-- ===================== 6. 代码：带标题的分块 ===================== -->
+<h2 id="code-chunk">六、代码解读：带标题的分块流程</h2>
+
+<p>将分块和标题生成整合到一个函数中：</p>
+
+<pre><code class="language-python">def chunk_text_with_headers(text, n, overlap):
+    """将文本分割为片段，并为每个片段生成标题。"""
+    chunks = []
+    for i in range(0, len(text), n - overlap):
+        chunk = text[i:i + n]
+        header = generate_chunk_header(chunk)  # 🌟 关键：逐块调用 LLM
+        chunks.append({"header": header, "text": chunk})
+    return chunks</code></pre>
+
+<p>调用方式：</p>
+
+<pre><code class="language-python">text_chunks = chunk_text_with_headers(extracted_text, 1000, 200)
+# 42 个块 → 42 次 LLM 调用 → 42 个标题</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 成本提醒</div>
+  <p>每个块都要调用一次 <code>gpt-4o</code>。42 个块 = 42 次 API 调用。对于大文档，这部分成本和时间不可忽视。notebook 中 42 个块的嵌入耗时约 52 秒（含标题生成 + 嵌入），平均每个块约 1.26 秒。在生产环境中，可以考虑<strong>批量生成标题</strong>或使用更便宜的模型。</p>
+</div>
+
+<!-- ===================== 7. 代码：双重嵌入 ===================== -->
+<h2 id="code-embed">七、代码解读：双重嵌入创建</h2>
+
+<p>与朴素 RAG 不同，CCH 为每个块创建<strong>两个嵌入向量</strong>——一个给正文，一个给标题：</p>
+
+<pre><code class="language-python">def create_embeddings(text, model="text-embedding-ada-002"):
+    """为给定文本创建嵌入向量。"""
+    response = client.embeddings.create(model=model, input=text)
+    return response.data[0].embedding</code></pre>
+
+<pre><code class="language-python">embeddings = []
+for chunk in tqdm(text_chunks, desc="Generating embeddings"):
+    text_embedding = create_embeddings(chunk["text"])       # 正文嵌入
+    header_embedding = create_embeddings(chunk["header"])   # 标题嵌入
+    embeddings.append({
+        "header": chunk["header"],
+        "text": chunk["text"],
+        "embedding": text_embedding,          # 正文向量
+        "header_embedding": header_embedding   # 标题向量
+    })</code></pre>
+
+<div class="diagram-container">
+  <div style="font-family: monospace; font-size: 0.85rem; color: var(--text); text-align: left; display: inline-block;">
+    <pre style="border:none; background:transparent; margin:0; padding:0; color: var(--text);">
+每个块的数据结构变化：
+
+朴素 RAG:
+┌──────────────────────────────────┐
+│ { text: "...", embedding: [v] }  │  ← 1 个向量
+└──────────────────────────────────┘
+
+CCH RAG:
+┌──────────────────────────────────────────────────────────────┐
+│ {                                                            │
+│   header: "Building Trust in AI: ...",                       │
+│   text: "...",                                               │
+│   embedding: [v₁],          ← 正文向量 (1536 维)              │
+│   header_embedding: [v₂]    ← 标题向量 (1536 维)              │
+│ }                                                            │
+└──────────────────────────────────────────────────────────────┘
+    </pre>
+  </div>
+  <div class="caption">图 5：数据结构对比——CCH 为每个块额外存储了标题和标题嵌入</div>
+</div>
+
+<!-- ===================== 8. 代码：双重检索 ===================== -->
+<h2 id="code-search">八、代码解读：双重相似度检索（核心）</h2>
+
+<p>这是 CCH 的第二个关键差异。检索函数同时计算查询与正文、查询与标题的余弦相似度，然后取平均：</p>
+
+<pre><code class="language-python">def semantic_search(query, chunks, k=5):
+    """基于双重相似度检索最相关的文本块。"""
+    query_embedding = create_embeddings(query)
+    similarities = []
+
+    for chunk in chunks:
+        # 查询 vs 正文
+        sim_text = cosine_similarity(
+            np.array(query_embedding), np.array(chunk["embedding"])
+        )
+        # 查询 vs 标题
+        sim_header = cosine_similarity(
+            np.array(query_embedding), np.array(chunk["header_embedding"])
+        )
+        # 🌟 关键：取平均
+        avg_similarity = (sim_text + sim_header) / 2
+        similarities.append((chunk, avg_similarity))
+
+    similarities.sort(key=lambda x: x[1], reverse=True)
+    return [x[0] for x in similarities[:k]]</code></pre>
+
+<div class="callout success">
+  <div class="callout-title">💡 直觉理解</div>
+  <p>假设查询是"什么是可解释 AI？"。某个块的正文中确实提到了 XAI，但只有一两句话（sim_text = 0.82）。而它的标题是"Building Trust in AI: Explainability, Privacy, and Accountability"——几乎就是查询的"完美摘要"（sim_header = 0.91）。平均后 avg_sim = 0.865，比只看正文的 0.82 更高，这个块更容易被检索到。</p>
+</div>
+
+<!-- ===================== 9. 代码：回复生成 ===================== -->
+<h2 id="code-generate">九、代码解读：回复生成</h2>
+
+<p>将检索到的块以<strong>"标题 + 正文"</strong>的格式拼接成 prompt：</p>
+
+<pre><code class="language-python"># 拼接上下文：每个块包含标题和正文
+user_prompt = "\n".join([
+    f"Header: {chunk['header']}\nContent:\n{chunk['text']}"
+    for chunk in top_chunks
+])
+user_prompt = f"{user_prompt}\nQuestion: {query}"
+
+ai_response = generate_response(system_prompt, user_prompt)</code></pre>
+
+<p>注意 prompt 中显式包含了 <code>Header:</code> 字段。这不仅仅是装饰——它让 LLM 在生成回答时也能"看到"每个块的标题，从而更好地理解上下文的主题方向。</p>
+
+<!-- ===================== 10. 代码：评估 ===================== -->
+<h2 id="code-eval">十、代码解读：评估与分数对比</h2>
+
+<pre><code class="language-python">evaluate_system_prompt = """Assess the AI assistant's response...
+- Score 1: very close to the true answer
+- Score 0.5: partially correct
+- Score 0: incorrect
+Return only the score (0, 0.5, or 1)."""</code></pre>
+
+<p>评估结果：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>方案</th>
+      <th>评估分数</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="4_上下文增强检索_blog.html">第 4 篇：上下文增强检索</a></td>
+      <td><strong>0.5</strong></td>
+      <td>回答部分正确，缺少"公平性和问责制"的细节</td>
+    </tr>
+    <tr>
+      <td><strong>第 5 篇：CCH 标题提取</strong></td>
+      <td><strong style="color: var(--accent2);">1.0</strong></td>
+      <td>回答与标准答案高度一致</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout success">
+  <div class="callout-title">🎉 分数提升！</div>
+  <p>从 0.5 → 1.0，评估分数翻倍。标题提供的语义锚点帮助检索到了更精准的上下文块，LLM 因此生成了更完整、更准确的回答。</p>
+</div>
+
+<!-- ===================== 11. 效果演示 ===================== -->
+<h2 id="demo">十一、效果演示</h2>
+
+<h3>11.1 检索结果展示</h3>
+
+<div class="callout">
+  <div class="callout-title">📝 查询问题</div>
+  <p>What is 'Explainable AI' and why is it considered important?</p>
+</div>
+
+<p>设置 <code>k=2</code>，检索返回了 2 个最相关的块：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>排名</th>
+      <th>LLM 生成的标题</th>
+      <th>内容摘要</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>#1</td>
+      <td><em>"Building Trust in AI: Explainability, Privacy, and Accountability"</em></td>
+      <td>🎯 XAI 定义、透明度、隐私保护、问责制</td>
+    </tr>
+    <tr>
+      <td>#2</td>
+      <td><em>"Challenges and Ethical Concerns in AI Development and Deployment"</em></td>
+      <td>📎 AI 黑箱问题、可解释性挑战、伦理困境</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>注意标题的质量——即使不看正文，光看标题就能判断这些块与"可解释 AI"高度相关。这正是 CCH 的价值所在。</p>
+
+<h3>11.2 生成结果对比</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>类别</th>
+      <th>内容</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>AI 生成的回答</strong></td>
+      <td>Explainable AI (XAI) techniques aim to make AI decisions more understandable, enabling users to assess their fairness and accuracy. It is considered important because transparency and explainability are key to building trust in AI. Making AI systems understandable and providing insights into their decision-making processes helps users assess their reliability and fairness.</td>
+    </tr>
+    <tr>
+      <td><strong>标准答案（摘要）</strong></td>
+      <td>Explainable AI (XAI) techniques aim to make AI decisions more understandable… ensuring fairness and accountability in AI systems.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>11.3 评估详情</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>评分</th>
+      <th>评审说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong style="color: var(--accent2);">1.0</strong>（完全匹配）</td>
+      <td>AI 回答与标准答案高度一致，完整覆盖了 XAI 的定义和重要性。</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 12. 评分对比图表 ===================== -->
+<h2 id="score-compare">十二、跨篇评分对比</h2>
+
+<p>将最近几篇使用相同验证问题的评估分数放在一起对比：</p>
+
+<div class="chart-wrapper">
+  <canvas id="scoreChart"></canvas>
+</div>
+<div class="diagram-container" style="border:none; background:transparent; padding:0;">
+  <div class="caption">图 6：相同验证问题在不同 RAG 改进方案下的评估分数对比（0 / 0.5 / 1）</div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">💡 趋势分析</div>
+  <p>从朴素 RAG 到上下文增强检索（0.5），再到 CCH 标题提取（1.0），每一步改进都带来了可量化的提升。CCH 的"标题锚点"策略在当前验证集上效果尤为显著。</p>
+</div>
+
+<!-- ===================== 13. 优缺点 ===================== -->
+<h2 id="proscons">十三、优缺点与适用场景</h2>
+
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>✅ 优点</h4>
+    <ul>
+      <li><strong>语义锚点</strong>：标题浓缩了块的核心主题，弥补了正文截断导致的信息丢失</li>
+      <li><strong>检索精度提升</strong>：双重匹配比单一匹配更能抓住相关块</li>
+      <li><strong>实现简单</strong>：核心改动只是"多调一次 LLM 生成标题"+"检索时多算一次相似度"</li>
+      <li><strong>对 LLM 生成友好</strong>：prompt 中包含标题，帮助 LLM 更快理解上下文方向</li>
+      <li><strong>可与其他技术叠加</strong>：可与重叠分块、邻居检索、重排序等组合使用</li>
+    </ul>
+  </div>
+  <div class="compare-card bad">
+    <h4>❌ 缺点</h4>
+    <ul>
+      <li><strong>额外 API 成本</strong>：每个块需要一次 gpt-4o 调用来生成标题</li>
+      <li><strong>索引时间增加</strong>：标题生成 + 双重嵌入，索引构建时间翻倍以上</li>
+      <li><strong>标题质量依赖 LLM</strong>：如果 LLM 生成了不准确的标题，反而会误导检索</li>
+      <li><strong>存储开销增加</strong>：每个块多存一个标题字符串 + 一个 1536 维向量</li>
+      <li><strong>平均融合的局限</strong>：简单平均假设标题和正文同等重要，但某些场景下正文可能更关键</li>
+    </ul>
+  </div>
+</div>
+
+<h3>适用场景</h3>
+<table>
+  <thead>
+    <tr>
+      <th>✅ 适合</th>
+      <th>❌ 不适合</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>长文档、多主题文档（每块主题差异大）</td>
+      <td>短文档或单一主题文档（标题区分度低）</td>
+    </tr>
+    <tr>
+      <td>块从段落中间开始的情况多</td>
+      <td>块天然以标题/完整段落开头</td>
+    </tr>
+    <tr>
+      <td>对检索精度要求高，可接受额外成本</td>
+      <td>对延迟和成本极度敏感的实时场景</td>
+    </tr>
+    <tr>
+      <td>文档结构松散、缺少显式章节标题</td>
+      <td>已有良好结构化标题的文档（可直接用原标题）</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 14. 小结 ===================== -->
+<h2 id="summary">十四、本篇小结</h2>
+
+<p>CCH（Context Chunk Headers）的核心思想可以用一句话概括：</p>
+
+<div class="callout success">
+  <div class="callout-title">🎯 核心 takeaway</div>
+  <p>给每个文本块取个"名字"。标题就像书的封面——即使你只看到封面，也能大致判断这本书是不是你要找的。用 LLM 为每个块生成标题，然后在检索时同时匹配标题和正文，让"语义锚点"帮你找到更精准的上下文。</p>
+</div>
+
+<p>技术要点回顾：</p>
+<ol>
+  <li><strong>LLM 生成标题</strong>：用 <code>gpt-4o</code> 为每个块生成描述性标题（42 块 = 42 次调用）</li>
+  <li><strong>双重嵌入</strong>：正文和标题分别用 <code>text-embedding-ada-002</code> 嵌入</li>
+  <li><strong>双重相似度</strong>：检索时计算 query 与正文、query 与标题的余弦相似度，取<strong>算术平均</strong></li>
+  <li><strong>评估提升</strong>：相同问题，分数从第 4 篇的 0.5 提升到 1.0</li>
+</ol>
+
+<p>本篇的 CCH 技术与<a href="4_上下文增强检索_blog.html">第 4 篇</a>的上下文邻居检索并不冲突——你完全可以同时使用"邻居扩展 + 标题增强"，两者从不同角度改善检索质量。后续篇章中我们还会看到更多可以叠加的优化手段。</p>
+
+<p>下一篇我们将介绍<strong>文档增强 RAG（Document Augmented RAG）</strong>——用文档级别的摘要来增强块级检索。敬请期待！</p>
+
+<!-- Series navigation -->
+<div class="series-nav">
+  <a href="4_上下文增强检索_blog.html">← 第 4 篇：上下文增强检索</a>
+  <a href="#">第 6 篇：文档增强 RAG →</a>
+</div>
+
+</div>
+
+<footer>
+  <p>从零到 RAG 大师 系列 · 第 5 篇 · 上下文片段标题提取 (CCH)</p>
+  <p>基于 Jupyter Notebook 实验整理 · 完整代码见 <code>5_上下文片段标题提取.ipynb</code></p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1f6feb',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#388bfd',
+      lineColor: '#58a6ff',
+      secondaryColor: '#161b22',
+      tertiaryColor: '#0d1117',
+      noteBkgColor: '#161b22',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d'
+    },
+    flowchart: { curve: 'basis', padding: 15 }
+  });
+  hljs.highlightAll();
+
+  // Chart.js 评分对比图
+  const ctx = document.getElementById('scoreChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['第 4 篇\n上下文增强检索', '第 5 篇\nCCH 标题提取'],
+      datasets: [{
+        label: '评估分数',
+        data: [0.5, 1.0],
+        backgroundColor: ['rgba(240, 136, 62, 0.7)', 'rgba(63, 185, 80, 0.7)'],
+        borderColor: ['#f0883e', '#3fb950'],
+        borderWidth: 2,
+        borderRadius: 6,
+        barThickness: 60
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) { return '分数: ' + context.parsed.y; }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 1.2,
+          ticks: {
+            color: '#8b949e',
+            stepSize: 0.5,
+            callback: function(value) { return value.toFixed(1); }
+          },
+          grid: { color: 'rgba(48, 54, 61, 0.5)' },
+          title: { display: true, text: '评估分数', color: '#8b949e' }
+        },
+        x: {
+          ticks: { color: '#8b949e', font: { size: 12 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

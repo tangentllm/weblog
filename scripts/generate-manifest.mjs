@@ -57,6 +57,11 @@ async function main() {
     if (meta.format) entry.format = meta.format;
     if (meta.htmlFile) entry.htmlFile = meta.htmlFile;
     if (meta.pinned === "true" || meta.pinned === true) entry.pinned = true;
+    if (meta.subtitle) entry.subtitle = meta.subtitle;
+    if (meta.series) entry.series = meta.series;
+    if (meta.seriesOrder !== undefined && meta.seriesOrder !== "") {
+      entry.seriesOrder = Number(meta.seriesOrder);
+    }
     manifest.push(entry);
   }
 

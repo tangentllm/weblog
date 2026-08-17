@@ -15,6 +15,9 @@ excerpt: 从实现细节而非公式推导出发，复盘手写多头注意力�
 
 这篇文章不是教你多头注意力的原理，如果你还不清楚 Attention 是什么，去看 Vaswani 2017 那篇 paper 就够了。我想讲的是**实现过程中真正让人头疼的地方**，那些论文和教程不会告诉你的细节。
 
+> **适用读者**
+> 本文假设你已理解 Scaled Dot-Product Attention 的基本公式。若还不清楚 Attention 机制，建议先读 Vaswani 等 (2017) 原论文，或本站 [Transformer 原理解析](/post/transformer-in-depth)。
+
 ---
 
 ## 从一个最简单的问题开始：scale 放在哪里

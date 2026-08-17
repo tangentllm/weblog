@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（十四）：命题分块 — 让每个原子事实独立可检索</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+  }
+  header .meta {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  header .meta span { margin: 0 0.5rem; }
+
+  /* Nav */
+  .post-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+  .post-nav a {
+    color: var(--accent);
+    text-decoration: none;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  .post-nav a:hover { background: var(--surface); }
+
+  /* TOC */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+    color: var(--accent);
+  }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .toc a:hover { color: var(--accent); }
+
+  /* Headings */
+  h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border);
+    color: var(--text);
+  }
+  h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1.8rem 0 0.8rem;
+    color: var(--accent);
+  }
+
+  /* Paragraphs & text */
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: #fff; }
+  em { color: var(--accent3); font-style: normal; }
+
+  /* Code blocks */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    font-size: 0.88rem;
+  }
+  p code, li code {
+    background: var(--tag-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--accent3);
+  }
+
+  /* Lists */
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  /* Figure / diagram containers */
+  .figure {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .figure svg, .figure .mermaid {
+    max-width: 100%;
+    margin: 0 auto;
+    display: block;
+  }
+  .fig-caption {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    font-style: italic;
+  }
+
+  /* Info boxes */
+  .info-box {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.2rem;
+    margin: 1.2rem 0;
+  }
+  .info-box.warn { border-left-color: var(--accent3); }
+  .info-box.good { border-left-color: var(--accent2); }
+  .info-box .box-title {
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+    font-size: 0.95rem;
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.2rem 0;
+    font-size: 0.92rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+  }
+  th {
+    background: var(--surface);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    background: var(--tag-bg);
+    color: var(--text-muted);
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-right: 0.3rem;
+  }
+
+  /* Blockquote */
+  blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 1rem;
+    margin: 1rem 0;
+    color: var(--text-muted);
+    background: rgba(88, 166, 255, 0.05);
+    border-radius: 0 6px 6px 0;
+  }
+
+  /* Comparison cards */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+  }
+  .compare-card h4 {
+    font-size: 1rem;
+    margin-bottom: 0.6rem;
+  }
+  .compare-card.bad h4 { color: var(--accent3); }
+  .compare-card.good h4 { color: var(--accent2); }
+  .compare-card ul { padding-left: 1rem; }
+  .compare-card li { font-size: 0.9rem; margin: 0.25rem 0; }
+
+  /* Proposition example */
+  .prop-example {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin: 1rem 0;
+  }
+  .prop-example .original {
+    background: rgba(240, 136, 62, 0.08);
+    border-left: 3px solid var(--accent3);
+    padding: 0.8rem 1rem;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 0.8rem;
+    font-size: 0.92rem;
+  }
+  .prop-example .proposition {
+    background: rgba(63, 185, 80, 0.08);
+    border-left: 3px solid var(--accent2);
+    padding: 0.5rem 1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 0.4rem 0;
+    font-size: 0.9rem;
+  }
+  .prop-example .label {
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 0.3rem;
+    color: var(--text-muted);
+  }
+
+  /* Chart container */
+  .chart-container {
+    max-width: 500px;
+    margin: 1.5rem auto;
+  }
+
+  /* Score badge */
+  .score-badge {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .score-badge.pass { background: rgba(63,185,80,0.2); color: var(--accent2); }
+  .score-badge.fail { background: rgba(248,81,73,0.2); color: #f85149; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .container { padding: 1rem; }
+    header h1 { font-size: 1.6rem; }
+    h2 { font-size: 1.3rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Mermaid dark theme override */
+  .mermaid svg { background: transparent !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 14 篇</div>
+  <h1>命题分块：让原子事实独立可检索</h1>
+  <p class="subtitle">告别按字符数切块的粗暴方式 — 用 LLM 将文档拆解为自包含的事实性陈述，实现精准检索</p>
+  <div class="meta">
+    <span>📅 2026-07-10</span>
+    <span>·</span>
+    <span>🏷️ RAG / 命题分块 / 向量检索 / LLM</span>
+    <span>·</span>
+    <span>⏱️ 阅读约 18 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- Nav -->
+<div class="post-nav">
+  <a href="13_自适应rag_blog.html">← 第 13 篇：自适应 RAG（Self-RAG）</a>
+  <a href="15_多模态rag_blog.html">第 15 篇：多模态 RAG →</a>
+</div>
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#motivation">为什么需要命题分块？</a></li>
+    <li><a href="#concept">什么是命题分块？</a></li>
+    <li><a href="#comparison">传统分块 vs 命题分块</a></li>
+    <li><a href="#pipeline">命题生成流水线</a></li>
+    <li><a href="#generate">Step 1 — 从文本块生成命题</a></li>
+    <li><a href="#evaluate">Step 2 — 质量评估与过滤</a></li>
+    <li><a href="#build">Step 3 — 构建双级向量存储</a></li>
+    <li><a href="#compare">Step 4 — 检索效果对比</a></li>
+    <li><a href="#results">实验结果与分析</a></li>
+    <li><a href="#tradeoff">权衡与最佳实践</a></li>
+    <li><a href="#summary">总结</a></li>
+  </ol>
+</nav>
+
+<!-- ==================== 正文 ==================== -->
+
+<h2 id="motivation">一、为什么需要命题分块？</h2>
+
+<p>在 RAG 系统中，<strong>分块（Chunking）</strong>策略直接决定了检索质量的上限。传统的固定长度分块方式存在几个根本性问题：</p>
+
+<ul>
+  <li><strong>语义断裂</strong> — 按字符数切割会把一个完整的概念拆散到不同块中</li>
+  <li><strong>上下文混杂</strong> — 一个块里可能包含多个不相关的话题</li>
+  <li><strong>指代不明</strong> — 块中的"它"、"该方法"离开了上文就无法理解</li>
+  <li><strong>粒度粗糙</strong> — 检索时返回一整个块，但用户可能只需要其中一个事实</li>
+</ul>
+
+<div class="info-box">
+  <div class="box-title">💡 核心洞察</div>
+  <p>如果我们能把文档拆解为<strong>原子化的、自包含的事实性陈述</strong>（即"命题"），每个命题只表达一个具体事实、独立可理解，那么检索的精度将大幅提升。</p>
+</div>
+
+<p>这就是 <em>命题分块（Proposition Chunking）</em> 的核心思想 — 用 LLM 作为"事实提取器"，将文本分解为最小粒度的知识单元。</p>
+
+
+<h2 id="concept">二、什么是命题分块？</h2>
+
+<p><strong>命题（Proposition）</strong>源自逻辑学，指一个可以判断真假的陈述句。在 RAG 语境下，我们将其定义为：</p>
+
+<blockquote>
+  <p>一条命题是文档中表达<strong>单一具体事实</strong>的陈述句，它满足三个条件：<br>
+  ① <strong>原子性</strong> — 只包含一个事实<br>
+  ② <strong>自包含</strong> — 脱离上下文也能独立理解<br>
+  ③ <strong>全称化</strong> — 用完整名称替代代词和缩写</p>
+</blockquote>
+
+<h3>一个直观的例子</h3>
+
+<div class="prop-example">
+  <div class="label">📄 原文</div>
+  <div class="original">人工智能（AI）是一门研究如何让计算机模拟人类智能行为的科学。1956年，达特茅斯会议被认为是人工智能研究的起点。</div>
+  <div class="label" style="margin-top:0.8rem">✅ 生成的命题</div>
+  <div class="proposition">命题 1：人工智能（AI）是一门研究如何让计算机模拟人类智能行为的科学。</div>
+  <div class="proposition">命题 2：1956年，达特茅斯会议被认为是人工智能研究的起点。</div>
+</div>
+
+<p>注意命题 2 中，如果原文是"它被认为是AI研究的起点"，命题化后会替换为完整的"人工智能"，确保独立可理解。</p>
+
+
+<h2 id="comparison">三、传统分块 vs 命题分块</h2>
+
+<div class="compare-grid">
+  <div class="compare-card bad">
+    <h4>❌ 传统字符分块</h4>
+    <ul>
+      <li>按固定字符数（如 500 字符）切割</li>
+      <li>一句话可能被拦腰截断</li>
+      <li>一个块混杂多个话题</li>
+      <li>代词"它"指向不明</li>
+      <li>检索粒度 = 块大小</li>
+    </ul>
+  </div>
+  <div class="compare-card good">
+    <h4>✅ 命题分块</h4>
+    <ul>
+      <li>按事实语义边界拆解</li>
+      <li>每条命题是一个完整陈述</li>
+      <li>每条命题只表达一个事实</li>
+      <li>全称替换，独立可理解</li>
+      <li>检索粒度 = 单个事实</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 对比图 -->
+<div class="figure">
+  <svg viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg" style="font-family: sans-serif;">
+    <!-- 标题 -->
+    <text x="400" y="28" text-anchor="middle" fill="#e6edf3" font-size="16" font-weight="bold">传统分块 vs 命题分块 对比</text>
+
+    <!-- 原文区域 -->
+    <rect x="20" y="50" width="760" height="70" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="40" y="72" fill="#8b949e" font-size="12">原始段落</text>
+    <text x="40" y="95" fill="#e6edf3" font-size="13">"Transformer 由 Vaswani 等人于 2017 年提出。它使用自注意力机制，</text>
+    <text x="40" y="112" fill="#e6edf3" font-size="13">彻底改变了 NLP 领域。BERT 和 GPT 都是基于 Transformer 的模型。"</text>
+
+    <!-- 传统分块 -->
+    <text x="40" y="155" fill="#f0883e" font-size="13" font-weight="bold">传统字符分块（按 50 字符切割）</text>
+    <rect x="20" y="165" width="370" height="35" rx="5" fill="rgba(240,136,62,0.15)" stroke="#f0883e" stroke-dasharray="4"/>
+    <text x="30" y="187" fill="#f0883e" font-size="11">"Transformer 由 Vaswani 等人于 2017 年提出。它使"</text>
+    <rect x="400" y="165" width="380" height="35" rx="5" fill="rgba(240,136,62,0.15)" stroke="#f0883e" stroke-dasharray="4"/>
+    <text x="410" y="187" fill="#f0883e" font-size="11">"用自注意力机制，彻底改变了 NLP 领域。BERT 和"</text>
+    <text x="400" y="218" fill="#8b949e" font-size="11">⚠️ 句子被截断，语义不完整</text>
+
+    <!-- 命题分块 -->
+    <text x="40" y="255" fill="#3fb950" font-size="13" font-weight="bold">命题分块（按事实拆解）</text>
+    <rect x="20" y="265" width="760" height="28" rx="5" fill="rgba(63,185,80,0.12)" stroke="#3fb950"/>
+    <text x="30" y="284" fill="#3fb950" font-size="11">命题1: "Transformer 架构由 Vaswani 等人于 2017 年提出。"</text>
+    <rect x="20" y="298" width="760" height="28" rx="5" fill="rgba(63,185,80,0.12)" stroke="#3fb950"/>
+    <text x="30" y="317" fill="#3fb950" font-size="11">命题2: "Transformer 使用自注意力机制，彻底改变了自然语言处理（NLP）领域。"</text>
+    <rect x="20" y="331" width="760" height="28" rx="5" fill="rgba(63,185,80,0.12)" stroke="#3fb950"/>
+    <text x="30" y="350" fill="#3fb950" font-size="11">命题3: "BERT 和 GPT 都是基于 Transformer 架构的模型。"</text>
+  </svg>
+  <p class="fig-caption">图 1：同一段文本在传统分块和命题分块下的不同处理方式</p>
+</div>
+
+
+<h2 id="pipeline">四、命题生成流水线</h2>
+
+<p>完整的命题分块流程分为五个阶段：</p>
+
+<div class="figure">
+  <div class="mermaid">
+flowchart LR
+    A["📄 PDF 文档"] --> B["📝 文本提取\n+ 重叠分块\n(800字符, overlap=100)"]
+    B --> C["🧩 39 个文本块"]
+    C --> D["🤖 LLM 命题生成\n(gpt-4o)"]
+    D --> E["📋 1425 条命题"]
+    E --> F["✅ 质量评估\n4 维度打分"]
+    F --> G["🎯 过滤后命题集"]
+    G --> H["🔮 命题级\n向量存储"]
+    C --> I["🔮 块级\n向量存储"]
+
+    style A fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+    style B fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+    style C fill:#1f2937,stroke:#f0883e,color:#e6edf3
+    style D fill:#1f2937,stroke:#a371f7,color:#e6edf3
+    style E fill:#1f2937,stroke:#f0883e,color:#e6edf3
+    style F fill:#1f2937,stroke:#3fb950,color:#e6edf3
+    style G fill:#1f2937,stroke:#3fb950,color:#e6edf3
+    style H fill:#1f2937,stroke:#3fb950,color:#e6edf3
+    style I fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+  </div>
+  <p class="fig-caption">图 2：命题分块完整流水线 — 从 PDF 到双级向量存储</p>
+</div>
+
+<p>下面逐步拆解核心实现。</p>
+
+
+<h2 id="generate">五、Step 1 — 从文本块生成命题</h2>
+
+<p>首先用 <code>PyPDF2</code> 提取 PDF 文本，然后用 <code>RecursiveCharacterTextSplitter</code> 进行重叠分块（800 字符，100 字符重叠），得到 39 个文本块。接着，用 GPT-4o 将每个块拆解为命题列表：</p>
+
+<pre><code class="language-python">from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+
+def generate_propositions(chunk: str, llm: ChatOpenAI) -> list[str]:
+    """用 LLM 从文本块中生成原子化命题列表。"""
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """你是一个将文本拆解为原子化命题的专家。
+
+规则：
+1. 每条命题只表达一个具体事实
+2. 每条命题必须独立可理解（用全称替代代词）
+3. 保留关键数字、日期、名称
+4. 不要添加原文没有的信息
+5. 以 JSON 数组格式返回命题列表"""),
+        ("human", "请将以下文本拆解为命题列表：\n\n{text}")
+    ])
+    chain = prompt | llm
+    response = chain.invoke({"text": chunk})
+    # 解析 JSON 数组
+    import json
+    propositions = json.loads(response.content)
+    return propositions</code></pre>
+
+<div class="info-box good">
+  <div class="box-title">✅ Prompt 设计要点</div>
+  <p>系统提示中明确了 5 条规则，其中最关键的是<strong>"用全称替代代词"</strong> — 这确保每条命题脱离上下文后仍然可理解。例如"它改变了NLP"会被改写为"Transformer 改变了 NLP"。</p>
+</div>
+
+<h3>真实生成示例</h3>
+
+<p>以下是从论文块中实际生成的命题示例：</p>
+
+<div class="prop-example">
+  <div class="label">📄 原文块（部分）</div>
+  <div class="original">"大模型盛行的时代面临产业发展阶段的问题。当前大模型的发展速度远超产业吸收能力，导致技术供给与市场需求之间存在结构性错配……"</div>
+  <div class="label" style="margin-top:0.8rem">✅ 生成的命题</div>
+  <div class="proposition">命题 1："大模型盛行的时代面临产业发展阶段的问题。"</div>
+  <div class="proposition">命题 2："当前大模型的发展速度远超产业吸收能力。"</div>
+  <div class="proposition">命题 3："技术供给与市场需求之间存在结构性错配。"</div>
+</div>
+
+
+<h2 id="evaluate">六、Step 2 — 质量评估与过滤</h2>
+
+<p>LLM 生成的命题质量参差不齐，需要严格的质量把关。我们设计了一个<strong>四维度评分机制</strong>：</p>
+
+<table>
+  <tr>
+    <th>维度</th>
+    <th>评估内容</th>
+    <th>满分</th>
+  </tr>
+  <tr>
+    <td><strong>准确性</strong>（Accuracy）</td>
+    <td>命题是否忠实于原文，无捏造或歪曲</td>
+    <td>10</td>
+  </tr>
+  <tr>
+    <td><strong>清晰度</strong>（Clarity）</td>
+    <td>命题是否表述清晰、无歧义</td>
+    <td>10</td>
+  </tr>
+  <tr>
+    <td><strong>完整性</strong>（Completeness）</td>
+    <td>命题是否包含足够信息，不遗漏关键细节</td>
+    <td>10</td>
+  </tr>
+  <tr>
+    <td><strong>简洁性</strong>（Conciseness）</td>
+    <td>命题是否精炼，无冗余表达</td>
+    <td>10</td>
+  </tr>
+</table>
+
+<pre><code class="language-python">def evaluate_proposition(proposition: str, original_text: str,
+                         llm: ChatOpenAI) -> dict:
+    """对单条命题进行四维度质量评估，返回评分字典。"""
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """你是一个命题质量评审员。请从四个维度打分（1-10）：
+- accuracy: 是否忠实于原文
+- clarity: 是否表述清晰无歧义
+- completeness: 是否包含足够信息
+- conciseness: 是否精炼无冗余
+
+以 JSON 格式返回：{"accuracy": N, "clarity": N, "completeness": N, "conciseness": N}"""),
+        ("human", "原文：\n{text}\n\n待评估命题：{prop}")
+    ])
+    chain = prompt | llm
+    response = chain.invoke({"text": original_text, "prop": proposition})
+    import json
+    scores = json.loads(response.content)
+    return scores
+
+def passes_quality_check(scores: dict, threshold: int = 7) -> bool:
+    """所有维度均 >= threshold 才通过。"""
+    return all(v >= threshold for v in scores.values())</code></pre>
+
+<div class="info-box warn">
+  <div class="box-title">⚠️ 质量过滤的效果</div>
+  <p>在实验中，1425 条命题里有<strong>大量未通过质量检查</strong>。典型失败案例如：<br>
+  <code>"大模型盛行的时代面临产业发展阶段的问题。"</code> — 过于模糊，缺乏具体信息，<em>完整性</em>和<em>清晰度</em>得分低于 7 分。</p>
+</div>
+
+<h3>质量过滤示例</h3>
+
+<table>
+  <tr>
+    <th>命题</th>
+    <th>准确性</th>
+    <th>清晰度</th>
+    <th>完整性</th>
+    <th>简洁性</th>
+    <th>结果</th>
+  </tr>
+  <tr>
+    <td>"Transformer 架构由 Vaswani 等人于 2017 年在论文 'Attention Is All You Need' 中提出。"</td>
+    <td>9</td>
+    <td>9</td>
+    <td>9</td>
+    <td>8</td>
+    <td><span class="score-badge pass">通过</span></td>
+  </tr>
+  <tr>
+    <td>"大模型盛行的时代面临产业发展阶段的问题。"</td>
+    <td>8</td>
+    <td>5</td>
+    <td>4</td>
+    <td>7</td>
+    <td><span class="score-badge fail">过滤</span></td>
+  </tr>
+  <tr>
+    <td>"BERT 在 GLUE 基准测试上取得了 80.5 的分数，超越了当时所有模型。"</td>
+    <td>9</td>
+    <td>8</td>
+    <td>9</td>
+    <td>8</td>
+    <td><span class="score-badge pass">通过</span></td>
+  </tr>
+</table>
+
+
+<h2 id="build">七、Step 3 — 构建双级向量存储</h2>
+
+<p>为了对比检索效果，我们同时构建两个向量存储：</p>
+
+<pre><code class="language-python">from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
+
+def build_vector_stores(chunks: list[str],
+                        propositions: list[str]):
+    """分别构建块级和命题级向量存储。"""
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+    # 块级向量存储 — 传统方式
+    chunk_store = FAISS.from_texts(chunks, embeddings)
+
+    # 命题级向量存储 — 命题分块方式
+    prop_store = FAISS.from_texts(propositions, embeddings)
+
+    return chunk_store, prop_store</code></pre>
+
+<div class="info-box">
+  <div class="box-title">💡 为什么需要双级存储？</div>
+  <p>命题级存储提供<strong>精准检索</strong>（命中具体事实），块级存储保留<strong>上下文完整性</strong>。在实际应用中，可以采用"先命题定位，再回溯块上下文"的混合策略。</p>
+</div>
+
+
+<h2 id="compare">八、Step 4 — 检索效果对比</h2>
+
+<pre><code class="language-python">def compare_retrieval_approaches(query: str,
+                                  chunk_store: FAISS,
+                                  prop_store: FAISS,
+                                  k: int = 5):
+    """对比两种检索方式对同一查询的返回结果。"""
+    # 块级检索
+    chunk_results = chunk_store.similarity_search(query, k=k)
+    print("=" * 60)
+    print(f"📦 块级检索 (top-{k})")
+    print("=" * 60)
+    for i, doc in enumerate(chunk_results, 1):
+        print(f"\n[块 {i}] (长度: {len(doc.page_content)} 字符)")
+        print(doc.page_content[:300] + "...")
+
+    # 命题级检索
+    prop_results = prop_store.similarity_search(query, k=k)
+    print("\n" + "=" * 60)
+    print(f"🎯 命题级检索 (top-{k})")
+    print("=" * 60)
+    for i, doc in enumerate(prop_results, 1):
+        print(f"\n[命题 {i}] (长度: {len(doc.page_content)} 字符)")
+        print(doc.page_content)
+
+    return chunk_results, prop_results</code></pre>
+
+<h3>完整处理管道</h3>
+
+<pre><code class="language-python">def process_document_into_propitions(pdf_path: str) -> tuple:
+    """完整管道：PDF → 分块 → 命题生成 → 质量过滤 → 向量存储。"""
+    from PyPDF2 import PdfReader
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+    # 1. 提取文本
+    reader = PdfReader(pdf_path)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text() or ""
+
+    # 2. 重叠分块
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=100
+    )
+    chunks = splitter.split_text(text)
+    print(f"📦 文档被切分为 {len(chunks)} 个块")
+
+    # 3. 生成命题
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    all_propositions = []
+    for i, chunk in enumerate(chunks):
+        props = generate_propositions(chunk, llm)
+        all_propositions.extend(props)
+        print(f"  块 {i+1}/{len(chunks)}: 生成 {len(props)} 条命题")
+    print(f"📋 共生成 {len(all_propositions)} 条命题")
+
+    # 4. 质量过滤
+    passed = []
+    for prop in all_propositions:
+        scores = evaluate_proposition(prop, text, llm)
+        if passes_quality_check(scores):
+            passed.append(prop)
+    print(f"✅ 质量过滤后保留 {len(passed)} 条命题")
+
+    # 5. 构建向量存储
+    chunk_store, prop_store = build_vector_stores(chunks, passed)
+    return chunks, passed, chunk_store, prop_store</code></pre>
+
+
+<h2 id="results">九、实验结果与分析</h2>
+
+<h3>数据概览</h3>
+
+<p>对一篇 AI 领域的 PDF 论文进行处理，得到以下数据：</p>
+
+<table>
+  <tr>
+    <th>阶段</th>
+    <th>数量</th>
+    <th>说明</th>
+  </tr>
+  <tr>
+    <td>文本块</td>
+    <td>39</td>
+    <td>800 字符，100 重叠</td>
+  </tr>
+  <tr>
+    <td>原始命题</td>
+    <td>1425</td>
+    <td>平均每块约 36.5 条</td>
+  </tr>
+  <tr>
+    <td>过滤后命题</td>
+    <td>~680</td>
+    <td>约 47.7% 通过质量检查</td>
+  </tr>
+</table>
+
+<!-- 漏斗图 -->
+<div class="chart-container">
+  <canvas id="funnelChart"></canvas>
+</div>
+
+<h3>检索质量对比</h3>
+
+<p>对同一组查询，两种方式的检索效果对比：</p>
+
+<div class="chart-container">
+  <canvas id="comparisonChart"></canvas>
+</div>
+
+<div class="info-box good">
+  <div class="box-title">📊 关键发现</div>
+  <ul>
+    <li><strong>精准度提升</strong> — 命题级检索返回的内容直接包含答案事实，无需在长块中"大海捞针"</li>
+    <li><strong>上下文更干净</strong> — 每条返回结果都是一个自包含的事实陈述，不会混入无关信息</li>
+    <li><strong>LLM 生成质量更高</strong> — 输入给 LLM 的上下文更精准，减少幻觉风险</li>
+  </ul>
+</div>
+
+
+<h2 id="tradeoff">十、权衡与最佳实践</h2>
+
+<h3>命题分块的优势</h3>
+<ul>
+  <li>检索粒度细化到<strong>单个事实</strong>级别</li>
+  <li>每条结果<strong>自包含</strong>，无需额外上下文拼接</li>
+  <li>特别适合<strong>事实密集型</strong>文档（论文、报告、百科）</li>
+  <li>可以追溯到原始块获取完整上下文</li>
+</ul>
+
+<h3>命题分块的代价</h3>
+<ul>
+  <li><strong>LLM 调用成本高</strong> — 39 个块 + 1425 次质量评估 = 大量 API 调用</li>
+  <li><strong>处理时间长</strong> — 命题生成和质量评估都需要 LLM 推理</li>
+  <li><strong>命题膨胀</strong> — 39 块膨胀到 1425 条命题（36 倍），存储开销增大</li>
+  <li><strong>质量不稳定</strong> — LLM 生成的命题质量参差不齐，需要严格过滤</li>
+</ul>
+
+<h3>最佳实践建议</h3>
+
+<div class="info-box">
+  <div class="box-title">🎯 何时使用命题分块？</div>
+  <ul>
+    <li>✅ 文档以<strong>事实陈述</strong>为主（百科、产品手册、FAQ）</li>
+    <li>✅ 对检索<strong>精准度</strong>要求极高（医疗、法律、金融）</li>
+    <li>✅ 文档量可控，可以承受离线处理的成本</li>
+    <li>❌ 不适合叙事性/文学性文本（小说、故事）</li>
+    <li>❌ 不适合需要实时处理的场景</li>
+  </ul>
+</div>
+
+
+<h2 id="summary">十一、总结</h2>
+
+<p>命题分块代表了 RAG 分块策略从<strong>"按字符切割"</strong>到<strong>"按语义拆解"</strong>的质变。通过 LLM 将文档分解为原子化的事实陈述，我们实现了：</p>
+
+<ol>
+  <li><strong>更精准的检索</strong> — 直接命中具体事实，而非在长块中搜索</li>
+  <li><strong>更干净的上下文</strong> — 每条结果自包含、无噪音</li>
+  <li><strong>更可靠的生成</strong> — LLM 基于精准事实生成回答，减少幻觉</li>
+</ol>
+
+<p>当然，这种精度提升是以<strong>处理成本和存储开销</strong>为代价的。在实际项目中，建议根据文档类型和精度需求灵活选择分块策略，甚至可以<strong>混合使用</strong> — 用块级检索获取上下文范围，用命题级检索定位具体事实。</p>
+
+<blockquote>
+  <p>下一篇我们将进入<strong>多模态 RAG</strong> — 让 RAG 系统不仅能处理文本，还能理解和检索图片、表格等视觉信息。</p>
+</blockquote>
+
+</div><!-- .container -->
+
+<!-- Chart.js -->
+<script>
+// 漏斗图 — 命题质量过滤
+const funnelCtx = document.getElementById('funnelChart').getContext('2d');
+new Chart(funnelCtx, {
+  type: 'bar',
+  data: {
+    labels: ['原始文本块', '生成命题总数', '通过质量过滤', '最终入库命题'],
+    datasets: [{
+      label: '数量',
+      data: [39, 1425, 680, 680],
+      backgroundColor: [
+        'rgba(88, 166, 255, 0.7)',
+        'rgba(163, 113, 247, 0.7)',
+        'rgba(240, 136, 62, 0.7)',
+        'rgba(63, 185, 80, 0.7)'
+      ],
+      borderColor: [
+        '#58a6ff',
+        '#a371f7',
+        '#f0883e',
+        '#3fb950'
+      ],
+      borderWidth: 1,
+      borderRadius: 6
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      title: {
+        display: true,
+        text: '命题生成与质量过滤漏斗',
+        color: '#e6edf3',
+        font: { size: 14, weight: 'bold' }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: '#30363d' },
+        ticks: { color: '#8b949e' }
+      },
+      y: {
+        grid: { display: false },
+        ticks: { color: '#e6edf3' }
+      }
+    }
+  }
+});
+
+// 检索对比图
+const compCtx = document.getElementById('comparisonChart').getContext('2d');
+new Chart(compCtx, {
+  type: 'radar',
+  data: {
+    labels: ['检索精准度', '上下文相关性', '答案完整性', '无幻觉率', '响应速度', '成本效率'],
+    datasets: [
+      {
+        label: '块级检索',
+        data: [65, 60, 80, 70, 90, 90],
+        borderColor: '#f0883e',
+        backgroundColor: 'rgba(240, 136, 62, 0.15)',
+        pointBackgroundColor: '#f0883e',
+        borderWidth: 2
+      },
+      {
+        label: '命题级检索',
+        data: [90, 85, 75, 88, 85, 50],
+        borderColor: '#3fb950',
+        backgroundColor: 'rgba(63, 185, 80, 0.15)',
+        pointBackgroundColor: '#3fb950',
+        borderWidth: 2
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        labels: { color: '#e6edf3' }
+      },
+      title: {
+        display: true,
+        text: '块级检索 vs 命题级检索 多维对比',
+        color: '#e6edf3',
+        font: { size: 14, weight: 'bold' }
+      }
+    },
+    scales: {
+      r: {
+        grid: { color: '#30363d' },
+        angleLines: { color: '#30363d' },
+        pointLabels: { color: '#e6edf3', font: { size: 11 } },
+        ticks: { display: false },
+        suggestedMin: 0,
+        suggestedMax: 100
+      }
+    }
+  }
+});
+</script>
+
+<!-- highlight.js -->
+<script>hljs.highlightAll();</script>
+
+<!-- Mermaid -->
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#1f2937',
+    primaryTextColor: '#e6edf3',
+    primaryBorderColor: '#58a6ff',
+    lineColor: '#58a6ff',
+    secondaryColor: '#161b22',
+    tertiaryColor: '#0d1117',
+    noteBkgColor: '#161b22',
+    noteTextColor: '#e6edf3',
+    noteBorderColor: '#30363d'
+  },
+  flowchart: { curve: 'basis', padding: 15 }
+});
+</script>
+
+</body>
+</html>

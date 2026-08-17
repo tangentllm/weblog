@@ -11,6 +11,9 @@ excerpt: 从数据构造、训练参数到离线评估，记录一次可复现�
 
 ## 任务定义
 
+> **适用读者**
+> 本文假设你已能运行 HuggingFace / PyTorch 训练脚本，并了解指令微调的基本概念。若需先建立 RLHF 全景，可结合 [PPO 原理与实现](/post/ppo-proximal-policy-optimization-pytorch) 阅读。
+
 目标：让基础模型在“技术问答 + 代码解释”场景下提升可控性与稳定性。
 
 ```mermaid

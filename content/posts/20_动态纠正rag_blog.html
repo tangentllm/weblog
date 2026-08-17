@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>动态纠正 RAG（CRAG）— 从零到 RAG 大师 · 第 20 篇</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --bg-card: #1a1d2e;
+      --bg-code: #161925;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --green: #34d399;
+      --orange: #fb923c;
+      --red: #f87171;
+      --cyan: #22d3ee;
+      --yellow: #fbbf24;
+      --border: #2d3148;
+      --radius: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      font-size: 16px;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+
+    .series-tag {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      color: #fff;
+      padding: 0.3rem 1rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-light), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+      line-height: 1.3;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .meta {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .meta span { margin: 0 0.3rem; }
+
+    /* TOC */
+    .toc {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .toc h2 {
+      font-size: 1.1rem;
+      margin-bottom: 0.8rem;
+      color: var(--accent-light);
+    }
+
+    .toc ol {
+      padding-left: 1.2rem;
+    }
+
+    .toc li {
+      margin: 0.4rem 0;
+    }
+
+    .toc a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: color 0.2s;
+    }
+
+    .toc a:hover {
+      color: var(--accent-light);
+    }
+
+    /* Headings */
+    h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--accent-light);
+      margin: 1.8rem 0 0.8rem;
+    }
+
+    h4 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.2rem 0 0.5rem;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    ul, ol {
+      padding-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    li {
+      margin: 0.4rem 0;
+    }
+
+    strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    a {
+      color: var(--accent-light);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Code */
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+      font-size: 0.85rem;
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--orange);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    pre code {
+      background: none;
+      color: var(--text);
+      padding: 0;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .code-label {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.8rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Info boxes */
+    .info-box {
+      background: var(--bg-card);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 1rem 1.2rem;
+      margin: 1.5rem 0;
+    }
+
+    .info-box.warn {
+      border-left-color: var(--orange);
+    }
+
+    .info-box.good {
+      border-left-color: var(--green);
+    }
+
+    .info-box.danger {
+      border-left-color: var(--red);
+    }
+
+    .box-title {
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      font-size: 0.95rem;
+    }
+
+    .info-box p {
+      margin-bottom: 0.3rem;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    /* Figure */
+    .figure {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+
+    .fig-caption {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 0.8rem;
+      font-style: italic;
+    }
+
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    .mermaid svg {
+      background: transparent !important;
+      max-width: 100%;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem 1rem;
+      text-align: left;
+    }
+
+    th {
+      background: var(--bg-card);
+      color: var(--accent-light);
+      font-weight: 600;
+    }
+
+    td {
+      background: var(--bg);
+    }
+
+    tr:hover td {
+      background: var(--accent-glow);
+    }
+
+    /* Threshold bar */
+    .threshold-bar {
+      display: flex;
+      height: 48px;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 1rem 0;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .threshold-bar .segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      transition: flex 0.3s;
+    }
+
+    .threshold-bar .low {
+      flex: 3;
+      background: linear-gradient(90deg, #dc2626, #ef4444);
+    }
+
+    .threshold-bar .mid {
+      flex: 4;
+      background: linear-gradient(90deg, #f59e0b, #fbbf24);
+      color: #1a1d2e;
+      text-shadow: none;
+    }
+
+    .threshold-bar .high {
+      flex: 3;
+      background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .threshold-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    /* Score cards */
+    .score-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .score-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .score-card .score {
+      font-size: 2rem;
+      font-weight: 800;
+      margin: 0.5rem 0;
+    }
+
+    .score-card .label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .score-card.high .score { color: var(--green); }
+    .score-card.mid .score { color: var(--yellow); }
+    .score-card.low .score { color: var(--red); }
+
+    /* Decision highlight */
+    .decision-flow {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .decision-step {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .decision-step:last-child {
+      border-bottom: none;
+    }
+
+    .step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-content .step-title {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .step-content .step-detail {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .step-result {
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .step-result.pass {
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--green);
+    }
+
+    .step-result.fail {
+      background: rgba(248, 113, 113, 0.15);
+      color: var(--red);
+    }
+
+    .step-result.neutral {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--yellow);
+    }
+
+    /* Comparison grid */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .compare-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem;
+    }
+
+    .compare-card h4 {
+      margin-top: 0;
+      text-align: center;
+    }
+
+    .compare-card.standard {
+      border-top: 3px solid var(--accent);
+    }
+
+    .compare-card.crag {
+      border-top: 3px solid var(--green);
+    }
+
+    /* Series navigation */
+    .series-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 2rem;
+      gap: 1rem;
+    }
+
+    .series-nav a {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.8rem 1.2rem;
+      color: var(--accent-light);
+      text-decoration: none;
+      font-size: 0.9rem;
+      flex: 1;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+
+    .series-nav a:hover {
+      border-color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem 0;
+      margin-top: 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--accent-light);
+    }
+
+    /* Blockquote */
+    blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 0.5rem 1rem;
+      margin: 1rem 0;
+      background: var(--accent-glow);
+      border-radius: 0 8px 8px 0;
+      color: var(--text-muted);
+    }
+
+    blockquote p {
+      margin-bottom: 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      header h1 { font-size: 1.6rem; }
+      .container { padding: 1rem; }
+      .compare-grid { grid-template-columns: 1fr; }
+      .score-cards { grid-template-columns: 1fr; }
+      .series-nav { flex-direction: column; }
+      .threshold-bar { height: 36px; font-size: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 20 篇</div>
+  <h1>动态纠正 RAG（CRAG）</h1>
+  <p class="subtitle">Corrective Retrieval Augmented Generation — 让系统学会"自我纠错"</p>
+  <div class="meta">
+    <span>📅 2026-07-10</span> ·
+    <span>🏷️ RAG · CRAG · 动态纠正 · 质量评估</span> ·
+    <span>⏱️ 15 分钟阅读</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 目录 -->
+  <nav class="toc">
+    <h2>📑 目录</h2>
+    <ol>
+      <li><a href="#why-crag">为什么需要动态纠正？</a></li>
+      <li><a href="#what-is-crag">什么是 CRAG？</a></li>
+      <li><a href="#decision-flow">核心决策流程</a></li>
+      <li><a href="#threshold">相关性阈值与三路分支</a></li>
+      <li><a href="#implementation">核心代码实现</a></li>
+      <li><a href="#real-eval">真实评估过程演示</a></li>
+      <li><a href="#architecture-compare">CRAG vs 标准 RAG 架构对比</a></li>
+      <li><a href="#knowledge-refine">知识精炼机制</a></li>
+      <li><a href="#pros-cons">优势与局限</a></li>
+      <li><a href="#summary">总结与展望</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1. 为什么需要动态纠正 -->
+  <h2 id="why-crag">1. 为什么需要动态纠正？</h2>
+
+  <p>在标准 RAG 管道中，检索到的文档会被<strong>无条件地</strong>传递给生成模型。但现实中，检索结果的质量参差不齐：</p>
+
+  <ul>
+    <li>向量相似度 ≠ 语义相关性（高分文档可能答非所问）</li>
+    <li>知识库可能根本不包含用户问题的答案</li>
+    <li>部分相关 ≠ 完全无关，需要差异化处理</li>
+  </ul>
+
+  <div class="info-box warn">
+    <div class="box-title">⚠️ 标准 RAG 的盲区</div>
+    <p>标准 RAG 对检索结果"来者不拒"——即使检索到的文档完全不相关，它仍然会基于这些噪声生成回复，导致幻觉或误导性回答。</p>
+  </div>
+
+  <p><strong>Corrective RAG（CRAG）</strong> 的核心思想是：在检索之后、生成之前，增加一个<strong>质量评估环节</strong>，根据评估结果动态调整信息获取策略。</p>
+
+  <!-- 2. 什么是 CRAG -->
+  <h2 id="what-is-crag">2. 什么是 CRAG？</h2>
+
+  <p>CRAG（Corrective RAG）是一种自适应检索增强生成框架，由 Ma et al. (2024) 提出。它在传统 RAG 管道中引入了一个<strong>检索评估器（Retrieval Evaluator）</strong>，能够：</p>
+
+  <ol>
+    <li>对每个检索到的文档进行<strong>相关性评分</strong>（0-1 分）</li>
+    <li>根据评分结果<strong>动态决策</strong>：使用本地文档、转向网络搜索、或两者结合</li>
+    <li>对获取的知识进行<strong>精炼</strong>，提取关键信息</li>
+  </ol>
+
+  <blockquote>
+    <p>CRAG 的本质：让 RAG 系统从"被动接受检索结果"升级为"主动判断信息质量"。</p>
+  </blockquote>
+
+  <!-- 3. 核心决策流程 -->
+  <h2 id="decision-flow">3. 核心决策流程</h2>
+
+  <p>CRAG 的核心在于其<strong>三路决策机制</strong>。下图展示了完整的决策流程：</p>
+
+  <div class="figure">
+    <div class="mermaid">
+flowchart TD
+    A["🔍 用户查询"] --> B["📚 向量检索 Top-K"]
+    B --> C["🧠 LLM 评估每个文档\n相关性评分 0-1"]
+    C --> D{"📊 最高相关性分数"}
+
+    D -->|"≥ 0.7\n高相关性"| E["✅ 路径 A：\n直接使用本地文档"]
+    D -->|"0.3 ~ 0.7\n中等相关性"| F["🔄 路径 B：\n本地文档 + 网络搜索"]
+    D -->|"< 0.3\n低相关性"| G["🌐 路径 C：\n放弃本地文档\n转向网络搜索"]
+
+    F --> H["🔎 重写查询"]
+    G --> H
+    H --> I["🦆 DuckDuckGo 搜索"]
+    I --> J["✨ 知识精炼\n提取关键点"]
+
+    E --> K["📝 精炼本地文档"]
+    J --> K
+
+    K --> L["💬 生成最终回复\n（含来源归属）"]
+
+    style A fill:#6366f1,stroke:#818cf8,color:#fff
+    style B fill:#1e40af,stroke:#3b82f6,color:#fff
+    style C fill:#7c3aed,stroke:#a78bfa,color:#fff
+    style D fill:#1a1d2e,stroke:#818cf8,color:#e2e8f0
+    style E fill:#059669,stroke:#34d399,color:#fff
+    style F fill:#d97706,stroke:#fbbf24,color:#fff
+    style G fill:#dc2626,stroke:#f87171,color:#fff
+    style H fill:#0891b2,stroke:#22d3ee,color:#fff
+    style I fill:#0891b2,stroke:#22d3ee,color:#fff
+    style J fill:#7c3aed,stroke:#a78bfa,color:#fff
+    style K fill:#059669,stroke:#34d399,color:#fff
+    style L fill:#6366f1,stroke:#818cf8,color:#fff
+    </div>
+    <p class="fig-caption">图 1：CRAG 决策流程图 — 检索 → 评估 → 三路分支 → 知识精炼 → 生成</p>
+  </div>
+
+  <p>三条路径的设计逻辑：</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>路径</th>
+        <th>条件</th>
+        <th>策略</th>
+        <th>理由</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong style="color: var(--green);">A：直接使用</strong></td>
+        <td>最高分 ≥ 0.7</td>
+        <td>仅用本地文档</td>
+        <td>检索质量高，无需外部补充</td>
+      </tr>
+      <tr>
+        <td><strong style="color: var(--yellow);">B：混合增强</strong></td>
+        <td>最高分 0.3 ~ 0.7</td>
+        <td>本地文档 + 网络搜索</td>
+        <td>部分相关，需要外部知识补充</td>
+      </tr>
+      <tr>
+        <td><strong style="color: var(--red);">C：完全替换</strong></td>
+        <td>最高分 < 0.3</td>
+        <td>放弃本地，仅用网络搜索</td>
+        <td>本地知识库无法回答该问题</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 4. 相关性阈值 -->
+  <h2 id="threshold">4. 相关性阈值与三路分支</h2>
+
+  <p>CRAG 使用两个阈值将 0-1 的评分空间划分为三个区间：</p>
+
+  <div class="figure">
+    <p style="font-weight: 600; margin-bottom: 0.8rem; color: var(--text);">相关性评分阈值示意图</p>
+    <div class="threshold-bar">
+      <div class="segment low">低相关性<br>< 0.3</div>
+      <div class="segment mid">中等相关性<br>0.3 ~ 0.7</div>
+      <div class="segment high">高相关性<br>≥ 0.7</div>
+    </div>
+    <div class="threshold-labels">
+      <span>0.0</span>
+      <span>0.3</span>
+      <span>0.7</span>
+      <span>1.0</span>
+    </div>
+    <p class="fig-caption">图 2：相关性评分阈值 — 颜色条展示三个决策区间</p>
+  </div>
+
+  <div class="info-box">
+    <div class="box-title">💡 阈值选择说明</div>
+    <p>默认阈值 0.3 和 0.7 来自原论文的实验调优。在实际部署中，可以根据业务场景调整：</p>
+    <ul>
+      <li><strong>保守策略</strong>：降低高阈值（如 0.6），更多触发网络搜索</li>
+      <li><strong>激进策略</strong>：提高低阈值（如 0.4），更倾向使用本地文档</li>
+      <li><strong>领域适配</strong>：专业领域可降低低阈值，因为向量检索在专业术语上可能偏低</li>
+    </ul>
+  </div>
+
+  <!-- 5. 核心代码实现 -->
+  <h2 id="implementation">5. 核心代码实现</h2>
+
+  <h3>5.1 文档相关性评估</h3>
+  <p>CRAG 的核心是评估函数——使用 LLM 判断文档与查询的相关性：</p>
+
+  <pre><span class="code-label">Python</span><code class="language-python">from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+
+def evaluate_document_relevance(query: str, document: str) -> float:
+    """
+    使用 LLM 评估文档与查询的相关性。
+    返回 0-1 之间的相关性分数。
+    """
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """你是一个文档相关性评估专家。
+请评估以下文档与用户查询的相关程度。
+返回一个 0 到 1 之间的浮点数：
+- 1.0 = 完全相关，直接回答问题
+- 0.7 = 高度相关，包含有用信息
+- 0.3 = 部分相关，有一些联系
+- 0.0 = 完全不相关
+
+只返回数字，不要其他内容。"""),
+        ("human", "查询：{query}\n\n文档：{document}\n\n相关性评分：")
+    ])
+
+    chain = prompt | llm
+    response = chain.invoke({
+        "query": query,
+        "document": document
+    })
+
+    try:
+        score = float(response.content.strip())
+        return max(0.0, min(1.0, score))  # 限制在 [0, 1]
+    except ValueError:
+        return 0.0</code></pre>
+
+  <h3>5.2 DuckDuckGo 网络搜索</h3>
+  <p>当本地文档不够用时，CRAG 转向网络搜索获取补充信息：</p>
+
+  <pre><span class="code-label">Python</span><code class="language-python">from duckduckgo_search import DDGS
+
+def duck_duck_go_search(query: str, num_results: int = 3) -> str:
+    """
+    使用 DuckDuckGo 进行网络搜索。
+    返回搜索结果文本。
+    """
+    with DDGS() as ddgs:
+        results = list(ddgs.text(query, max_results=num_results))
+
+    if not results:
+        return ""
+
+    # 拼接搜索结果
+    combined = []
+    for r in results:
+        combined.append(f"标题：{r['title']}\n内容：{r['body']}")
+
+    return "\n\n---\n\n".join(combined)</code></pre>
+
+  <h3>5.3 查询重写</h3>
+  <p>原始查询可能不适合直接用于搜索，需要重写为更高效的搜索查询：</p>
+
+  <pre><span class="code-label">Python</span><code class="language-python">def rewrite_search_query(query: str) -> str:
+    """
+    重写用户查询，使其更适合网络搜索。
+    移除口语化表达，提取核心关键词。
+    """
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """你是一个搜索查询优化专家。
+将用户的自然语言查询重写为更适合搜索引擎的简洁查询。
+保持核心语义，去除冗余词汇。
+只返回重写后的查询，不要其他内容。"""),
+        ("human", "原始查询：{query}\n\n重写后的查询：")
+    ])
+
+    chain = prompt | llm
+    response = chain.invoke({"query": query})
+    return response.content.strip()</code></pre>
+
+  <h3>5.4 知识精炼</h3>
+  <p>从网络搜索或本地文档中提取关键知识点：</p>
+
+  <pre><span class="code-label">Python</span><code class="language-python">def refine_knowledge(text: str) -> str:
+    """
+    用 LLM 精炼知识，提取关键要点（bullet points）。
+    """
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """你是一个知识精炼专家。
+从提供的文本中提取关键信息，以简洁的要点形式呈现。
+每个要点一行，使用 • 开头。
+只保留与问题直接相关的信息。"""),
+        ("human", "请精炼以下文本的关键信息：\n\n{text}")
+    ])
+
+    chain = prompt | llm
+    response = chain.invoke({"text": text})
+    return response.content.strip()</code></pre>
+
+  <h3>5.5 完整 CRAG 管道</h3>
+  <p>将所有组件整合为完整的 CRAG 处理流程：</p>
+
+  <pre><span class="code-label">Python</span><code class="language-python">def crag_process(
+    query: str,
+    vector_store,
+    k: int = 3
+) -> str:
+    """
+    完整的 CRAG 处理管道。
+
+    1. 检索 Top-K 文档
+    2. 评估每个文档的相关性
+    3. 根据最高分决定策略
+    4. 必要时执行网络搜索
+    5. 精炼知识并生成回复
+    """
+    # ── Step 1: 检索 ──
+    docs = vector_store.similarity_search(query, k=k)
+    print(f"📚 检索到 {len(docs)} 个文档")
+
+    # ── Step 2: 评估 ──
+    scores = []
+    for i, doc in enumerate(docs):
+        score = evaluate_document_relevance(query, doc.page_content)
+        scores.append(score)
+        print(f"   文档 {i+1} 相关性: {score:.2f}")
+
+    max_score = max(scores) if scores else 0
+    best_doc_idx = scores.index(max_score)
+    print(f"📊 最高相关性分数: {max_score:.2f}")
+
+    # ── Step 3: 决策 ──
+    knowledge = ""
+
+    if max_score >= 0.7:
+        # 路径 A：高相关性 → 直接使用本地文档
+        print("✅ 路径 A：高相关性，使用本地文档")
+        knowledge = docs[best_doc_idx].page_content
+
+    elif max_score < 0.3:
+        # 路径 C：低相关性 → 完全转向网络搜索
+        print("🌐 路径 C：低相关性，转向网络搜索")
+        rewritten = rewrite_search_query(query)
+        print(f"   重写查询: {rewritten}")
+        web_results = duck_duck_go_search(rewritten)
+        knowledge = refine_knowledge(web_results)
+
+    else:
+        # 路径 B：中等相关性 → 本地 + 网络
+        print("🔄 路径 B：中等相关性，混合策略")
+        local_knowledge = docs[best_doc_idx].page_content
+        rewritten = rewrite_search_query(query)
+        web_results = duck_duck_go_search(rewritten)
+        web_knowledge = refine_knowledge(web_results)
+        knowledge = f"本地知识：\n{local_knowledge}\n\n网络补充：\n{web_knowledge}"
+
+    # ── Step 4: 生成回复 ──
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    final_prompt = ChatPromptTemplate.from_messages([
+        ("system", "基于以下知识回答用户问题。注明信息来源。"),
+        ("human", "问题：{query}\n\n知识：\n{knowledge}")
+    ])
+
+    response = final_prompt.invoke({
+        "query": query,
+        "knowledge": knowledge
+    })
+
+    return response.content</code></pre>
+
+  <!-- 6. 真实评估过程演示 -->
+  <h2 id="real-eval">6. 真实评估过程演示</h2>
+
+  <p>让我们通过一个实际案例来观察 CRAG 的决策过程：</p>
+
+  <div class="info-box">
+    <div class="box-title">🧪 测试查询</div>
+    <p><strong>查询</strong>："How does machine learning differ from traditional programming?"</p>
+    <p>（机器学习与传统编程有何不同？）</p>
+  </div>
+
+  <h3>6.1 文档检索与评分</h3>
+
+  <p>系统检索到 3 个文档，LLM 评估器对每个文档进行评分：</p>
+
+  <div class="score-cards">
+    <div class="score-card high">
+      <div class="label">文档 1</div>
+      <div class="score">0.80</div>
+      <div class="label">✅ 高相关性</div>
+    </div>
+    <div class="score-card mid">
+      <div class="label">文档 2</div>
+      <div class="score">0.70</div>
+      <div class="label">⚡ 边界值</div>
+    </div>
+    <div class="score-card low">
+      <div class="label">文档 3</div>
+      <div class="score">0.20</div>
+      <div class="label">❌ 低相关性</div>
+    </div>
+  </div>
+
+  <h3>6.2 决策过程追踪</h3>
+
+  <div class="decision-flow">
+    <div class="decision-step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">向量检索</div>
+        <div class="step-detail">检索 Top-3 相似文档</div>
+      </div>
+      <div class="step-result pass">3 docs</div>
+    </div>
+    <div class="decision-step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">文档 1 评估</div>
+        <div class="step-detail">直接对比 ML 与传统编程的差异，内容高度匹配</div>
+      </div>
+      <div class="step-result pass">0.80</div>
+    </div>
+    <div class="decision-step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">文档 2 评估</div>
+        <div class="step-detail">讨论了编程范式，但未直接对比 ML</div>
+      </div>
+      <div class="step-result neutral">0.70</div>
+    </div>
+    <div class="decision-step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">文档 3 评估</div>
+        <div class="step-detail">讨论传统软件工程流程，与查询关联度低</div>
+      </div>
+      <div class="step-result fail">0.20</div>
+    </div>
+    <div class="decision-step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">🎯 决策：最高分 0.80 ≥ 0.7</div>
+        <div class="step-detail">→ 选择<strong>路径 A（高相关性）</strong>：直接使用文档 1</div>
+      </div>
+      <div class="step-result pass">路径 A</div>
+    </div>
+  </div>
+
+  <h3>6.3 生成结果对比</h3>
+
+  <div class="compare-grid">
+    <div class="compare-card standard">
+      <h4 style="color: var(--accent-light);">标准 RAG 回复</h4>
+      <p style="font-size: 0.9rem; color: var(--text-muted);">
+        直接拼接所有 3 个文档（包括不相关的文档 3）生成回复。回复可能包含传统软件工程的无关内容，导致回复冗长且不够聚焦。
+      </p>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+        <strong>特点</strong>：更全面但可能包含噪声，提到了更多 ML 类型（监督、无监督、强化学习）
+      </p>
+    </div>
+    <div class="compare-card crag">
+      <h4 style="color: var(--green);">CRAG 回复</h4>
+      <p style="font-size: 0.9rem; color: var(--text-muted);">
+        仅使用评分最高的文档 1（0.80），丢弃不相关的文档 3。回复更加精准和聚焦。
+      </p>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+        <strong>特点</strong>：准确但较简短，聚焦核心差异，避免了噪声干扰
+      </p>
+    </div>
+  </div>
+
+  <div class="info-box good">
+    <div class="box-title">✅ 评估结论</div>
+    <p>在这个案例中，CRAG 正确识别了文档 1 的高相关性（0.80），选择了"直接使用"路径。虽然回复比标准 RAG 简短，但信息质量更高、噪声更少。标准 RAG 因为使用了所有文档（包括低分文档），回复更全面但可能引入无关信息。</p>
+  </div>
+
+  <!-- 7. 架构对比 -->
+  <h2 id="architecture-compare">7. CRAG vs 标准 RAG 架构对比</h2>
+
+  <div class="figure">
+    <div class="mermaid">
+flowchart LR
+    subgraph Standard["📘 标准 RAG"]
+        direction TB
+        S1["📝 查询"] --> S2["🔍 向量检索"]
+        S2 --> S3["📄 拼接文档"]
+        S3 --> S4["💬 LLM 生成"]
+    end
+
+    subgraph CRAG["🟢 CRAG"]
+        direction TB
+        C1["📝 查询"] --> C2["🔍 向量检索"]
+        C2 --> C3["🧠 相关性评估"]
+        C3 --> C4{"决策"}
+        C4 -->|"≥ 0.7"| C5A["✅ 本地文档"]
+        C4 -->|"0.3~0.7"| C5B["🔄 本地+网络"]
+        C4 -->|"< 0.3"| C5C["🌐 网络搜索"]
+        C5A --> C6["✨ 知识精炼"]
+        C5B --> C6
+        C5C --> C6
+        C6 --> C7["💬 LLM 生成"]
+    end
+
+    style S1 fill:#6366f1,stroke:#818cf8,color:#fff
+    style S2 fill:#1e40af,stroke:#3b82f6,color:#fff
+    style S3 fill:#1e40af,stroke:#3b82f6,color:#fff
+    style S4 fill:#6366f1,stroke:#818cf8,color:#fff
+    style C1 fill:#6366f1,stroke:#818cf8,color:#fff
+    style C2 fill:#1e40af,stroke:#3b82f6,color:#fff
+    style C3 fill:#7c3aed,stroke:#a78bfa,color:#fff
+    style C4 fill:#1a1d2e,stroke:#818cf8,color:#e2e8f0
+    style C5A fill:#059669,stroke:#34d399,color:#fff
+    style C5B fill:#d97706,stroke:#fbbf24,color:#fff
+    style C5C fill:#dc2626,stroke:#f87171,color:#fff
+    style C6 fill:#7c3aed,stroke:#a78bfa,color:#fff
+    style C7 fill:#6366f1,stroke:#818cf8,color:#fff
+    </div>
+    <p class="fig-caption">图 3：标准 RAG（左）vs CRAG（右）架构对比 — CRAG 新增了评估、决策和网络搜索环节</p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>维度</th>
+        <th>标准 RAG</th>
+        <th>CRAG</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>检索评估</td>
+        <td>无 — 无条件使用检索结果</td>
+        <td>LLM 评估相关性（0-1 分）</td>
+      </tr>
+      <tr>
+        <td>信息源</td>
+        <td>仅本地向量库</td>
+        <td>本地 + 网络搜索（动态选择）</td>
+      </tr>
+      <tr>
+        <td>噪声处理</td>
+        <td>无法过滤不相关文档</td>
+        <td>低分文档被丢弃或降权</td>
+      </tr>
+      <tr>
+        <td>知识时效</td>
+        <td>受限于知识库更新时间</td>
+        <td>可通过网络搜索获取最新信息</td>
+      </tr>
+      <tr>
+        <td>延迟</td>
+        <td>较低（一次检索 + 一次生成）</td>
+        <td>较高（评估 + 可能搜索 + 精炼 + 生成）</td>
+      </tr>
+      <tr>
+        <td>成本</td>
+        <td>低（2 次 LLM 调用）</td>
+        <td>高（3-5 次 LLM 调用 + 搜索 API）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 8. 知识精炼 -->
+  <h2 id="knowledge-refine">8. 知识精炼机制</h2>
+
+  <p>知识精炼是 CRAG 中一个容易被忽视但至关重要的环节。它的作用是将冗长的原始文本压缩为结构化的关键信息：</p>
+
+  <div class="figure">
+    <div class="mermaid">
+flowchart LR
+    A["📄 原始文本\n（可能很长）"] --> B["🧠 LLM 精炼"]
+    B --> C["📋 要点 1：核心定义"]
+    B --> D["📋 要点 2：关键区别"]
+    B --> E["📋 要点 3：实际案例"]
+    C --> F["💬 最终生成"]
+    D --> F
+    E --> F
+
+    style A fill:#1e40af,stroke:#3b82f6,color:#fff
+    style B fill:#7c3aed,stroke:#a78bfa,color:#fff
+    style C fill:#059669,stroke:#34d399,color:#fff
+    style D fill:#059669,stroke:#34d399,color:#fff
+    style E fill:#059669,stroke:#34d399,color:#fff
+    style F fill:#6366f1,stroke:#818cf8,color:#fff
+    </div>
+    <p class="fig-caption">图 4：知识精炼流程 — 从冗长文本中提取结构化要点</p>
+  </div>
+
+  <p>精炼的输出示例：</p>
+
+  <pre><span class="code-label">Output</span><code>• 传统编程：人类编写明确规则，计算机按规则执行
+• 机器学习：计算机从数据中学习模式，自动发现规则
+• 核心区别：规则来源不同 — 人工显式编写 vs 从数据隐式学习
+• 适用场景：规则明确用传统编程，模式复杂用机器学习</code></pre>
+
+  <div class="info-box">
+    <div class="box-title">💡 为什么需要精炼？</div>
+    <p>网络搜索返回的文本通常包含大量无关内容（广告、导航、重复信息）。直接使用会浪费 LLM 的上下文窗口，并可能引入噪声。精炼步骤将信息压缩为高密度要点，显著提升生成质量。</p>
+  </div>
+
+  <!-- 9. 优势与局限 -->
+  <h2 id="pros-cons">9. 优势与局限</h2>
+
+  <h3>✅ 优势</h3>
+  <ul>
+    <li><strong>自适应质量把控</strong>：不盲目信任检索结果，主动评估信息质量</li>
+    <li><strong>多源信息融合</strong>：本地知识库 + 网络搜索互补，覆盖面更广</li>
+    <li><strong>减少幻觉</strong>：丢弃不相关文档，降低基于噪声生成错误回答的风险</li>
+    <li><strong>知识时效性</strong>：当本地知识不足时，可通过网络搜索获取最新信息</li>
+    <li><strong>透明决策</strong>：评分和路径选择可追踪、可调试</li>
+  </ul>
+
+  <h3>⚠️ 局限</h3>
+  <ul>
+    <li><strong>延迟增加</strong>：评估 + 搜索 + 精炼带来额外延迟（可能增加 2-5 秒）</li>
+    <li><strong>成本上升</strong>：每次请求需要多次 LLM 调用（评估、重写、精炼、生成）</li>
+    <li><strong>评估器依赖</strong>：决策质量取决于评估器的准确性，评估错误会导致错误路径选择</li>
+    <li><strong>网络搜索不稳定</strong>：DuckDuckGo 等搜索引擎可能返回低质量结果或被限流</li>
+    <li><strong>阈值敏感</strong>：0.3 和 0.7 的阈值可能需要针对不同场景调优</li>
+  </ul>
+
+  <div class="info-box warn">
+    <div class="box-title">⚠️ 实践建议</div>
+    <p>CRAG 适合对回答质量要求高、可以接受一定延迟的场景（如客服系统、知识问答）。对于实时性要求极高的场景（如聊天机器人），可以考虑简化评估流程或使用缓存策略。</p>
+  </div>
+
+  <!-- 10. 总结 -->
+  <h2 id="summary">10. 总结与展望</h2>
+
+  <p>Corrective RAG（CRAG）为传统 RAG 管道引入了关键的<strong>自我纠正能力</strong>。通过三个核心机制——<strong>相关性评估</strong>、<strong>动态路径选择</strong>和<strong>知识精炼</strong>——CRAG 将 RAG 从"被动检索"升级为"主动判断"。</p>
+
+  <p>核心要点回顾：</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>机制</th>
+        <th>功能</th>
+        <th>关键参数</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>相关性评估器</td>
+        <td>用 LLM 为每个文档打分（0-1）</td>
+        <td>评估 prompt 设计</td>
+      </tr>
+      <tr>
+        <td>三路决策</td>
+        <td>根据最高分选择信息获取策略</td>
+        <td>阈值：0.3 / 0.7</td>
+      </tr>
+      <tr>
+        <td>查询重写</td>
+        <td>优化搜索查询以提升搜索效果</td>
+        <td>重写 prompt 设计</td>
+      </tr>
+      <tr>
+        <td>知识精炼</td>
+        <td>从原始文本中提取关键要点</td>
+        <td>精炼 prompt 设计</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>在下一篇中，我们将探讨<strong>强化学习增强 RAG（RL-RAG）</strong>——让 RAG 系统通过与环境交互自主学习最优检索和生成策略，进一步减少人工调参的需求。</p>
+
+  <!-- 系列导航 -->
+  <div class="series-nav">
+    <a href="19_假设文档嵌入_blog.html">← 第 19 篇：假设文档嵌入（HyDE）</a>
+    <a href="21_强化学习rag_blog.html">第 21 篇：强化学习增强 RAG →</a>
+  </div>
+
+</div>
+
+<footer>
+  <p>从零到 RAG 大师 · 第 20 篇 — Corrective RAG (CRAG)</p>
+  <p>
+    <a href="19_假设文档嵌入_blog.html">← 上一篇：假设文档嵌入</a> ·
+    <a href="21_强化学习rag_blog.html">下一篇：强化学习增强 RAG →</a>
+  </p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#1a1d2e',
+      primaryColor: '#6366f1',
+      primaryTextColor: '#e2e8f0',
+      primaryBorderColor: '#818cf8',
+      lineColor: '#818cf8',
+      secondaryColor: '#059669',
+      tertiaryColor: '#0f1117',
+      noteTextColor: '#e2e8f0',
+      noteBkgColor: '#1a1d2e'
+    },
+    flowchart: { curve: 'basis', padding: 15 }
+  });
+  hljs.highlightAll();
+</script>
+
+</body>
+</html>

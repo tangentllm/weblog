@@ -1,0 +1,66 @@
+/* Josh W. Comeau typography — Wotfard + Cartograph CF (hosted on joshwcomeau.com) */
+
+@font-face {
+  font-family: Wotfard-fallback;
+  src: local("Verdana");
+  size-adjust: 90%;
+  ascent-override: 93%;
+  descent-override: 18%;
+  line-gap-override: normal;
+}
+
+@font-face {
+  font-family: Wotfard;
+  src: url("https://www.joshwcomeau.com/fonts/wotfard/wotfard-regular-webfont.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: fallback;
+}
+
+@font-face {
+  font-family: Wotfard;
+  src: url("https://www.joshwcomeau.com/fonts/wotfard/wotfard-regular-italic-webfont.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: fallback;
+}
+
+@font-face {
+  font-family: Wotfard;
+  src: url("https://www.joshwcomeau.com/fonts/wotfard/wotfard-medium-webfont.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: fallback;
+}
+
+@font-face {
+  font-family: Wotfard;
+  src: url("https://www.joshwcomeau.com/fonts/wotfard/wotfard-semibold-webfont.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: fallback;
+}
+
+@font-face {
+  font-family: "Cartograph CF";
+  src: url("https://www.joshwcomeau.com/fonts/cartograph-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: fallback;
+}
+
+@font-face {
+  font-family: "Cartograph CF";
+  src: url("https://www.joshwcomeau.com/fonts/cartograph-regular-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: fallback;
+}
+
+@font-face {
+  font-family: "Cartograph CF";
+  src: url("https://www.joshwcomeau.com/fonts/cartograph-extra-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: fallback;
+}

@@ -15,6 +15,9 @@ excerpt: 从初始化、缩放与 padding 细节出发，复盘 Embedding 层在
 
 然后我就掉坑里了。
 
+> **适用读者**
+> 本文假设你已会用 PyTorch 的 `nn.Embedding`，并了解词表与 token id 的基本概念。若还不熟悉，可先阅读 [大模型分词器完全指南](/post/tokenization-guide)。
+
 ---
 
 事情是这样的。模型跑起来了，loss 也在下降，但收敛曲线抖得厉害，尤其是训练前期，loss 动不动就飙出一个离谱的尖峰，然后才慢慢回来。我当时以为是学习率的问题，调了半天调度器，没用。后来怀疑是 batch 里有问题样本，加了 gradient clipping，稍微好了一点，但根本没解决。

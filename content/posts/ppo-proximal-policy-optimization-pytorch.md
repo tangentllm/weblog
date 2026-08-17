@@ -15,7 +15,8 @@ ChatGPT 一类模型的「对齐」阶段，底层常用 **PPO（Proximal Policy
 
 本文**先不讲公式**，用一个「厨师团队」的故事，把 RLHF 里 PPO 训练时的 **4 个模型** 以及它们如何配合，一口气建立直觉；然后再把同一套流程翻译成数学符号，并用手写 PyTorch 讲清经典 PPO 的 Clip 与 GAE，最后用 CartPole 跑通完整训练循环。
 
-**阅读基础**：熟悉神经网络与梯度下降；若已做过 [SFT 微调](https://tangentllm.github.io/weblog/post/llm-sft-note/)，会更容易接上「对齐在 SFT 之后」这条线。
+> **适用读者**
+> 熟悉神经网络与梯度下降；若已做过 [SFT 微调](/post/llm-sft-note/)，会更容易接上「对齐在 SFT 之后」这条线。
 
 ---
 

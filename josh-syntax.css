@@ -1,0 +1,120 @@
+/* Josh W. Comeau syntax highlighting — scoped to .josh-prose */
+
+.josh-prose pre,
+.josh-prose .code-block pre {
+  background: var(--josh-syntax-bg);
+  color: var(--josh-syntax-txt);
+}
+
+.josh-prose .code-header {
+  background: var(--josh-syntax-highlight);
+  color: var(--josh-color-gray-700);
+  border-bottom: 1px solid color-mix(in srgb, var(--josh-color-cloud-500) 35%, transparent);
+}
+
+.josh-prose .hljs,
+.josh-prose pre code,
+.josh-prose pre code.hljs,
+.josh-prose .code-block code {
+  font-family: var(--josh-font-family-mono);
+}
+
+.josh-prose .hljs {
+  background: transparent;
+  color: var(--josh-syntax-txt);
+}
+
+.josh-prose .hljs-comment,
+.josh-prose .hljs-quote {
+  color: var(--josh-syntax-comment);
+  font-style: italic;
+}
+
+.josh-prose .hljs-keyword,
+.josh-prose .hljs-selector-tag,
+.josh-prose .hljs-meta .hljs-keyword {
+  color: var(--josh-syntax-prop);
+}
+
+.josh-prose .hljs-string,
+.josh-prose .hljs-regexp,
+.josh-prose .hljs-symbol,
+.josh-prose .hljs-template-tag,
+.josh-prose .hljs-template-variable {
+  color: var(--josh-syntax-str);
+}
+
+.josh-prose .hljs-number,
+.josh-prose .hljs-literal,
+.josh-prose .hljs-variable,
+.josh-prose .hljs-template-variable,
+.josh-prose .hljs-attr {
+  color: var(--josh-syntax-val);
+}
+
+/* Legacy HTML article token classes (mcp-kw-guide) */
+.josh-prose pre code .kw {
+  color: var(--josh-syntax-prop);
+}
+
+.josh-prose pre code .fn {
+  color: var(--josh-syntax-name);
+}
+
+.josh-prose pre code .str {
+  color: var(--josh-syntax-str);
+}
+
+.josh-prose pre code .cm {
+  color: var(--josh-syntax-comment);
+  font-style: italic;
+}
+
+.josh-prose pre code .num {
+  color: var(--josh-syntax-val);
+}
+
+.josh-prose pre code .cl {
+  color: var(--josh-syntax-name);
+}
+
+.josh-prose pre code .ct {
+  color: var(--josh-syntax-prop);
+}
+
+.josh-prose .hljs-title,
+.josh-prose .hljs-title.class_,
+.josh-prose .hljs-title.function_,
+.josh-prose .hljs-function .hljs-title,
+.josh-prose .hljs-name {
+  color: var(--josh-syntax-name);
+}
+
+.josh-prose .hljs-built_in,
+.josh-prose .hljs-type,
+.josh-prose .hljs-class .hljs-title {
+  color: var(--josh-syntax-bool);
+}
+
+.josh-prose .hljs-function,
+.josh-prose .hljs-section,
+.josh-prose .hljs-selector-id {
+  color: var(--josh-syntax-fn);
+}
+
+.josh-prose .hljs-deletion {
+  color: var(--josh-syntax-del);
+}
+
+.josh-prose .hljs-addition {
+  color: var(--josh-syntax-str);
+}
+
+.josh-prose .hljs-params {
+  color: var(--josh-syntax-txt);
+}
+
+.josh-prose .hljs-operator,
+.josh-prose .hljs-punctuation {
+  color: var(--josh-syntax-val);
+}

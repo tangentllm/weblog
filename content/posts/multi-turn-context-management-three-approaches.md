@@ -3,7 +3,7 @@ title: 多轮对话上下文管理：滑动窗口、摘要压缩与检索注入�
 slug: multi-turn-context-management-three-approaches
 date: 2025-09-28
 readTime: 18 分钟
-category: 工程实践
+category: 智能体
 tags: Agent, 上下文管理, RAG, LangChain, 对话记忆
 cover: ./content/assets/posts/covers/multi-turn-context-management.svg
 excerpt: 在有限 context window 下，多轮对话上下文管理靠滑动窗口、摘要压缩与检索注入三种方案。含对比表、ContextBuilder 模板与 Agent 工具膨胀踩坑。
@@ -14,6 +14,9 @@ excerpt: 在有限 context window 下，多轮对话上下文管理靠滑动窗�
 **多轮对话上下文管理**在生产里通常用三种可落地方案：**滑动窗口**（只留最近 K 轮原文）、**摘要压缩**（远期压成 running summary，近期保留 verbatim）、**检索注入**（历史写入向量库，按当前问题取 Top-k 片段拼进 prompt）。全量 `messages.extend(history)` 只适合 demo；Agent 一旦带上工具返回的大段文本，128k 窗口也会在几十轮内被撑满。
 
 去年秋天，算法工程师陈磊把内部 Copilot 的 context 提到 128k，以为可以「永远 append」。第三十七轮，Agent 调用 `web_search` 拉回约 9,200 tokens 的摘录，下一轮用户只问「沿用刚才的报价方案」，模型却答成通用模板。根因不是窗口不够长，而是**有效注意力**被工具输出挤占，早期约定早已沉到窗口尾部。本文按同一套 **ContextBuilder** 接口讲清三种实现、选型表与 Agent 场景的膨胀治理。
+
+> **适用读者**
+> 本文假设你已用 OpenAI / Anthropic API 或 LangChain 搭过多轮对话，并遇到过 context 溢出或「模型忘了前面约定」的问题。若还在单轮 RAG 阶段，可先读 [RAG 混合检索策略](/post/rag-hybrid-retrieval-strategy)。
 
 > **Key Takeaways**
 > - 上下文管理本质是**在固定 Token 预算内做信息调度**，不是把聊天记录越堆越长。

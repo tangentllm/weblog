@@ -3,7 +3,7 @@ title: Embedding 模型微调：如何提升 RAG 领域检索效果（原理与�
 slug: embedding-finetune-domain-rag
 date: 2025-09-28
 readTime: 24 分钟
-category: 工程实践
+category: RAG 与检索
 tags: RAG, Embedding, 微调, BGE, 检索
 cover: ./content/assets/posts/covers/embedding-finetune-domain-rag.svg
 excerpt: 通用 bge 搜不准领域文档？从对比学习、难负例到 Recall@K 评测与 FAISS re-embed 上线，讲清何时该做 Embedding 模型微调。
@@ -11,11 +11,13 @@ excerpt: 通用 bge 搜不准领域文档？从对比学习、难负例到 Recal
 
 # Embedding 模型微调：如何提升 RAG 领域检索效果（原理与实战）
 
-**直接回答：** 要提升领域检索，优先用你业务里的 (查询, 正文档) 对，在 BGE 等双塔 Embedding 上做对比学习微调（常用 Multiple Negatives Ranking Loss），再用 Recall@K / Hit Rate 在 held-out 集上验证；若 Recall@10 已高于 0.8，应先调 [Chunk、混合检索与 Reranker](https://tangentllm.github.io/weblog/post/rag-hybrid-retrieval-strategy/)，再考虑 Embedding 微调。
+> **直接回答**
+> 要提升领域检索，优先用你业务里的 (查询, 正文档) 对，在 BGE 等双塔 Embedding 上做对比学习微调（常用 Multiple Negatives Ranking Loss），再用 Recall@K / Hit Rate 在 held-out 集上验证；若 Recall@10 已高于 0.8，应先调 [Chunk、混合检索与 Reranker](https://tangentllm.github.io/weblog/post/rag-hybrid-retrieval-strategy/)，再考虑 Embedding 微调。
 
 小陈按 [RAG 生产实战](https://tangentllm.github.io/weblog/post/rag-production-refactor/) 上了 bge-m3、FAISS 和 Reranker，生成质量却时好时坏。他花了两周改 Prompt，直到把一次失败 query 的 Top-10 检索结果摊开：排第一的 chunk 压根没提到「`ListModels` 的 `page_token` 分页」——问题在检索空间，不在 LLM。这类场景，**Embedding 模型微调**往往比再堆一层 Prompt 更划算。
 
-本文面向已落地 RAG、能跑向量检索的工程师：讲清**何时该微调**、对比学习在学什么、如何造数据与挖难负例、如何用 Sentence-Transformers 微调中文 BGE，以及怎样接入现有 FAISS 索引。阅读前建议已了解 Cosine 相似度与 [RAG 检索增强背景](https://tangentllm.github.io/weblog/post/paper-rag-survey/)。
+> **适用读者**
+> 本文面向已落地 RAG、能跑向量检索的工程师：讲清**何时该微调**、对比学习在学什么、如何造数据与挖难负例、如何用 Sentence-Transformers 微调中文 BGE，以及怎样接入现有 FAISS 索引。阅读前建议已了解 Cosine 相似度与 [RAG 检索增强背景](https://tangentllm.github.io/weblog/post/paper-rag-survey/)。
 
 > **Key Takeaways**
 > - **Embedding 微调不是 RAG 优化的第一步**：Chunk、BM25+向量混合检索、Reranker 往往 ROI 更高；Recall@10 基线已 >0.8 时，优先别动 Embedding。
@@ -117,7 +119,7 @@ $$
 
 *图 2：微调前 query 与正文档距离远、难负例易混淆；微调后正例拉近、难负例被推远。*
 
-![Embedding 模型微调前后领域检索向量空间对比](/weblog/content/assets/posts/diagrams/embedding-finetune-vector-space.svg)
+![Embedding 模型微调前后领域检索向量空间对比](/content/assets/posts/diagrams/embedding-finetune-vector-space.svg)
 
 
 

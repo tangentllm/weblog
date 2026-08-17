@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（四）：上下文增强检索 RAG</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+  }
+  header .meta {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  header .meta span { margin: 0 0.5rem; }
+
+  /* TOC */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+    color: var(--accent);
+  }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .toc a:hover { color: var(--accent); }
+
+  /* Headings */
+  h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border);
+    color: var(--text);
+  }
+  h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1.8rem 0 0.8rem;
+    color: var(--accent);
+  }
+
+  /* Paragraphs & text */
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: var(--accent2); }
+  em { color: var(--accent3); font-style: normal; }
+
+  /* Code blocks */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.88rem;
+  }
+  p code, li code {
+    background: var(--tag-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--accent3);
+  }
+
+  /* Callout */
+  .callout {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .callout.warning { border-left-color: var(--accent3); }
+  .callout.success { border-left-color: var(--accent2); }
+  .callout .callout-title {
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+    font-size: 0.95rem;
+  }
+
+  /* Diagram containers */
+  .diagram-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .diagram-container .caption {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.8rem;
+    text-align: center;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.2rem 0;
+    font-size: 0.92rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.6rem 1rem;
+    text-align: left;
+  }
+  th {
+    background: var(--surface);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  /* Lists */
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  /* Comparison cards */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+    margin: 1.5rem 0;
+  }
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem 1.5rem;
+  }
+  .compare-card h4 {
+    font-size: 1rem;
+    margin-bottom: 0.6rem;
+  }
+  .compare-card.bad h4 { color: var(--accent3); }
+  .compare-card.good h4 { color: var(--accent2); }
+  .compare-card ul { padding-left: 1rem; }
+
+  /* Footer */
+  footer {
+    margin-top: 3rem;
+    padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* Series nav */
+  .series-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    gap: 1rem;
+  }
+  .series-nav a {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1.2rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    flex: 1;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .series-nav a:hover { border-color: var(--accent); }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    header h1 { font-size: 1.5rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 4 篇</div>
+  <h1>上下文增强检索 RAG</h1>
+  <p class="subtitle">让检索结果不再"断章取义"——用相邻片段补全上下文</p>
+  <div class="meta">
+    <span>📅 2026-07-10</span>
+    <span>·</span>
+    <span>🏷️ RAG / 检索增强 / 上下文窗口</span>
+    <span>·</span>
+    <span>⏱️ 阅读约 12 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#motivation">问题动机：朴素 RAG 的"断章取义"</a></li>
+    <li><a href="#comparison">朴素 RAG vs 上下文增强 RAG：架构对比</a></li>
+    <li><a href="#principle">核心原理：重叠分块 + 邻居检索</a></li>
+    <li><a href="#pipeline">完整流水线</a></li>
+    <li><a href="#code-extract">代码解读：PDF 文本提取</a></li>
+    <li><a href="#code-chunk">代码解读：带重叠的文本分块</a></li>
+    <li><a href="#code-embed">代码解读：嵌入创建</a></li>
+    <li><a href="#code-search">代码解读：上下文感知检索</a></li>
+    <li><a href="#code-generate">代码解读：回复生成</a></li>
+    <li><a href="#code-eval">代码解读：LLM 自动评估</a></li>
+    <li><a href="#demo">效果演示</a></li>
+    <li><a href="#proscons">优缺点与适用场景</a></li>
+    <li><a href="#summary">本篇小结</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== 1. 动机 ===================== -->
+<h2 id="motivation">一、问题动机：朴素 RAG 的"断章取义"</h2>
+
+<p>在<a href="1_基础rag_blog.html">第 1 篇</a>中，我们实现了最基础的 Simple RAG：把文档切成固定大小的块，对每个块独立做向量嵌入，检索时返回相似度最高的 Top-K 个块，然后喂给 LLM 生成答案。</p>
+
+<p>这种方案有一个致命缺陷：<strong>每个文本块是"孤立"的</strong>。当检索命中某个块时，它的前因后果——前面那段铺垫、后面那段补充——全部丢失了。</p>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 类比理解</div>
+  <p>想象你在图书馆找资料，管理员只给你一本书的第 37 页，不告诉你前面讲了什么、后面要讲什么。即使这一页正好包含你需要的信息，你也可能因为缺少上下文而误解它的含义。</p>
+</div>
+
+<p>具体表现：</p>
+<ul>
+  <li><strong>语义截断</strong>：一个完整的概念被切到两个块里，单独看任一块都不完整</li>
+  <li><strong>指代不明</strong>：块中出现"它"、"该方法"等代词，但指代对象在上一个块中</li>
+  <li><strong>LLM 困惑</strong>：模型收到一段没头没尾的文本，生成的答案容易跑偏或遗漏关键信息</li>
+</ul>
+
+<p><strong>上下文增强检索（Context-Enriched Retrieval）</strong>就是为了解决这个问题——检索时不仅返回命中的块，还<strong>自动把前后相邻的块也一起带上</strong>，让 LLM 看到完整的上下文。</p>
+
+<!-- ===================== 2. 架构对比 ===================== -->
+<h2 id="comparison">二、朴素 RAG vs 上下文增强 RAG：架构对比</h2>
+
+<div class="compare-grid">
+  <div class="compare-card bad">
+    <h4>❌ 朴素 RAG</h4>
+    <ul>
+      <li>分块之间<strong>无重叠</strong></li>
+      <li>检索只返回<strong>命中的块本身</strong></li>
+      <li>每个块是"信息孤岛"</li>
+      <li>容易出现语义截断</li>
+    </ul>
+  </div>
+  <div class="compare-card good">
+    <h4>✅ 上下文增强 RAG</h4>
+    <ul>
+      <li>分块时设置<strong>重叠区域（overlap）</strong></li>
+      <li>检索返回命中块 + <strong>前后邻居块</strong></li>
+      <li>上下文连续、语义完整</li>
+      <li>LLM 获得更充分的信息</li>
+    </ul>
+  </div>
+</div>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+  subgraph naive["朴素 RAG 检索"]
+    direction TB
+    Q1["查询"] --> E1["向量匹配"]
+    E1 --> R1["返回 Chunk #5"]
+    R1 --> L1["LLM 生成"]
+  end
+  subgraph enriched["上下文增强 RAG 检索"]
+    direction TB
+    Q2["查询"] --> E2["向量匹配"]
+    E2 --> R2["返回 Chunk #4, #5, #6"]
+    R2 --> L2["LLM 生成"]
+  end
+  naive ~~~ enriched
+  </div>
+  <div class="caption">图 1：朴素 RAG 只返回命中块；上下文增强 RAG 额外返回前后邻居，为 LLM 提供更完整的上下文</div>
+</div>
+
+<!-- ===================== 3. 核心原理 ===================== -->
+<h2 id="principle">三、核心原理：重叠分块 + 邻居检索</h2>
+
+<p>上下文增强检索的核心思路可以拆成两步：</p>
+
+<h3>3.1 重叠分块（Overlapping Chunking）</h3>
+
+<p>在切块时，让相邻块之间有一段<strong>重叠区域</strong>。比如块大小 <code>n=1000</code> 字符，重叠 <code>overlap=200</code> 字符，那么：</p>
+<ul>
+  <li>Chunk 1：字符 0 ~ 1000</li>
+  <li>Chunk 2：字符 800 ~ 1800（与 Chunk 1 重叠 200 字符）</li>
+  <li>Chunk 3：字符 1600 ~ 2600（与 Chunk 2 重叠 200 字符）</li>
+  <li>…依此类推</li>
+</ul>
+
+<div class="diagram-container">
+  <div style="font-family: monospace; font-size: 0.85rem; color: var(--text); text-align: left; display: inline-block;">
+    <pre style="border:none; background:transparent; margin:0; padding:0; color: var(--text);">
+文档全文 ████████████████████████████████████████████████
+
+Chunk 1   ██████████████████
+Chunk 2        ██████████████████
+Chunk 3             ██████████████████
+Chunk 4                  ██████████████████
+
+          ↑ overlap ↑
+    </pre>
+  </div>
+  <div class="caption">图 2：重叠分块示意图——相邻块共享一段重叠区域，减少边界处的信息丢失</div>
+</div>
+
+<h3>3.2 邻居检索（Neighbor Retrieval）</h3>
+
+<p>检索时，先找到最匹配的块（Top-1），然后<strong>自动把它前后的 <code>context_size</code> 个邻居块也一并返回</strong>。</p>
+
+<p>例如 <code>context_size=1</code> 时，如果最匹配的是 Chunk #5，则实际返回 Chunk #4、#5、#6 三个块给 LLM。</p>
+
+<div class="callout success">
+  <div class="callout-title">💡 为什么重叠分块和邻居检索要配合使用？</div>
+  <p>重叠分块确保相邻块之间有共享信息，即使邻居块本身不是最匹配的，它和命中块的重叠部分也能帮助 LLM 理解上下文。而邻居检索则直接扩大了 LLM 的"视野范围"。两者结合，效果最佳。</p>
+</div>
+
+<!-- ===================== 4. 完整流水线 ===================== -->
+<h2 id="pipeline">四、完整流水线</h2>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+  A["📄 PDF 文档"] --> B["文本提取<br/>(PyMuPDF)"]
+  B --> C["重叠分块<br/>(n=1000, overlap=200)"]
+  C --> D["向量嵌入<br/>(text-embedding-ada-002)"]
+  D --> E["用户查询"]
+  E --> F["查询嵌入"]
+  F --> G["余弦相似度匹配"]
+  G --> H["取 Top-1 命中块"]
+  H --> I["扩展上下文窗口<br/>±context_size 个邻居"]
+  I --> J["拼接上下文 + 查询"]
+  J --> K["LLM 生成回答<br/>(gpt-3.5-turbo)"]
+  K --> L["LLM 评估打分"]
+
+  style A fill:#1f6feb,stroke:#388bfd,color:#fff
+  style K fill:#238636,stroke:#3fb950,color:#fff
+  style L fill:#da3633,stroke:#f85149,color:#fff
+  </div>
+  <div class="caption">图 3：上下文增强检索 RAG 的完整流水线——从 PDF 到最终评估的 6 个阶段</div>
+</div>
+
+<!-- ===================== 5-10. 代码解读 ===================== -->
+<h2 id="code-extract">五、代码解读：PDF 文本提取</h2>
+
+<p>使用 <code>PyMuPDF</code>（<code>fitz</code>）库逐页提取 PDF 中的纯文本：</p>
+
+<pre><code class="language-python">def extract_text_from_pdf(pdf_path):
+    """从 PDF 文件中提取全部文本。"""
+    mypdf = fitz.open(pdf_path)
+    all_text = ""
+    for page_num in range(mypdf.page_count):
+        page = mypdf[page_num]
+        text = page.get_text("text")
+        all_text += text
+    return all_text</code></pre>
+
+<p>这段代码很直白：打开 PDF → 遍历每一页 → 提取文本 → 拼接成一个大字符串。这是 RAG 流水线的标准第一步，与朴素 RAG 完全一致。</p>
+
+<h2 id="code-chunk">六、代码解读：带重叠的文本分块</h2>
+
+<p>这是本方案与朴素 RAG 的<strong>第一个关键差异点</strong>。分块函数接受两个参数：<code>n</code>（块大小）和 <code>overlap</code>（重叠字符数）。</p>
+
+<pre><code class="language-python">def chunk_text(text, n, overlap):
+    """将文本分割为长度为 n 的片段，相邻片段之间有 overlap 个字符的重叠。"""
+    chunks = []
+    for i in range(0, len(text), n - overlap):
+        chunks.append(text[i:i + n])
+    return chunks</code></pre>
+
+<div class="callout">
+  <div class="callout-title">🔍 关键细节</div>
+  <p>步长是 <code>n - overlap</code> 而不是 <code>n</code>。这意味着每次起始位置只前进 <code>n - overlap</code> 个字符，从而产生重叠。在本 notebook 中，<code>n=1000</code>、<code>overlap=200</code>，步长为 800。一本 PDF 最终被切成了 <strong>42 个块</strong>。</p>
+</div>
+
+<h2 id="code-embed">七、代码解读：嵌入创建</h2>
+
+<p>使用 OpenAI 的 <code>text-embedding-ada-002</code> 模型，将所有文本块批量转换为向量：</p>
+
+<pre><code class="language-python">def create_embeddings(text, model="text-embedding-ada-002"):
+    """使用 OpenAI 模型为文本创建嵌入向量。"""
+    response = client.embeddings.create(model=model, input=text)
+    return response
+
+response = create_embeddings(text_chunks)</code></pre>
+
+<p>这一步与朴素 RAG 无异——所有块一次性发送给嵌入 API，返回每个块对应的 1536 维向量。</p>
+
+<h2 id="code-search">八、代码解读：上下文感知检索（核心）</h2>
+
+<p>这是本方案的<strong>第二个关键差异点</strong>，也是整个上下文增强检索的灵魂。先看一下余弦相似度的计算：</p>
+
+<pre><code class="language-python">def cosine_similarity(vec1, vec2):
+    """计算两个向量之间的余弦相似度。"""
+    return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))</code></pre>
+
+<p>然后是核心的检索函数：</p>
+
+<pre><code class="language-python">def context_enriched_search(query, text_chunks, embeddings, k=1, context_size=1):
+    """获取最相关的片段及其邻近片段。"""
+    # 1. 将查询转为嵌入向量
+    query_embedding = create_embeddings(query).data[0].embedding
+
+    # 2. 计算查询与每个块的余弦相似度
+    similarity_scores = []
+    for i, chunk_embedding in enumerate(embeddings):
+        score = cosine_similarity(
+            np.array(query_embedding),
+            np.array(chunk_embedding.embedding)
+        )
+        similarity_scores.append((i, score))
+
+    # 3. 按相似度降序排序
+    similarity_scores.sort(key=lambda x: x[1], reverse=True)
+
+    # 4. 取最匹配的块的索引
+    top_index = similarity_scores[0][0]
+
+    # 5. 🌟 关键步骤：扩展上下文窗口
+    start = max(0, top_index - context_size)
+    end = min(len(text_chunks), top_index + context_size + 1)
+
+    # 6. 返回命中块 + 前后邻居
+    return [text_chunks[i] for i in range(start, end)]</code></pre>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+  Q["用户查询"] --> QE["查询嵌入"]
+  QE --> S["计算与 42 个块的余弦相似度"]
+  S --> SORT["降序排序"]
+  SORT --> TOP["Top-1: Chunk #5 (score=0.87)"]
+  TOP --> EXPAND["扩展窗口: context_size=1"]
+  EXPAND --> RESULT["返回 Chunk #4, #5, #6"]
+  RESULT --> LLM["拼接后送入 LLM"]
+
+  style TOP fill:#1f6feb,stroke:#388bfd,color:#fff
+  style RESULT fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 4：上下文感知检索流程——找到最匹配块后，自动扩展 ±1 个邻居块</div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">🔍 为什么用 <code>max(0, ...)</code> 和 <code>min(len, ...)</code>？</div>
+  <p>边界保护。如果最匹配的块是第 0 个或最后一个，向前/向后扩展时会越界。这两个函数确保索引始终在合法范围内。</p>
+</div>
+
+<h2 id="code-generate">九、代码解读：回复生成</h2>
+
+<p>将检索到的多个上下文块拼接成 prompt，交给 <code>gpt-3.5-turbo</code> 生成回答：</p>
+
+<pre><code class="language-python">system_prompt = "You are an AI assistant that strictly answers based on the given context. \
+If the answer cannot be derived directly from the provided context, respond with: \
+'I do not have enough information to answer that.'"
+
+# 拼接上下文
+user_prompt = "\n".join([
+    f"Context {i + 1}:\n{chunk}\n=====================================\n"
+    for i, chunk in enumerate(top_chunks)
+])
+user_prompt = f"{user_prompt}\nQuestion: {query}"
+
+# 生成回答
+ai_response = generate_response(system_prompt, user_prompt)</code></pre>
+
+<p>注意 <code>system_prompt</code> 中的严格约束：模型<strong>只能基于给定上下文回答</strong>，如果上下文中没有答案，必须明确说"信息不足"。这是 RAG 系统的标准做法，可以有效减少幻觉。</p>
+
+<h2 id="code-eval">十、代码解读：LLM 自动评估</h2>
+
+<p>使用另一个 LLM 调用作为"评审员"，将 AI 回答与标准答案对比打分：</p>
+
+<pre><code class="language-python">evaluate_system_prompt = """You are an intelligent evaluation system...
+If the AI assistant's response is very close to the true response → Score: 1
+If incorrect or unsatisfactory → Score: 0
+If partially aligned → Score: 0.5"""
+
+evaluation_prompt = f"""User Query: {query}
+AI Response:\n{ai_response}
+True Response: {data[0]['ideal_answer']}
+{evaluate_system_prompt}"""</code></pre>
+
+<p>这种"LLM-as-Judge"的评估方式虽然不如人工评估精确，但胜在快速、可自动化，适合在开发阶段快速迭代。</p>
+
+<!-- ===================== 11. 效果演示 ===================== -->
+<h2 id="demo">十一、效果演示</h2>
+
+<h3>11.1 检索结果展示</h3>
+
+<p>以验证集中的第一个问题为例：</p>
+
+<div class="callout">
+  <div class="callout-title">📝 查询问题</div>
+  <p>What is 'Explainable AI' and why is it considered important?</p>
+</div>
+
+<p>设置 <code>k=1</code>、<code>context_size=1</code>，检索返回了 <strong>3 个连续块</strong>（命中块 + 前后各 1 个邻居）：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>上下文编号</th>
+      <th>内容摘要</th>
+      <th>作用</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Context 1</td>
+      <td>AI 伦理原则、偏见处理、<strong>可解释性（XAI）</strong>定义</td>
+      <td>🎯 命中块——直接包含 XAI 的定义</td>
+    </tr>
+    <tr>
+      <td>Context 2</td>
+      <td>XAI 详解、隐私保护、<strong>问责制</strong></td>
+      <td>📎 邻居块——补充 XAI 的重要性论述</td>
+    </tr>
+    <tr>
+      <td>Context 3</td>
+      <td>建立 AI 信任：透明性、<strong>鲁棒性</strong>、用户控制</td>
+      <td>📎 邻居块——进一步扩展信任相关上下文</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>11.2 生成结果</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>类别</th>
+      <th>内容</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>AI 生成的回答</strong></td>
+      <td>Explainable AI (XAI) techniques aim to make AI decisions more understandable, enabling users to assess their fairness and accuracy. It is considered important because transparency and explainability are essential for building trust in AI systems.</td>
+    </tr>
+    <tr>
+      <td><strong>标准答案（摘要）</strong></td>
+      <td>Explainable AI (XAI) techniques aim to make AI decisions more understandable… also includes points about ensuring fairness and accountability in AI systems.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>11.3 评估结果</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>评分</th>
+      <th>评审说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>0.5</strong>（部分匹配）</td>
+      <td>AI 回答正确解释了 XAI 的含义及其重要性，但标准答案中还提到了"确保 AI 系统中的公平性和问责制"，AI 回答未涵盖这一点。</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">💡 分析</div>
+  <p>虽然没有拿到满分，但 AI 回答已经抓住了核心要点。扣分原因是标准答案额外包含了"fairness and accountability"的细节。这说明上下文增强检索已经帮助 LLM 获得了比朴素 RAG 更丰富的信息，但仍有提升空间——比如增大 <code>context_size</code> 或结合重排序策略。</p>
+</div>
+
+<!-- ===================== 12. 优缺点 ===================== -->
+<h2 id="proscons">十二、优缺点与适用场景</h2>
+
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>✅ 优点</h4>
+    <ul>
+      <li><strong>实现简单</strong>：只需在检索后加几行代码扩展上下文窗口</li>
+      <li><strong>效果显著</strong>：为 LLM 提供更连贯的上下文，减少"断章取义"</li>
+      <li><strong>与重叠分块协同</strong>：overlap 确保邻居块与命中块有信息交集</li>
+      <li><strong>参数可调</strong>：<code>context_size</code> 可灵活控制上下文范围</li>
+      <li><strong>无额外模型成本</strong>：不需要额外的嵌入或排序模型</li>
+    </ul>
+  </div>
+  <div class="compare-card bad">
+    <h4>❌ 缺点</h4>
+    <ul>
+      <li><strong>Token 消耗增加</strong>：返回多个块意味着更多 token 送入 LLM</li>
+      <li><strong>可能引入噪声</strong>：邻居块中可能包含不相关信息</li>
+      <li><strong>固定窗口</strong>：context_size 是全局固定的，不能按查询动态调整</li>
+      <li><strong>依赖分块质量</strong>：如果分块本身不合理，邻居块可能毫无帮助</li>
+      <li><strong>仅适用于顺序文本</strong>：对表格、代码等非连续结构效果有限</li>
+    </ul>
+  </div>
+</div>
+
+<h3>适用场景</h3>
+<table>
+  <thead>
+    <tr>
+      <th>✅ 适合</th>
+      <th>❌ 不适合</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>长文档问答（论文、报告、书籍）</td>
+      <td>FAQ 类短问答</td>
+    </tr>
+    <tr>
+      <td>叙事性/连贯性强的文本</td>
+      <td>表格、数据库记录</td>
+    </tr>
+    <tr>
+      <td>需要上下文才能理解的专业文档</td>
+      <td>关键词精确匹配即可的场景</td>
+    </tr>
+    <tr>
+      <td>Token 预算相对充裕</td>
+      <td>对延迟和成本极度敏感的场景</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 13. 小结 ===================== -->
+<h2 id="summary">十三、本篇小结</h2>
+
+<p>上下文增强检索 RAG 是对朴素 RAG 的一个<strong>简单但有效的改进</strong>。它的核心思想可以用一句话概括：</p>
+
+<div class="callout success">
+  <div class="callout-title">🎯 核心 takeaway</div>
+  <p>检索时不要只给 LLM 一个"光秃秃"的文本块——把前后邻居也带上，让它看到完整的上下文。就像读书不能只看一页，至少要看看前后几页才能理解意思。</p>
+</div>
+
+<p>技术要点回顾：</p>
+<ol>
+  <li><strong>重叠分块</strong>（<code>overlap=200</code>）：确保相邻块之间有信息共享，减少边界截断</li>
+  <li><strong>邻居检索</strong>（<code>context_size=1</code>）：命中块的前后各取 1 个邻居，共返回 3 个块</li>
+  <li><strong>LLM-as-Judge 评估</strong>：自动对比 AI 回答与标准答案，给出 0/0.5/1 分</li>
+</ol>
+
+<p>在<a href="2_语义分块_blog.html">第 2 篇</a>和<a href="3_切块大小选择_blog.html">第 3 篇</a>中，我们探讨了分块策略和切块大小对检索质量的影响。本篇的上下文增强检索可以看作是这些分块优化的自然延伸——不仅要把块切好，还要在检索时"多看几块"。</p>
+
+<p>下一篇我们将介绍<strong>上下文片段标题提取</strong>——为每个文本块生成语义标题，进一步提升检索精度。敬请期待！</p>
+
+<!-- Series navigation -->
+<div class="series-nav">
+  <a href="3_切块大小选择_blog.html">← 第 3 篇：切块大小选择</a>
+  <a href="#">第 5 篇：上下文片段标题提取 →</a>
+</div>
+
+</div>
+
+<footer>
+  <p>从零到 RAG 大师 系列 · 第 4 篇 · 上下文增强检索 RAG</p>
+  <p>基于 Jupyter Notebook 实验整理 · 完整代码见 <code>4_上下文增强检索的rag.ipynb</code></p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1f6feb',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#388bfd',
+      lineColor: '#58a6ff',
+      secondaryColor: '#161b22',
+      tertiaryColor: '#0d1117',
+      noteBkgColor: '#161b22',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d'
+    },
+    flowchart: { curve: 'basis', padding: 15 }
+  });
+  hljs.highlightAll();
+</script>
+
+</body>
+</html>

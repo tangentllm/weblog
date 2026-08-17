@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>从零到 RAG 大师 · 第 11 篇 — 反馈回路机制</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --accent2: #3fb950;
+            --accent3: #f0883e;
+            --code-bg: #0d1117;
+            --tag-bg: #1f2937;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+        header { text-align: center; padding: 3rem 1rem 2rem; border-bottom: 1px solid var(--border); }
+        header h1 {
+            font-size: 2.2rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .series-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--accent), #a371f7);
+            color: #fff; font-size: 0.85rem; font-weight: 600;
+            padding: 0.3rem 1rem; border-radius: 20px; margin-bottom: 1rem;
+        }
+        .subtitle { color: var(--text-muted); margin-top: 0.8rem; font-size: 1.05rem; }
+        .meta { color: var(--text-muted); font-size: 0.88rem; margin-top: 1rem; }
+        .meta span { margin: 0 0.3rem; }
+        h2 {
+            font-size: 1.6rem; font-weight: 700; color: var(--text);
+            margin: 2.5rem 0 1rem; padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        h3 { font-size: 1.25rem; font-weight: 600; color: var(--accent); margin: 1.5rem 0 0.8rem; }
+        p { margin: 0.8rem 0; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        strong { color: #fff; }
+        em { color: var(--accent3); font-style: normal; }
+        ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+        li { margin: 0.3rem 0; }
+        pre {
+            background: var(--code-bg); border: 1px solid var(--border);
+            border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+            margin: 1rem 0;
+        }
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+            font-size: 0.88rem;
+        }
+        p code, li code {
+            background: var(--tag-bg); padding: 0.15rem 0.4rem;
+            border-radius: 4px; color: var(--accent3);
+        }
+        .info-box {
+            background: var(--surface); border-left: 4px solid var(--accent);
+            border-radius: 0 8px 8px 0; padding: 1rem 1.2rem; margin: 1.2rem 0;
+        }
+        .info-box.warn { border-left-color: var(--accent3); }
+        .info-box.good { border-left-color: var(--accent2); }
+        .box-title { font-weight: 700; margin-bottom: 0.4rem; }
+        blockquote {
+            border-left: 3px solid var(--accent); background: rgba(88, 166, 255, 0.05);
+            padding: 0.8rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0;
+        }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        th { background: var(--surface); color: var(--accent); text-align: left; padding: 0.7rem; }
+        td { padding: 0.7rem; border-bottom: 1px solid var(--border); }
+        tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+        .tag {
+            display: inline-block; background: var(--tag-bg);
+            padding: 0.15rem 0.6rem; border-radius: 4px; font-size: 0.8rem;
+        }
+        .figure { text-align: center; margin: 1.5rem 0; }
+        .fig-caption { font-size: 0.88rem; color: var(--text-muted); font-style: italic; margin-top: 0.5rem; }
+        .mermaid svg { background: transparent !important; }
+        .toc {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 1.2rem 1.5rem; margin: 2rem 0;
+        }
+        .toc h2 { margin-top: 0; border-bottom: none; font-size: 1.3rem; }
+        .toc ol { padding-left: 1.2rem; }
+        .toc li { margin: 0.4rem 0; }
+        .toc a { color: var(--text-muted); }
+        .toc a:hover { color: var(--accent); }
+        .nav-links {
+            display: flex; justify-content: space-between; margin-top: 3rem;
+            padding-top: 1.5rem; border-top: 1px solid var(--border);
+        }
+        .nav-links a {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 8px; padding: 0.8rem 1.2rem; font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+        .nav-links a:hover { border-color: var(--accent); text-decoration: none; }
+        .chart-container {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 1rem; }
+            header h1 { font-size: 1.6rem; }
+            h2 { font-size: 1.3rem; }
+            pre { padding: 0.8rem; font-size: 0.82rem; }
+            .nav-links { flex-direction: column; gap: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="series-tag">从零到 RAG 大师 · 第 11 篇</div>
+    <h1>反馈回路机制：让 RAG 越用越聪明</h1>
+    <p class="subtitle">通过收集和整合用户反馈，让检索增强生成系统随时间不断改进</p>
+    <div class="meta">
+        <span>📅 2026-07-10</span>
+        <span>·</span>
+        <span>🏷️ RAG / 反馈回路 / 自适应优化</span>
+        <span>·</span>
+        <span>⏱️ 阅读约 18 分钟</span>
+    </div>
+</header>
+
+<div class="container">
+
+<!-- ==================== TOC ==================== -->
+<nav class="toc">
+    <h2>📑 目录</h2>
+    <ol>
+        <li><a href="#why-feedback">为什么需要反馈回路？</a></li>
+        <li><a href="#overview">反馈回路全景概览</a></li>
+        <li><a href="#collect">第一步：反馈收集机制</a></li>
+        <li><a href="#relevance">第二步：相关性分数调整</a></li>
+        <li><a href="#finetune">第三步：索引微调——将优质 QA 注入向量库</a></li>
+        <li><a href="#assessment">LLM 反馈相关性评估</a></li>
+        <li><a href="#results">实测效果：分数提升 30%</a></li>
+        <li><a href="#full-code">核心代码提炼</a></li>
+        <li><a href="#practice">工程实践建议</a></li>
+        <li><a href="#next">下一篇预告：自适应检索</a></li>
+    </ol>
+</nav>
+
+<!-- ==================== Section 1 ==================== -->
+<h2 id="why-feedback">为什么需要反馈回路？</h2>
+
+<p>传统的 RAG 系统是<em>"静态"</em>的——建好索引、写好 Prompt，之后就不再变化。但现实世界中，用户的需求和知识都在持续演进。一个今天表现良好的检索系统，明天可能因为新数据的加入而变得不够精准。</p>
+
+<p>反馈回路（Feedback Loop）的核心思想很简单：<strong>让系统从自己的错误中学习</strong>。当用户对回答打分、留下评论时，这些信息可以被用来：</p>
+
+<ul>
+    <li><strong>调整检索分数</strong>——让高质量的文档在下次获得更高权重</li>
+    <li><strong>扩充向量索引</strong>——将优质 QA 对作为合成文档加入知识库</li>
+    <li><strong>形成闭环优化</strong>——每一次交互都让系统变得更好</li>
+</ul>
+
+<div class="info-box">
+    <div class="box-title">💡 类比理解</div>
+    <p>想象一位图书管理员：起初他按固定分类法帮你找书。但渐渐地，他记住了"张教授喜欢人工智能方向的最新论文"、"李同学经常需要机器学习基础教材"。这些记忆让他下次推荐时更加精准——这就是反馈回路的力量。</p>
+</div>
+
+<!-- ==================== Section 2 ==================== -->
+<h2 id="overview">反馈回路全景概览</h2>
+
+<p>整个反馈回路形成一个持续优化的循环。下面这张图展示了从查询到反馈再到下次检索优化的完整流程：</p>
+
+<div class="figure">
+<div class="mermaid">
+flowchart LR
+    A["🔍 用户查询"] --> B["📚 向量检索"]
+    B --> C["🤖 LLM 生成回复"]
+    C --> D["⭐ 用户反馈"]
+    D --> E["📊 分数调整"]
+    E --> F["🗂️ 索引微调"]
+    F -->|"下一轮查询"| B
+
+    style A fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style B fill:#238636,stroke:#3fb950,color:#fff
+    style C fill:#8b5cf6,stroke:#a78bfa,color:#fff
+    style D fill:#f59e0b,stroke:#fbbf24,color:#fff
+    style E fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style F fill:#238636,stroke:#3fb950,color:#fff
+</div>
+<p class="fig-caption">图 1：反馈回路循环——查询 → 检索 → 生成 → 反馈 → 调整 → 下次检索</p>
+</div>
+
+<p>这个循环的关键在于<strong>两个优化路径</strong>：</p>
+<ol>
+    <li><strong>相关性调整</strong>（E）：用历史反馈调整当前检索结果的分数，无需修改索引</li>
+    <li><strong>索引微调</strong>（F）：将高质量 QA 对注入向量库，永久改善检索质量</li>
+</ol>
+
+<!-- ==================== Section 3 ==================== -->
+<h2 id="collect">第一步：反馈收集机制</h2>
+
+<p>反馈收集是整个回路的起点。我们需要一个结构化的方式来记录用户对每次回答的评价：</p>
+
+<pre><code class="language-python">def get_user_feedback(query, response, relevance, quality, comments=""):
+    """格式化用户反馈为标准结构。
+
+    Args:
+        query: 用户的原始查询
+        response: 系统生成的回复
+        relevance: 相关性评分 (1-5)
+        quality: 质量评分 (1-5)
+        comments: 用户文字评论（可选）
+    """
+    return {
+        "query": query,
+        "response": response,
+        "relevance": relevance,
+        "quality": quality,
+        "comments": comments,
+        "timestamp": datetime.now().isoformat()
+    }</code></pre>
+
+<p>评分采用 <strong>1-5 分制</strong>，直觉且易于用户操作：</p>
+
+<table>
+    <thead>
+        <tr><th>评分</th><th>相关性含义</th><th>质量含义</th><th>后续处理</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>1</td><td>完全不相关</td><td>无法使用</td><td>降低权重</td></tr>
+        <tr><td>2</td><td>部分相关</td><td>需要大幅修改</td><td>轻微降权</td></tr>
+        <tr><td>3</td><td>基本相关</td><td>基本可用</td><td>基准线（modifier=1.1）</td></tr>
+        <tr><td>4</td><td>高度相关</td><td>质量良好</td><td><span class="tag" style="background:#238636;color:#fff">加入索引</span></td></tr>
+        <tr><td>5</td><td>完全精准</td><td>完美回答</td><td><span class="tag" style="background:#238636;color:#fff">加入索引</span></td></tr>
+    </tbody>
+</table>
+
+<div class="info-box good">
+    <div class="box-title">✅ 实际反馈示例</div>
+    <p>在我们的测试中，用户对"北京有哪些算力中心？"的回答给出了如下反馈：</p>
+    <ul>
+        <li>相关性评分：<strong>4 / 5</strong></li>
+        <li>质量评分：<strong>4 / 5</strong></li>
+        <li>评论："回答提到了北京人工智能公共算力中心，很有帮助，但希望能补充更多细节"</li>
+    </ul>
+</div>
+
+<!-- ==================== Section 4 ==================== -->
+<h2 id="relevance">第二步：相关性分数调整</h2>
+
+<p>收集到反馈后，第一个优化路径是<em>调整文档的相关性分数</em>。核心思路：如果某篇文档在过去获得了高评价，那么它在未来的检索中应该获得更高的权重。</p>
+
+<h3>调整公式</h3>
+
+<p>分数调整的关键在于计算一个 <code>modifier</code>（修正因子）：</p>
+
+<pre><code class="language-python">modifier = 0.5 + (avg_relevance / 5.0)</code></pre>
+
+<p>这个公式的精妙之处在于：</p>
+
+<table>
+    <thead>
+        <tr><th>平均相关性评分</th><th>modifier 值</th><th>效果</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>1 分</td><td>0.7</td><td>降权 30%——文档被"惩罚"</td></tr>
+        <tr><td>2 分</td><td>0.9</td><td>降权 10%</td></tr>
+        <tr><td>3 分</td><td>1.1</td><td>加权 10%——基准线</td></tr>
+        <tr><td>4 分</td><td>1.3</td><td>加权 30%</td></tr>
+        <tr><td>5 分</td><td>1.5</td><td>加权 50%——文档被"奖励"</td></tr>
+    </tbody>
+</table>
+
+<h3>调整流程代码</h3>
+
+<pre><code class="language-python">def adjust_relevance_scores(query, results, feedback_data):
+    """根据历史反馈调整检索结果的相关性分数。
+
+    Args:
+        query: 当前查询
+        results: 原始检索结果 [(doc, score), ...]
+        feedback_data: 历史反馈数据列表
+    Returns:
+        调整后的 [(doc, new_score), ...]
+    """
+    adjusted = []
+    for doc, score in results:
+        # 找到与该文档相关的历史反馈
+        related_feedback = [
+            fb for fb in feedback_data
+            if fb["query"] == query
+        ]
+
+        if related_feedback:
+            avg_relevance = sum(
+                fb["relevance"] for fb in related_feedback
+            ) / len(related_feedback)
+
+            # 核心公式：modifier = 0.5 + (avg_relevance / 5.0)
+            modifier = 0.5 + (avg_relevance / 5.0)
+            new_score = score * modifier
+        else:
+            new_score = score  # 无反馈则保持原分
+
+        adjusted.append((doc, new_score))
+
+    return adjusted</code></pre>
+
+<div class="info-box warn">
+    <div class="box-title">⚠️ 注意：LLM 辅助判断</div>
+    <p>在实际应用中，查询很少完全相同。因此我们使用 LLM 来判断历史反馈是否与当前查询<em>语义相关</em>，而不是简单的字符串匹配。这将在第 5 节详细讨论。</p>
+</div>
+
+<!-- ==================== Section 5 ==================== -->
+<h2 id="finetune">第三步：索引微调——将优质 QA 注入向量库</h2>
+
+<p>第二个优化路径更加深远：将高质量的问答对作为<em>"合成文档"</em>永久加入向量库。这样，未来类似的查询可以直接检索到这些经过验证的知识。</p>
+
+<div class="figure">
+<div class="mermaid">
+flowchart TD
+    A["收集反馈数据"] --> B{"筛选：评分 ≥ 4？"}
+    B -->|"否"| C["仅用于分数调整"]
+    B -->|"是"| D["构造合成文档"]
+    D --> E["enhanced_text =\n'Question: {query}\nAnswer: {response}'"]
+    E --> F["以 relevance_score=1.2\n加入向量库"]
+    F --> G["向量库: N → N+1 项"]
+
+    style A fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style B fill:#f59e0b,stroke:#fbbf24,color:#fff
+    style C fill:#6b7280,stroke:#9ca3af,color:#fff
+    style D fill:#8b5cf6,stroke:#a78bfa,color:#fff
+    style E fill:#8b5cf6,stroke:#a78bfa,color:#fff
+    style F fill:#238636,stroke:#3fb950,color:#fff
+    style G fill:#238636,stroke:#3fb950,color:#fff
+</div>
+<p class="fig-caption">图 2：fine_tune_index 流程——筛选高质量 QA 对并注入向量库</p>
+</div>
+
+<h3>实现代码</h3>
+
+<pre><code class="language-python">def fine_tune_index(current_store, chunks, feedback_data):
+    """将高质量 QA 对作为合成文档加入向量库。
+
+    Args:
+        current_store: 当前向量存储
+        chunks: 原始文档分块
+        feedback_data: 历史反馈数据
+    Returns:
+        增强后的向量存储
+    """
+    # 筛选高质量反馈（评分 ≥ 4）
+    high_quality = [
+        fb for fb in feedback_data
+        if fb["relevance"] >= 4 and fb["quality"] >= 4
+    ]
+
+    if not high_quality:
+        return current_store
+
+    # 构造合成文档
+    synthetic_docs = []
+    for fb in high_quality:
+        enhanced_text = (
+            f"Question: {fb['query']}\n"
+            f"Answer: {fb['response']}"
+        )
+        synthetic_docs.append({
+            "text": enhanced_text,
+            "metadata": {
+                "type": "synthetic_qa",
+                "relevance_score": 1.2,  # 加权，优先检索
+                "source": "user_feedback"
+            }
+        })
+
+    # 将合成文档加入向量库
+    new_store = add_documents(current_store, synthetic_docs)
+    return new_store</code></pre>
+
+<div class="info-box">
+    <div class="box-title">💡 为什么用 "Question: ... Answer: ..." 格式？</div>
+    <p>这种格式让向量检索能够同时匹配问题语义和答案语义。当未来用户提出类似问题时，"Question:" 部分提供语义锚点，"Answer:" 部分提供精准内容。<code>relevance_score=1.2</code> 的加权确保合成文档在检索中获得优先地位。</p>
+</div>
+
+<!-- ==================== Section 6 ==================== -->
+<h2 id="assessment">LLM 反馈相关性评估</h2>
+
+<p>一个关键挑战：用户的查询很少完全相同。"北京有哪些算力中心？"和"北京算力基础设施情况如何？"语义相近但文字不同。我们需要 LLM 来判断历史反馈是否与当前查询相关。</p>
+
+<pre><code class="language-python">def assess_feedback_relevance(query, doc_text, feedback):
+    """用 LLM 评估历史反馈与当前查询的相关性。
+
+    Args:
+        query: 当前用户查询
+        doc_text: 检索到的文档文本
+        feedback: 历史反馈记录
+    Returns:
+        bool: 反馈是否与当前查询相关
+    """
+    prompt = f"""判断以下历史反馈是否与当前查询相关：
+
+当前查询：{query}
+文档内容：{doc_text[:200]}...
+历史问题：{feedback['query']}
+历史评分：相关性 {feedback['relevance']}/5
+
+请回答：这个历史反馈对回答当前查询是否有参考价值？
+只回答 YES 或 NO。"""
+
+    response = llm.invoke(prompt)
+    return "YES" in response.upper()</code></pre>
+
+<p>这个函数在 <code>adjust_relevance_scores</code> 中被调用，替代简单的字符串匹配，实现了<em>语义级别的反馈关联</em>。</p>
+
+<!-- ==================== Section 7 ==================== -->
+<h2 id="results">实测效果：分数提升 30%</h2>
+
+<p>让我们用真实数据来看看反馈回路的效果。测试查询：<strong>"北京有哪些算力中心？"</strong></p>
+
+<h3>第一轮 vs 第二轮对比</h3>
+
+<table>
+    <thead>
+        <tr><th>指标</th><th>第一轮（无反馈）</th><th>第二轮（有反馈）</th><th>变化</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>最高文档相关性分数</td>
+            <td>0.9457</td>
+            <td>1.2294</td>
+            <td><span class="tag" style="background:#238636;color:#fff">+30%</span></td>
+        </tr>
+        <tr>
+            <td>回复长度</td>
+            <td>448 字符</td>
+            <td>更丰富（含更多细节）</td>
+            <td><span class="tag" style="background:#238636;color:#fff">↑</span></td>
+        </tr>
+        <tr>
+            <td>向量库文档数</td>
+            <td>35 项</td>
+            <td>36 项</td>
+            <td>+1 合成文档</td>
+        </tr>
+        <tr>
+            <td>新增细节</td>
+            <td>—</td>
+            <td>北京人工智能公共算力中心等</td>
+            <td><span class="tag" style="background:#238636;color:#fff">新增</span></td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="chart-container">
+    <canvas id="scoreChart" height="300"></canvas>
+</div>
+<p class="fig-caption" style="text-align:center;">图 3：文档相关性分数调整前后对比——反馈回路带来 30% 的提升</p>
+
+<div class="info-box good">
+    <div class="box-title">📈 关键发现</div>
+    <p>第二轮回复中新增了<strong>"北京人工智能公共算力中心"</strong>等具体信息。这些信息来源于第一轮用户反馈中的评论——用户提到希望了解更多细节，系统将这个反馈整合进了索引，使得下次检索时能够提供更丰富的内容。</p>
+</div>
+
+<!-- ==================== Section 8 ==================== -->
+<h2 id="full-code">核心代码提炼</h2>
+
+<p>下面是反馈回路系统的完整核心流程，将三个关键函数串联起来：</p>
+
+<pre><code class="language-python">class FeedbackLoopRAG:
+    """带反馈回路的 RAG 系统。"""
+
+    def __init__(self, vector_store, llm):
+        self.vector_store = vector_store
+        self.llm = llm
+        self.feedback_history = []
+
+    def query_with_feedback(self, query):
+        """执行查询并收集反馈。"""
+        # 1. 检索（带分数调整）
+        raw_results = self.vector_store.similarity_search_with_score(query)
+        adjusted_results = adjust_relevance_scores(
+            query, raw_results, self.feedback_history
+        )
+
+        # 2. 生成回复
+        context = "\n".join(doc for doc, _ in adjusted_results[:3])
+        response = self.llm.invoke(
+            f"基于以下上下文回答问题：\n{context}\n\n问题：{query}"
+        )
+
+        return response
+
+    def submit_feedback(self, query, response, relevance, quality, comments=""):
+        """提交反馈并触发优化。"""
+        # 1. 记录反馈
+        fb = get_user_feedback(query, response, relevance, quality, comments)
+        self.feedback_history.append(fb)
+
+        # 2. 微调索引（如果评分足够高）
+        self.vector_store = fine_tune_index(
+            self.vector_store,
+            chunks=None,
+            feedback_data=self.feedback_history
+        )
+
+        return {
+            "feedback_recorded": True,
+            "index_updated": relevance >= 4 and quality >= 4,
+            "total_feedback_count": len(self.feedback_history)
+        }</code></pre>
+
+<h3>数据流示意</h3>
+
+<div class="figure">
+<svg viewBox="0 0 780 200" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;">
+    <!-- 节点 -->
+    <rect x="10" y="70" width="120" height="60" rx="10" fill="#1f6feb" stroke="#58a6ff" stroke-width="2"/>
+    <text x="70" y="105" text-anchor="middle" fill="#fff" font-size="14" font-weight="600">用户查询</text>
+
+    <rect x="170" y="70" width="120" height="60" rx="10" fill="#238636" stroke="#3fb950" stroke-width="2"/>
+    <text x="230" y="98" text-anchor="middle" fill="#fff" font-size="13" font-weight="600">检索 + 分数</text>
+    <text x="230" y="116" text-anchor="middle" fill="#fff" font-size="13" font-weight="600">调整</text>
+
+    <rect x="330" y="70" width="120" height="60" rx="10" fill="#8b5cf6" stroke="#a78bfa" stroke-width="2"/>
+    <text x="390" y="105" text-anchor="middle" fill="#fff" font-size="14" font-weight="600">LLM 生成</text>
+
+    <rect x="490" y="70" width="120" height="60" rx="10" fill="#f59e0b" stroke="#fbbf24" stroke-width="2"/>
+    <text x="550" y="105" text-anchor="middle" fill="#fff" font-size="14" font-weight="600">用户反馈</text>
+
+    <rect x="650" y="70" width="120" height="60" rx="10" fill="#1f6feb" stroke="#58a6ff" stroke-width="2"/>
+    <text x="710" y="98" text-anchor="middle" fill="#fff" font-size="13" font-weight="600">索引微调</text>
+    <text x="710" y="116" text-anchor="middle" fill="#fff" font-size="13" font-weight="600">+ 分数调整</text>
+
+    <!-- 箭头 -->
+    <line x1="130" y1="100" x2="170" y2="100" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrowBlue)"/>
+    <line x1="290" y1="100" x2="330" y2="100" stroke="#3fb950" stroke-width="2" marker-end="url(#arrowGreen)"/>
+    <line x1="450" y1="100" x2="490" y2="100" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowPurple)"/>
+    <line x1="610" y1="100" x2="650" y2="100" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrowYellow)"/>
+
+    <!-- 回环箭头 -->
+    <path d="M710,130 L710,170 L230,170 L230,130" fill="none" stroke="#f0883e" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrowOrange)"/>
+    <text x="470" y="188" text-anchor="middle" fill="#f0883e" font-size="12">反馈驱动下一轮优化</text>
+
+    <!-- 箭头标记 -->
+    <defs>
+        <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#58a6ff"/></marker>
+        <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#3fb950"/></marker>
+        <marker id="arrowPurple" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa"/></marker>
+        <marker id="arrowYellow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24"/></marker>
+        <marker id="arrowOrange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#f0883e"/></marker>
+    </defs>
+</svg>
+<p class="fig-caption">图 4：反馈回路数据流——从查询到优化闭环</p>
+</div>
+
+<!-- ==================== Section 9 ==================== -->
+<h2 id="practice">工程实践建议</h2>
+
+<h3>反馈收集策略</h3>
+<ul>
+    <li><strong>降低反馈门槛</strong>：提供简单的 👍/👎 按钮，可选填文字评论</li>
+    <li><strong>适时请求评分</strong>：在用户复制回复内容或停留较长时间后弹出评分</li>
+    <li><strong>匿名 vs 实名</strong>：实名反馈可追踪用户偏好，但需考虑隐私合规</li>
+</ul>
+
+<h3>防止反馈回路退化</h3>
+
+<div class="info-box warn">
+    <div class="box-title">⚠️ 反馈回路的潜在风险</div>
+    <p>如果恶意用户持续提交低质量反馈，可能导致系统"学坏"。建议：</p>
+    <ul>
+        <li>设置反馈权重上限，单条反馈不能过度影响系统</li>
+        <li>对合成文档数量设置上限（如不超过原始文档的 20%）</li>
+        <li>定期清理低置信度的合成文档</li>
+        <li>引入反馈可信度评分（基于用户历史反馈质量）</li>
+    </ul>
+</div>
+
+<h3>性能与存储</h3>
+<table>
+    <thead>
+        <tr><th>考量</th><th>建议</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>反馈存储</td><td>使用独立数据库，按查询哈希索引</td></tr>
+        <tr><td>分数调整延迟</td><td>LLM 评估反馈相关性约 200-500ms，可缓存</td></tr>
+        <tr><td>索引膨胀</td><td>合成文档设置 TTL（如 30 天），过期自动清理</td></tr>
+        <tr><td>反馈聚合</td><td>同一查询的多次反馈取平均值，减少噪声</td></tr>
+    </tbody>
+</table>
+
+<!-- ==================== Section 10 ==================== -->
+<h2 id="next">下一篇预告：自适应检索</h2>
+
+<p>反馈回路让系统从<em>历史</em>反馈中学习。但有时候，系统需要在<em>当前</em>查询中就做出智能决策——是否需要检索？检索几次？检索多少文档？</p>
+
+<p>第 12 篇《自适应检索》将探讨如何让 RAG 系统根据查询的复杂度和特征，动态调整检索策略：</p>
+
+<ul>
+    <li>简单事实查询 → 单次检索，快速响应</li>
+    <li>复杂分析查询 → 多轮迭代检索，逐步深入</li>
+    <li>模糊查询 → 先澄清再检索</li>
+</ul>
+
+<div class="info-box">
+    <div class="box-title">🔗 系列导航</div>
+    <p>上一篇：<a href="10_上下文压缩_blog.html">第 10 篇 · 上下文压缩</a></p>
+    <p>下一篇：<a href="12_自适应检索_blog.html">第 12 篇 · 自适应检索</a></p>
+</div>
+
+<!-- ==================== Nav Links ==================== -->
+<div class="nav-links">
+    <a href="10_上下文压缩_blog.html">← 第 10 篇：上下文压缩</a>
+    <a href="12_自适应检索_blog.html">第 12 篇：自适应检索 →</a>
+</div>
+
+</div><!-- end container -->
+
+<script>
+    // Mermaid 初始化
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        themeVariables: {
+            darkMode: true,
+            background: '#161b22',
+            primaryColor: '#1f6feb',
+            primaryTextColor: '#e6edf3',
+            primaryBorderColor: '#388bfd',
+            lineColor: '#58a6ff',
+            secondaryColor: '#238636',
+            tertiaryColor: '#0d1117',
+            noteTextColor: '#e6edf3',
+            noteBkgColor: '#161b22'
+        },
+        flowchart: { curve: 'basis', padding: 15 }
+    });
+
+    // highlight.js 初始化
+    hljs.highlightAll();
+
+    // Chart.js — 分数调整对比图
+    const scoreCtx = document.getElementById('scoreChart').getContext('2d');
+    new Chart(scoreCtx, {
+        type: 'bar',
+        data: {
+            labels: ['文档 A', '文档 B', '文档 C', '文档 D', '文档 E'],
+            datasets: [
+                {
+                    label: '调整前（第一轮）',
+                    data: [0.9457, 0.9123, 0.8876, 0.8534, 0.8201],
+                    backgroundColor: 'rgba(88, 166, 255, 0.6)',
+                    borderColor: 'rgba(88, 166, 255, 1)',
+                    borderWidth: 2,
+                    borderRadius: 6
+                },
+                {
+                    label: '调整后（第二轮，含反馈）',
+                    data: [1.2294, 1.1860, 1.1539, 1.0241, 0.9842],
+                    backgroundColor: 'rgba(63, 185, 80, 0.6)',
+                    borderColor: 'rgba(63, 185, 80, 1)',
+                    borderWidth: 2,
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: { color: '#e6edf3', font: { size: 13 } }
+                },
+                title: {
+                    display: true,
+                    text: '文档相关性分数：反馈调整前后对比',
+                    color: '#e6edf3',
+                    font: { size: 16, weight: '600' }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(4);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 1.5,
+                    grid: { color: 'rgba(48, 54, 61, 0.5)' },
+                    ticks: { color: '#8b949e' },
+                    title: { display: true, text: '相关性分数', color: '#8b949e' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#8b949e' }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

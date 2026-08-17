@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（七）：查询转换 Query Transformation</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle { color: var(--text-muted); font-size: 1.05rem; }
+  header .meta { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+  header .meta span { margin: 0 0.5rem; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .toc a:hover { color: var(--accent); }
+
+  h2 {
+    font-size: 1.6rem; font-weight: 700;
+    margin: 2.5rem 0 1rem; padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border); color: var(--text);
+  }
+  h3 { font-size: 1.25rem; font-weight: 600; margin: 1.8rem 0 0.8rem; color: var(--accent); }
+
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: var(--accent2); }
+  em { color: var(--accent3); font-style: normal; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+    margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.88rem; }
+  p code, li code {
+    background: var(--tag-bg); padding: 0.15rem 0.4rem;
+    border-radius: 4px; font-size: 0.85rem; color: var(--accent3);
+  }
+
+  .callout {
+    background: var(--surface); border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .callout.warning { border-left-color: var(--accent3); }
+  .callout.success { border-left-color: var(--accent2); }
+  .callout .callout-title { font-weight: 700; margin-bottom: 0.3rem; font-size: 0.95rem; }
+
+  .diagram-container {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+    text-align: center; overflow-x: auto;
+  }
+  .diagram-container .caption {
+    font-size: 0.85rem; color: var(--text-muted); margin-top: 0.8rem; text-align: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--border); padding: 0.6rem 1rem; text-align: left; }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+  }
+  .compare-card h4 { font-size: 1rem; margin-bottom: 0.6rem; }
+  .compare-card.bad h4 { color: var(--accent3); }
+  .compare-card.good h4 { color: var(--accent2); }
+  .compare-card ul { padding-left: 1rem; }
+
+  .score-highlight {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.5rem 1rem; margin: 0.3rem;
+    font-size: 1.1rem; font-weight: 700;
+  }
+  .score-highlight.up { border-color: var(--accent2); color: var(--accent2); }
+
+  .chart-wrapper {
+    max-width: 560px; margin: 1.5rem auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem;
+  }
+
+  .query-demo {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem; margin: 1rem 0;
+  }
+  .query-demo .label {
+    font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 0.4rem;
+  }
+  .query-demo .label.original { color: var(--text-muted); }
+  .query-demo .label.rewrite { color: var(--accent); }
+  .query-demo .label.stepback { color: var(--accent3); }
+  .query-demo .label.decompose { color: var(--accent2); }
+  .query-demo .query-text { font-size: 0.95rem; line-height: 1.7; }
+
+  footer {
+    margin-top: 3rem; padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center; color: var(--text-muted); font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  .series-nav { display: flex; justify-content: space-between; margin-top: 2rem; gap: 1rem; }
+  .series-nav a {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.8rem 1.2rem; color: var(--accent);
+    text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .series-nav a:hover { border-color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header h1 { font-size: 1.5rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 7 篇</div>
+  <h1>查询转换 Query Transformation</h1>
+  <p class="subtitle">在检索之前先"打磨"问题——用重写、后退、分解三招让 RAG 找到更精准的答案</p>
+  <div class="meta">
+    <span>📅 2026-07-10</span>
+    <span>·</span>
+    <span>🏷️ RAG / 查询重写 / 后退提示 / 子查询分解</span>
+    <span>·</span>
+    <span>⏱️ 阅读约 15 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#motivation">问题动机：用户的问题不一定适合检索</a></li>
+    <li><a href="#overview">三种查询转换技术一览</a></li>
+    <li><a href="#transform-diagram">转换技术示意图</a></li>
+    <li><a href="#pipeline">完整流水线</a></li>
+    <li><a href="#code-rewrite">代码解读：查询重写</a></li>
+    <li><a href="#code-stepback">代码解读：后退提示</a></li>
+    <li><a href="#code-decompose">代码解读：子查询分解</a></li>
+    <li><a href="#code-search">代码解读：转换后搜索</a></li>
+    <li><a href="#code-rag">代码解读：完整 RAG 管道</a></li>
+    <li><a href="#demo">真实运行结果展示</a></li>
+    <li><a href="#eval">LLM-as-Judge 评估对比</a></li>
+    <li><a href="#chart">评分可视化</a></li>
+    <li><a href="#tradeoff">优缺点与适用场景</a></li>
+    <li><a href="#summary">本篇小结</a></li>
+  </ol>
+</nav>
+
+<!-- 1. 问题动机 -->
+<h2 id="motivation">1. 问题动机：用户的问题不一定适合检索</h2>
+
+<p>在 RAG 系统中，我们通常直接把用户的原始查询拿去做向量检索。但用户的提问方式往往<em>不是最优的检索语句</em>：</p>
+
+<ul>
+  <li><strong>过于简短</strong>：缺少关键上下文词，导致检索到的片段语义偏移</li>
+  <li><strong>过于宽泛</strong>：匹配到大量低相关片段，噪声淹没了真正有用的信息</li>
+  <li><strong>多主题混合</strong>：一个查询包含多个子问题，向量检索只能捕捉其中一个方向</li>
+</ul>
+
+<div class="callout">
+  <div class="callout-title">💡 核心思路</div>
+  <p>与其改检索算法或换更大的向量库，不如在<strong>检索之前</strong>用 LLM 对用户查询做一次"预处理"——这就是<strong>查询转换（Query Transformation）</strong>的核心思想。</p>
+</div>
+
+<p>本篇实现三种经典的查询转换技术，并通过 LLM-as-Judge 评估它们对最终回答质量的影响。</p>
+
+<!-- 2. 三种技术一览 -->
+<h2 id="overview">2. 三种查询转换技术一览</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>技术</th>
+      <th>目标</th>
+      <th>策略</th>
+      <th>适用场景</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>查询重写</strong><br>Rewrite</td>
+      <td>使查询更具体、更详细</td>
+      <td>LLM 补充关键词、时间范围、相关概念</td>
+      <td>原始查询过于简短或模糊</td>
+    </tr>
+    <tr>
+      <td><strong>后退提示</strong><br>Step-back</td>
+      <td>生成更宽泛的查询</td>
+      <td>LLM 抽象化问题，获取背景上下文</td>
+      <td>需要补充背景知识或上下文</td>
+    </tr>
+    <tr>
+      <td><strong>子查询分解</strong><br>Decompose</td>
+      <td>拆解复杂查询为多个子问题</td>
+      <td>LLM 将问题按维度拆分为独立子查询</td>
+      <td>查询包含多个子主题或方面</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 直觉对比</div>
+  <p>以 <code>"中国政府在AI上有哪些政策?"</code> 为例：</p>
+  <ul>
+    <li><strong>重写</strong> → "2023年中国政府在人工智能领域的政策和战略有哪些具体内容？请包括涉及技术研发、产业应用、数据隐私保护、伦理规范以及国际合作等方面的最新政策文件和指导意见。"</li>
+    <li><strong>后退</strong> → "各国政府在人工智能领域通常会制定哪些类型的政策和战略？"</li>
+    <li><strong>分解</strong> → 4个子问题：总体战略、研究创新措施、伦理监管、行业应用</li>
+  </ul>
+</div>
+
+<!-- 3. 转换技术示意图 -->
+<h2 id="transform-diagram">3. 转换技术示意图</h2>
+
+<div class="diagram-container">
+<pre class="mermaid">
+flowchart LR
+    Q["🔍 原始查询<br>中国政府在AI上<br>有哪些政策?"]
+
+    Q --> R["📝 查询重写<br>Rewrite"]
+    Q --> S["🔭 后退提示<br>Step-back"]
+    Q --> D["✂️ 子查询分解<br>Decompose"]
+
+    R --> RW["重写后的查询<br>补充关键词：2023年、<br>技术研发、产业应用、<br>数据隐私、伦理规范..."]
+
+    S --> SW["更宽泛的查询<br>各国政府在AI领域<br>通常制定哪些类型的<br>政策和战略？"]
+
+    D --> D1["子查询1<br>总体发展战略"]
+    D --> D2["子查询2<br>研究创新措施"]
+    D --> D3["子查询3<br>伦理和监管"]
+    D --> D4["子查询4<br>行业应用推动"]
+
+    style Q fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style R fill:#1a5276,stroke:#58a6ff,color:#e6edf3
+    style S fill:#6e3a00,stroke:#f0883e,color:#e6edf3
+    style D fill:#1a4731,stroke:#3fb950,color:#e6edf3
+    style RW fill:#1a5276,stroke:#58a6ff,color:#e6edf3
+    style SW fill:#6e3a00,stroke:#f0883e,color:#e6edf3
+    style D1 fill:#1a4731,stroke:#3fb950,color:#e6edf3
+    style D2 fill:#1a4731,stroke:#3fb950,color:#e6edf3
+    style D3 fill:#1a4731,stroke:#3fb950,color:#e6edf3
+    style D4 fill:#1a4731,stroke:#3fb950,color:#e6edf3
+</pre>
+  <p class="caption">图 1：三种查询转换技术将同一原始查询映射为不同的检索策略</p>
+</div>
+
+<!-- 4. 完整流水线 -->
+<h2 id="pipeline">4. 完整流水线</h2>
+
+<div class="diagram-container">
+<pre class="mermaid">
+flowchart TD
+    A["📄 PDF 文档"] --> B["文本提取<br>PyMuPDF"]
+    B --> C["文本分块<br>chunk_size=1000<br>overlap=200"]
+    C --> D["创建嵌入<br>text-embedding-ada-002"]
+    D --> E["向量存储<br>SimpleVectorStore"]
+
+    Q["🔍 用户查询"] --> T{"查询转换类型?"}
+
+    T -->|None| E0["直接嵌入原始查询"]
+    T -->|rewrite| E1["LLM 重写查询 → 嵌入"]
+    T -->|step_back| E2["LLM 后退查询 → 嵌入"]
+    T -->|decompose| E3["LLM 分解为N个子查询<br>→ 分别嵌入 → 合并去重"]
+
+    E0 --> S["向量检索<br>余弦相似度 top_k=3"]
+    E1 --> S
+    E2 --> S
+    E3 --> S
+
+    S --> CTX["组合上下文<br>PASSAGE 1..N"]
+    E --> S
+    CTX --> GEN["GPT-4o 生成回答"]
+    GEN --> ANS["📋 最终回答"]
+
+    style A fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style Q fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style T fill:#6e3a00,stroke:#f0883e,color:#e6edf3
+    style ANS fill:#1a4731,stroke:#3fb950,color:#fff
+    style E fill:#161b22,stroke:#30363d,color:#e6edf3
+</pre>
+  <p class="caption">图 2：带查询转换的完整 RAG 流水线——文档侧离线建库，查询侧按需转换</p>
+</div>
+
+<!-- 5. 代码：查询重写 -->
+<h2 id="code-rewrite">5. 代码解读：查询重写</h2>
+
+<p>查询重写的核心思路：让 LLM 充当"检索优化师"，把用户简短的查询补充为包含关键术语、时间范围和具体维度的详细查询。</p>
+
+<pre><code class="language-python">def rewrite_query(original_query, model="gpt-4o"):
+    """将原始查询改写得更加具体、详细，补充相关关键词和概念。"""
+
+    system_prompt = (
+        "你是一名擅长优化检索查询的AI助手。"
+        "你的任务是将用户的查询改写得更加具体、详细，"
+        "并包含有助于检索准确信息的相关术语和概念。"
+    )
+    user_prompt = f"""
+请将下列查询改写为更具体、更详细的表达，
+补充相关的关键词和概念，以便更好地检索到准确的信息。
+
+原始查询：{original_query}
+
+改写后的查询：
+"""
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0.0,  # 确定性输出
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt}
+        ]
+    )
+    return response.choices[0].message.content.strip()</code></pre>
+
+<div class="callout">
+  <div class="callout-title">🔑 关键点</div>
+  <p><code>temperature=0.0</code> 保证重写结果稳定可复现。系统提示中明确要求"补充相关术语和概念"，引导 LLM 扩展查询的语义覆盖面。</p>
+</div>
+
+<!-- 6. 代码：后退提示 -->
+<h2 id="code-stepback">6. 代码解读：后退提示</h2>
+
+<p>后退提示（Step-back Prompting）来自 Google 2023 年的论文，核心思想是<em>退一步思考</em>——将具体问题抽象化，先获取背景知识再回答。</p>
+
+<pre><code class="language-python">def generate_step_back_query(original_query, model="gpt-4o"):
+    """生成更通用的'后退一步'查询，以检索更广泛的上下文。"""
+
+    system_prompt = (
+        "你是一名擅长检索策略的AI助手。"
+        "你的任务是将具体的用户查询改写为更宽泛、更通用的问题，"
+        "以便检索到相关的背景信息和更广泛的上下文。"
+    )
+    user_prompt = f"""
+请将下列查询改写为更宽泛、更通用的问题，
+以便有助于检索相关的背景信息和更广泛的上下文。
+
+原始查询：{original_query}
+
+后退一步的查询：
+"""
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0.1,  # 稍高温度，允许一些变化
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt}
+        ]
+    )
+    return response.choices[0].message.content.strip()</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 温度设置</div>
+  <p>后退提示使用 <code>temperature=0.1</code>，比查询重写略高。适度的随机性有助于生成更多样化的宽泛问题，避免后退方向过于单一。</p>
+</div>
+
+<!-- 7. 代码：子查询分解 -->
+<h2 id="code-decompose">7. 代码解读：子查询分解</h2>
+
+<p>当用户的问题涉及多个维度时，单一向量检索只能命中其中一个方向。子查询分解将复杂问题拆成多个聚焦的子问题，分别检索后合并结果。</p>
+
+<pre><code class="language-python">def decompose_query(original_query, num_subqueries=4, model="gpt-4o"):
+    """将复杂查询拆解为 num_subqueries 个更简单的子问题。"""
+
+    system_prompt = (
+        "你是一名擅长将复杂问题拆解为简单子问题的AI助手。"
+        "你的任务是把复杂的用户查询分解为若干个更简单、"
+        "聚焦不同方面的子问题，所有子问题的答案合起来"
+        "可以完整回答原始问题。"
+    )
+    user_prompt = f"""
+请将下列复杂查询拆解为 {num_subqueries} 个更简单的子问题。
+每个子问题应关注原始问题的不同方面。
+
+原始查询：{original_query}
+
+请生成 {num_subqueries} 个子问题，每行一个，格式如下：
+1. [第一个子问题]
+2. [第二个子问题]
+以此类推……
+"""
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt}
+        ]
+    )
+
+    # 解析编号列表
+    content = response.choices[0].message.content.strip()
+    lines = content.split("\n")
+    sub_queries = []
+    for line in lines:
+        if line.strip() and any(line.strip().startswith(f"{i}.")
+                                for i in range(1, 10)):
+            query = line.strip()
+            query = query[query.find(".") + 1:].strip()
+            sub_queries.append(query)
+    return sub_queries</code></pre>
+
+<div class="query-demo">
+  <div class="label decompose">实际分解结果</div>
+  <div class="query-text">
+    <strong>原始查询：</strong>中国政府在AI上有哪些政策?<br><br>
+    <strong>子查询 1：</strong>中国政府在人工智能领域的总体发展战略是什么？<br>
+    <strong>子查询 2：</strong>中国政府为支持人工智能技术的研究和创新采取了哪些具体措施？<br>
+    <strong>子查询 3：</strong>中国政府在人工智能的伦理和监管方面有哪些政策和规定？<br>
+    <strong>子查询 4：</strong>中国政府如何推动人工智能在各个行业中的应用和发展？
+  </div>
+</div>
+
+<!-- 8. 代码：转换后搜索 -->
+<h2 id="code-search">8. 代码解读：转换后搜索</h2>
+
+<p><code>transformed_search()</code> 根据转换类型路由到不同策略。分解模式需要特别注意<em>去重</em>——多个子查询可能检索到相同的文本块。</p>
+
+<pre><code class="language-python">def transformed_search(query, vector_store, transformation_type, top_k=3):
+    """使用转换后的查询进行搜索。"""
+
+    if transformation_type == "rewrite":
+        transformed_query = rewrite_query(query)
+        query_embedding = create_embeddings(transformed_query)
+        results = vector_store.similarity_search(query_embedding, k=top_k)
+
+    elif transformation_type == "step_back":
+        transformed_query = generate_step_back_query(query)
+        query_embedding = create_embeddings(transformed_query)
+        results = vector_store.similarity_search(query_embedding, k=top_k)
+
+    elif transformation_type == "decompose":
+        sub_queries = decompose_query(query)
+        sub_query_embeddings = create_embeddings(sub_queries)
+
+        # 每个子查询检索 top-2，合并后去重
+        all_results = []
+        for embedding in sub_query_embeddings:
+            sub_results = vector_store.similarity_search(embedding, k=2)
+            all_results.extend(sub_results)
+
+        # 去重：保留最高相似度
+        seen_texts = {}
+        for result in all_results:
+            text = result["text"]
+            if text not in seen_texts or \
+               result["similarity"] > seen_texts[text]["similarity"]:
+                seen_texts[text] = result
+
+        # 按相似度排序取 top_k
+        results = sorted(seen_texts.values(),
+                         key=lambda x: x["similarity"],
+                         reverse=True)[:top_k]
+    else:
+        # 无转换：直接检索
+        query_embedding = create_embeddings(query)
+        results = vector_store.similarity_search(query_embedding, k=top_k)
+
+    return results</code></pre>
+
+<div class="callout success">
+  <div class="callout-title">✅ 去重策略</div>
+  <p>分解模式下，4 个子查询各检索 2 条结果（共 8 条），通过文本精确匹配去重后保留相似度最高的，最终截取 top_k=3 条。这确保上下文窗口不会被重复内容浪费。</p>
+</div>
+
+<!-- 9. 代码：完整 RAG 管道 -->
+<h2 id="code-rag">9. 代码解读：完整 RAG 管道</h2>
+
+<p>最终的 <code>rag_with_query_transformation()</code> 将文档处理、查询转换、检索、回复生成串联为一个端到端管道。</p>
+
+<pre><code class="language-python">def rag_with_query_transformation(pdf_path, query,
+                                   transformation_type=None):
+    """运行完整的 RAG 管道，支持可选的查询转换。"""
+
+    # 1. 文档处理 → 向量存储
+    vector_store = process_document(pdf_path)
+
+    # 2. 查询转换 + 检索
+    if transformation_type:
+        results = transformed_search(
+            query, vector_store, transformation_type
+        )
+    else:
+        query_embedding = create_embeddings(query)
+        results = vector_store.similarity_search(query_embedding, k=3)
+
+    # 3. 组合上下文
+    context = "\n\n".join(
+        f"PASSAGE {i+1}:\n{r['text']}" for i, r in enumerate(results)
+    )
+
+    # 4. 生成回答
+    response = generate_response(query, context)
+
+    return {
+        "original_query": query,
+        "transformation_type": transformation_type,
+        "context": context,
+        "response": response
+    }</code></pre>
+
+<!-- 10. 真实运行结果 -->
+<h2 id="demo">10. 真实运行结果展示</h2>
+
+<p>使用 <code>data/2024年AI行业报告.pdf</code>（35 个文本块）和验证集查询进行测试。以下是完整的运行输出：</p>
+
+<h3>查询转换效果</h3>
+
+<div class="query-demo">
+  <div class="label original">原始查询</div>
+  <div class="query-text">中国政府在AI上有哪些政策?</div>
+</div>
+
+<div class="query-demo">
+  <div class="label rewrite">重写后的查询（Rewrite）</div>
+  <div class="query-text">2023年中国政府在人工智能领域的政策和战略有哪些具体内容？请包括涉及人工智能技术研发、产业应用、数据隐私保护、伦理规范以及国际合作等方面的最新政策文件和指导意见。</div>
+</div>
+
+<div class="query-demo">
+  <div class="label stepback">后退一步查询（Step-back）</div>
+  <div class="query-text">各国政府在人工智能领域通常会制定哪些类型的政策和战略？</div>
+</div>
+
+<div class="query-demo">
+  <div class="label decompose">分解后的子查询（Decompose）</div>
+  <div class="query-text">
+    1. 中国政府在人工智能领域的总体发展战略是什么？<br>
+    2. 中国政府为支持人工智能技术的研究和创新采取了哪些具体措施？<br>
+    3. 中国政府在人工智能的伦理和监管方面有哪些政策和规定？<br>
+    4. 中国政府如何推动人工智能在各个行业中的应用和发展？
+  </div>
+</div>
+
+<h3>RAG 系统实际输出对比</h3>
+
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>✅ Original — RAG 回答</h4>
+    <p>中国政府对AI大模型发展的支持政策主要体现在以下几个方面：</p>
+    <p><strong>1. 政策规划与行动计划</strong>：2024年《政府工作报告》中提出开展"人工智能+"行动，各地方政府也出台了相关支持政策。</p>
+    <p><strong>2. 地方政府的具体措施</strong>：</p>
+    <ul>
+      <li><strong>北京</strong>：推动大模型相关技术创新，构建高效协同的大模型技术产业生态，建设大模型算法及工具开源开放平台</li>
+      <li><strong>上海</strong>：强调打造具备国际竞争力的大模型</li>
+      <li><strong>深圳</strong>：支持基于国内外芯片和算法的开源通用大模型</li>
+      <li><strong>安徽</strong>：从资源方面吸引大模型企业入驻</li>
+      <li><strong>成都</strong>：重点研发CV大模型、NLP大模型、多模态大模型</li>
+      <li><strong>杭州</strong>：支持头部企业开展多模态通用大模型关键技术攻关</li>
+    </ul>
+    <p><strong>3. 算力基础设施建设</strong>：北京加快建设人工智能公共算力中心和数字经济算力中心。</p>
+    <p><strong>4. 技术研究与创新</strong>：鼓励大模型创新算法及关键技术研究，探索基础模型架构创新。</p>
+    <p><strong>5. 开源技术生态</strong>：鼓励相关技术和算法的开源开放，形成协同创新的产业生态。</p>
+  </div>
+  <div class="compare-card">
+    <h4>📝 Rewrite — RAG 回答</h4>
+    <p>中国政府对AI大模型发展的支持政策主要体现在以下几个方面：</p>
+    <p><strong>1. 政策规划与实施</strong>：政府出台了多项政策文件，如《北京市加快建设具有全球影响力的人工智能创新策源地实施方案（2023-2025年）》和《深圳市加快推动人工智能高质量发展高水平应用行动方案（2023—2024年）》。</p>
+    <p><strong>2. 基础设施建设</strong>：各地政府加快建设人工智能公共算力中心和数字经济算力中心。</p>
+    <p><strong>3. 技术创新与研发支持</strong>：鼓励大模型创新算法及关键技术研究，支持在数据与知识深度联合学习、认知与推理、可控内容生成等领域进行研发。</p>
+    <p><strong>4. 产业生态构建</strong>：着力构建高效协同的大模型技术产业生态，支持开源技术生态建设。</p>
+    <p><strong>5. 企业支持与合作</strong>：支持重点企业持续研发和迭代商用通用大模型。</p>
+    <p><strong>6. 行业应用推动</strong>：政策支持大模型在办公、制造、金融、医疗、政务等领域的应用。</p>
+  </div>
+  <div class="compare-card">
+    <h4>🔭 Step-back — RAG 回答</h4>
+    <p>中国政府对AI大模型发展的支持政策主要包括以下几个方面：</p>
+    <p><strong>1. 技术创新与产业生态建设</strong>：各地政府积极推动大模型相关技术创新，构建高效协同的大模型技术产业生态。北京市着力推动大模型技术创新，支持全栈国产化人工智能创新。</p>
+    <p><strong>2. 算力基础设施建设</strong>：多个地方政府加快建设算力基础设施。北京正在建设人工智能公共算力中心，深圳和杭州也在推动算力设施的普及。</p>
+    <p><strong>3. 政策支持与资金投入</strong>：安徽优先匹配资源给落户的大模型企业，上海对取得重大成果的企业予以专项奖励。</p>
+    <p><strong>4. 行业应用与示范场景</strong>：上海重点支持智能制造、生物医药、自动驾驶等领域的示范应用，广东聚焦智能经济和智能社会。</p>
+    <p><strong>5. 开源与国际竞争力</strong>：深圳支持基于国内外芯片和算法的开源通用大模型，上海强调打造具备国际竞争力的大模型。</p>
+  </div>
+  <div class="compare-card">
+    <h4>✂️ Decompose — RAG 回答</h4>
+    <p>中国政府对AI大模型发展的支持政策主要包括以下几个方面：</p>
+    <p><strong>1. 技术创新与产业生态建设</strong>：北京着力推动大模型技术创新，组建全栈国产化人工智能创新联合体。</p>
+    <p><strong>2. 算力基础设施建设</strong>：北京正在建设人工智能公共算力中心和数字经济算力中心。杭州推进算力设施建设，目标是成为全国算力成本洼地。</p>
+    <p><strong>3. 开源与合作</strong>：深圳支持基于国内外芯片和算法的开源通用大模型。杭州鼓励相关技术和算法的开源开放，形成协同创新的产业生态。</p>
+    <p><strong>4. 重点领域应用</strong>：成都重点研发CV大模型、NLP大模型、多模态大模型，并在医疗、金融、商务、交通等行业进行应用。</p>
+    <p><strong>5. 企业支持与发展</strong>：支持重点企业持续研发和迭代商用通用大模型，鼓励中小企业深耕垂直领域。</p>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">💡 观察</div>
+  <p>对此特定查询和文档，原始查询的表现反而最好——它列举了最多的地方政府具体措施。Rewrite 回答虽然结构清晰且引用了具体文件名，但地方细节减少。Step-back 和 Decompose 各有侧重但都不够全面。这并不意外：当原始查询已经足够清晰且文档内容高度匹配时，额外的转换可能引入噪声或偏移检索方向。</p>
+</div>
+
+<h3>LLM-as-Judge 评测原文摘要</h3>
+
+<div class="callout success">
+  <div class="callout-title">✅ 评测员点评</div>
+  <p><strong>Original（26分）</strong>：原始回复涵盖了政策规划、地方政府措施、算力基础设施建设、技术研究与创新、开源技术生态等方面，准确描述了支持政策。在描述政策细节方面更为全面准确，与参考答案的契合度也更高。</p>
+  <p><strong>Rewrite（23分）</strong>：覆盖了多个方面，但在一些细节上略显不足，例如没有具体提及地方政府的具体措施。</p>
+  <p><strong>Step-back（23分）</strong>：涉及技术创新、基础设施建设、政策支持与资金投入等方面，但在一些细节上有所遗漏。</p>
+  <p><strong>Decompose（24分）</strong>：涉及技术创新、算力建设、开源合作、重点领域应用等方面，准确性和相关性表现较好，但完整性有所欠缺。</p>
+</div>
+
+<!-- 11. 评估对比 -->
+<h2 id="eval">11. LLM-as-Judge 评估对比</h2>
+
+<p>使用 GPT-3.5-turbo 作为裁判，从<strong>准确性、完整性、相关性</strong>三个维度对四种方式的回答进行 1-10 分评分：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>转换方式</th>
+      <th>准确性</th>
+      <th>完整性</th>
+      <th>相关性</th>
+      <th>总分</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Original</strong></td>
+      <td>8</td>
+      <td>9</td>
+      <td>9</td>
+      <td><span class="score-highlight up">26</span></td>
+    </tr>
+    <tr>
+      <td><strong>Rewrite</strong></td>
+      <td>7</td>
+      <td>8</td>
+      <td>8</td>
+      <td>23</td>
+    </tr>
+    <tr>
+      <td><strong>Step-back</strong></td>
+      <td>7</td>
+      <td>8</td>
+      <td>8</td>
+      <td>23</td>
+    </tr>
+    <tr>
+      <td><strong>Decompose</strong></td>
+      <td>8</td>
+      <td>8</td>
+      <td>8</td>
+      <td>24</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout success">
+  <div class="callout-title">✅ 评估结论</div>
+  <p><strong>Original 表现最好（26 分）</strong>，因为原始查询"中国政府对AI大模型发展有哪些支持政策"已经足够具体，文档内容也高度匹配。Decompose 以 24 分紧随其后，说明子查询分解在保持准确性方面有一定优势。Rewrite 和 Step-back 均为 23 分——过度重写反而可能偏离文档中的精确表述。</p>
+</div>
+
+<!-- 12. 评分可视化 -->
+<h2 id="chart">12. 评分可视化</h2>
+
+<div class="chart-wrapper">
+  <canvas id="scoreChart"></canvas>
+</div>
+
+<!-- 13. 优缺点与适用场景 -->
+<h2 id="tradeoff">13. 优缺点与适用场景</h2>
+
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>✅ 优势</h4>
+    <ul>
+      <li><strong>无需修改检索基础设施</strong>：纯查询侧优化，即插即用</li>
+      <li><strong>可组合</strong>：三种技术可并行使用，取各自检索结果的并集</li>
+      <li><strong>适配性强</strong>：针对不同查询类型选择不同策略</li>
+      <li><strong>提升召回率</strong>：特别是分解模式，能覆盖更多语义维度</li>
+    </ul>
+  </div>
+  <div class="compare-card bad">
+    <h4>⚠️ 局限</h4>
+    <ul>
+      <li><strong>额外 LLM 调用</strong>：每次查询增加 1~N 次 LLM 调用，延迟和成本上升</li>
+      <li><strong>可能引入噪声</strong>：重写/后退可能偏离原始意图</li>
+      <li><strong>依赖 LLM 质量</strong>：转换效果直接取决于 LLM 的理解能力</li>
+      <li><strong>简单查询无需转换</strong>：当原始查询已经足够好时，转换反而降低性能</li>
+    </ul>
+  </div>
+</div>
+
+<h3>何时使用哪种技术？</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>查询特征</th>
+      <th>推荐技术</th>
+      <th>理由</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>简短、模糊、缺少关键词</td>
+      <td><strong>查询重写</strong></td>
+      <td>补充语义信息，提高精确度</td>
+    </tr>
+    <tr>
+      <td>需要背景知识或上下文</td>
+      <td><strong>后退提示</strong></td>
+      <td>先获取宽泛背景，再精确定位</td>
+    </tr>
+    <tr>
+      <td>多主题、多维度复合问题</td>
+      <td><strong>子查询分解</strong></td>
+      <td>分而治之，确保每个维度都被检索到</td>
+    </tr>
+    <tr>
+      <td>已经足够具体的查询</td>
+      <td><strong>不转换</strong></td>
+      <td>避免引入不必要的噪声和延迟</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- 14. 小结 -->
+<h2 id="summary">14. 本篇小结</h2>
+
+<div class="callout success">
+  <div class="callout-title">🎯 核心收获</div>
+  <ul>
+    <li><strong>查询转换是 RAG 的"查询侧增强"</strong>——不改索引、不改向量库，只优化查询本身</li>
+    <li><strong>三种技术各有侧重</strong>：重写让查询更精确，后退让查询更宽泛，分解让查询更全面</li>
+    <li><strong>没有银弹</strong>：评估显示原始查询在此场景下表现最好，说明查询转换并非总是有益</li>
+    <li><strong>实践建议</strong>：可以先判断查询复杂度，再决定是否启用转换以及使用哪种策略</li>
+  </ul>
+</div>
+
+<p>在下一篇中，我们将探索<strong>重排序（Reranking）</strong>——在检索完成后对结果进行二次排序，进一步提升上下文质量。这是 RAG 管道中另一个关键的"后处理"优化环节。</p>
+
+<!-- 系列导航 -->
+<div class="series-nav">
+  <a href="6_文档增强RAG_blog.html">← 上一篇：文档增强 RAG</a>
+  <a href="8_重排序_blog.html">下一篇：重排序 →</a>
+</div>
+
+</div><!-- .container -->
+
+<footer>
+  <p>从零到 RAG 大师 · 第 7 篇 · 查询转换 Query Transformation</p>
+  <p>基于 Jupyter Notebook 生成 · 完整代码见 <code>7_查询转换.ipynb</code></p>
+</footer>
+
+<script>
+  // Mermaid 初始化
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    flowchart: { curve: 'basis', padding: 15 },
+    themeVariables: {
+      darkMode: true,
+      background: '#161b22',
+      primaryColor: '#1f6feb',
+      primaryTextColor: '#e6edf3',
+      lineColor: '#58a6ff'
+    }
+  });
+
+  // highlight.js 初始化
+  hljs.highlightAll();
+
+  // Chart.js 评分柱状图
+  const ctx = document.getElementById('scoreChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Original', 'Rewrite', 'Step-back', 'Decompose'],
+      datasets: [
+        {
+          label: '准确性',
+          data: [8, 7, 7, 8],
+          backgroundColor: 'rgba(88, 166, 255, 0.8)',
+          borderColor: '#58a6ff',
+          borderWidth: 1
+        },
+        {
+          label: '完整性',
+          data: [9, 8, 8, 8],
+          backgroundColor: 'rgba(63, 185, 80, 0.8)',
+          borderColor: '#3fb950',
+          borderWidth: 1
+        },
+        {
+          label: '相关性',
+          data: [9, 8, 8, 8],
+          backgroundColor: 'rgba(240, 136, 62, 0.8)',
+          borderColor: '#f0883e',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: '四种查询方式评分对比（LLM-as-Judge）',
+          color: '#e6edf3',
+          font: { size: 14, weight: 'bold' }
+        },
+        legend: {
+          labels: { color: '#e6edf3' }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8b949e' },
+          grid: { color: '#30363d' }
+        },
+        y: {
+          beginAtZero: false,
+          min: 5,
+          max: 10,
+          ticks: { color: '#8b949e', stepSize: 1 },
+          grid: { color: '#30363d' },
+          title: {
+            display: true,
+            text: '评分 (1-10)',
+            color: '#8b949e'
+          }
+        }
+      }
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,9 +1,9 @@
-﻿---
+---
 title: RAG 混合检索策略深度解析：从 BM25+向量到 RRF 与生产取舍
 slug: rag-hybrid-retrieval-strategy
 date: 2025-05-20
 readTime: 24 分钟
-category: 工程实践
+category: RAG 与检索
 tags: RAG, BM25, Hybrid Search, RRF, 检索增强生成
 cover: ./content/assets/posts/covers/rag-hybrid-retrieval.svg
 excerpt: 纯向量 RAG 常漏 SKU 与错误码？详解 BM25 与稠密检索如何互补、RRF 为何是生产默认融合，含中文 jieba 分词要点、Python 示例与消融评测清单。
@@ -20,6 +20,9 @@ excerpt: 纯向量 RAG 常漏 SKU 与错误码？详解 BM25 与稠密检索如�
 类似事故在运维文档（`ERROR 0x4A2`）、法务条款号、车牌序列号查询里反复出现：**向量把稀有 token 抹进了泛化语义里，BM25 却能在毫秒内钉死精确词。**
 
 如果你已经搭过纯向量 [RAG 系统重构实战](https://tangentllm.github.io/weblog/post/rag-production-refactor/) 里的单路方案，但 Hit@5 卡在 70% 上下、生成端总在「泛泛而谈」，这篇会把 **双路失效模式、RRF 公式直觉、中文 BM25 分词坑、以及三种落地方式** 一次讲透。读完你应该能判断：该不该上混合检索、融合算法选哪种、参数从哪组默认值起跑。
+
+> **适用读者**
+> 本文假设你已上线或深度调试过纯向量 RAG，并希望在 SKU、错误码、条款号等精确词查询上补强召回。若还在 Demo 阶段，可先读 [RAG 生产实战](/post/rag-production-refactor)。
 
 > **Key Takeaways**
 > - **RAG 混合检索** = 稠密 + BM25 并行召回 + RRF 融合；生产默认再加 Reranker，而不是调两周 `weights=[0.4, 0.6]`。

@@ -11,15 +11,28 @@
       "Workflow"
     ],
     "summary": "通过角色化 Agent 协作，把运营分析流程从天级缩短到小时级。",
+    "excerpt": "通过 Planner / Analyst / Writer / Supervisor 四角色分工，把运营分析从目标拆解、跨系统取数到复盘报告串成一条可观测链路。LangGraph 状态机负责编排与人工接管，统一 Tool Registry 对接 BI、埋点与文档系统，把原本天级的分析流程压缩到小时级。详情页会拆开展示架构设计、各 Agent 职责划分、关键指标，以及从 PoC 到可运维部署时的取舍与踩坑记录。",
     "cover": "./content/assets/projects/covers/agent-ops.svg",
-    "architecture": [],
-    "features": [],
-    "metrics": [],
+    "architecture": [
+      "Planner / Analyst / Writer / Supervisor 四角色分工",
+      "LangGraph 状态机编排任务流转与人工接管",
+      "统一 Tool Registry 对接 BI、埋点与文档系统"
+    ],
+    "features": [
+      "目标拆解与任务规划（Planner Agent）",
+      "跨系统数据拉取与指标分析（Analyst Agent）",
+      "结构化复盘报告生成（Writer Agent）",
+      "输出校验与风险兜底（Supervisor Agent）"
+    ],
+    "metrics": [
+      "运营分析链路从「天级」压缩到「小时级」",
+      "关键步骤 100% 可观测、可人工介入"
+    ],
     "screenshots": [],
     "links": {
       "github": "https://github.com/tangentllm/weblog",
-      "demo": "https://example.com/",
-      "docs": "https://example.com/docs"
+      "demo": "",
+      "docs": "https://github.com/tangentllm/weblog/tree/main/content/projects"
     },
     "file": "./content/projects/multi-agent-ops.md"
   },
@@ -35,15 +48,28 @@
       "A/B Test"
     ],
     "summary": "围绕真实业务样本做离线评测，建立 Prompt 与模型变更的质量闸门。",
+    "excerpt": "围绕真实业务样本做离线评测，在 Prompt 与模型版本双维度上建立变更前的质量闸门。支持样本分层、A/B 对比与 CI 回归拦截，单次百条样本全量评测可在 15 分钟内完成，拦截率稳定在 90% 以上。平台把样本集管理、评测调度与报告聚合拆成三层，每次 Prompt 或模型切换都会自动跑回归，避免「改一句就上线」的质量风险。",
     "cover": "./content/assets/projects/covers/eval-studio.svg",
-    "architecture": [],
-    "features": [],
-    "metrics": [],
+    "architecture": [
+      "样本集管理 + 评测任务调度 + 报告聚合三层结构",
+      "Prompt 版本与模型版本双维度对比",
+      "CI 钩子接入发布流水线做回归拦截"
+    ],
+    "features": [
+      "业务样本集导入与分层抽样",
+      "多维度自动评分（准确性、格式、延迟）",
+      "Prompt A/B 对比与历史版本回溯",
+      "评测报告导出与变更审批流"
+    ],
+    "metrics": [
+      "Prompt 变更前自动跑回归，拦截率 > 90%",
+      "单次全量评测耗时 < 15 分钟（百条样本）"
+    ],
     "screenshots": [],
     "links": {
       "github": "https://github.com/tangentllm/weblog",
-      "demo": "https://example.com/",
-      "docs": "https://example.com/docs"
+      "demo": "",
+      "docs": "https://github.com/tangentllm/weblog/tree/main/content/projects"
     },
     "file": "./content/projects/llm-eval-studio.md"
   },
@@ -60,15 +86,28 @@
       "权限系统"
     ],
     "summary": "将文档、FAQ、工单统一索引，构建可审计的企业问答助手。",
+    "excerpt": "将文档、FAQ、工单统一索引，构建带引用溯源、可按部门权限过滤的企业问答助手。摄取 → 分块嵌入 → 检索重排 → 生成的流水线由 LangGraph 编排，并内置自我纠错与对话审计闭环，Top-3 检索命中率 82%。Supabase 负责向量存储与 ACL，回答必须带可点击引用；若检索置信度不足会主动拒答，而不是编造来源。",
     "cover": "./content/assets/projects/covers/rag-copilot.svg",
-    "architecture": [],
-    "features": [],
-    "metrics": [],
+    "architecture": [
+      "文档摄取 → 分块嵌入 → 向量检索 → 重排序 → 生成",
+      "基于角色的 ACL 过滤检索结果",
+      "LangGraph 编排多步检索与自我纠错"
+    ],
+    "features": [
+      "多源文档统一索引（PDF / Markdown / 工单）",
+      "带引用溯源的问答输出",
+      "按部门与角色的权限检索",
+      "对话审计与反馈闭环"
+    ],
+    "metrics": [
+      "Top-3 检索命中率 82%（内部评测集）",
+      "平均首 token 延迟 < 1.2s"
+    ],
     "screenshots": [],
     "links": {
       "github": "https://github.com/tangentllm/weblog",
-      "demo": "https://example.com/",
-      "docs": "https://example.com/docs"
+      "demo": "",
+      "docs": "https://github.com/tangentllm/weblog/tree/main/content/projects"
     },
     "file": "./content/projects/rag-copilot-platform.md"
   }

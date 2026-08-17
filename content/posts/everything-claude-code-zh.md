@@ -3,7 +3,7 @@ title: Everything Claude Code 中文版 - 完整使用教程
 slug: everything-claude-code-zh-guide
 date: 2025-03-22
 readTime: 35 分钟
-category: 工程实践
+category: 智能体
 tags: Claude Code, MCP, Skill, Agent, Function Calling
 cover: ./content/assets/posts/covers/everything-claude-code.svg
 excerpt: 从安装配置到代理、技能、钩子、规则与 MCP 的完整实践指南。
@@ -950,7 +950,8 @@ MCP（Model Context Protocol）将 Claude 直接连接到外部服务。它不�
 
 ### 9.4 上下文窗口管理
 
-**关键提示**：不要一次启用所有 MCP。如果启用了太多工具，你的 200k 上下文窗口可能会缩小到 70k。
+> **关键提示**
+> 不要一次启用所有 MCP。如果启用了太多工具，你的 200k 上下文窗口可能会缩小到 70k。
 
 **经验法则**：
 - 配置 20-30 个 MCP

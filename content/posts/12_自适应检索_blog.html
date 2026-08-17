@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（十二）：自适应检索——意图识别</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle { color: var(--text-muted); font-size: 1.05rem; }
+  header .meta { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+  header .meta span { margin: 0 0.5rem; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .toc a:hover { color: var(--accent); }
+
+  h2 {
+    font-size: 1.6rem; font-weight: 700;
+    margin: 2.5rem 0 1rem; padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border); color: var(--text);
+  }
+  h3 { font-size: 1.25rem; font-weight: 600; margin: 1.8rem 0 0.8rem; color: var(--accent); }
+
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: var(--accent2); }
+  em { color: var(--accent3); font-style: normal; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+    margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.88rem; }
+  p code, li code {
+    background: var(--tag-bg); padding: 0.15rem 0.4rem;
+    border-radius: 4px; font-size: 0.85rem; color: var(--accent3);
+  }
+
+  .callout {
+    background: var(--surface); border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .callout.warning { border-left-color: var(--accent3); }
+  .callout.success { border-left-color: var(--accent2); }
+  .callout .callout-title { font-weight: 700; margin-bottom: 0.3rem; font-size: 0.95rem; }
+
+  .diagram-container {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+    text-align: center; overflow-x: auto;
+  }
+  .diagram-container .caption {
+    font-size: 0.85rem; color: var(--text-muted); margin-top: 0.8rem; text-align: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--border); padding: 0.6rem 1rem; text-align: left; }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+  }
+  .compare-card h4 { font-size: 1rem; margin-bottom: 0.6rem; }
+  .compare-card.bad h4 { color: var(--accent3); }
+  .compare-card.good h4 { color: var(--accent2); }
+  .compare-card ul { padding-left: 1rem; }
+
+  .strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+  .strategy-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+  }
+  .strategy-card h4 { font-size: 1rem; margin-bottom: 0.6rem; }
+  .strategy-card .tag {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .strategy-card.factual .tag { background: #1f6feb33; color: var(--accent); border: 1px solid #1f6feb; }
+  .strategy-card.analytical .tag { background: #a371f733; color: #d2a8ff; border: 1px solid #a371f7; }
+  .strategy-card.opinion .tag { background: #f0883e33; color: var(--accent3); border: 1px solid #f0883e; }
+  .strategy-card.contextual .tag { background: #3fb95033; color: var(--accent2); border: 1px solid #3fb950; }
+  .strategy-card ul { padding-left: 1rem; font-size: 0.92rem; }
+
+  footer {
+    margin-top: 3rem; padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center; color: var(--text-muted); font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  .series-nav { display: flex; justify-content: space-between; margin-top: 2rem; gap: 1rem; }
+  .series-nav a {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.8rem 1.2rem; color: var(--accent);
+    text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .series-nav a:hover { border-color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header h1 { font-size: 1.5rem; }
+    .compare-grid, .strategy-grid { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 12 篇</div>
+  <h1>自适应检索——意图识别</h1>
+  <p class="subtitle">不是所有查询都该用同一种检索方式——根据查询意图动态选择最优策略</p>
+  <div class="meta">
+    <span>📅 2026-07-10</span>
+    <span>·</span>
+    <span>🏷️ RAG / 自适应检索 / 意图识别 / 查询分类</span>
+    <span>·</span>
+    <span>⏱️ 阅读约 16 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#motivation">问题动机：一把钥匙开所有锁？</a></li>
+    <li><a href="#four-types">四种查询类型与对应策略</a></li>
+    <li><a href="#decision-tree">分类决策树</a></li>
+    <li><a href="#pipeline">自适应检索完整管道</a></li>
+    <li><a href="#code-classify">代码解读：查询分类</a></li>
+    <li><a href="#code-factual">代码解读：事实性检索策略</a></li>
+    <li><a href="#code-analytical">代码解读：分析性检索策略</a></li>
+    <li><a href="#code-opinion">代码解读：观点性检索策略</a></li>
+    <li><a href="#code-contextual">代码解读：情境性检索策略</a></li>
+    <li><a href="#code-adaptive">代码解读：自适应检索核心</a></li>
+    <li><a href="#code-score">代码解读：LLM 文档评分</a></li>
+    <li><a href="#demo">效果演示与评估</a></li>
+    <li><a href="#proscons">优缺点与适用场景</a></li>
+    <li><a href="#summary">本篇小结</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== 1. 动机 ===================== -->
+<h2 id="motivation">一、问题动机：一把钥匙开所有锁？</h2>
+
+<p>在前面的篇章中，我们陆续学习了<strong>语义分块</strong>（<a href="2_语义分块_blog.html">第 2 篇</a>）、<strong>上下文增强</strong>（<a href="4_上下文增强检索_blog.html">第 4 篇</a>）、<strong>标题提取</strong>（<a href="5_上下文片段标题提取_blog.html">第 5 篇</a>）、<strong>反馈回路</strong>（第 11 篇）等 RAG 优化技术。但这些方案都有一个共同假设：<strong>所有查询都用同一种检索策略</strong>——嵌入查询 → 向量相似度 → Top-K。</p>
+
+<p>然而，用户的查询千差万别。"北京的面积是多少？"和"如何看待远程办公对团队协作的影响？"这两个查询，虽然都可以用向量检索来找答案，但<strong>最优的检索方式截然不同</strong>。</p>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 类比理解</div>
+  <p>想象你去图书馆找资料。如果你问"《红楼梦》是哪年出版的？"，馆员会直接查数据库给你一个精确答案。但如果你问"比较红楼梦与金瓶梅的叙事手法"，馆员会带你到三个不同的书架，分别找文学评论、比较文学和古典小说研究。再比如你问"如果曹雪芹活在当代，他会怎么写？"——馆员需要先理解你的隐含假设，然后从相关领域找材料。</p>
+  <p>不同的问题需要<strong>不同的查找策略</strong>。RAG 也一样。</p>
+</div>
+
+<p><strong>自适应检索（Adaptive Retrieval）</strong>的核心思路是：先用 LLM 对用户查询进行<strong>意图分类</strong>，然后根据分类结果<strong>动态选择最合适的检索策略</strong>。本系列将其归纳为四种查询类型，每种类型对应一套专门的检索流程。</p>
+
+<!-- ===================== 2. 四种查询类型 ===================== -->
+<h2 id="four-types">二、四种查询类型与对应策略</h2>
+
+<div class="strategy-grid">
+  <div class="strategy-card factual">
+    <span class="tag">事实性 Factual</span>
+    <h4>精确查找 → LLM 评分重排</h4>
+    <ul>
+      <li>查询特征：有明确、客观的答案</li>
+      <li>策略：LLM 增强查询精确性 → 向量检索 → <strong>LLM 评分重排</strong> → 取 Top-K</li>
+      <li>典型问题：&ldquo;Python 的 GIL 是什么？&rdquo;、&ldquo;公司的年假政策？&rdquo;</li>
+    </ul>
+  </div>
+  <div class="strategy-card analytical">
+    <span class="tag">分析性 Analytical</span>
+    <h4>拆解子问题 → 分别检索</h4>
+    <ul>
+      <li>查询特征：需要多角度分析或比较</li>
+      <li>策略：生成 <strong>3 个子问题</strong> → 分别检索 → 去重合并保证多样性</li>
+      <li>典型问题：&ldquo;比较 React 和 Vue 的优缺点&rdquo;</li>
+    </ul>
+  </div>
+  <div class="strategy-card opinion">
+    <span class="tag">观点性 Opinion</span>
+    <h4>识别视角 → 确保覆盖</h4>
+    <ul>
+      <li>查询特征：涉及主观判断或争议性话题</li>
+      <li>策略：识别 <strong>3 个不同视角</strong> → 组合查询检索 → 确保每个视角至少一个文档</li>
+      <li>典型问题：&ldquo;远程办公是否提高了生产力？&rdquo;</li>
+    </ul>
+  </div>
+  <div class="strategy-card contextual">
+    <span class="tag">情境性 Contextual</span>
+    <h4>推断上下文 → 重构查询</h4>
+    <ul>
+      <li>查询特征：含有隐含前提或省略的上下文</li>
+      <li>策略：推断隐含上下文 → <strong>重构查询</strong> → 按上下文相关性排序</li>
+      <li>典型问题：&ldquo;这对我们有什么影响？&rdquo;（需要知道"这"指什么、"我们"是谁）</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout success">
+  <div class="callout-title">💡 核心思想</div>
+  <p>传统 RAG 是"一个策略打天下"，自适应 RAG 是"看菜下饭"。查询分类器充当<strong>路由器</strong>的角色——它不改变底层向量数据库或嵌入模型，只改变<strong>查询的处理方式</strong>和<strong>结果的筛选逻辑</strong>。</p>
+</div>
+
+<!-- ===================== 3. 分类决策树 ===================== -->
+<h2 id="decision-tree">三、分类决策树</h2>
+
+<p>LLM 如何判断一个查询属于哪种类型？下面的决策树展示了分类的逻辑：</p>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    START["🔍 用户查询"] --> Q1{"查询是否寻求\n单一客观事实？"}
+    Q1 -->|是| FACT["📘 事实性\nFactual"]
+    Q1 -->|否| Q2{"查询是否需要\n多角度分析/比较？"}
+    Q2 -->|是| Q3{"查询是否涉及\n主观判断/争议？"}
+    Q2 -->|否| Q4{"查询是否含有\n隐含前提/省略上下文？"}
+    Q3 -->|是| OPINION["🟠 观点性\nOpinion"]
+    Q3 -->|否| ANALYTICAL["🟣 分析性\nAnalytical"]
+    Q4 -->|是| CONTEXTUAL["🟢 情境性\nContextual"]
+    Q4 -->|否| FACT2["📘 默认归为\n事实性"]
+
+    style START fill:#1f6feb,stroke:#388bfd,color:#fff
+    style FACT fill:#1f6feb,stroke:#388bfd,color:#fff
+    style FACT2 fill:#1f6feb,stroke:#388bfd,color:#fff
+    style ANALYTICAL fill:#a371f7,stroke:#bc8cff,color:#fff
+    style OPINION fill:#f0883e,stroke:#d47616,color:#fff
+    style CONTEXTUAL fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 1：查询分类决策树——通过逐层判断查询特征，将其归入四种类型之一</div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">🔍 实现方式</div>
+  <p>实际实现中，我们并不手写规则来判断决策树的每个节点——而是让 LLM 直接完成分类。通过精心设计的 prompt，LLM 一次性分析查询的所有特征并返回分类结果。决策树只是帮助我们理解分类逻辑的结构。</p>
+</div>
+
+<!-- ===================== 4. 完整管道 ===================== -->
+<h2 id="pipeline">四、自适应检索完整管道</h2>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    A["👤 用户查询"] --> B["🧠 查询分类\n classify_query()"]
+    B --> C{"查询类型？"}
+
+    C -->|事实性| D1["LLM 增强查询精确性"]
+    D1 --> D2["向量检索"]
+    D2 --> D3["🌟 LLM 评分重排\n score_document_relevance()"]
+    D3 --> D4["按评分取 Top-K"]
+
+    C -->|分析性| E1["LLM 生成 3 个子问题"]
+    E1 --> E2["分别检索每个子问题"]
+    E2 --> E3["去重合并\n保证多样性"]
+
+    C -->|观点性| F1["LLM 识别 3 个视角"]
+    F1 --> F2["组合查询检索"]
+    F2 --> F3["确保每个视角\n至少一个文档"]
+
+    C -->|情境性| G1["LLM 推断隐含上下文"]
+    G1 --> G2["重构查询"]
+    G2 --> G3["按上下文相关性排序"]
+
+    D4 --> H["📝 检索结果"]
+    E3 --> H
+    F3 --> H
+    G3 --> H
+
+    style A fill:#1f6feb,stroke:#388bfd,color:#fff
+    style B fill:#a371f7,stroke:#bc8cff,color:#fff
+    style C fill:#161b22,stroke:#58a6ff,color:#58a6ff
+    style D3 fill:#da3633,stroke:#f85149,color:#fff
+    style H fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 2：自适应检索完整管道——查询分类器将请求路由到四种策略之一，每种策略有独立的检索流程</div>
+</div>
+
+<!-- ===================== 5. 代码：查询分类 ===================== -->
+<h2 id="code-classify">五、代码解读：查询分类</h2>
+
+<p>查询分类是整个自适应检索的"路由器"。它用 LLM 判断查询属于哪种类型：</p>
+
+<pre><code class="language-python">def classify_query(query, model="gpt-4o"):
+    """根据查询内容将其分类为四种类型之一。"""
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0,
+        messages=[
+            {"role": "system", "content": """Classify the following query into one of these categories:
+- 'factual': seeks specific, objective facts or data
+- 'analytical': requires multi-angle analysis or comparison
+- 'opinion': involves subjective judgments or controversial topics
+- 'contextual': contains implicit context or missing background
+
+Return only the category name."""},
+            {"role": "user", "content": query}
+        ]
+    )
+    return response.choices[0].message.content.strip().lower()</code></pre>
+
+<div class="callout">
+  <div class="callout-title">🔍 设计要点</div>
+  <ul>
+    <li><strong>temperature=0</strong>：分类需要确定性输出，同样的查询应始终归入同一类别</li>
+    <li><strong>四类互斥</strong>：prompt 明确要求只返回一个类别名称，不做多标签分类</li>
+    <li><strong>默认回退</strong>：当查询特征不明显时，LLM 倾向于归为"事实性"——这是最安全的默认选择</li>
+    <li><strong>使用 gpt-4o</strong>：分类需要较强的语义理解能力，gpt-4o 比 gpt-3.5-turbo 更准确</li>
+  </ul>
+</div>
+
+<h3>分类示例</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>用户查询</th>
+      <th>分类结果</th>
+      <th>判断依据</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>"中国的首都是哪里？"</td>
+      <td><em>factual</em></td>
+      <td>寻求单一客观事实</td>
+    </tr>
+    <tr>
+      <td>"比较分布式数据库和集中式数据库的优缺点"</td>
+      <td><em>analytical</em></td>
+      <td>需要多角度比较分析</td>
+    </tr>
+    <tr>
+      <td>"远程办公是否提高了员工生产力？"</td>
+      <td><em>opinion</em></td>
+      <td>涉及主观判断和争议</td>
+    </tr>
+    <tr>
+      <td>"这对我们的项目有什么影响？"</td>
+      <td><em>contextual</em></td>
+      <td>"这"和"我们"指代不明，需要推断上下文</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 6. 代码：事实性策略 ===================== -->
+<h2 id="code-factual">六、代码解读：事实性检索策略</h2>
+
+<p>事实性查询的核心需求是<strong>精确</strong>。策略分三步：增强查询 → 检索 → LLM 评分重排。</p>
+
+<pre><code class="language-python">def factual_retrieval_strategy(query, vector_store, k=4):
+    """事实性查询：LLM增强查询 → 检索 → LLM评分重排 → Top-K。"""
+    # 步骤1：用 LLM 增强查询精确性
+    enhanced_query_response = client.chat.completions.create(
+        model="gpt-4o",
+        temperature=0,
+        messages=[
+            {"role": "system", "content": "Rewrite the query to be more specific and precise for fact retrieval."},
+            {"role": "user", "content": query}
+        ]
+    )
+    enhanced_query = enhanced_query_response.choices[0].message.content
+
+    # 步骤2：向量检索（扩大候选集）
+    candidates = vector_store.similarity_search(enhanced_query, k=k * 3)
+
+    # 步骤3：LLM 评分重排
+    scored_docs = []
+    for doc in candidates:
+        score = score_document_relevance(enhanced_query, doc.page_content)
+        scored_docs.append((doc, score))
+
+    scored_docs.sort(key=lambda x: x[1], reverse=True)
+    return [doc for doc, _ in scored_docs[:k]]</code></pre>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+    A["原始查询"] --> B["LLM 增强\n精确化改写"]
+    B --> C["向量检索\n候选集 = 3K"]
+    C --> D["🌟 LLM 逐文档\n评分 0-10"]
+    D --> E["按评分排序\n取 Top-K"]
+
+    style B fill:#a371f7,stroke:#bc8cff,color:#fff
+    style D fill:#da3633,stroke:#f85149,color:#fff
+    style E fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 3：事实性策略流程——LLM 评分重排是与其他策略的关键区别</div>
+</div>
+
+<div class="callout success">
+  <div class="callout-title">💡 为什么需要 LLM 评分重排？</div>
+  <p>向量相似度只能衡量语义"距离"，但无法判断文档是否<strong>真正回答了问题</strong>。例如查询"Python 的 GIL 是什么？"，向量检索可能返回大量提到"Python"和"性能"的文档，但其中一些可能完全没有解释 GIL。LLM 评分能精确判断每个文档对查询的<strong>实际相关度</strong>，从而过滤掉"语义相近但答非所问"的文档。</p>
+</div>
+
+<!-- ===================== 7. 代码：分析性策略 ===================== -->
+<h2 id="code-analytical">七、代码解读：分析性检索策略</h2>
+
+<p>分析性查询需要<strong>多角度覆盖</strong>。策略是拆解成子问题，分别检索，再合并去重。</p>
+
+<pre><code class="language-python">def analytical_retrieval_strategy(query, vector_store, k=4):
+    """分析性查询：生成子问题 → 分别检索 → 去重合并保证多样性。"""
+    # 步骤1：生成 3 个子问题
+    subqueries_response = client.chat.completions.create(
+        model="gpt-4o",
+        temperature=0.7,
+        messages=[
+            {"role": "system", "content": """Break down the query into 3 distinct sub-questions
+that together would provide a comprehensive answer.
+Return each sub-question on a new line."""},
+            {"role": "user", "content": query}
+        ]
+    )
+    subqueries = subqueries_response.choices[0].message.content.strip().split("\n")
+
+    # 步骤2：分别检索每个子问题
+    all_docs = []
+    seen_content = set()
+    per_query_k = max(k, 2)
+
+    for subquery in subqueries[:3]:
+        docs = vector_store.similarity_search(subquery.strip(), k=per_query_k)
+        for doc in docs:
+            # 步骤3：去重——基于内容哈希
+            content_hash = hash(doc.page_content[:100])
+            if content_hash not in seen_content:
+                seen_content.add(content_hash)
+                all_docs.append(doc)
+
+    return all_docs[:k]</code></pre>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+    A["原始查询"] --> B["LLM 生成\n3 个子问题"]
+    B --> C1["子问题 1\n→ 检索"]
+    B --> C2["子问题 2\n→ 检索"]
+    B --> C3["子问题 3\n→ 检索"]
+    C1 --> D["去重合并\n保证多样性"]
+    C2 --> D
+    C3 --> D
+    D --> E["返回 Top-K"]
+
+    style B fill:#a371f7,stroke:#bc8cff,color:#fff
+    style D fill:#f0883e,stroke:#d47616,color:#fff
+    style E fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 4：分析性策略流程——将复杂问题拆解为子问题，分别检索后去重合并</div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">🔍 设计要点</div>
+  <ul>
+    <li><strong>temperature=0.7</strong>：子问题生成需要一定的创造性，避免三个子问题过于雷同</li>
+    <li><strong>去重机制</strong>：基于内容前 100 字符的哈希值去重，防止同一文档被多个子问题重复检索</li>
+    <li><strong>多样性保证</strong>：每个子问题独立检索，确保结果覆盖不同角度</li>
+  </ul>
+</div>
+
+<h3>查询转换示例</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>原始查询</th>
+      <th>生成的子问题</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="3">"比较分布式数据库和集中式数据库的优缺点"</td>
+      <td>1. "分布式数据库相比集中式数据库有哪些优势？"</td>
+    </tr>
+    <tr>
+      <td>2. "集中式数据库在哪些场景下优于分布式数据库？"</td>
+    </tr>
+    <tr>
+      <td>3. "企业在选择分布式或集中式数据库时应考虑哪些因素？"</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 8. 代码：观点性策略 ===================== -->
+<h2 id="code-opinion">八、代码解读：观点性检索策略</h2>
+
+<p>观点性查询需要<strong>多视角覆盖</strong>，确保不遗漏任何立场。</p>
+
+<pre><code class="language-python">def opinion_retrieval_strategy(query, vector_store, k=4):
+    """观点性查询：识别视角 → 组合查询 → 确保每个视角有文档。"""
+    # 步骤1：识别 3 个不同视角
+    perspectives_response = client.chat.completions.create(
+        model="gpt-4o",
+        temperature=0.7,
+        messages=[
+            {"role": "system", "content": """Identify 3 distinct perspectives or viewpoints
+on this topic. Return each perspective on a new line,
+formatted as a search query."""},
+            {"role": "user", "content": query}
+        ]
+    )
+    perspectives = perspectives_response.choices[0].message.content.strip().split("\n")
+
+    # 步骤2：组合查询检索
+    all_docs = []
+    perspective_docs = {}
+
+    for i, perspective in enumerate(perspectives[:3]):
+        docs = vector_store.similarity_search(perspective.strip(), k=2)
+        perspective_docs[f"perspective_{i+1}"] = docs
+        all_docs.extend(docs)
+
+    # 步骤3：确保每个视角至少一个文档
+    final_docs = []
+    seen = set()
+    # 先从每个视角取第一个文档
+    for key, docs in perspective_docs.items():
+        if docs and hash(docs[0].page_content[:100]) not in seen:
+            seen.add(hash(docs[0].page_content[:100]))
+            final_docs.append(docs[0])
+    # 再补充剩余文档直到达到 k
+    for doc in all_docs:
+        if len(final_docs) >= k:
+            break
+        content_hash = hash(doc.page_content[:100])
+        if content_hash not in seen:
+            seen.add(content_hash)
+            final_docs.append(doc)
+
+    return final_docs</code></pre>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+    A["原始查询"] --> B["LLM 识别\n3 个视角"]
+    B --> C1["视角 1\n支持方"]
+    B --> C2["视角 2\n反对方"]
+    B --> C3["视角 3\n中立/综合"]
+    C1 --> D1["检索"]
+    C2 --> D2["检索"]
+    C3 --> D3["检索"]
+    D1 --> E["确保每个视角\n至少 1 个文档"]
+    D2 --> E
+    D3 --> E
+    E --> F["返回结果"]
+
+    style B fill:#a371f7,stroke:#bc8cff,color:#fff
+    style E fill:#f0883e,stroke:#d47616,color:#fff
+    style F fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 5：观点性策略流程——识别不同视角，分别检索，确保多立场覆盖</div>
+</div>
+
+<h3>视角识别示例</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>原始查询</th>
+      <th>识别的视角</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="3">"远程办公是否提高了员工生产力？"</td>
+      <td>1. "远程办公提高生产力的证据和原因"</td>
+    </tr>
+    <tr>
+      <td>2. "远程办公降低生产力的研究和案例"</td>
+    </tr>
+    <tr>
+      <td>3. "远程办公对生产力的综合影响评估"</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 9. 代码：情境性策略 ===================== -->
+<h2 id="code-contextual">九、代码解读：情境性检索策略</h2>
+
+<p>情境性查询的难点在于<strong>隐含信息</strong>。策略是推断上下文、重构查询。</p>
+
+<pre><code class="language-python">def contextual_retrieval_strategy(query, vector_store, k=4, user_context=None):
+    """情境性查询：推断隐含上下文 → 重构查询 → 按上下文相关性排序。"""
+    # 步骤1：推断隐含上下文
+    context_response = client.chat.completions.create(
+        model="gpt-4o",
+        temperature=0,
+        messages=[
+            {"role": "system", "content": """Given the query and any available user context,
+infer the implicit context and rewrite the query to be
+self-contained and explicit. Include what 'this', 'it',
+or other pronouns refer to."""},
+            {"role": "user", "content": f"Query: {query}\nUser context: {user_context or 'None'}"}
+        ]
+    )
+    rewritten_query = context_response.choices[0].message.content
+
+    # 步骤2：用重构后的查询检索
+    docs = vector_store.similarity_search(rewritten_query, k=k * 2)
+
+    # 步骤3：按上下文相关性重新排序
+    scored_docs = []
+    for doc in docs:
+        score = score_document_relevance(rewritten_query, doc.page_content)
+        scored_docs.append((doc, score))
+
+    scored_docs.sort(key=lambda x: x[1], reverse=True)
+    return [doc for doc, _ in scored_docs[:k]]</code></pre>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+    A["模糊查询\n'这对我们有什么影响？'"] --> B["LLM 推断\n隐含上下文"]
+    B --> C["重构查询\n'新数据隐私法规对\n我们公司的合规影响'"]
+    C --> D["向量检索\n扩大候选集"]
+    D --> E["LLM 评分\n按上下文相关性排序"]
+    E --> F["返回 Top-K"]
+
+    style B fill:#a371f7,stroke:#bc8cff,color:#fff
+    style C fill:#1f6feb,stroke:#388bfd,color:#fff
+    style E fill:#da3633,stroke:#f85149,color:#fff
+    style F fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 6：情境性策略流程——先推断隐含上下文，重构查询后再检索</div>
+</div>
+
+<h3>查询重构示例</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>原始查询</th>
+      <th>用户上下文</th>
+      <th>重构后的查询</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>"这对我们有什么影响？"</td>
+      <td>用户是某科技公司项目经理，近期关注数据安全法规</td>
+      <td>"新的数据安全法规对科技公司的项目管理和合规要求有什么具体影响？"</td>
+    </tr>
+    <tr>
+      <td>"它支持这个功能吗？"</td>
+      <td>用户正在评估 PostgreSQL 是否支持 JSON 查询</td>
+      <td>"PostgreSQL 是否支持 JSON 和 JSONB 数据类型的查询操作？"</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">🔍 关键设计</div>
+  <p><code>user_context</code> 参数是可选的。当提供用户上下文时（如用户画像、对话历史），LLM 能更准确地推断隐含信息。即使不提供，LLM 也会尝试从查询本身推断——只是准确度可能略低。</p>
+</div>
+
+<!-- ===================== 10. 代码：自适应核心 ===================== -->
+<h2 id="code-adaptive">十、代码解读：自适应检索核心</h2>
+
+<p>最后，将所有策略整合到一个入口函数中：</p>
+
+<pre><code class="language-python">def adaptive_retrieval(query, vector_store, k=4, user_context=None):
+    """自适应检索核心：分类查询 → 选择策略 → 执行检索。"""
+    # 步骤1：分类查询
+    query_type = classify_query(query)
+    print(f"查询分类结果: {query_type}")
+
+    # 步骤2：根据分类选择策略
+    if query_type == "factual":
+        return factual_retrieval_strategy(query, vector_store, k)
+    elif query_type == "analytical":
+        return analytical_retrieval_strategy(query, vector_store, k)
+    elif query_type == "opinion":
+        return opinion_retrieval_strategy(query, vector_store, k)
+    elif query_type == "contextual":
+        return contextual_retrieval_strategy(
+            query, vector_store, k, user_context
+        )
+    else:
+        # 未知类型默认使用事实性策略
+        return factual_retrieval_strategy(query, vector_store, k)</code></pre>
+
+<div class="diagram-container">
+  <div style="font-family: monospace; font-size: 0.85rem; color: var(--text); text-align: left; display: inline-block;">
+    <pre style="border:none; background:transparent; margin:0; padding:0; color: var(--text);">
+adaptive_retrieval() 的调度逻辑：
+
+用户查询 ──→ classify_query()
+                    │
+         ┌──────────┼──────────┬──────────────┐
+         ▼          ▼          ▼              ▼
+    factual    analytical    opinion     contextual
+         │          │          │              │
+         ▼          ▼          ▼              ▼
+  factual_     analytical_  opinion_    contextual_
+  retrieval()  retrieval()  retrieval() retrieval()
+         │          │          │              │
+         └──────────┴──────────┴──────────────┘
+                           │
+                     检索结果合并输出
+    </pre>
+  </div>
+  <div class="caption">图 7：adaptive_retrieval() 作为统一入口，将查询路由到四种策略函数</div>
+</div>
+
+<div class="callout success">
+  <div class="callout-title">💡 架构优势</div>
+  <p>这种设计遵循<strong>策略模式（Strategy Pattern）</strong>——每种检索策略是独立的函数，可以单独测试、替换和扩展。如果未来需要增加第五种查询类型（如"导航性"查询），只需新增一个策略函数并在 <code>adaptive_retrieval</code> 中添加一个分支即可。</p>
+</div>
+
+<!-- ===================== 11. 代码：LLM 评分 ===================== -->
+<h2 id="code-score">十一、代码解读：LLM 文档评分</h2>
+
+<p><code>score_document_relevance</code> 是事实性和情境性策略的关键组件——用 LLM 为每个文档的相关性打分（0-10）：</p>
+
+<pre><code class="language-python">def score_document_relevance(query, document, model="gpt-4o"):
+    """使用 LLM 评估文档对查询的相关性，返回 0-10 的评分。"""
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0,
+        messages=[
+            {"role": "system", "content": """Rate the relevance of the document to the query
+on a scale of 0 to 10, where:
+- 0: completely irrelevant
+- 5: partially relevant
+- 10: directly and fully answers the query
+Return only the numeric score."""},
+            {"role": "user", "content": f"Query: {query}\n\nDocument: {document}"}
+        ]
+    )
+    try:
+        return int(response.choices[0].message.content.strip())
+    except ValueError:
+        return 0</code></pre>
+
+<div class="callout">
+  <div class="callout-title">🔍 设计要点</div>
+  <ul>
+    <li><strong>0-10 评分</strong>：比二元相关/不相关更细粒度，能区分"部分相关"和"完全匹配"</li>
+    <li><strong>temperature=0</strong>：确保评分的一致性和可重复性</li>
+    <li><strong>异常处理</strong>：当 LLM 返回非数字时，默认评分为 0（保守策略）</li>
+    <li><strong>性能考量</strong>：每个候选文档需要一次 LLM 调用，因此先用向量检索扩大候选集（3K），再用 LLM 精排取 Top-K</li>
+  </ul>
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 成本与延迟权衡</div>
+  <p>LLM 评分重排是"用时间和金钱换精度"。对于事实性策略，如果候选集为 3K=12 个文档，则需要 12 次额外的 LLM 调用。在生产环境中，可以考虑：(1) 使用更小的模型做评分；(2) 先用嵌入相似度粗筛，再用 LLM 精排少量候选；(3) 缓存常见查询的评分结果。</p>
+</div>
+
+<!-- ===================== 12. 效果演示 ===================== -->
+<h2 id="demo">十二、效果演示与评估</h2>
+
+<h3>12.1 查询分类演示</h3>
+
+<div class="callout">
+  <div class="callout-title">📝 测试查询</div>
+  <p>"中国新能源汽车产业的发展现状如何？"</p>
+</div>
+
+<p>分类器将该查询判定为 <em>factual</em>（事实性）——因为它寻求的是关于产业发展现状的客观信息。</p>
+
+<h3>12.2 标准检索 vs 自适应检索</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>维度</th>
+      <th>标准检索（统一 Top-K）</th>
+      <th>自适应检索（事实性策略）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>检索范围</strong></td>
+      <td>信息全面，涵盖 6 个城市的产业发展情况</td>
+      <td>信息简洁，聚焦核心数据</td>
+    </tr>
+    <tr>
+      <td><strong>额外信息</strong></td>
+      <td>以当前数据为主</td>
+      <td>增加了政策历史（2017 年产业规划、2022 年发展指导意见）</td>
+    </tr>
+    <tr>
+      <td><strong>全面性</strong></td>
+      <td><strong style="color: var(--accent2);">更好</strong> — 覆盖面广</td>
+      <td>较精简</td>
+    </tr>
+    <tr>
+      <td><strong>简洁性</strong></td>
+      <td>信息量大但略显冗长</td>
+      <td><strong style="color: var(--accent2);">更好</strong> — 简洁且有针对性</td>
+    </tr>
+    <tr>
+      <td><strong>深度</strong></td>
+      <td>横向覆盖广</td>
+      <td><strong style="color: var(--accent2);">更好</strong> — 纵向挖掘了政策背景</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">💡 评估结论</div>
+  <p>标准检索在<strong>全面性</strong>上更好——它广泛覆盖了多个城市的数据。自适应检索在<strong>简洁性和深度</strong>上更好——LLM 增强查询帮助精确化了检索方向，LLM 评分重排过滤了"语义相近但不够精准"的文档，同时引入了政策历史等深层背景信息。</p>
+  <p>两种方法各有优势，选择取决于具体需求：需要"全景概览"时用标准检索，需要"精准深入"时用自适应检索。这正是自适应检索的价值——<strong>让策略匹配需求</strong>。</p>
+</div>
+
+<h3>12.3 不同查询类型的策略效果</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>查询类型</th>
+      <th>策略特点</th>
+      <th>相比标准检索的改进</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>事实性</em></td>
+      <td>LLM 评分重排，精确筛选</td>
+      <td>过滤"语义相近但答非所问"的文档</td>
+    </tr>
+    <tr>
+      <td><em>分析性</em></td>
+      <td>子问题拆解，多路检索</td>
+      <td>覆盖多个分析维度，避免单一查询的盲区</td>
+    </tr>
+    <tr>
+      <td><em>观点性</em></td>
+      <td>视角识别，均衡覆盖</td>
+      <td>避免只检索到单一立场的文档</td>
+    </tr>
+    <tr>
+      <td><em>情境性</em></td>
+      <td>上下文推断，查询重构</td>
+      <td>将模糊查询转化为可检索的精确查询</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 13. 优缺点 ===================== -->
+<h2 id="proscons">十三、优缺点与适用场景</h2>
+
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>✅ 优点</h4>
+    <ul>
+      <li><strong>策略匹配需求</strong>：不同类型的查询使用最适合的检索方式</li>
+      <li><strong>提升精确度</strong>：事实性查询通过 LLM 评分过滤噪声文档</li>
+      <li><strong>增强覆盖面</strong>：分析性和观点性查询能触达多角度文档</li>
+      <li><strong>处理模糊查询</strong>：情境性策略能将指代不明的查询转化为精确查询</li>
+      <li><strong>模块化设计</strong>：各策略独立，可单独优化和测试</li>
+      <li><strong>可扩展</strong>：新增查询类型只需添加策略函数</li>
+    </ul>
+  </div>
+  <div class="compare-card bad">
+    <h4>❌ 缺点</h4>
+    <ul>
+      <li><strong>分类开销</strong>：每次查询需要额外的 LLM 分类调用</li>
+      <li><strong>策略内 LLM 调用</strong>：事实性和情境性策略需要多次 LLM 评分调用</li>
+      <li><strong>分类准确度</strong>：错误的分类会导致选择错误的策略，反而降低效果</li>
+      <li><strong>复杂度增加</strong>：相比统一策略，系统复杂度显著提升</li>
+      <li><strong>延迟不可预测</strong>：不同策略的 LLM 调用次数不同，响应时间波动大</li>
+      <li><strong>调试困难</strong>：出问题时需排查分类是否正确、策略是否合适</li>
+    </ul>
+  </div>
+</div>
+
+<h3>适用场景</h3>
+<table>
+  <thead>
+    <tr>
+      <th>✅ 适合</th>
+      <th>❌ 不适合</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>查询类型多样化的通用问答系统</td>
+      <td>查询类型单一的垂直领域系统</td>
+    </tr>
+    <tr>
+      <td>需要处理模糊、指代性查询的对话系统</td>
+      <td>对延迟极度敏感的实时检索场景</td>
+    </tr>
+    <tr>
+      <td>需要多视角覆盖的研究辅助工具</td>
+      <td>成本敏感的批量处理场景</td>
+    </tr>
+    <tr>
+      <td>文档库覆盖多个主题领域的大型知识库</td>
+      <td>文档主题单一的小型知识库</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 与 Self-RAG 的关系</div>
+  <p>本篇的"自适应检索"是在<strong>检索前</strong>做决策——根据查询类型选择策略。下一篇将介绍的 Self-RAG（自适配 RAG）则是在<strong>检索后</strong>做决策——让 LLM 自行判断是否需要检索、检索结果是否有用。两者从不同维度实现"自适应"，可以互补使用。</p>
+</div>
+
+<!-- ===================== 14. 小结 ===================== -->
+<h2 id="summary">十四、本篇小结</h2>
+
+<p>自适应检索的核心思想可以用一句话概括：</p>
+
+<div class="callout success">
+  <div class="callout-title">🎯 核心 takeaway</div>
+  <p>不是所有查询都该用同一种检索方式。先用 LLM 识别查询意图（事实性 / 分析性 / 观点性 / 情境性），再动态选择最合适的检索策略——精确评分、子问题拆解、多视角覆盖、或上下文重构。让策略匹配需求，而不是让需求迁就策略。</p>
+</div>
+
+<p>技术要点回顾：</p>
+<ol>
+  <li><strong>查询分类</strong>：<code>classify_query()</code> 用 LLM 将查询分为四种类型</li>
+  <li><strong>事实性策略</strong>：LLM 增强查询 → 扩大检索 → <strong>LLM 评分重排</strong> → Top-K</li>
+  <li><strong>分析性策略</strong>：生成 3 个子问题 → 分别检索 → <strong>去重合并</strong>保证多样性</li>
+  <li><strong>观点性策略</strong>：识别 3 个视角 → 组合查询 → 确保<strong>每个视角至少一个文档</strong></li>
+  <li><strong>情境性策略</strong>：推断隐含上下文 → <strong>重构查询</strong> → 按上下文相关性排序</li>
+  <li><strong>统一入口</strong>：<code>adaptive_retrieval()</code> 作为路由器分发到各策略</li>
+  <li><strong>评估结论</strong>：标准检索全面性更好，自适应检索简洁性和深度更好</li>
+</ol>
+
+<p>自适应检索与前面学过的所有优化技术都不冲突——你可以在自适应检索的每种策略内部，继续使用语义分块、上下文增强、标题提取等技术。它是更高层的"策略选择"，而非替代底层优化。</p>
+
+<p>下一篇我们将介绍<strong>自适应 RAG（Self-RAG）</strong>——让 LLM 自主决定是否需要检索、何时检索、以及如何使用检索结果。敬请期待！</p>
+
+<!-- Series navigation -->
+<div class="series-nav">
+  <a href="11_反馈回路机制_blog.html">← 第 11 篇：反馈回路机制</a>
+  <a href="#">第 13 篇：自适应 RAG（Self-RAG）→</a>
+</div>
+
+</div>
+
+<footer>
+  <p>从零到 RAG 大师 系列 · 第 12 篇 · 自适应检索——意图识别</p>
+  <p>基于 Jupyter Notebook 实验整理 · 完整代码见 <code>12_自适应检索.ipynb</code></p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1f6feb',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#388bfd',
+      lineColor: '#58a6ff',
+      secondaryColor: '#161b22',
+      tertiaryColor: '#0d1117',
+      noteBkgColor: '#161b22',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d'
+    },
+    flowchart: { curve: 'basis', padding: 15 }
+  });
+  hljs.highlightAll();
+</script>
+
+</body>
+</html>

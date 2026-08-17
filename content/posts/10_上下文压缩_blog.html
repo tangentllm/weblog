@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（十）：上下文压缩 Contextual Compression</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle { color: var(--text-muted); font-size: 1.05rem; }
+  header .meta { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+  header .meta span { margin: 0 0.5rem; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .toc a:hover { color: var(--accent); }
+
+  h2 {
+    font-size: 1.6rem; font-weight: 700;
+    margin: 2.5rem 0 1rem; padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border); color: var(--text);
+  }
+  h3 { font-size: 1.25rem; font-weight: 600; margin: 1.8rem 0 0.8rem; color: var(--accent); }
+
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: #fff; }
+  em { color: var(--accent3); font-style: normal; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+    margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.88rem; }
+  p code, li code {
+    background: var(--tag-bg); padding: 0.15rem 0.4rem;
+    border-radius: 4px; font-size: 0.85rem; color: var(--accent3);
+  }
+
+  .callout {
+    background: var(--surface); border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .callout.warning { border-left-color: var(--accent3); }
+  .callout.success { border-left-color: var(--accent2); }
+  .callout .callout-title { font-weight: 700; margin-bottom: 0.3rem; font-size: 0.95rem; }
+
+  .diagram-container {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+    text-align: center; overflow-x: auto;
+  }
+  .diagram-container .caption {
+    font-size: 0.85rem; color: var(--text-muted); margin-top: 0.8rem; text-align: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--border); padding: 0.6rem 1rem; text-align: left; }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+  }
+  .compare-card h4 { font-size: 1rem; margin-bottom: 0.6rem; }
+  .compare-card.selective h4 { color: var(--accent); }
+  .compare-card.summary h4 { color: var(--accent2); }
+  .compare-card.extraction h4 { color: var(--accent3); }
+  .compare-card ul { padding-left: 1rem; }
+
+  .chart-wrapper {
+    max-width: 560px; margin: 1.5rem auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem;
+  }
+
+  .compression-demo {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0;
+  }
+  .compression-demo .original,
+  .compression-demo .compressed {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.2rem; font-size: 0.88rem;
+  }
+  .compression-demo .original { border-color: var(--accent3); }
+  .compression-demo .compressed { border-color: var(--accent2); }
+  .compression-demo .label {
+    font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .compression-demo .label .badge {
+    display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px;
+    font-size: 0.78rem; font-weight: 600;
+  }
+  .compression-demo .original .label .badge { background: rgba(240,136,62,0.15); color: var(--accent3); }
+  .compression-demo .compressed .label .badge { background: rgba(63,185,80,0.15); color: var(--accent2); }
+  .compression-demo pre {
+    border: none; background: transparent; padding: 0; margin: 0;
+    font-size: 0.82rem; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+  }
+
+  .stat-row {
+    display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin: 1.5rem 0;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.5rem; text-align: center; min-width: 140px; flex: 1;
+  }
+  .stat-card .stat-value {
+    font-size: 1.8rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .stat-card .stat-label { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+  .decision-flow {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.8;
+  }
+
+  footer {
+    margin-top: 3rem; padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center; color: var(--text-muted); font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  .series-nav { display: flex; justify-content: space-between; margin-top: 2rem; gap: 1rem; }
+  .series-nav a {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.8rem 1.2rem; color: var(--accent);
+    text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .series-nav a:hover { border-color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header h1 { font-size: 1.5rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .compression-demo { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+    .stat-row { flex-direction: column; }
+  }
+
+  .mermaid svg { background: transparent !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 10 篇</div>
+  <h1>上下文压缩 Contextual Compression</h1>
+  <p class="subtitle">用 LLM 对检索结果"动手术"——只留精华，去噪声，省 token，提质量</p>
+  <div class="meta">
+    <span>📅 2026-07-10</span>
+    <span>·</span>
+    <span>🏷️ RAG / 上下文压缩 / Token优化</span>
+    <span>·</span>
+    <span>⏱️ 阅读约 16 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#motivation">问题动机：检索回来的内容，太多"噪声"怎么办？</a></li>
+    <li><a href="#overview">什么是上下文压缩？</a></li>
+    <li><a href="#pipeline">压缩流水线全景</a></li>
+    <li><a href="#three-types">三种压缩方式详解</a></li>
+    <li><a href="#code-compress">核心代码：compress_chunk 函数</a></li>
+    <li><a href="#code-batch">批量压缩与完整管道</a></li>
+    <li><a href="#demo">真实压缩示例：1000 字符 → ?</a></li>
+    <li><a href="#chart">压缩率对比图表</a></li>
+    <li><a href="#eval">评估：压缩后的回复质量如何？</a></li>
+    <li><a href="#when">何时使用压缩？决策流程</a></li>
+    <li><a href="#proscons">优缺点与适用场景</a></li>
+    <li><a href="#summary">本篇小结</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== 1. 动机 ===================== -->
+<h2 id="motivation">一、问题动机：检索回来的内容，太多"噪声"怎么办？</h2>
+
+<p>在前面的篇章中，我们陆续用<a href="2_语义分块_blog.html">语义分块</a>、<a href="4_上下文增强检索_blog.html">上下文增强</a>、<a href="8_重排序.ipynb">重排序</a>、<a href="9_相关段落提取.ipynb">相关段落提取</a>等手段提升了<strong>检索质量</strong>。但检索质量高并不等于送入 LLM 的上下文质量高。</p>
+
+<p>典型场景：你检索了 10 个文本块（每块约 1000 字符），总共约 10000 字符的上下文。但其中可能只有 30% 的内容与用户查询真正相关——其余都是"陪跑"的噪声文本。</p>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 噪声上下文带来的三大问题</div>
+  <ul>
+    <li><strong>Token 浪费</strong>：大量无关内容占用上下文窗口，增加 API 调用成本</li>
+    <li><strong>注意力稀释</strong>：LLM 的"注意力"被无关信息分散，容易遗漏关键细节</li>
+    <li><strong>幻觉风险</strong>：无关文本中可能包含与答案矛盾的信息，诱导模型产生幻觉</li>
+  </ul>
+</div>
+
+<p><strong>上下文压缩（Contextual Compression）</strong>的核心思路：在检索之后、生成之前，用 LLM 对每个检索块进行"信息提纯"——只保留与查询相关的内容，丢弃噪声。</p>
+
+<!-- ===================== 2. 概述 ===================== -->
+<h2 id="overview">二、什么是上下文压缩？</h2>
+
+<p>上下文压缩是一种<strong>后检索（post-retrieval）</strong>技术。它不改变检索策略本身，而是在检索结果送入生成模型之前，增加一道"压缩"工序：</p>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+    A["🔍 检索器\n返回 Top-K 块"] -->|"10 个文本块\n~10000 字符"| B["⚡ 压缩器\n(LLM 驱动)"]
+    B -->|"精简上下文\n~2800 字符"| C["🤖 LLM 生成"]
+    C --> D["✅ 最终回答"]
+
+    style A fill:#1f6feb,stroke:#388bfd,color:#fff
+    style B fill:#9e6a03,stroke:#d29922,color:#fff
+    style C fill:#8957e5,stroke:#a371f7,color:#fff
+    style D fill:#238636,stroke:#3fb950,color:#fff
+  </div>
+  <div class="caption">图 1：上下文压缩在 RAG 管道中的位置 — 检索后、生成前</div>
+</div>
+
+<p>压缩器的核心是一个 LLM 调用：给定用户查询和一个检索块，让 LLM 判断哪些内容与查询相关，然后按指定的压缩策略输出精简版本。</p>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-value">72%</div>
+    <div class="stat-label">Selective 压缩率</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">86%</div>
+    <div class="stat-label">Summary 压缩率</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">89%</div>
+    <div class="stat-label">Extraction 压缩率</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">10→3</div>
+    <div class="stat-label">上下文缩减倍数</div>
+  </div>
+</div>
+
+<!-- ===================== 3. 流水线 ===================== -->
+<h2 id="pipeline">三、压缩流水线全景</h2>
+
+<p>下图展示了带上下文压缩的完整 RAG 管道。与标准 RAG 相比，唯一的区别是在检索和生成之间插入了<strong>压缩步骤</strong>：</p>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    A["📄 PDF 文档"] --> B["文本提取\n(PyMuPDF)"]
+    B --> C["重叠分块\n(n=1000, overlap=200)"]
+    C --> D["向量嵌入\n(text-embedding-ada-002)"]
+    D --> E["存入向量库\n(SimpleVectorStore)"]
+
+    Q["用户查询"] --> QE["查询嵌入"]
+    E --> SE["语义检索\nTop-K=10"]
+    QE --> SE
+
+    SE -->|"10 个原始块\n~10000 字符"| COMP["⚡ 上下文压缩\n(LLM 逐块压缩)"]
+    COMP -->|"精简块\n~2800 字符"| CTX["拼接上下文"]
+    Q --> GEN["🤖 LLM 生成回答"]
+    CTX --> GEN
+    GEN --> ANS["✅ 最终回答"]
+
+    style COMP fill:#9e6a03,stroke:#d29922,color:#fff
+    style ANS fill:#238636,stroke:#3fb950,color:#fff
+    style Q fill:#1f6feb,stroke:#388bfd,color:#fff
+  </div>
+  <div class="caption">图 2：带上下文压缩的完整 RAG 流水线 — 压缩步骤位于检索与生成之间</div>
+</div>
+
+<!-- ===================== 4. 三种压缩方式 ===================== -->
+<h2 id="three-types">四、三种压缩方式详解</h2>
+
+<p>本系列实现了三种不同的压缩策略，它们在"保真度"和"压缩率"之间各有取舍：</p>
+
+<div class="compare-grid">
+  <div class="compare-card selective">
+    <h4>🔵 Selective（选择性保留）</h4>
+    <ul>
+      <li>保留与查询<strong>直接相关的原始句子</strong></li>
+      <li><strong>不改写</strong>，保留原始措辞</li>
+      <li>保持文本原始顺序</li>
+      <li>压缩率适中（~72%）</li>
+      <li>信息保真度最高</li>
+    </ul>
+  </div>
+  <div class="compare-card summary">
+    <h4>🟢 Summary（摘要）</h4>
+    <ul>
+      <li>生成<strong>简洁摘要</strong></li>
+      <li>LLM 重新组织语言</li>
+      <li>只关注与查询相关的信息</li>
+      <li>压缩率高（~86%）</li>
+      <li>可能丢失细节</li>
+    </ul>
+  </div>
+  <div class="compare-card extraction">
+    <h4>🟠 Extraction（提取）</h4>
+    <ul>
+      <li><strong>逐字提取</strong>相关句子</li>
+      <li>只输出原文中的匹配句</li>
+      <li>用换行符分隔</li>
+      <li>压缩率最高（~89%）</li>
+      <li>最激进，可能丢失上下文</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">💡 如何选择？</div>
+  <p><strong>Selective</strong> 是最安全的默认选择——它保留原始措辞，不会引入改写偏差。<strong>Summary</strong> 适合需要极度精简的场景（如上下文窗口紧张）。<strong>Extraction</strong> 最激进，适合查询非常聚焦、只需"一句话答案"的场景。</p>
+</div>
+
+<!-- ===================== 5. 核心代码 ===================== -->
+<h2 id="code-compress">五、核心代码：compress_chunk 函数</h2>
+
+<p>所有三种压缩方式都通过同一个函数 <code>compress_chunk()</code> 实现，区别仅在于系统提示（System Prompt）：</p>
+
+<pre><code class="language-python">def compress_chunk(chunk, query, compression_type="selective",
+                   model="gpt-3.5-turbo"):
+    """
+    压缩从检索中获取的文本块，仅保留与查询相关的内容。
+    """
+    # ---- 根据压缩类型选择不同的系统提示 ----
+    if compression_type == "selective":
+        system_prompt = """你是一位信息过滤专家。你的任务是分析文档片段，
+并仅提取与用户查询直接相关的句子或段落。删除所有不相关的内容。
+
+你的输出应当：
+1. 仅包含有助于回答查询的文本
+2. 保留相关句子的原始措辞（不要改写）
+3. 保持文本的原始顺序
+4. 包含所有相关内容，即使看起来冗余
+5. 排除任何不相关的文本"""
+
+    elif compression_type == "summary":
+        system_prompt = """你是一位摘要专家。你的任务是创建一个简洁的摘要，
+专注于与用户查询相关的信息。
+
+你的输出应当：
+1. 简明扼要地涵盖与查询相关的信息
+2. 仅关注与查询相关的信息
+3. 省略不相关的细节
+4. 以中立、事实的语气撰写"""
+
+    else:  # extraction
+        system_prompt = """你是一位信息提取专家。你的任务是从文档片段中
+仅提取包含与用户查询相关信息的句子。
+
+你的输出应当：
+1. 仅包含原文中与查询直接相关的句子
+2. 保留原始措辞（不要修改文本）
+3. 用换行符分隔提取的句子
+4. 不要添加任何评论或额外文本"""
+
+    # ---- 构造用户提示 ----
+    user_prompt = f"""
+查询: {query}
+
+文档片段:
+{chunk}
+
+仅提取与回答此查询相关的内容。
+"""
+
+    # ---- 调用 LLM ----
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user",  "content": user_prompt}
+        ],
+        temperature=0  # 确保输出确定性
+    )
+
+    compressed_chunk = response.choices[0].message.content.strip()
+
+    # ---- 计算压缩率 ----
+    original_length   = len(chunk)
+    compressed_length = len(compressed_chunk)
+    compression_ratio = (original_length - compressed_length) \
+                        / original_length * 100
+
+    return compressed_chunk, compression_ratio</code></pre>
+
+<div class="callout success">
+  <div class="callout-title">🔑 关键设计点</div>
+  <ul>
+    <li><code>temperature=0</code>：压缩是确定性任务，不需要创造性，设为 0 保证输出稳定</li>
+    <li>三种策略的差异<strong>完全由 Prompt 驱动</strong>——不需要微调或额外训练</li>
+    <li>返回值包含压缩率，方便后续统计和可视化</li>
+  </ul>
+</div>
+
+<!-- ===================== 6. 批量压缩与完整管道 ===================== -->
+<h2 id="code-batch">六、批量压缩与完整管道</h2>
+
+<h3>6.1 批量压缩</h3>
+
+<p>对检索到的多个块逐一调用 <code>compress_chunk()</code>，并汇总总体压缩率：</p>
+
+<pre><code class="language-python">def batch_compress_chunks(chunks, query,
+                          compression_type="selective",
+                          model="gpt-3.5-turbo"):
+    """分别压缩多个片段，返回 (压缩文本, 压缩率) 列表。"""
+    results = []
+    total_original_length = 0
+    total_compressed_length = 0
+
+    for i, chunk in enumerate(chunks):
+        compressed_chunk, ratio = compress_chunk(
+            chunk, query, compression_type, model
+        )
+        results.append((compressed_chunk, ratio))
+        total_original_length   += len(chunk)
+        total_compressed_length += len(compressed_chunk)
+
+    overall_ratio = (total_original_length - total_compressed_length) \
+                    / total_original_length * 100
+    print(f"Overall compression ratio: {overall_ratio:.2f}%")
+    return results</code></pre>
+
+<h3>6.2 完整 RAG 管道</h3>
+
+<p>将压缩步骤嵌入标准 RAG 流程：</p>
+
+<pre><code class="language-python">def rag_with_compression(pdf_path, query, k=10,
+                         compression_type="selective",
+                         model="gpt-3.5-turbo"):
+    """带上下文压缩的 RAG 管道完整实现。"""
+
+    # 1. 文档处理：提取 → 分块 → 嵌入 → 入库
+    vector_store = process_document(pdf_path)
+
+    # 2. 查询嵌入 + 语义检索
+    query_embedding = create_embeddings(query)
+    results = vector_store.similarity_search(query_embedding, k=k)
+    retrieved_chunks = [r["text"] for r in results]
+
+    # 3. ⚡ 上下文压缩（核心新增步骤）
+    compressed_results = batch_compress_chunks(
+        retrieved_chunks, query, compression_type, model
+    )
+    compressed_chunks  = [r[0] for r in compressed_results]
+    compression_ratios = [r[1] for r in compressed_results]
+
+    # 4. 过滤空块 → 拼接上下文
+    filtered = [(c, r) for c, r in zip(compressed_chunks, compression_ratios)
+                if c.strip()]
+    compressed_chunks, compression_ratios = zip(*filtered)
+    context = "\n\n---\n\n".join(compressed_chunks)
+
+    # 5. 生成回答
+    response = generate_response(query, context, model)
+
+    return {
+        "query": query,
+        "original_chunks":    retrieved_chunks,
+        "compressed_chunks":  list(compressed_chunks),
+        "compression_ratios": list(compression_ratios),
+        "context_length_reduction":
+            f"{sum(compression_ratios)/len(compression_ratios):.2f}%",
+        "response": response
+    }</code></pre>
+
+<!-- ===================== 7. 真实压缩示例 ===================== -->
+<h2 id="demo">七、真实压缩示例：1000 字符 → ?</h2>
+
+<p>让我们用 notebook 中的真实运行结果来展示压缩效果。查询为<em>「中国政府对AI大模型发展有哪些支持政策？」</em>，检索了 10 个块（总计约 10018 字符），以下是第一个块的压缩前后对比：</p>
+
+<h3>7.1 Selective 压缩（保留原始句子）</h3>
+
+<div class="compression-demo">
+  <div class="original">
+    <div class="label">
+      <span>📄 原始块</span>
+      <span class="badge">1000 字符</span>
+    </div>
+    <pre>AI industry in 2024 has witnessed remarkable growth...
+中国政府在2024年继续加大对人工智能产业的支持力度，
+出台了一系列政策措施。其中，"人工智能+"行动计划旨在
+推动AI技术与传统产业的深度融合。科技部发布了新一代
+人工智能发展规划的实施指南，明确了大模型技术的发展
+方向。此外，多地政府设立了AI产业基金，为初创企业
+提供资金支持和算力资源。在人才培养方面，教育部新增
+了多个AI相关专业点，鼓励高校与企业合作培养复合型
+人才。与此同时，工信部推动了AI开放创新平台建设，
+促进产学研用协同发展。...
+[其余不相关内容：关于欧美AI监管政策、AI伦理讨论等]</pre>
+  </div>
+  <div class="compressed">
+    <div class="label">
+      <span>✅ Selective 压缩后</span>
+      <span class="badge">332 字符 (66.8%↓)</span>
+    </div>
+    <pre>中国政府在2024年继续加大对人工智能产业的支持力度，
+出台了一系列政策措施。其中，"人工智能+"行动计划旨在
+推动AI技术与传统产业的深度融合。科技部发布了新一代
+人工智能发展规划的实施指南，明确了大模型技术的发展
+方向。此外，多地政府设立了AI产业基金，为初创企业
+提供资金支持和算力资源。...工信部推动了AI开放创新
+平台建设，促进产学研用协同发展。</pre>
+  </div>
+</div>
+
+<p>Selective 模式保留了与中国AI政策直接相关的原始句子，删除了欧美监管、AI伦理等不相关段落，同时<strong>完全保留了原始措辞</strong>。</p>
+
+<h3>7.2 Summary 压缩（生成摘要）</h3>
+
+<div class="compression-demo">
+  <div class="original">
+    <div class="label">
+      <span>📄 原始块</span>
+      <span class="badge">1000 字符</span>
+    </div>
+    <pre>[同上 — 1000 字符的原始文本块]</pre>
+  </div>
+  <div class="compressed">
+    <div class="label">
+      <span>✅ Summary 压缩后</span>
+      <span class="badge">201 字符 (79.9%↓)</span>
+    </div>
+    <pre>2024年中国政府通过"人工智能+"行动计划、新一代AI发展
+规划实施指南等政策推动大模型技术发展。多地设立AI产业
+基金提供资金与算力支持，教育部新增AI专业点培养人才，
+工信部推动开放创新平台建设促进产学研协同发展。</pre>
+  </div>
+</div>
+
+<p>Summary 模式将原始 1000 字符压缩到仅 201 字符，用 LLM 重新组织了语言，信息密度极高。</p>
+
+<h3>7.3 Extraction 压缩（逐字提取）</h3>
+
+<div class="compression-demo">
+  <div class="original">
+    <div class="label">
+      <span>📄 原始块</span>
+      <span class="badge">1000 字符</span>
+    </div>
+    <pre>[同上 — 1000 字符的原始文本块]</pre>
+  </div>
+  <div class="compressed">
+    <div class="label">
+      <span>✅ Extraction 压缩后</span>
+      <span class="badge">285 字符 (71.5%↓)</span>
+    </div>
+    <pre>中国政府在2024年继续加大对人工智能产业的支持力度，出台了一系列政策措施。
+科技部发布了新一代人工智能发展规划的实施指南，明确了大模型技术的发展方向。
+多地政府设立了AI产业基金，为初创企业提供资金支持和算力资源。</pre>
+  </div>
+</div>
+
+<p>Extraction 模式只逐字提取了与查询最直接相关的句子，去掉了所有过渡和补充信息。</p>
+
+<h3>7.4 总体压缩统计</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>压缩方式</th>
+      <th>平均压缩率</th>
+      <th>压缩后总长度</th>
+      <th>原始总长度</th>
+      <th>缩减倍数</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong style="color:var(--accent)">Selective</strong></td>
+      <td>72.22%</td>
+      <td>2,796 字符</td>
+      <td>10,018 字符</td>
+      <td>~3.6x</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--accent2)">Summary</strong></td>
+      <td>86.08%</td>
+      <td>1,410 字符</td>
+      <td>10,018 字符</td>
+      <td>~7.1x</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--accent3)">Extraction</strong></td>
+      <td>88.85%</td>
+      <td>1,133 字符</td>
+      <td>10,018 字符</td>
+      <td>~8.8x</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 8. 图表 ===================== -->
+<h2 id="chart">八、压缩率对比图表</h2>
+
+<h3>8.1 三种压缩方式的平均压缩率</h3>
+
+<div class="chart-wrapper">
+  <canvas id="compressionChart"></canvas>
+</div>
+
+<h3>8.2 压缩前后上下文长度对比</h3>
+
+<div class="chart-wrapper">
+  <canvas id="lengthChart"></canvas>
+</div>
+
+<!-- ===================== 9. 评估 ===================== -->
+<h2 id="eval">九、评估：压缩后的回复质量如何？</h2>
+
+<p>我们使用 LLM（gpt-4o）作为评估者，将标准 RAG（无压缩）和三种压缩方式的回复进行对比排名。评估维度包括：事实准确性、全面性、简洁性、整体质量。</p>
+
+<h3>9.1 评估排名</h3>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart LR
+    R1["🥇 Standard\n(无压缩)"] --- R2["🥈 Selective\n(72% 压缩)"]
+    R2 --- R3["🥉 Summary\n(86% 压缩)"]
+    R3 --- R4["4th Extraction\n(89% 压缩)"]
+
+    style R1 fill:#238636,stroke:#3fb950,color:#fff
+    style R2 fill:#1f6feb,stroke:#388bfd,color:#fff
+    style R3 fill:#9e6a03,stroke:#d29922,color:#fff
+    style R4 fill:#6e7681,stroke:#8b949e,color:#fff
+  </div>
+  <div class="caption">图 3：回复质量排名 — Standard > Selective > Summary > Extraction</div>
+</div>
+
+<h3>9.2 评估分析</h3>
+
+<div class="compare-grid" style="grid-template-columns: 1fr 1fr;">
+  <div class="compare-card" style="border-color: var(--accent2);">
+    <h4 style="color: var(--accent2);">📊 排名解读</h4>
+    <ul>
+      <li><strong>Standard</strong> 回复最详细全面，因为保留了所有原始信息</li>
+      <li><strong>Selective</strong> 较简洁但缺细节——去除了噪声，也偶尔去除了边缘相关信息</li>
+      <li><strong>Summary</strong> 因改写可能引入信息损失</li>
+      <li><strong>Extraction</strong> 最激进，丢失了上下文连贯性</li>
+    </ul>
+  </div>
+  <div class="compare-card" style="border-color: var(--accent);">
+    <h4 style="color: var(--accent);">⚖️ 权衡思考</h4>
+    <ul>
+      <li>压缩并非总是提升回复质量——<strong>信息保真度</strong>是关键</li>
+      <li>但压缩显著<strong>节省 token 和成本</strong></li>
+      <li>在上下文窗口紧张时，压缩的价值更大</li>
+      <li>Selective 是最佳平衡点：压缩 72% 同时质量损失最小</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">⚠️ 重要发现</div>
+  <p>压缩并不总是提高回复质量。在本例中，标准 RAG（无压缩）的回复被评为最佳，因为它保留了最完整的信息。但 Selective 压缩在仅使用 28% 原始 token 的情况下，仍达到了接近的质量水平——这意味着<strong>性价比最高</strong>。</p>
+</div>
+
+<!-- ===================== 10. 何时使用压缩 ===================== -->
+<h2 id="when">十、何时使用压缩？决策流程</h2>
+
+<p>上下文压缩并非万能药。是否需要压缩，取决于<strong>两条硬约束</strong>和<strong>两类性能目标</strong>：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>决策维度</th>
+      <th>典型触发条件</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>模型与接口限制</strong></td>
+      <td>超过 LLM 单次最大输入 tokens / API 成本过高</td>
+      <td>无法直接塞进 prompt 或成本不划算时，先压缩</td>
+    </tr>
+    <tr>
+      <td><strong>场景性能目标</strong></td>
+      <td>对时延要求严苛 / 需多轮检索，上下文不断膨胀</td>
+      <td>压缩能减少 I/O 量和推理时间</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>10.1 三个压缩位点</h3>
+
+<div class="diagram-container">
+  <div class="mermaid">
+flowchart TD
+    subgraph pos1["① 检索后、生成前（最常见）"]
+      direction LR
+      R1["检索器"] -->|"n 条文档"| C1["⚡ 压缩器"]
+      C1 -->|"tokens↓"| L1["LLM"]
+    end
+
+    subgraph pos2["② 检索前：离线预压缩"]
+      direction LR
+      D2["原始文档"] --> C2["⚡ 离线压缩"]
+      C2 --> V2["入库"]
+      V2 --> R2["检索"]
+    end
+
+    subgraph pos3["③ 链式思考中途：滚动压缩"]
+      direction LR
+      H3["历史推理"] --> C3["⚡ 滚动摘要"]
+      C3 --> N3["下一步调用"]
+    end
+
+    style C1 fill:#9e6a03,stroke:#d29922,color:#fff
+    style C2 fill:#9e6a03,stroke:#d29922,color:#fff
+    style C3 fill:#9e6a03,stroke:#d29922,color:#fff
+  </div>
+  <div class="caption">图 4：三个压缩位点 — 检索后（最常见）、检索前（离线）、链式思考中途</div>
+</div>
+
+<h3>10.2 决策流程</h3>
+
+<div class="decision-flow">
+<pre style="border:none; background:transparent; color:var(--text); margin:0; padding:0;">
+IF (输入 token 预计超限 OR 成本/延迟过高) THEN
+  压缩上下文
+  ├─ IF 在检索后 → 聚合/摘要当前文档块
+  │    • 推荐 Selective（保真度最高）
+  │    • 适用：n×chunk_size 接近入口 token 上限
+  │
+  ├─ ELSE IF 离线数据准备阶段 → 预压缩存库
+  │    • 推荐 Summary（极度精简）
+  │    • 适用：知识库规模极大，文档格式杂乱
+  │
+  └─ ELSE IF 多轮推理中 → 对历史对话 & 中间结果滚动摘要
+       • 推荐 Summary
+       • 适用：历史对话窗口 > 4K tokens
+ELSE
+  直接拼接 prompt（无需压缩）
+</pre>
+</div>
+
+<div class="callout success">
+  <div class="callout-title">💡 实践建议</div>
+  <p>可以用启发式阈值（如 <code>total_tokens > 0.8 * max_context</code>）或自适应调度器来自动决定是否启动压缩。在大多数 RAG 场景中，<strong>检索后压缩</strong>是最容易集成、收益最明显的位点。</p>
+</div>
+
+<!-- ===================== 11. 优缺点 ===================== -->
+<h2 id="proscons">十一、优缺点与适用场景</h2>
+
+<div class="compare-grid" style="grid-template-columns: 1fr 1fr;">
+  <div class="compare-card" style="border-color: var(--accent2);">
+    <h4 style="color: var(--accent2);">✅ 优点</h4>
+    <ul>
+      <li><strong>节省 Token</strong>：压缩率可达 72%~89%，大幅降低 API 成本</li>
+      <li><strong>减少噪声</strong>：去除无关信息，提高上下文信噪比</li>
+      <li><strong>即插即用</strong>：不改变检索策略，仅在管道中增加一步</li>
+      <li><strong>Prompt 驱动</strong>：不需要微调模型，更换 Prompt 即可切换策略</li>
+      <li><strong>灵活可调</strong>：三种策略覆盖不同压缩强度需求</li>
+    </ul>
+  </div>
+  <div class="compare-card" style="border-color: var(--accent3);">
+    <h4 style="color: var(--accent3);">❌ 缺点</h4>
+    <ul>
+      <li><strong>额外 LLM 调用</strong>：每个块需要一次压缩调用，增加延迟和成本</li>
+      <li><strong>信息损失风险</strong>：压缩可能误删边缘相关信息</li>
+      <li><strong>改写偏差</strong>：Summary 模式可能引入 LLM 的改写偏差</li>
+      <li><strong>回复质量可能下降</strong>：如评估所示，压缩后回复质量不一定提升</li>
+      <li><strong>依赖 LLM 能力</strong>：压缩质量取决于压缩模型的理解能力</li>
+    </ul>
+  </div>
+</div>
+
+<h3>适用场景速查</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>场景</th>
+      <th>推荐策略</th>
+      <th>理由</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>上下文窗口紧张，需大幅压缩</td>
+      <td>Summary</td>
+      <td>压缩率最高（86%），信息密度大</td>
+    </tr>
+    <tr>
+      <td>需要平衡质量与成本</td>
+      <td>Selective</td>
+      <td>保留原始措辞，质量损失最小</td>
+    </tr>
+    <tr>
+      <td>查询非常聚焦，只需关键句</td>
+      <td>Extraction</td>
+      <td>最激进压缩，只留核心句</td>
+    </tr>
+    <tr>
+      <td>对回复质量要求极高</td>
+      <td>不压缩</td>
+      <td>保留全部信息，避免任何损失</td>
+    </tr>
+    <tr>
+      <td>多轮对话 / Agent 链式推理</td>
+      <td>Summary（滚动）</td>
+      <td>控制历史上下文膨胀</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 12. 小结 ===================== -->
+<h2 id="summary">十二、本篇小结</h2>
+
+<p>上下文压缩是 RAG 管道中<strong>检索后、生成前</strong>的一道"信息提纯"工序。它用 LLM 对检索到的文本块进行压缩，只保留与查询相关的内容，从而减少噪声、节省 token。</p>
+
+<div class="callout success">
+  <div class="callout-title">🎯 核心要点回顾</div>
+  <ul>
+    <li><strong>三种压缩策略</strong>：Selective（保留原句）、Summary（生成摘要）、Extraction（逐字提取）</li>
+    <li><strong>压缩率</strong>：Selective 72% &lt; Summary 86% &lt; Extraction 89%</li>
+    <li><strong>回复质量</strong>：Standard > Selective > Summary > Extraction</li>
+    <li><strong>最佳平衡</strong>：Selective 在压缩 72% 的同时，质量损失最小——性价比之王</li>
+    <li><strong>决策依据</strong>：token 超限 / 成本过高 / 多轮推理膨胀时启用压缩</li>
+  </ul>
+</div>
+
+<p>压缩本质上是一种<strong>信息保真度与效率之间的权衡</strong>。在实际项目中，建议先用 Selective 模式作为基线，根据 token 预算和回复质量要求调整策略。</p>
+
+<!-- 系列导航 -->
+<div class="series-nav">
+  <a href="9_相关段落提取.ipynb">← 第 9 篇：相关段落提取（RSE）</a>
+  <a href="11_反馈回路机制.ipynb">第 11 篇：反馈回路机制 →</a>
+</div>
+
+</div><!-- .container -->
+
+<footer>
+  <p>从零到 RAG 大师 · 第 10 篇 — 上下文压缩 Contextual Compression</p>
+  <p style="margin-top:0.5rem;">
+    <a href="9_相关段落提取.ipynb">← 上一篇</a> ·
+    <a href="11_反馈回路机制.ipynb">下一篇 →</a>
+  </p>
+</footer>
+
+<script>
+  // highlight.js 初始化
+  hljs.highlightAll();
+
+  // Mermaid 初始化
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1f6feb',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#388bfd',
+      lineColor: '#8b949e',
+      secondaryColor: '#161b22',
+      tertiaryColor: '#0d1117',
+      noteBkgColor: '#161b22',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d'
+    }
+  });
+
+  // ---- Chart.js: 压缩率对比柱状图 ----
+  const ctxBar = document.getElementById('compressionChart').getContext('2d');
+  new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels: ['Selective', 'Summary', 'Extraction'],
+      datasets: [{
+        label: '平均压缩率 (%)',
+        data: [72.22, 86.08, 88.85],
+        backgroundColor: [
+          'rgba(88, 166, 255, 0.75)',
+          'rgba(63, 185, 80, 0.75)',
+          'rgba(240, 136, 62, 0.75)'
+        ],
+        borderColor: [
+          'rgba(88, 166, 255, 1)',
+          'rgba(63, 185, 80, 1)',
+          'rgba(240, 136, 62, 1)'
+        ],
+        borderWidth: 2,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: '三种压缩方式的平均压缩率',
+          color: '#e6edf3',
+          font: { size: 15, weight: 'bold' }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.parsed.y.toFixed(2) + '%'; }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { color: '#8b949e', callback: v => v + '%' },
+          grid: { color: 'rgba(48,54,61,0.5)' },
+          title: { display: true, text: '压缩率', color: '#8b949e' }
+        },
+        x: {
+          ticks: { color: '#e6edf3', font: { weight: 'bold' } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+
+  // ---- Chart.js: 压缩前后长度对比 ----
+  const ctxLen = document.getElementById('lengthChart').getContext('2d');
+  new Chart(ctxLen, {
+    type: 'bar',
+    data: {
+      labels: ['原始', 'Selective', 'Summary', 'Extraction'],
+      datasets: [{
+        label: '上下文总长度 (字符)',
+        data: [10018, 2796, 1410, 1133],
+        backgroundColor: [
+          'rgba(139, 148, 158, 0.6)',
+          'rgba(88, 166, 255, 0.75)',
+          'rgba(63, 185, 80, 0.75)',
+          'rgba(240, 136, 62, 0.75)'
+        ],
+        borderColor: [
+          'rgba(139, 148, 158, 1)',
+          'rgba(88, 166, 255, 1)',
+          'rgba(63, 185, 80, 1)',
+          'rgba(240, 136, 62, 1)'
+        ],
+        borderWidth: 2,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: '压缩前后上下文总长度对比',
+          color: '#e6edf3',
+          font: { size: 15, weight: 'bold' }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.parsed.y.toLocaleString() + ' 字符'; }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#8b949e', callback: v => v.toLocaleString() },
+          grid: { color: 'rgba(48,54,61,0.5)' },
+          title: { display: true, text: '字符数', color: '#8b949e' }
+        },
+        x: {
+          ticks: { color: '#e6edf3', font: { weight: 'bold' } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

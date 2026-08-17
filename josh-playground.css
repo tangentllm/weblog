@@ -1,0 +1,71 @@
+/* Josh W. Comeau — Sandpack playground shell (w5hp34c / io76lfy) */
+
+.josh-prose .josh-playground {
+  margin: 1rem 0 3rem;
+}
+
+.josh-prose .josh-playground__shell {
+  margin: 0 -1rem;
+  border-radius: 6px;
+  overflow: hidden;
+  color-scheme: dark;
+  background: #0d0f12;
+}
+
+.josh-prose .josh-playground__loading,
+.josh-prose .josh-playground__error {
+  margin: 0;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--josh-color-gray-700);
+}
+
+.josh-prose .josh-playground__error {
+  color: var(--josh-color-warning-500);
+}
+
+.josh-prose .josh-playground__mount {
+  min-height: 12rem;
+}
+
+.josh-prose .josh-playground .sp-wrapper {
+  --sp-border-radius: 6px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.josh-prose .josh-playground .sp-layout {
+  border-radius: 6px;
+  background: #252525;
+}
+
+.josh-prose .josh-playground .sp-code-editor {
+  font-family: var(--josh-font-family-mono);
+}
+
+.josh-prose .josh-playground .sp-preview,
+.josh-prose .josh-playground .sp-preview-container,
+.josh-prose .josh-playground .sp-preview-actions,
+.josh-prose .josh-playground .sp-stack {
+  background: #151515 !important;
+}
+
+.josh-prose .josh-playground .sp-preview-container {
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.josh-prose .josh-playground .sp-preview-iframe {
+  background: #0d0f12;
+  color-scheme: dark;
+}
+
+@media (max-width: 39rem) {
+  .josh-prose .josh-playground {
+    margin-bottom: 2.5rem;
+  }
+
+  .josh-prose .josh-playground__shell {
+    margin-inline: -0.5rem;
+  }
+}

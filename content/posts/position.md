@@ -11,7 +11,8 @@ excerpt: 从“Attention 天然不感知顺序”出发，推导正余弦位置�
 
 # 正余弦位置编码（Sinusoidal Positional Encoding）深度解析
 
-> 基于《Attention Is All You Need》(Vaswani et al., 2017)，结合 PyTorch 代码实现
+> **阅读前提**
+> 基于《Attention Is All You Need》(Vaswani et al., 2017)，结合 PyTorch 代码实现。建议已了解 Self-Attention 的基本概念。
 
 ---
 

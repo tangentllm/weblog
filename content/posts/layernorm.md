@@ -15,6 +15,9 @@ excerpt: 围绕 eps、方差估计与精度问题，拆解 LayerNorm 的实现�
 
 那次之后我决定自己手写一遍，不是因为要替换官方实现，而是想真正搞清楚每一行在干什么。
 
+> **适用读者**
+> 本文假设你已了解 Layer Normalization 的基本公式与作用。若还不熟悉，可先阅读 [Transformer 原理解析](/post/transformer-in-depth) 中的归一化部分。
+
 ---
 
 ## 它在解决什么问题
@@ -28,6 +31,23 @@ $$\text{LN}(x) = \gamma \cdot \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta
 其中 μ 和 σ² 是对最后一维（也就是 d_model 那个维度）算出来的均值和方差。γ 和 β 是可学习的缩放和偏移，初始化成 1 和 0。
 
 理解这个公式很容易，但魔鬼藏在实现细节里。
+
+下面是一个可编辑的迷你 Playground：修改 `index.js` 里的输入向量或 `eps`，观察 LayerNorm 输出如何变化。
+
+```playground
+{
+  "template": "vanilla",
+  "files": {
+    "/index.html": "<main><h1>LayerNorm 演示</h1><pre id=\"out\"></pre></main>",
+    "/styles.css": "body { margin: 0; font-family: system-ui, sans-serif; background: #fff; color: #111; }\nmain { padding: 1.25rem; }\nh1 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 600; }\npre { margin: 0; font-size: 0.8125rem; line-height: 1.55; white-space: pre-wrap; }",
+    "/index.js": "const x = [2, 4, 6, 8];\nconst eps = 1e-5;\nconst mean = x.reduce((a, b) => a + b, 0) / x.length;\nconst variance = x.reduce((a, b) => a + (b - mean) ** 2, 0) / x.length;\nconst normalized = x.map((v) => (v - mean) / Math.sqrt(variance + eps));\n\ndocument.getElementById('out').textContent = JSON.stringify({ x, mean, variance, eps, normalized }, null, 2);"
+  },
+  "options": {
+    "editorHeight": 380,
+    "editorWidthPercentage": 54
+  }
+}
+```
 
 ---
 

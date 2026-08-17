@@ -3,7 +3,7 @@ title: RAG 系统重构实战：从 Demo 到生产的那些坑
 slug: rag-production-refactor
 date: 2025-05-08
 readTime: 18 分钟
-category: 工程实践
+category: RAG 与检索
 tags: RAG, LlamaIndex, FAISS, Embedding, 生产落地
 cover: ./content/assets/posts/covers/rag-production.svg
 excerpt: 金融研报问答系统上线后的成本与中文召回问题复盘：切换 bge-m3、Reranker 精排、索引持久化与工具路由的取舍与坑点。
@@ -14,6 +14,9 @@ excerpt: 金融研报问答系统上线后的成本与中文召回问题复盘�
 最近自己在做一个金融研报问答系统，用的是 LlamaIndex + OpenAI 那套标准方案。上线第二周账单出来，embedding 费用直接干到了月预算的 40%，而且用户反馈中文长文档的召回效果"有点飘"。这事儿逼着我重新审视整个技术栈，最后花了两周时间做了一轮彻底重构。
 
 这篇文章不是教你怎么从零搭 RAG，而是复盘我在重构过程中踩的几个坑，以及为什么最终选择了现在这套方案。
+
+> **适用读者**
+> 本文假设你已搭通过基础 RAG Demo（向量检索 + LLM 生成），并关心成本、中文召回与上线运维。若还在选型阶段，可先读 [RAG 论文解读](/post/paper-rag-survey)。
 
 ## 第一个决策：换掉 OpenAI Embedding
 

@@ -3,7 +3,7 @@ title: Claude Code 最佳实践：2026 年 10 倍生产力指南
 slug: claude-code-best-practices
 date: 2026-05-25
 readTime: 25 分钟
-category: 工程实践
+category: 智能体
 tags: Claude Code, Agent, Best Practices, Anthropic
 cover: ./content/assets/posts/covers/claude-code-best-practices.svg
 format: html

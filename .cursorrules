@@ -1,0 +1,86 @@
+---
+description: Josh W Comeau clone (full-site, pixel-perfect)
+alwaysApply: true
+---
+
+You are recreating joshwcomeau.com with maximum visual fidelity across the entire site.
+
+## Goals (non-negotiable)
+
+- Match layout, typography, spacing, animations, interactions, and color palette as closely as possible
+- Do not redesign, “improve,” or simplify away from the reference
+- First analyze the reference and existing implementation, then recreate
+- Think like a frontend engineer doing a pixel-perfect clone
+
+## Implementation context (read before coding)
+
+This repo is a **static SPA**, not a Next.js app. Work in the existing stack:
+
+- Entry / router: `index.html`, `404.html`
+- Josh shell & pages: `josh-site.js`, `josh-home.js`, `josh-interactions.js`
+- Styles: `josh-tokens.css`, `josh-components.css`, `josh-prose.css`, `josh-syntax.css`, `josh-home.css`, `josh-about.css`
+- Page-specific namespaces: `tangent-*` only when migrating *toward* Josh; do not introduce new non-Josh design systems
+
+Do **not** scaffold Next.js, Tailwind, or Framer Motion unless the user explicitly asks to migrate frameworks.
+
+## Content & structure
+
+- **Chinese copy and Tangentllm content are allowed** — clone Josh’s visual language, not his English text
+- **Navigation** may differ in labels (e.g. 分类 / 标签 / 作品 / 关于) but must use the same Josh nav patterns (logo, flyout, sticky sky header, mobile menu, theme/sound toggles)
+- **Pages without a 1:1 Josh URL** (`/tags`, `/tag/*`, `/projects`, `/project/*`) still use the Josh shell, tokens, spacing, and motion — same as categories/list/post pages on the reference site
+
+## Out of scope (do not implement unless the user explicitly asks)
+
+These Josh features are **intentionally excluded** from this project. Do not add backends, routes, build steps, or wiring for them during fidelity work, audits, or “gap” fixes:
+
+- **RSS** — no `feed.xml` generation, no Atom/RSS build script, no feed hosting
+- **Comments** — no Giscus, Utterances, or any comment widget (remove or ignore existing placeholders; do not connect `initGiscus()`)
+- **Newsletter backend** — keep Josh-style footer form UI if present; **no** email provider, API, or real submission (demo / `preventDefault` only)
+- **Legal / policy pages** — no Terms of Use, Privacy Policy, Code of Conduct, or similar standalone routes
+- **Footer social expansion** — no Bluesky, LinkedIn, or other social links beyond what the site already ships with (e.g. GitHub)
+
+Existing decorative UI (RSS icon link, newsletter field, honeypot label) may remain for visual parity; treat them as non-functional clone chrome, not bugs to fix.
+
+## About hero cutout (ceramic)
+
+- **Position is user-tuned** — `translateX(calc(20% + 65px)) scale(0.96)` on `.josh-about-intro__cutout`; do not change when fixing arm clip or overflow
+- **Right-arm clip** — never fix by shrinking img (`width: 84%`), removing `scale`, or `object-position: 100%` (those crop the asset). Fix overflow: `overflow-y: clip` on band forces `overflow-x` to `auto` and clips arms; use `overflow: visible` on `.josh-about-sky__band` for about (legs still tuck behind body white wave). About page also needs `body { overflow-x: visible !important }` (index.html sets `hidden`)
+- **Asset** — original `about-cutout-ceramic-*.webp` already has ~136px transparent margin at arm height; CSS must not crop it away
+
+## Homepage guardrails
+
+When editing non-homepage routes, **do not modify homepage-critical files** unless the task is explicitly homepage work:
+
+- `josh-home.js`, `josh-home.css`
+- Homepage-specific markup/sections inside `index.html` tied to `renderJoshHome`
+
+If a non-homepage change appears to require homepage-core edits, stop and ask first.
+
+## Style rules
+
+- Prefer semantic HTML and accessibility
+- No inline `style={{...}}` or inline styles in new markup (existing loader exception: migrate when touched)
+- No `alert()`, no lorem ipsum
+- Mobile-first responsive behavior matching Josh breakpoints and scroll behavior
+- Isolate styles under `josh-*` (or page modifiers like `josh-page--post`); avoid bleeding legacy `html:not(.josh-site)` patterns into new work
+
+## Known gaps (lower priority)
+
+1. SEO prerender pages under `post/*/index.html` — minimal stubs for crawlers
+2. Dead legacy CSS in `index.html` / `404.html` — `html:not(.josh-site)` blocks (inert); remove when refactoring
+3. Unused files — `site-styles.css`, `tangent-about-v2.*` (no longer loaded)
+
+## Workflow
+
+1. Identify the route and whether reference material exists (live site, `_fetch_josh_*.html`, audit screenshots in repo)
+2. Compare DOM structure, CSS tokens, and motion before editing
+3. Make the smallest change that moves fidelity forward
+4. Do not copy layouts or illustrations from sites other than joshwcomeau.com
+
+## Quality bar
+
+- Responsive
+- Pixel-faithful (spacing, type scale, hover/focus, scroll-driven nav)
+- Production quality — no placeholder UI **except** out-of-scope Josh chrome listed above (RSS link, newsletter form shell, etc.)
+
+Always inspect existing screenshots, audit scripts (`_audit-*`, `_probe-*`), and reference HTML/CSS in the repo before coding.

@@ -3,7 +3,7 @@ title: 生产级 RAG 系统性能优化实战：延迟预算、并行检索与�
 slug: rag-production-performance-optimization
 date: 2025-09-15
 readTime: 22 分钟
-category: 工程实践
+category: RAG 与检索
 tags: RAG, 性能优化, FAISS, 延迟, TTFT
 cover: ./content/assets/posts/covers/rag-production-performance-optimization.svg
 excerpt: 准确率上去了 P95 却爆了？用延迟瀑布拆 Embed、FAISS、Rerank 与 LLM 瓶颈，附并行混合检索、四级缓存与改前改后 ms 表。
@@ -11,11 +11,12 @@ excerpt: 准确率上去了 P95 却爆了？用延迟瀑布拆 Embed、FAISS、R
 
 # 生产级 RAG 系统性能优化实战：延迟预算、并行检索与推理瓶颈
 
-**生产级 RAG 性能优化的第一原则**：先按阶段拆开端到端延迟（Embed → Retrieve → Rerank → Generate），在 P95 预算内定位真正占时的环节；多数已上线系统的瓶颈在 **LLM 生成（约 70–80%）** 和 **Cross-Encoder Rerank（约 50–200ms）**，而不是再换一个更大的 Embedding 模型。
-
 张薇带的团队在 Q3 把内部知识库 RAG 的 answer relevance 从 0.71 拉到 0.86：上了混合检索、把 Rerank 候选从 10 扩到 40，还换了更强的领域 Embedding。演示环境单次查询 1.9 秒，老板点头。灰度一周后，客服入口的 **P95 从 1.8 秒涨到 4.2 秒**，工单里开始出现「比直接问通用 ChatGPT 还慢」。Faithfulness 报表没人看，延迟曲线人人看。
 
 你可能也遇到过类似局面：**准确率优化和 RAG 性能优化不是同一张表**。本文只谈 **latency、throughput、单 query 成本**；Chunk 怎么切、HyDE 要不要上，请去看 [RAG 生产落地](https://tangentllm.github.io/weblog/post/rag-production-refactor/) 和 [RAG 混合检索策略](https://tangentllm.github.io/weblog/post/rag-hybrid-retrieval-strategy/)。读完本篇，你应该能画出自己系统的延迟瀑布图，并按 SLO 排出优化优先级。
+
+> **第一原则**
+> 先按阶段拆开端到端延迟（Embed → Retrieve → Rerank → Generate），在 P95 预算内定位真正占时的环节；多数已上线系统的瓶颈在 **LLM 生成（约 70–80%）** 和 **Cross-Encoder Rerank（约 50–200ms）**，而不是再换一个更大的 Embedding 模型。
 
 > **Key Takeaways**
 > - 典型 P50 链路里，**LLM 生成约占 70–80% 延迟**；向量库调到极致仍可能救不了 P95。

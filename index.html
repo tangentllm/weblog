@@ -1,11 +1,25 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="dark">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function () {
+      var p = location.pathname || '/';
+      var base = (p === '/weblog' || p.indexOf('/weblog/') === 0) ? '/weblog/' : '/';
+      var el = document.createElement('base');
+      el.href = base;
+      document.head.appendChild(el);
+    })();
+  </script>
 
   <!-- 基础 SEO -->
-  <title>Tangentllm Notes — 未来已来</title>
+  <title>Tangentllm Notes</title>
+  <link rel="icon" href="favicon.png" type="image/png" sizes="180x180">
+  <link rel="icon" href="favicon-dark.png" type="image/png" sizes="180x180" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="favicon-48.png" type="image/png" sizes="48x48">
+  <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="description" content="专注于大模型技术的学习笔记、实践经验与项目分享。涵盖 Transformer、RAG、Agent、微调等核心技术。">
   <meta name="keywords" content="大模型,LLM,Transformer,RAG,Agent,微调,SFT,LoRA,Prompt Engineering,人工智能,深度学习,自然语言处理,NLP">
   <meta name="author" content="tangentllm">
@@ -18,7 +32,7 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://tangentllm.github.io/weblog/">
-  <meta property="og:title" content="Tangentllm Notes — 未来已来">
+  <meta property="og:title" content="Tangentllm Notes">
   <meta property="og:description" content="专注于大模型技术的学习笔记、实践经验与项目分享。涵盖 Transformer、RAG、Agent、微调等核心技术。">
   <meta property="og:image" content="https://tangentllm.github.io/weblog/og-image.png">
   <meta property="og:locale" content="zh_CN">
@@ -27,7 +41,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://tangentllm.github.io/weblog/">
-  <meta name="twitter:title" content="Tangentllm Notes — 未来已来">
+  <meta name="twitter:title" content="Tangentllm Notes">
   <meta name="twitter:description" content="专注于大模型技术的学习笔记、实践经验与项目分享。涵盖 Transformer、RAG、Agent、微调等核心技术。">
   <meta name="twitter:image" content="https://tangentllm.github.io/weblog/og-image.png">
 
@@ -57,7 +71,25 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Noto+Serif+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="josh-fonts.css">
+  <script>
+    (function () {
+      var saved = localStorage.getItem('theme');
+      var isDark = saved === 'dark'
+        || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.classList.toggle('dark', isDark);
+      document.documentElement.classList.add('josh-site');
+      document.documentElement.setAttribute('data-color-mode', isDark ? 'dark' : 'light');
+    })();
+  </script>
+  <link rel="stylesheet" href="josh-tokens.css">
+  <link rel="stylesheet" href="josh-components.css">
+  <link rel="stylesheet" href="josh-prose.css">
+  <link rel="stylesheet" href="josh-syntax.css">
+  <link rel="stylesheet" href="josh-home.css">
+  <link rel="stylesheet" href="josh-playground.css">
+  <link rel="stylesheet" href="josh-about.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
@@ -71,401 +103,28 @@
       theme: {
         extend: {
           fontFamily: {
-            serif: ['"Noto Serif SC"', 'Georgia', 'serif'],
-            sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'monospace'],
+            sans: ['Wotfard', 'Wotfard-fallback', '"Noto Sans SC"', 'system-ui', 'sans-serif'],
+            mono: ['"Cartograph CF"', 'ui-monospace', 'monospace'],
           },
         }
       }
     }
   </script>
   <style>
-    /* === 全局过渡 === */
     html { scroll-behavior: smooth; }
-    a, button, .tag, .toc-link, .search-item {
-      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
-    }
-    body { font-family: 'DM Sans', system-ui, sans-serif; overflow-x: hidden; }
-    .font-serif { font-family: 'Noto Serif SC', Georgia, serif; }
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    body { overflow-x: hidden; }
 
-    /* === 阅读进度条 === */
-    #progress-bar {
-      position: fixed; top: 0; left: 0; height: 2px; z-index: 9999;
-      background: linear-gradient(90deg, #00e5a0, #00c9ff);
-      width: 0%; transition: width 0.1s linear;
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
-    /* === 滚动渐显 === */
-    .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
-
-    /* === 页面切换动画 === */
-    #app { animation: fadeUp 0.4s ease; }
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* === 导航栏 === */
-    .nav-blur { backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); }
-
-    /* === Hero 网格背景 === */
-    .hero-grid {
-      background-image:
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 60px 60px;
-    }
-    html:not(.dark) .hero-grid {
-      background-image:
-        linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    #page-loader {
+      --bg-color: #050505;
     }
 
-    /* === 强调色光晕 === */
-    .accent-glow {
-      position: absolute; width: 500px; height: 500px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(0,229,160,0.08) 0%, transparent 70%);
-      pointer-events: none;
+    html:not(.dark) #page-loader {
+      --bg-color: #fafaf9;
     }
-
-    /* === 文章排版 === */
-    .prose {
-      font-family: 'Noto Serif SC', Georgia, serif;
-      line-height: 1.9;
-      max-width: 100%;
-      word-wrap: break-word;
-    }
-    .prose h1 {
-      font-family: 'DM Sans', system-ui, sans-serif;
-      font-size: 2rem; font-weight: 700; margin: 2em 0 1em; padding-left: 14px;
-      border-left: 3px solid #00e5a0;
-    }
-    .prose h2 {
-      font-family: 'DM Sans', system-ui, sans-serif;
-      font-size: 1.5rem; font-weight: 700; margin: 2.5em 0 1em; padding-left: 14px;
-      border-left: 3px solid #00e5a0;
-    }
-    .prose h3 {
-      font-family: 'DM Sans', system-ui, sans-serif;
-      font-size: 1.2rem; font-weight: 600; margin: 2em 0 0.8em;
-    }
-    .prose h4 {
-      font-family: 'DM Sans', system-ui, sans-serif;
-      font-size: 1.1rem; font-weight: 600; margin: 1.5em 0 0.6em;
-    }
-    .prose h5, .prose h6 {
-      font-family: 'DM Sans', system-ui, sans-serif;
-      font-size: 1rem; font-weight: 600; margin: 1.2em 0 0.5em;
-    }
-    .prose p { margin: 0 0 1.2em; }
-    .prose a { color: #00e5a0; text-decoration: underline; text-underline-offset: 3px; }
-    .prose strong { font-weight: 600; }
-    .prose ul, .prose ol { margin: 0 0 1.2em; padding-left: 1.5em; }
-    .prose li { margin-bottom: 0.4em; }
-    .prose ul li { list-style: disc; }
-    .prose ol li { list-style: decimal; }
-    .prose pre {
-      margin: 1.5em 0;
-      padding: 1.2em;
-      border-radius: 8px;
-      overflow-x: auto;
-      max-width: 100%;
-    }
-    .dark .prose pre { background: #111; }
-    html:not(.dark) .prose pre { background: #fafafa; }
-    .prose pre code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      line-height: 1.7;
-    }
-    .dark .prose pre code { color: #d4d4d4; }
-    html:not(.dark) .prose pre code { color: #333; }
-
-    /* === 行内代码 === */
-    .prose code:not(pre code) {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.85em;
-      padding: 2px 6px; border-radius: 4px;
-      background: rgba(0,229,160,0.08); color: #00e5a0;
-    }
-    html:not(.dark) .prose code:not(pre code) {
-      background: rgba(0,180,125,0.08); color: #00a870;
-    }
-
-    /* === 代码块 === */
-    .code-block { position: relative; margin: 1.5em 0; border-radius: 10px; overflow: hidden; max-width: 100%; }
-    .code-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 14px; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace;
-    }
-    .dark .code-header { background: #1a1a1a; color: #666; }
-    html:not(.dark) .code-header { background: #f0f0f0; color: #888; }
-    .code-block pre {
-      margin: 0 !important;
-      padding: 1.2em !important;
-      border-radius: 0 !important;
-      background: transparent !important;
-      max-width: 100%;
-      overflow-x: auto;
-    }
-    .dark .code-block pre { background: #111 !important; }
-    html:not(.dark) .code-block pre { background: #fafafa !important; }
-    .code-block code {
-      font-family: 'JetBrains Mono', monospace !important;
-      font-size: 0.85rem !important;
-      line-height: 1.7 !important;
-      display: block;
-    }
-    .dark .code-block code { color: #d4d4d4 !important; }
-    .copy-btn {
-      padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;
-      border: none; opacity: 0.6; transition: opacity 0.2s;
-    }
-    .copy-btn:hover { opacity: 1; }
-    .dark .copy-btn { background: #333; color: #aaa; }
-    html:not(.dark) .copy-btn { background: #e0e0e0; color: #555; }
-
-    /* === 引用块 === */
-    .prose blockquote {
-      margin: 1.5em 0; padding: 1em 1.2em; border-radius: 0 8px 8px 0;
-      border-left: 3px solid #00e5a0; font-style: italic;
-    }
-    .dark .prose blockquote { background: rgba(0,229,160,0.05); color: #aaa; }
-    html:not(.dark) .prose blockquote { background: rgba(0,180,125,0.05); color: #666; }
-
-    /* === 图片样式 === */
-    .prose img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
-      cursor: zoom-in;
-      transition: transform 0.2s;
-      display: block;
-      margin: 1.5em auto;
-    }
-    .prose img:hover {
-      transform: scale(1.02);
-    }
-
-    /* === 表格 === */
-    .prose table { width: 100%; border-collapse: collapse; margin: 1.5em 0; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
-    .prose th { text-align: left; padding: 10px 12px; font-weight: 600; }
-    .prose td { padding: 10px 12px; }
-    .dark .prose th { background: #1a1a1a; border-bottom: 1px solid #333; color: #ccc; }
-    .dark .prose td { border-bottom: 1px solid #1e1e1e; color: #bbb; }
-    .dark .prose tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
-    html:not(.dark) .prose th { background: #f5f5f5; border-bottom: 1px solid #ddd; color: #333; }
-    html:not(.dark) .prose td { border-bottom: 1px solid #eee; color: #555; }
-    html:not(.dark) .prose tr:nth-child(even) td { background: rgba(0,0,0,0.02); }
-
-    /* === 折叠区域 === */
-    .collapse-details { margin: 1.2em 0; border-radius: 8px; overflow: hidden; }
-    .dark .collapse-details { border: 1px solid #2a2a2a; }
-    html:not(.dark) .collapse-details { border: 1px solid #e0e0e0; }
-    .collapse-summary {
-      cursor: pointer; padding: 12px 16px; font-weight: 500; font-size: 0.9rem;
-      list-style: none; display: flex; align-items: center; gap: 8px; user-select: none;
-    }
-    .collapse-summary::-webkit-details-marker { display: none; }
-    .collapse-icon {
-      display: inline-block;
-      transition: transform 0.2s;
-      font-size: 0.7em;
-    }
-    details[open] .collapse-icon {
-      transform: rotate(90deg);
-    }
-    .dark .collapse-summary { background: #1a1a1a; color: #ccc; }
-    .dark .collapse-summary:hover { background: #222; }
-    html:not(.dark) .collapse-summary { background: #f8f8f8; color: #444; }
-    html:not(.dark) .collapse-summary:hover { background: #f0f0f0; }
-    .collapse-content { padding: 16px; font-size: 0.9rem; }
-    .dark .collapse-content { background: #141414; color: #aaa; }
-    html:not(.dark) .collapse-content { background: #fdfdfd; color: #666; }
-
-    /* === TOC === */
-    .toc-link { display: block; padding: 4px 12px; font-size: 0.8rem; color: #666; text-decoration: none; transition: color 0.2s; position: relative; }
-    .toc-link:hover { color: #00e5a0; }
-    .toc-link.active { color: #00e5a0; }
-    html:not(.dark) .toc-link { color: #999; }
-    html:not(.dark) .toc-link.active { color: #00a870; }
-
-    .toc-nav { position: relative; }
-    .toc-indicator { position: absolute; left: 0; width: 2px; background: #00e5a0; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s; opacity: 0; pointer-events: none; }
-    html:not(.dark) .toc-indicator { background: #00a870; }
-
-    /* === 搜索弹窗 === */
-    .search-overlay { position: fixed; inset: 0; z-index: 100; display: none; align-items: flex-start; justify-content: center; padding-top: 15vh; }
-    .search-overlay.open { display: flex; }
-    .search-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
-    .search-box { position: relative; z-index: 1; width: 90%; max-width: 560px; border-radius: 12px; overflow: hidden; }
-    .dark .search-box { background: #1a1a1a; border: 1px solid #333; }
-    html:not(.dark) .search-box { background: #fff; border: 1px solid #ddd; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
-    .search-input {
-      width: 100%; padding: 16px 20px; border: none; outline: none; font-size: 1rem;
-      font-family: 'DM Sans', sans-serif;
-    }
-    .dark .search-input { background: transparent; color: #e5e5e5; }
-    html:not(.dark) .search-input { background: transparent; color: #1a1a1a; }
-    .search-results { max-height: 320px; overflow-y: auto; }
-    .search-item { padding: 12px 20px; cursor: pointer; border-top: 1px solid; }
-    .dark .search-item { border-color: #2a2a2a; }
-    .dark .search-item:hover { background: #222; }
-    html:not(.dark) .search-item { border-color: #eee; }
-    html:not(.dark) .search-item:hover { background: #f5f5f5; }
-
-    /* === 图片灯箱 === */
-    .lightbox { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); cursor: zoom-out; }
-    .lightbox.open { display: flex; }
-    .lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
-
-    /* === 回到顶部 === */
-    #back-to-top {
-      position: fixed; bottom: 32px; right: 32px; z-index: 90;
-      width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none;
-    }
-    #back-to-top.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    .dark #back-to-top { background: #1a1a1a; color: #00e5a0; border: 1px solid #333; }
-    html:not(.dark) #back-to-top { background: #fff; color: #00a870; border: 1px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-
-    /* === 标签 === */
-    .tag {
-      display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem;
-      font-weight: 500; text-decoration: none;
-    }
-    .dark .tag { background: rgba(0,229,160,0.08); color: #00e5a0; }
-    html:not(.dark) .tag { background: rgba(0,180,125,0.08); color: #00a870; }
-    .tag:hover { filter: brightness(1.2); }
-
-    /* === 路线图 === */
-    .roadmap-line { position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; }
-    .dark .roadmap-line { background: #2a2a2a; }
-    html:not(.dark) .roadmap-line { background: #e0e0e0; }
-    .roadmap-dot {
-      position: absolute; left: 8px; top: 4px; width: 16px; height: 16px; border-radius: 50%;
-      border: 2px solid; z-index: 1;
-    }
-    .roadmap-dot.done { background: #00e5a0; border-color: #00e5a0; }
-    .roadmap-dot.active { border-color: #00e5a0; background: transparent; box-shadow: 0 0 0 4px rgba(0,229,160,0.15); }
-    .roadmap-dot.pending { border-color: #444; background: transparent; }
-    html:not(.dark) .roadmap-dot.pending { border-color: #ccc; }
-
-    /* === 代码块复制按钮 === */
-
-    /* 分享按钮样式 */
-    .share-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      background: transparent;
-      border: 1px solid;
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-    .dark .share-btn {
-      border-color: #333;
-      color: #666;
-    }
-    html:not(.dark) .share-btn {
-      border-color: #ddd;
-      color: #999;
-    }
-    .dark .share-btn:hover {
-      background: #1e1e1e;
-      border-color: #444;
-      color: #fff;
-    }
-    html:not(.dark) .share-btn:hover {
-      background: #f5f5f5;
-      border-color: #ccc;
-      color: #333;
-    }
-
-    /* Toast 动画 */
-    @keyframes slideDown {
-      from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-      }
-    }
-    @keyframes slideUp {
-      from {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-      }
-      to {
-        opacity: 0;
-        transform: translateX(-50%) translateY(-20px);
-      }
-    }
-
-    /* === 页面切换动画 === */
-    @keyframes pageEnter {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    .page-transition {
-      animation: pageEnter 0.4s ease-out;
-    }
-
-    /* === 暗色模式切换动画 === */
-    html {
-      transition: background-color 0.3s ease, color 0.3s ease;
-    }
-    * {
-      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-    }
-
-    /* === hljs 覆盖 === */
-    .hljs-keyword { color: #c678dd; }
-    .hljs-string { color: #98c379; }
-    .hljs-number { color: #d19a66; }
-    .hljs-comment { color: #5c6370; font-style: italic; }
-    .hljs-function { color: #61afef; }
-    .hljs-title { color: #61afef; }
-    .hljs-params { color: #abb2bf; }
-    .hljs-built_in { color: #e5c07b; }
-    .hljs-attr { color: #d19a66; }
-    .hljs-variable { color: #e06c75; }
-    .hljs-operator { color: #56b6c2; }
-    .hljs-literal { color: #d19a66; }
-    .hljs-type { color: #e5c07b; }
-    html:not(.dark) .hljs-keyword { color: #a626a4; }
-    html:not(.dark) .hljs-string { color: #50a14f; }
-    html:not(.dark) .hljs-number { color: #986801; }
-    html:not(.dark) .hljs-comment { color: #a0a1a7; }
-    html:not(.dark) .hljs-function { color: #4078f2; }
-    html:not(.dark) .hljs-title { color: #4078f2; }
-    html:not(.dark) .hljs-params { color: #383a42; }
-    html:not(.dark) .hljs-built_in { color: #c18401; }
-    html:not(.dark) .hljs-attr { color: #986801; }
-    html:not(.dark) .hljs-variable { color: #e45649; }
-    html:not(.dark) .hljs-operator { color: #0184bc; }
-    html:not(.dark) .hljs-literal { color: #986801; }
-
-    /* === 移动端菜单 === */
-    .mobile-menu { display: none; }
-    .mobile-menu.open { display: flex; }
-
-    /* === 滚动条 === */
-    ::-webkit-scrollbar { width: 6px; }
-    .dark ::-webkit-scrollbar-track { background: #0a0a0a; }
-    .dark ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-    html:not(.dark) ::-webkit-scrollbar-track { background: #fafaf9; }
-    html:not(.dark) ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
 
     /* HTML 长文：iframe 原样渲染独立 HTML */
     .html-article-page {
@@ -474,6 +133,7 @@
       padding-right: 0 !important;
       background: #0d0d1a;
     }
+
     .html-article-shell {
       width: 100%;
       max-width: none;
@@ -481,6 +141,7 @@
       padding: 0;
       background: #0d0d1a;
     }
+
     .html-article-frame {
       display: block;
       width: 100%;
@@ -491,6 +152,7 @@
       background: #0d0d1a;
       vertical-align: top;
     }
+
     .html-article-nav {
       max-width: 1100px;
       margin-left: auto;
@@ -498,109 +160,81 @@
       padding-left: clamp(28px, 5vw, 72px);
       padding-right: clamp(28px, 5vw, 72px);
     }
-
-    /* === 加载动画 === */
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    #page-loader {
-      --bg-color: #050505;
-    }
-    html:not(.dark) #page-loader {
-      --bg-color: #fafaf9;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, .reveal, #app { animation: none !important; transition: none !important; opacity: 1 !important; transform: none !important; }
-    }
   </style>
 </head>
-<body class="dark:bg-[#050505] bg-[#fafaf9] dark:text-[#e5e5e5] text-[#1a1a1a] min-h-screen">
+<body class="min-h-screen">
 
   <!-- 加载动画 -->
-  <div id="page-loader" style="position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: var(--bg-color); transition: opacity 0.3s;">
-    <div style="width: 40px; height: 40px; border: 3px solid rgba(0,229,160,0.2); border-top-color: #00e5a0; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+  <div id="page-loader" class="josh-page-loader" aria-hidden="true">
+    <div class="josh-page-loader__ring" role="status" aria-label="加载中"></div>
   </div>
 
   <!-- 阅读进度条 -->
   <div id="progress-bar"></div>
 
-  <!-- 导航栏 -->
-  <nav class="nav-blur fixed top-0 left-0 right-0 z-50 dark:bg-[rgba(5,5,5,0.8)] bg-[rgba(250,250,249,0.8)] border-b dark:border-[#1a1a1a] border-[#eee]">
-    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-      <a href="/weblog/" class="flex items-center gap-2 text-base font-semibold tracking-tight dark:text-white text-[#111]">
-        <span class="w-5 h-5 rounded bg-[#00e5a0] flex items-center justify-center text-[10px] font-bold text-[#050505]">T</span>
-        Tangentllm Notes
-      </a>
-      <!-- 桌面导航 -->
-      <div class="hidden md:flex items-center gap-1">
-        <a href="/weblog/" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">首页</a>
-        <a href="/weblog/categories" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">分类</a>
-        <a href="/weblog/tags" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">标签</a>
-        <a href="/weblog/projects" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">作品</a>
-        <a href="/weblog/about" class="nav-link px-3 py-1.5 rounded-md text-sm dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]">关于</a>
-        <div class="w-px h-4 dark:bg-[#2a2a2a] bg-[#ddd] mx-2"></div>
-        <button onclick="openSearch()" class="p-1.5 rounded-md dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]" aria-label="搜索">
-          <i data-lucide="search" class="w-4 h-4"></i>
-        </button>
-        <button onclick="toggleTheme()" class="p-1.5 rounded-md dark:text-[#888] text-[#888] hover:dark:text-white hover:text-[#111] dark:hover:bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(0,0,0,0.04)]" aria-label="切换主题">
-          <i data-lucide="sun" class="w-4 h-4 dark:hidden"></i>
-          <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
-        </button>
-      </div>
-      <!-- 移动端按钮 -->
-      <div class="flex md:hidden items-center gap-1">
-        <button onclick="openSearch()" class="p-1.5 rounded-md dark:text-[#888] text-[#888]" aria-label="搜索"><i data-lucide="search" class="w-4 h-4"></i></button>
-        <button onclick="toggleMobileMenu()" class="p-1.5 rounded-md dark:text-[#888] text-[#888]" aria-label="菜单"><i data-lucide="menu" class="w-4 h-4"></i></button>
-      </div>
-    </div>
-    <!-- 移动端菜单 -->
-    <div id="mobile-menu" class="mobile-menu flex-col border-t dark:border-[#1a1a1a] border-[#eee] dark:bg-[rgba(5,5,5,0.95)] bg-[rgba(250,250,249,0.95)] px-6 py-3">
-      <a href="/weblog/" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">首页</a>
-      <a href="/weblog/categories" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">分类</a>
-      <a href="/weblog/tags" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">标签</a>
-      <a href="/weblog/projects" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">作品</a>
-      <a href="/weblog/about" onclick="closeMobileMenu()" class="mobile-nav-link py-2 text-sm dark:text-[#aaa] text-[#666]">关于</a>
-      <div class="flex items-center gap-2 py-2">
-        <button onclick="toggleTheme();closeMobileMenu()" class="text-sm dark:text-[#aaa] text-[#666]">切换主题</button>
-      </div>
-    </div>
-  </nav>
-
   <!-- 主内容区 -->
-  <main id="app" class="pt-14"></main>
+  <main id="app"></main>
 
-  <!-- 搜索弹窗 -->
-  <div id="search-overlay" class="search-overlay" onclick="if(event.target===this)closeSearch()">
-    <div class="search-backdrop"></div>
-    <div class="search-box">
-      <input id="search-input" class="search-input" placeholder="搜索文章 / 作品 / 标签..." oninput="handleSearch(this.value)" autocomplete="off">
-      <div id="search-results" class="search-results"></div>
+  <!-- 搜索（Josh 顶部下滑面板） -->
+  <div id="search-overlay" class="josh-search" aria-hidden="true">
+    <div class="josh-search__backdrop" onclick="closeSearch()"></div>
+    <button type="button" class="josh-search__dismiss" onclick="closeSearch()" aria-label="关闭搜索">
+      <svg width="1.5rem" height="1.5rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="5" y1="5" x2="19" y2="19"></line>
+        <line x1="5" y1="19" x2="19" y2="5"></line>
+      </svg>
+    </button>
+    <div class="josh-search__sheet" data-has-results="false">
+      <div class="josh-search__inner">
+        <div class="josh-search__controls">
+          <form class="josh-search__form" role="search" onsubmit="return false;">
+            <span class="josh-search__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v4"></path><path d="m16.2 7.8 2.9-2.9"></path><path d="M18 12h4"></path><path d="m16.2 16.2 2.9 2.9"></path><path d="M12 18v4"></path><path d="m4.9 19.1 2.9-2.9"></path><path d="M2 12h4"></path><path d="m4.9 4.9 2.9 2.9"></path>
+              </svg>
+            </span>
+            <input id="search-input" class="josh-search__input" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="150" oninput="handleSearchInput(this)">
+            <button type="button" class="josh-search__clear" id="search-clear" onclick="clearSearchInput()" aria-label="清除搜索" hidden>
+              <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M19 6V20C19 21 18 22 17 22H7C6 22 5 21 5 20V6Z"></path>
+                <path d="M10 11V17"></path>
+                <path d="M14 11V17"></path>
+                <path d="M3 6H21"></path>
+                <path d="M8 6V4C8 3 9 2 10 2H14C15 2 16 3 16 4V6"></path>
+              </svg>
+            </button>
+          </form>
+        </div>
+        <div id="search-results" class="josh-search__results"></div>
+      </div>
     </div>
   </div>
 
   <!-- 图片灯箱 -->
-  <div id="lightbox" class="lightbox" onclick="this.classList.remove('open')">
-    <img id="lightbox-img" src="" alt="">
+  <div id="lightbox" class="josh-lightbox" onclick="this.classList.remove('open')">
+    <img id="lightbox-img" class="josh-lightbox__img" src="" alt="">
   </div>
 
-  <!-- 回到顶部 -->
-  <button id="back-to-top" onclick="window.scrollTo({top:0})" aria-label="回到顶部">
-    <i data-lucide="arrow-up" class="w-4 h-4"></i>
-  </button>
-
+<script type="module" src="josh-playground.js"></script>
+<script type="module" src="josh-shiki.js"></script>
+<script src="josh-hit-counter.js"></script>
+<script src="josh-site.js"></script>
+<script src="josh-interactions.js"></script>
+<script src="josh-home.js"></script>
 <script>
 /* ============================
    数据层
    ============================ */
 const categories = [
-  { name: '基础原理', icon: 'brain', desc: 'Transformer、注意力机制、预训练', count: 1 },
-  { name: '模型架构', icon: 'boxes', desc: 'GPT、LLaMA、MoE、RAG', count: 0 },
-  { name: '微调与对齐', icon: 'sliders-horizontal', desc: 'SFT、RLHF、DPO、PTuning', count: 1 },
-  { name: '工程实践', icon: 'wrench', desc: '部署、量化、推理优化、vLLM', count: 1 },
+  { name: '基础原理', icon: 'brain', desc: 'Transformer、注意力、分词与预训练', count: 0 },
+  { name: '模型架构', icon: 'boxes', desc: 'GPT、LLaMA、MoE、DeepSeek 等架构演进', count: 0 },
+  { name: '微调与对齐', icon: 'sliders-horizontal', desc: 'SFT、RLHF、DPO、奖励建模', count: 0 },
+  { name: 'RAG 与检索', icon: 'search', desc: '检索增强、混合检索、Embedding 与生产落地', count: 0 },
+  { name: '智能体', icon: 'bot', desc: 'Agent、MCP、工具调用与多轮上下文', count: 0 },
+  { name: '评测与质量', icon: 'chart-bar', desc: '离线评测、回归测试、Prompt 版本与质量闸门', count: 0 },
   { name: '多模态', icon: 'scan-eye', desc: '视觉、语音、视频理解', count: 0 },
-  { name: '论文解读', icon: 'file-text', desc: '前沿论文精读与解读', count: 1 },
-  { name: '随想与思考', icon: 'lightbulb', desc: '学习感悟、行业观察', count: 1 },
+  { name: '论文解读', icon: 'file-text', desc: '前沿论文精读与解读', count: 0 },
+  { name: '随想与思考', icon: 'lightbulb', desc: '学习感悟、行业观察', count: 0 },
 ];
 
 let posts = [];
@@ -644,11 +278,39 @@ const siteMeta = {
 
 const SITE_ORIGIN = 'https://tangentllm.github.io';
 
+function getDeployBasePath() {
+  return typeof siteMeta.siteBasePath === 'string' ? siteMeta.siteBasePath : '';
+}
+
+/** Runtime base path: follows the URL (local root serve vs GitHub Pages /weblog). */
 function getSiteBasePath() {
-  if (typeof siteMeta.siteBasePath === 'string') return siteMeta.siteBasePath;
   const p = location.pathname || '/';
-  const idx = p.indexOf('/weblog');
-  return idx >= 0 ? '/weblog' : '';
+  const fromUrl = p === '/weblog' || p.startsWith('/weblog/') ? '/weblog' : '';
+  if (fromUrl) return fromUrl;
+  if (/^localhost$|^127\.0\.0\.1$/i.test(location.hostname)) return '';
+  const configured = getDeployBasePath();
+  if (configured && (p === configured || p.startsWith(`${configured}/`))) return configured;
+  return '';
+}
+
+const JOSH_ROUTE_ALIASES = {
+  category: {
+    '论文精读': '论文解读',
+  },
+};
+
+function normalizeRouteSegment(type, value) {
+  if (!value) return value;
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    decoded = value;
+  }
+  if (type === 'category' && JOSH_ROUTE_ALIASES.category[decoded]) {
+    return JOSH_ROUTE_ALIASES.category[decoded];
+  }
+  return decoded;
 }
 
 function sitePath(subpath = '') {
@@ -659,9 +321,10 @@ function sitePath(subpath = '') {
 }
 
 function absolutePageUrl(subpath = '') {
-  const p = sitePath(subpath);
-  const normalized = p.startsWith('/') ? p : `/${p}`;
-  return `${SITE_ORIGIN}${normalized}`;
+  const base = getDeployBasePath();
+  const tail = String(subpath || '').replace(/^\//, '');
+  if (!tail) return `${SITE_ORIGIN}${base ? `${base}/` : '/'}`;
+  return `${SITE_ORIGIN}${base ? `${base}/` : '/'}${tail}`;
 }
 
 const Routes = {
@@ -728,10 +391,10 @@ function parseRoute() {
   if (postMatch) return { type: 'post', slug: decodeURIComponent(postMatch[1]), query };
   if (path === '/categories') return { type: 'categories', query };
   const catMatch = path.match(/^\/category\/([^/]+)$/);
-  if (catMatch) return { type: 'category', name: decodeURIComponent(catMatch[1]), query };
+  if (catMatch) return { type: 'category', name: normalizeRouteSegment('category', catMatch[1]), query };
   if (path === '/tags') return { type: 'tags', query };
   const tagMatch = path.match(/^\/tag\/([^/]+)$/);
-  if (tagMatch) return { type: 'tag', tag: decodeURIComponent(tagMatch[1]), query };
+  if (tagMatch) return { type: 'tag', tag: normalizeRouteSegment('tag', tagMatch[1]), query };
   if (path === '/projects') return { type: 'projects', query };
   const projMatch = path.match(/^\/project\/([^/]+)$/);
   if (projMatch) return { type: 'project', slug: decodeURIComponent(projMatch[1]), query };
@@ -892,23 +555,84 @@ function isSkillCovered(skillLabel, coveredInfo) {
   );
 }
 
+function findTagForSkill(skillLabel, coveredInfo) {
+  const normalizedSkill = normalizeSkillToken(skillLabel);
+  if (!normalizedSkill || !isSkillCovered(skillLabel, coveredInfo)) return null;
+  const tags = [...new Set(posts.flatMap((post) => post.tags || []))];
+  let best = null;
+  let bestScore = 0;
+  tags.forEach((tag) => {
+    const normalizedTag = normalizeSkillToken(tag);
+    if (!normalizedTag) return;
+    let score = 0;
+    if (normalizedTag === normalizedSkill) score = 100;
+    else if (normalizedTag.includes(normalizedSkill) || normalizedSkill.includes(normalizedTag)) {
+      score = 60 - Math.abs(normalizedTag.length - normalizedSkill.length);
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = tag;
+    }
+  });
+  return best;
+}
+
 function renderSkillStack() {
   const coveredInfo = buildCoveredSkillSet();
   return skillStackSections.map((section) => `
-    <section class="dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border rounded-xl p-5">
-      <h3 class="font-semibold dark:text-white text-[#111] mb-3">${section.title}</h3>
-      <div class="flex flex-wrap gap-2">
+    <section class="josh-skill-section">
+      <h3 class="josh-skill-section__title">${section.title}</h3>
+      <div class="josh-skill-pills">
         ${section.skills.map((skill) => {
           const covered = isSkillCovered(skill, coveredInfo);
-          return `<span class="${
-            covered
-              ? 'px-3 py-1.5 rounded-full text-xs font-medium dark:bg-[rgba(0,229,160,0.15)] bg-[rgba(0,180,125,0.12)] dark:text-[#00e5a0] text-[#008866] border dark:border-[rgba(0,229,160,0.45)] border-[rgba(0,180,125,0.35)]'
-              : 'px-3 py-1.5 rounded-full text-xs font-medium dark:bg-[#171717] bg-[#f7f7f7] dark:text-[#7e7e7e] text-[#8a8a8a] border dark:border-[#262626] border-[#e9e9e9]'
-          }">${skill}</span>`;
+          return `<span class="josh-skill-pill${covered ? ' josh-skill-pill--covered' : ''}">${skill}</span>`;
         }).join('')}
       </div>
     </section>
   `).join('');
+}
+
+function renderAboutSkillStack() {
+  const coveredInfo = buildCoveredSkillSet();
+  const quickTagMap = new Map();
+  skillStackSections.forEach((section) => {
+    section.skills.forEach((skill) => {
+      const tag = findTagForSkill(skill, coveredInfo);
+      if (tag && !quickTagMap.has(tag)) quickTagMap.set(tag, skill);
+    });
+  });
+  const quickLinksHtml = quickTagMap.size
+    ? `<div class="josh-about-skill-quick">
+        <p class="josh-about-skill-quick__label">博客已覆盖（${quickTagMap.size}）</p>
+        <div class="josh-skill-pills">
+          ${Array.from(quickTagMap.entries()).map(([tag, skill]) => (
+            `<a class="josh-skill-pill josh-skill-pill--covered josh-skill-pill--link" href="${Routes.tag(tag)}">${skill}</a>`
+          )).join('')}
+        </div>
+      </div>`
+    : '';
+
+  const accordionHtml = skillStackSections.map((section) => {
+    const coveredCount = section.skills.filter((skill) => findTagForSkill(skill, coveredInfo)).length;
+    return `<details class="josh-skill-details">
+      <summary class="josh-skill-details__summary">
+        <span>${section.title}</span>
+        ${coveredCount ? `<span class="josh-skill-details__count">${coveredCount} 已覆盖</span>` : ''}
+      </summary>
+      <div class="josh-skill-pills">
+        ${section.skills.map((skill) => {
+          const covered = isSkillCovered(skill, coveredInfo);
+          const tag = covered ? findTagForSkill(skill, coveredInfo) : null;
+          if (tag) {
+            return `<a class="josh-skill-pill josh-skill-pill--covered josh-skill-pill--link" href="${Routes.tag(tag)}">${skill}</a>`;
+          }
+          return `<span class="josh-skill-pill${covered ? ' josh-skill-pill--covered' : ''}">${skill}</span>`;
+        }).join('')}
+      </div>
+    </details>`;
+  }).join('');
+
+  return `${quickLinksHtml}<div class="josh-skill-accordion">${accordionHtml}</div>`;
 }
 
 function stripFrontmatter(markdownText) {
@@ -1000,22 +724,40 @@ function initHtmlArticleFrame(scope) {
 function showLoader() {
   const loader = document.getElementById('page-loader');
   if (loader) {
-    loader.style.display = 'flex';
-    loader.style.opacity = '1';
+    loader.classList.add('is-active');
+    loader.setAttribute('aria-hidden', 'false');
   }
 }
 
 function hideLoader() {
   const loader = document.getElementById('page-loader');
   if (loader) {
-    loader.style.opacity = '0';
-    setTimeout(() => {
-      loader.style.display = 'none';
-    }, 300);
+    loader.classList.remove('is-active');
+    loader.setAttribute('aria-hidden', 'true');
   }
 }
 
 // 阅读进度保存和恢复
+let joshReadingProgressCleanup = null;
+
+function clearJoshReadingProgress() {
+  if (typeof joshReadingProgressCleanup === 'function') {
+    joshReadingProgressCleanup();
+    joshReadingProgressCleanup = null;
+  }
+}
+
+function bindJoshReadingProgress(slug) {
+  clearJoshReadingProgress();
+  if (!slug) return;
+  if (typeof restoreReadingProgress === 'function') {
+    restoreReadingProgress(slug);
+  }
+  if (typeof initReadingProgressTracking === 'function') {
+    joshReadingProgressCleanup = initReadingProgressTracking(slug);
+  }
+}
+
 function saveReadingProgress(slug) {
   const scrollPosition = window.scrollY;
   const progress = {
@@ -1041,9 +783,10 @@ function restoreReadingProgress(slug) {
 
     // 延迟恢复滚动位置，确保内容已渲染
     setTimeout(() => {
+      if (progress.position < 80) return;
       window.scrollTo({
         top: progress.position,
-        behavior: 'smooth'
+        behavior: 'instant',
       });
     }, 100);
   } catch (e) {
@@ -1174,10 +917,21 @@ function resolveAssetUrl(inputUrl) {
     }
 
     if (cleaned.startsWith('/')) {
-      return new URL(cleaned, window.location.origin).toString();
+      let path = cleaned;
+      const configured = getDeployBasePath();
+      for (const prefix of [configured, '/weblog'].filter(Boolean)) {
+        if (prefix && path.startsWith(`${prefix}/`)) {
+          path = path.slice(prefix.length) || '/';
+          break;
+        }
+      }
+      const siteBase = getSiteBasePath();
+      const rel = path.replace(/^\/+/, '');
+      const deployPrefix = siteBase ? `${siteBase}/` : '/';
+      return new URL(`${deployPrefix}${rel}`, window.location.origin).toString();
     }
 
-    // 静态资源始终相对站点根（/weblog/），勿用当前文章路径 /weblog/post/slug/
+    // 静态资源始终相对站点根，勿用当前文章路径 /weblog/post/slug/
     const siteBase = getSiteBasePath();
     const prefix = siteBase ? `${siteBase}/` : '/';
     const rel = cleaned.replace(/^\/+/, '');
@@ -1190,7 +944,24 @@ function resolveAssetUrl(inputUrl) {
 function buildImageUrlCandidates(inputUrl) {
   const raw = String(inputUrl || '').trim();
   if (!raw) return [];
-  if (/^(https?:|data:|blob:|file:)/i.test(raw)) return [raw];
+  if (/^(data:|blob:|file:)/i.test(raw)) return [raw];
+
+  if (/^https?:/i.test(raw)) {
+    const candidates = new Set([raw]);
+    try {
+      const siteBase = getSiteBasePath();
+      const url = new URL(raw);
+      const baseNoSlash = siteBase ? siteBase.replace(/^\//, '') : '';
+      const marker = baseNoSlash ? `/${baseNoSlash}/` : '';
+      if (marker && url.pathname.startsWith(marker)) {
+        const rootPath = url.pathname.slice(marker.length - 1);
+        candidates.add(`${url.origin}${rootPath}`);
+      }
+    } catch {
+      /* ignore malformed absolute url */
+    }
+    return Array.from(candidates);
+  }
 
   const cleaned = raw.replace(/^\.\//, '');
   const candidates = new Set();
@@ -1205,14 +976,21 @@ function buildImageUrlCandidates(inputUrl) {
   const siteBase = getSiteBasePath();
   const baseNoSlash = siteBase ? siteBase.replace(/^\//, '') : '';
   const rel = cleaned.replace(/^\/+/, '');
+  const rootCandidate = new URL(`/${rel}`, window.location.origin).toString();
+  const prefix = siteBase ? `${siteBase}/` : '/';
+  const prefixedCandidate = new URL(`${prefix}${rel}`, window.location.origin).toString();
+
   // 已是 /weblog/... 绝对站内路径时，勿再拼 prefix，避免 /weblog/weblog/... 404
   if (baseNoSlash && rel.startsWith(`${baseNoSlash}/`)) {
+    push(rootCandidate);
     return Array.from(candidates);
   }
-  const prefix = siteBase ? `${siteBase}/` : '/';
-  push(new URL(`${prefix}${rel}`, window.location.origin).toString());
-  // GitHub Pages 子路径部署时不要回退到缺 /weblog/ 的根路径，否则会 404
-  if (!siteBase) {
+
+  push(prefixedCandidate);
+  // 本地开发（根目录 serve）可回退到无子路径；线上 GHP /weblog 部署仍以 prefixed 为准
+  if (siteBase) {
+    push(rootCandidate);
+  } else {
     push(`${window.location.origin}/${rel}`);
   }
 
@@ -1246,7 +1024,12 @@ function installImageFallbacks(scope = document) {
         img.style.background = 'rgba(128,128,128,0.12)';
         return;
       }
-      img.src = buildInlineCoverDataUrl(img.alt || 'Tangentllm Notes');
+      if (img.dataset.noInlineFallback === '1') {
+        const wrap = img.closest('.josh-post-cover');
+        if (wrap) wrap.remove();
+        return;
+      }
+      img.src = buildInlineCoverDataUrl(img.dataset.fallbackTitle || img.alt || 'Tangentllm Notes');
     });
   });
 }
@@ -1275,9 +1058,18 @@ function buildInlineCoverDataUrl(titleText) {
   <rect x="96" y="150" width="1008" height="300" rx="24" fill="#0E1A2E" stroke="#1D3356" stroke-width="2"/>
   <path d="M144 238H360" stroke="url(#accent)" stroke-width="6" stroke-linecap="round"/>
   <text x="144" y="316" fill="#EAF2FF" font-size="54" font-weight="700" font-family="system-ui,Segoe UI,Roboto,PingFang SC,Microsoft YaHei,sans-serif">${safeTitle}</text>
-  <text x="144" y="366" fill="#B8C6E6" font-size="24" font-weight="500" font-family="system-ui,Segoe UI,Roboto,PingFang SC,Microsoft YaHei,sans-serif">Inline fallback cover</text>
+  <text x="144" y="366" fill="#B8C6E6" font-size="24" font-weight="500" font-family="system-ui,Segoe UI,Roboto,PingFang SC,Microsoft YaHei,sans-serif">封面预览</text>
 </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function rewriteInlineAssetUrls(html) {
+  if (!html || typeof html !== 'string') return html;
+  return html.replace(/\b(src|href)=(["'])([^"']+)\2/gi, (full, attr, quote, url) => {
+    const trimmed = String(url || '').trim();
+    if (!trimmed || /^(https?:|data:|blob:|#|mailto:|tel:)/i.test(trimmed)) return full;
+    return `${attr}=${quote}${resolveAssetUrl(trimmed)}${quote}`;
+  });
 }
 
 function normalizeLoadedPost(item, markdownText, index) {
@@ -1290,6 +1082,7 @@ function normalizeLoadedPost(item, markdownText, index) {
   return {
     slug: safeSlug,
     title: item.title || fm.title || safeSlug,
+    subtitle: item.subtitle || fm.subtitle || '',
     excerpt: item.excerpt || fm.excerpt || buildExcerptFromMarkdown(contentMarkdown),
     date: item.date || fm.date || '2025-01-01',
     readTime: item.readTime || fm.readTime || estimateReadTimeFromMarkdown(contentMarkdown),
@@ -1297,13 +1090,19 @@ function normalizeLoadedPost(item, markdownText, index) {
     category: item.category || fm.category || '随想与思考',
     pinned: Boolean(item.pinned || fm.pinned === 'true' || fm.pinned === true),
     cover: resolveAssetUrl(item.cover || fm.cover || `https://picsum.photos/seed/${safeSlug}/800/400.jpg`),
+    series: item.series || fm.series || '',
+    seriesOrder: item.seriesOrder ?? (fm.seriesOrder ? Number(fm.seriesOrder) : null),
     format: isHtml ? 'html' : 'markdown',
     htmlFile: isHtml ? htmlFile : '',
     content: isHtml
       ? ''
-      : (typeof marked === 'undefined'
-        ? contentMarkdown
-        : marked.parse(contentMarkdown)),
+      : rewriteInlineAssetUrls(
+        typeof joshParseJoshMarkdown === 'function'
+          ? joshParseJoshMarkdown(contentMarkdown)
+          : (typeof marked === 'undefined'
+            ? contentMarkdown
+            : marked.parse(contentMarkdown)),
+      ),
   };
 }
 
@@ -1318,9 +1117,11 @@ function parseTagsFromMeta(tagText) {
 function normalizeLoadedProject(item, markdownText, index) {
   const safeSlug = item.slug || `project-${index + 1}`;
   const contentMarkdown = stripFrontmatter(markdownText);
-  const contentHtml = typeof marked === 'undefined'
-    ? contentMarkdown
-    : marked.parse(contentMarkdown);
+  const contentHtml = typeof joshParseJoshMarkdown === 'function'
+    ? joshParseJoshMarkdown(contentMarkdown)
+    : (typeof marked === 'undefined'
+      ? contentMarkdown
+      : marked.parse(contentMarkdown));
   return {
     slug: safeSlug,
     title: item.title || safeSlug,
@@ -1330,6 +1131,7 @@ function normalizeLoadedProject(item, markdownText, index) {
     period: item.period || '2026',
     tags: Array.isArray(item.tags) ? item.tags : [],
     summary: item.summary || buildExcerptFromMarkdown(contentMarkdown),
+    excerpt: item.excerpt || item.summary || buildExcerptFromMarkdown(contentMarkdown),
     architecture: Array.isArray(item.architecture) ? item.architecture : [],
     features: Array.isArray(item.features) ? item.features : [],
     metrics: Array.isArray(item.metrics) ? item.metrics : [],
@@ -1337,8 +1139,10 @@ function normalizeLoadedProject(item, markdownText, index) {
     links: typeof item.links === 'object' && item.links
       ? item.links
       : { github: '#', demo: '#', docs: '#' },
-    content: contentHtml,
+    content: rewriteInlineAssetUrls(contentHtml),
     rawMarkdown: markdownText || '',
+    updated: item.updated || item.period || '',
+    readTime: item.readTime || estimateReadTimeFromMarkdown(contentMarkdown),
   };
 }
 
@@ -1413,7 +1217,7 @@ async function hydrateCoversSvgToDataUrls(items) {
 }
 
 async function loadPostsFromManifest() {
-  const response = await fetch(postDataSource.manifestPath, {
+  const response = await fetch(resolveAssetUrl(postDataSource.manifestPath.replace(/^\.\//, '')), {
     cache: 'no-store',
   });
   if (!response.ok) {
@@ -1428,13 +1232,27 @@ async function loadPostsFromManifest() {
   const fetchedPosts = await Promise.all(
     manifest.map(async (item, index) => {
       if (!item.file) return normalizeLoadedPost(item, '', index);
-      const markdownResponse = await fetch(item.file, { cache: 'no-store' });
+      const markdownResponse = await fetch(resolveAssetUrl(String(item.file).replace(/^\.\//, '')), { cache: 'no-store' });
       const markdownText = markdownResponse.ok
         ? await markdownResponse.text()
         : '';
       const post = normalizeLoadedPost(item, markdownText, index);
       if (post.format === 'html' && post.htmlFile) {
-        post.content = '';
+        const htmlResponse = await fetch(resolveAssetUrl(String(post.htmlFile).replace(/^\.\//, '')), { cache: 'no-store' });
+        if (htmlResponse.ok) {
+          const html = await htmlResponse.text();
+          if (typeof extractHtmlArticleProse === 'function') {
+            post.content = extractHtmlArticleProse(html, post.title);
+          } else {
+            post.content = '';
+          }
+          if (!post.subtitle) {
+            const subtitleMatch = html.match(/<p\s+class="subtitle"[^>]*>([^<]+)<\/p>/i);
+            if (subtitleMatch) post.subtitle = subtitleMatch[1].trim();
+          }
+        } else {
+          post.content = '';
+        }
       }
       return post;
     }),
@@ -1445,7 +1263,7 @@ async function loadPostsFromManifest() {
 }
 
 async function loadProjectsFromManifest() {
-  const response = await fetch(projectDataSource.manifestPath, {
+  const response = await fetch(resolveAssetUrl(projectDataSource.manifestPath.replace(/^\.\//, '')), {
     cache: 'no-store',
   });
   if (!response.ok) {
@@ -1461,7 +1279,7 @@ async function loadProjectsFromManifest() {
     manifest.map(async (item, index) => {
       const file = item.file;
       if (!file) return normalizeLoadedProject(item, '', index);
-      const markdownResponse = await fetch(file, { cache: 'no-store' });
+      const markdownResponse = await fetch(resolveAssetUrl(String(file).replace(/^\.\//, '')), { cache: 'no-store' });
       const markdownText = markdownResponse.ok
         ? await markdownResponse.text()
         : '';
@@ -1469,81 +1287,28 @@ async function loadProjectsFromManifest() {
     }),
   );
   projectsData = fetchedProjects;
-  await hydrateCoversSvgToDataUrls(projectsData);
+  // 作品封面保留绝对 SVG URL；内联 data URL 在部分路由下会导致 <img> 加载失败
 }
 
 /* ============================
    路由系统
    ============================ */
+let appBootstrapped = false;
+
 function router() {
+  if (!appBootstrapped) return;
   const route = parseRoute();
   const app = document.getElementById('app');
-
-  // 统一导航高亮（桌面 + 移动）
-  let activeNavHref = Routes.home();
-  if (route.type === 'home' || route.type === 'post') {
-    activeNavHref = Routes.home();
-  } else if (route.type === 'categories' || route.type === 'category') {
-    activeNavHref = Routes.categories();
-  } else if (route.type === 'tags' || route.type === 'tag') {
-    activeNavHref = Routes.tags();
-  } else if (route.type === 'projects' || route.type === 'project') {
-    activeNavHref = Routes.projects();
-  } else if (route.type === 'about') {
-    activeNavHref = Routes.about();
+  if (typeof joshHomeCleanup === 'function') {
+    joshHomeCleanup();
+    joshHomeCleanup = null;
   }
-
-  document.querySelectorAll('.nav-link').forEach(link => {
-    const href = link.getAttribute('href');
-    const isActive = href === activeNavHref || href === activeNavHref.replace(/\/$/, '');
-    if (isActive) {
-      link.classList.add(
-        'dark:text-white',
-        'text-[#111]',
-        'font-medium',
-        'dark:bg-[rgba(255,255,255,0.08)]',
-        'bg-[rgba(0,0,0,0.05)]'
-      );
-      link.classList.remove('dark:text-[#888]', 'text-[#888]');
-    } else {
-      link.classList.remove(
-        'dark:text-white',
-        'text-[#111]',
-        'font-medium',
-        'dark:bg-[rgba(255,255,255,0.08)]',
-        'bg-[rgba(0,0,0,0.05)]'
-      );
-      link.classList.add('dark:text-[#888]', 'text-[#888]');
-    }
-  });
-
-  document.querySelectorAll('.mobile-nav-link').forEach(link => {
-    const href = link.getAttribute('href');
-    const isActive = href === activeNavHref;
-    if (isActive) {
-      link.classList.add(
-        'dark:text-white',
-        'text-[#111]',
-        'font-medium',
-        'dark:bg-[rgba(255,255,255,0.08)]',
-        'bg-[rgba(0,0,0,0.05)]',
-        'rounded-md',
-        'px-2'
-      );
-      link.classList.remove('dark:text-[#aaa]', 'text-[#666]');
-    } else {
-      link.classList.remove(
-        'dark:text-white',
-        'text-[#111]',
-        'font-medium',
-        'dark:bg-[rgba(255,255,255,0.08)]',
-        'bg-[rgba(0,0,0,0.05)]',
-        'rounded-md',
-        'px-2'
-      );
-      link.classList.add('dark:text-[#aaa]', 'text-[#666]');
-    }
-  });
+  if (typeof joshSiteCleanup === 'function') {
+    joshSiteCleanup();
+    joshSiteCleanup = null;
+  }
+  if (typeof clearJoshReadingProgress === 'function') clearJoshReadingProgress();
+  syncJoshSiteClass(route.type === 'home');
 
   // 解析路由
   if (route.type === 'home') {
@@ -1570,38 +1335,34 @@ function router() {
 
   const isPostRoute = route.type === 'post';
   const isProjectRoute = route.type === 'project';
-  const postSlugForRoute = isPostRoute ? route.slug : '';
-  const currentPost = isPostRoute ? posts.find((p) => p.slug === postSlugForRoute) : null;
-  const isHtmlPostRoute = Boolean(currentPost && currentPost.format === 'html');
   const runImmediateEnhancements = () => {
     renderLucideIconsSafely();
     installImageFallbacks(app);
-    if (isHtmlPostRoute) initHtmlArticleFrame(app);
-    // 立即初始化 reveal，避免关于页内容延迟出现
     initReveal();
+    if ((isPostRoute || isProjectRoute) && typeof enhanceJoshProseCallouts === 'function') {
+      enhanceJoshProseCallouts(app);
+    }
   };
   const runDeferredEnhancements = () => {
-    if ((isPostRoute || isProjectRoute) && !isHtmlPostRoute && typeof renderMathInElement === 'function') {
+    if ((isPostRoute || isProjectRoute) && typeof renderMathInElement === 'function') {
       renderMathInElement(app, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false });
     }
-    if ((isPostRoute || isProjectRoute) && !isHtmlPostRoute) {
+    if (isPostRoute || isProjectRoute) {
       renderMermaidDiagrams(app);
     }
-    if ((isPostRoute || isProjectRoute) && !isHtmlPostRoute) {
-      wrapCodeBlocks(app);
+    if (isPostRoute || isProjectRoute) {
       styleDetailsElements(app);
+      runJoshPlaygroundMount(app);
+      runJoshCodeHighlight(app);
     }
-    if ((isPostRoute || isProjectRoute) && !isHtmlPostRoute && typeof hljs !== 'undefined') {
-      app.querySelectorAll('pre code').forEach(block => { hljs.highlightElement(block); });
-    }
-    if (isPostRoute && !isHtmlPostRoute) {
+    if (isPostRoute || isProjectRoute) {
       initImageLightbox();
-      initPostToc();
+      if (typeof initJoshHeadingAnchors === 'function') initJoshHeadingAnchors(app);
+      if (typeof initPostToc === 'function') initPostToc();
     }
-    if (isProjectRoute) {
-      initImageLightbox();
+    if (typeof initJoshFooterMascotAnimation === 'function') {
+      initJoshFooterMascotAnimation(app);
     }
-    // 初始化懒加载
     initLazyLoading();
   };
   requestAnimationFrame(runImmediateEnhancements);
@@ -1622,1023 +1383,231 @@ function router() {
    页面渲染函数
    ============================ */
 
-// 首页
+// 首页（Josh W. Comeau 风格，见 josh-home.js / josh-home.css）
 function renderHome(app) {
-  // 重置 SEO meta 标签为默认值
-  updateMetaTags({
-    title: 'Tangentllm Notes — 未来已来',
-    description: '专注于大模型技术的学习笔记、实践经验与项目分享。涵盖 Transformer、RAG、Agent、微调等核心技术。',
-    keywords: '大模型,LLM,Transformer,RAG,Agent,微调,SFT,LoRA,Prompt Engineering',
-    url: absolutePageUrl(),
-    type: 'website'
-  });
-
-  const pinned = posts.filter(p => p.pinned);
-  const recent = posts.filter(p => !p.pinned);
-  const hasPosts = posts.length > 0;
-
-  app.innerHTML = `
-    <!-- Hero -->
-    <section class="relative hero-grid overflow-hidden">
-      <div class="accent-glow" style="top:-200px;right:-200px;"></div>
-      <div class="max-w-5xl mx-auto px-6 pt-24 pb-20 md:pt-32 md:pb-28 relative z-10">
-        <div class="reveal">
-          <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">WELCOME TO MY BLOG</p>
-          <h1 class="font-serif text-4xl md:text-6xl font-bold leading-tight dark:text-white text-[#111] mb-6">
-            理解大模型，<br>从第一性原理出发
-          </h1>
-          <div class="flex gap-3">
-            <a href="${Routes.categories()}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#00e5a0] text-[#050505] text-sm font-semibold hover:brightness-110 transition-all">
-              浏览全部文章 <i data-lucide="arrow-right" class="w-4 h-4"></i>
-            </a>
-            <a href="${Routes.projects()}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium dark:text-[#ccc] text-[#444] dark:border-[#333] border-[#ddd] border hover:dark:bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(0,0,0,0.03)] transition-all">
-              作品集
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 置顶文章：统一卡片、对称 2×2 网格（视觉权重一致） -->
-    ${pinned.length > 0 ? `
-    <section class="max-w-5xl mx-auto px-6 pb-16">
-      <div class="reveal">
-        <div class="mb-8 border-b dark:border-[#1e1e1e] border-[#eee] pb-6">
-          <p class="text-xs font-mono dark:text-[#555] text-[#bbb] uppercase tracking-widest">Pinned</p>
-          <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mt-2">置顶文章</h2>
-        </div>
-        <div class="grid grid-cols-1 ${pinned.length === 1 ? 'sm:max-w-xl sm:mx-auto' : 'sm:grid-cols-2'} gap-8 sm:gap-x-8 sm:gap-y-10">
-          ${pinned.map((post) => `
-            <a href="${Routes.post(post.slug)}" class="group flex flex-col h-full rounded-2xl overflow-hidden dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border border-[#eee] shadow-sm hover:shadow-md hover:dark:border-[#2a2a2a] hover:border-[#ddd] transition-all duration-300">
-              <div class="shrink-0 w-full overflow-hidden dark:bg-[#1a1a1a] bg-[#f0f0f0]">
-                <img src="${post.cover}" alt="${post.title}" class="w-full aspect-[2/1] object-cover object-center group-hover:scale-[1.02] transition-transform duration-500" loading="lazy">
-              </div>
-              <div class="p-5 flex flex-col flex-1 min-h-0">
-                <div class="flex flex-wrap gap-1.5 mb-3">${post.tags.slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}</div>
-                <h3 class="font-semibold text-[15px] leading-snug dark:text-white text-[#111] line-clamp-2 group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h3>
-                <p class="text-sm dark:text-[#777] text-[#888] line-clamp-2 leading-relaxed mt-2 flex-1">${post.excerpt}</p>
-                <div class="flex items-center flex-wrap gap-x-3 gap-y-1 mt-4 pt-4 border-t dark:border-[#1a1a1a] border-[#f0f0f0] text-xs dark:text-[#555] text-[#bbb]">
-                  <span>${formatDate(post.date)}</span>
-                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  <span>${post.readTime}</span>
-                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  ${viewCountMiniMarkup(`view-list-post-${post.slug}`)}
-                </div>
-              </div>
-            </a>
-          `).join('')}
-        </div>
-      </div>
-    </section>
-    ` : ''}
-
-    <!-- 最新文章 -->
-    <section class="max-w-5xl mx-auto px-6 pb-20">
-      <div class="reveal">
-        <div class="flex items-center justify-between mb-8">
-          <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111]">最新文章</h2>
-          <div class="flex items-center gap-3 text-sm dark:text-[#666] text-[#999]">
-            <span>共 ${posts.length} 篇</span>
-            <a href="${Routes.categories()}" class="hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors">查看全部</a>
-          </div>
-        </div>
-        ${hasPosts ? `
-          <div class="space-y-0 dark:divide-y dark:divide-[#1a1a1a] divide-y divide-[#eee]">
-            ${recent.map(post => `
-              <a href="${Routes.post(post.slug)}" class="group flex flex-row items-start md:items-center gap-4 md:gap-6 py-6 first:pt-0 last:pb-0">
-                <div class="shrink-0 w-[104px] h-[65px] md:w-36 md:h-[88px] rounded-lg overflow-hidden dark:bg-[#1a1a1a] bg-[#f0f0f0] dark:border-[#2a2a2a] border border-[#eee]">
-                  <img src="${post.cover}" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex flex-wrap gap-2 mb-2">${post.tags.slice(0,2).map(t => `<span class="tag">${t}</span>`).join('')}</div>
-                  <h3 class="font-semibold text-base dark:text-[#ddd] text-[#333] leading-snug group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h3>
-                  <p class="text-sm dark:text-[#666] text-[#999] mt-1.5 line-clamp-1">${post.excerpt}</p>
-                  <div class="flex sm:hidden items-center flex-wrap gap-x-2 gap-y-1 mt-2 text-xs dark:text-[#555] text-[#bbb]">
-                    <span>${formatDate(post.date)}</span>
-                    <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                    <span>${post.readTime}</span>
-                    <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                    ${viewCountMiniMarkup(`view-list-post-${post.slug}-m`)}
-                  </div>
-                </div>
-                <div class="hidden sm:flex flex-col sm:flex-row sm:items-center flex-wrap gap-2 sm:gap-3 text-xs dark:text-[#555] text-[#bbb] shrink-0 pt-1 sm:pt-0">
-                  <span>${formatDate(post.date)}</span>
-                  <span class="hidden sm:inline w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  <span>${post.readTime}</span>
-                  <span class="hidden sm:inline w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  ${viewCountMiniMarkup(`view-list-post-${post.slug}-d`)}
-                </div>
-              </a>
-            `).join('')}
-          </div>
-        ` : `
-          <div class="rounded-xl border dark:border-[#1f1f1f] border-[#e8e8e8] dark:bg-[#0f0f0f] bg-white p-6 text-sm dark:text-[#777] text-[#888]">
-            暂未加载到文章。请通过本地静态服务访问，或确认 manifest 与 Markdown 文件已发布。
-          </div>
-        `}
-      </div>
-    </section>
-
-    <!-- 页脚 -->
-    <footer class="border-t dark:border-[#1a1a1a] border-[#eee] py-10">
-      <div class="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm dark:text-[#555] text-[#bbb]">
-        <span>Tangentllm Notes — 未来已来</span>
-        <span>Powered by curiosity & persistence</span>
-      </div>
-    </footer>
-  `;
-
-  queueMicrotask(() => {
-    hydrateListViewCounts(pinned, 'view-list-post', 'post', false);
-    hydrateListViewCounts(recent, 'view-list-post', 'post', true);
-  });
+  renderJoshHome(app);
 }
 
-// 文章详情页
+// 文章详情页（Markdown / HTML 长文均走 Josh 文章模板）
 function renderPost(app, slug) {
-  const post = posts.find(p => p.slug === slug);
-  if (!post) { app.innerHTML = '<div class="max-w-3xl mx-auto px-6 pt-32 text-center dark:text-[#888] text-[#999]">文章不存在</div>'; return; }
-
-  // 初始化阅读进度跟踪
-  let cleanupProgress = null;
-  setTimeout(() => {
-    cleanupProgress = initReadingProgressTracking(slug);
-    restoreReadingProgress(slug);
-  }, 500);
-
-  // 更新 SEO meta 标签
-  const baseUrl = absolutePageUrl();
-  updateMetaTags({
-    title: `${post.title} - Tangentllm Notes`,
-    description: post.excerpt || post.title,
-    keywords: post.tags.join(','),
-    url: absolutePageUrl(`post/${post.slug}`),
-    image: coverUrlForOpenGraph(post.cover, baseUrl),
-    type: 'article',
-    article: {
-      headline: post.title,
-      datePublished: post.date,
-      author: 'tangentllm',
-    },
-  });
-
-  const prevPost = posts[posts.indexOf(post) - 1] || null;
-  const nextPost = posts[posts.indexOf(post) + 1] || null;
-
-  if (post.format === 'html') {
-    app.innerHTML = `
-    <article class="html-article-page w-full mx-0 pt-20 md:pt-24 pb-10">
-      <div class="html-article-shell">
-        <p class="html-article-frame-error hidden text-center py-12 text-[#a09ec0]">HTML 正文加载失败，请用本地静态服务打开（勿用 file:// 直接打开）。</p>
-        <iframe
-          class="html-article-frame"
-          src="${htmlArticleFrameSrc(post.htmlFile)}"
-          title="${escapeHtmlAttr(post.title)}"
-          loading="lazy"
-          referrerpolicy="no-referrer"
-          scrolling="no"
-        ></iframe>
-      </div>
-      <div class="html-article-nav mt-10 pt-8 border-t border-[rgba(255,255,255,0.07)] grid grid-cols-2 gap-4" role="navigation" aria-label="文章导航">
-        ${prevPost ? `
-        <a href="${Routes.post(prevPost.slug)}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors" aria-label="上一篇：${prevPost.title}">
-          <p class="text-xs dark:text-[#555] text-[#bbb] mb-1">上一篇</p>
-          <p class="text-sm font-medium dark:text-[#aaa] text-[#555] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-1">${prevPost.title}</p>
-        </a>
-        ` : '<div></div>'}
-        ${nextPost ? `
-        <a href="${Routes.post(nextPost.slug)}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors text-right" aria-label="下一篇：${nextPost.title}">
-          <p class="text-xs dark:text-[#555] text-[#bbb] mb-1">下一篇</p>
-          <p class="text-sm font-medium dark:text-[#aaa] text-[#555] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-1">${nextPost.title}</p>
-        </a>
-        ` : '<div></div>'}
-      </div>
-    </article>
-    `;
-    updateViewCount(post.slug);
-    queueMicrotask(() => {
-      initHtmlArticleFrame(app);
-      installImageFallbacks(app);
-    });
-    return;
-  }
-
-  // 提取标题用于TOC
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = post.content;
-  const headings = [...tempDiv.querySelectorAll('h2, h3')].map((h, i) => ({
-    id: 'heading-' + i,
-    tag: h.tagName.toLowerCase(),
-    text: h.textContent
-  }));
-
-  // 为每个标题添加ID
-  let contentWithIds = post.content;
-  let headingIndex = 0;
-  contentWithIds = contentWithIds.replace(/<(h[23])>(.*?)<\/\1>/gi, (match, tag, content) => {
-    const id = `heading-${headingIndex}`;
-    headingIndex++;
-    return `<${tag} id="${id}">${content}</${tag}>`;
-  });
-
-  app.innerHTML = `
-    <article class="max-w-6xl mx-auto px-6 pt-24 md:pt-28 pb-20">
-      <!-- 文章头部 -->
-      <header class="reveal mb-12">
-        ${post.series ? `
-        <div class="mb-4 p-3 rounded-lg dark:bg-[rgba(0,229,160,0.05)] bg-[rgba(0,180,125,0.04)] border dark:border-[rgba(0,229,160,0.2)] border-[rgba(0,180,125,0.15)]">
-          <div class="flex items-center gap-2 text-sm">
-            <svg class="w-4 h-4 dark:text-[#00e5a0] text-[#00a870]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-            <span class="dark:text-[#00e5a0] text-[#00a870] font-medium">系列文章：${post.series}</span>
-            ${post.seriesOrder ? `<span class="dark:text-[#666] text-[#999]">第 ${post.seriesOrder} 篇</span>` : ''}
-          </div>
-        </div>
-        ` : ''}
-        <div class="flex flex-wrap gap-2 mb-4" role="list" aria-label="文章标签">
-          ${post.tags.map(t => `<span class="tag" role="listitem">${t}</span>`).join('')}
-        </div>
-        <h1 class="font-serif text-3xl md:text-4xl font-bold leading-tight dark:text-white text-[#111] mb-4">${post.title}</h1>
-        <div class="flex items-center gap-3 text-sm dark:text-[#666] text-[#999] mb-6" role="contentinfo" aria-label="文章元信息">
-          <time datetime="${post.date}">${formatDate(post.date)}</time>
-          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
-          <span>${post.readTime}</span>
-          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
-          <span>${post.category}</span>
-          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
-          <span id="view-count-${post.slug}" class="hidden flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            <span>加载中...</span>
-          </span>
-        </div>
-        <!-- 分享按钮 -->
-        <div class="flex items-center gap-2 pt-4 border-t dark:border-[#1e1e1e] border-[#eee]" role="group" aria-label="分享选项">
-          <span class="text-sm dark:text-[#666] text-[#999] mr-2">分享：</span>
-          <button onclick="shareToWeChat('${post.slug}')" class="share-btn" title="分享到微信" aria-label="分享到微信">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/></svg>
-          </button>
-          <button onclick="shareToTwitter('${post.slug}', '${post.title.replace(/'/g, "\\'")}', '${post.tags.join(' ')}')" class="share-btn" title="分享到 Twitter" aria-label="分享到 Twitter">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          </button>
-          <button onclick="shareToLinkedIn('${post.slug}', '${post.title.replace(/'/g, "\\'")}', '${post.excerpt.replace(/'/g, "\\'")}')" class="share-btn" title="分享到 LinkedIn" aria-label="分享到 LinkedIn">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-          </button>
-          <button onclick="copyShareLink('${post.slug}')" class="share-btn" title="复制链接" aria-label="复制链接">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-          </button>
-        </div>
-      </header>
-
-      <!-- 封面图 -->
-      <div class="reveal mb-12 rounded-xl overflow-hidden">
-        <img src="${post.cover}" alt="${post.title}" class="w-full aspect-[2/1] object-cover">
-      </div>
-
-      <!-- 正文 + TOC -->
-      <div class="flex gap-10 relative">
-        <div class="prose flex-1 min-w-0 dark:text-[#ccc] text-[#444] text-[1.05rem]">
-          ${contentWithIds}
-        </div>
-        <!-- TOC 侧栏 -->
-        ${headings.length > 2 ? `
-        <aside id="toc-sidebar" class="hidden lg:block w-48 shrink-0 sticky top-20 self-start z-10" role="navigation" aria-label="文章目录">
-          <p class="text-xs font-mono dark:text-[#555] text-[#bbb] uppercase tracking-widest mb-3">目录</p>
-          <nav class="toc-nav space-y-0.5 max-h-[70vh] overflow-y-auto">
-            ${headings.map(h => `<a href="javascript:void(0)" class="toc-link ${h.tag === 'h3' ? 'pl-6' : ''}" data-target="${h.id}" aria-label="跳转到 ${h.text}">${h.text}</a>`).join('')}
-          </nav>
-        </aside>
-        ` : ''}
-      </div>
-
-      ${post.series ? (() => {
-        const seriesPosts = posts.filter(p => p.series === post.series).sort((a, b) => (a.seriesOrder || 0) - (b.seriesOrder || 0));
-        if (seriesPosts.length > 1) {
-          return `
-          <!-- 系列文章导航 -->
-          <div class="mt-16 pt-8 border-t dark:border-[#1e1e1e] border-[#eee]">
-            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-6">系列文章：${post.series}</h2>
-            <div class="space-y-2">
-              ${seriesPosts.map((p, idx) => `
-                <div class="flex items-start gap-3 p-3 rounded-lg ${p.slug === post.slug ? 'dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:border-[rgba(0,229,160,0.3)] border-[rgba(0,180,125,0.2)] border' : 'dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border'}">
-                  <div class="flex-shrink-0 w-6 h-6 rounded-full ${p.slug === post.slug ? 'dark:bg-[#00e5a0] bg-[#00a870]' : 'dark:bg-[#1a1a1a] bg-[#f0f0f0]'} flex items-center justify-center text-xs font-bold ${p.slug === post.slug ? 'text-[#000]' : 'dark:text-[#666] text-[#999]'}">
-                    ${idx + 1}
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    ${p.slug === post.slug
-                      ? `<p class="text-sm font-medium dark:text-[#00e5a0] text-[#00a870] line-clamp-2">${p.title} <span class="text-xs dark:text-[#666] text-[#999]">(当前)</span></p>`
-                      : `<a href="${Routes.post(p.slug)}" class="text-sm font-medium dark:text-[#aaa] text-[#555] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors line-clamp-2">${p.title}</a>`
-                    }
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          `;
-        }
-        return '';
-      })() : ''}
-
-      <!-- 上下篇导航 -->
-      <div class="mt-16 pt-8 border-t dark:border-[#1e1e1e] border-[#eee] grid grid-cols-2 gap-4" role="navigation" aria-label="文章导航">
-        ${prevPost ? `
-        <a href="${Routes.post(prevPost.slug)}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors" aria-label="上一篇：${prevPost.title}">
-          <p class="text-xs dark:text-[#555] text-[#bbb] mb-1">上一篇</p>
-          <p class="text-sm font-medium dark:text-[#aaa] text-[#555] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-1">${prevPost.title}</p>
-        </a>
-        ` : '<div></div>'}
-        ${nextPost ? `
-        <a href="${Routes.post(nextPost.slug)}" class="group p-4 rounded-lg dark:hover:bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(0,0,0,0.02)] transition-colors text-right" aria-label="下一篇：${nextPost.title}">
-          <p class="text-xs dark:text-[#555] text-[#bbb] mb-1">下一篇</p>
-          <p class="text-sm font-medium dark:text-[#aaa] text-[#555] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-1">${nextPost.title}</p>
-        </a>
-        ` : '<div></div>'}
-      </div>
-
-      <!-- 相关推荐 -->
-      ${(() => {
-        const relatedPosts = getRelatedPosts(post, 3);
-        if (relatedPosts.length === 0) return '';
-        return `
-        <div class="mt-16 pt-8 border-t dark:border-[#1e1e1e] border-[#eee]">
-          <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-6">相关推荐</h2>
-          <div class="grid md:grid-cols-3 gap-4">
-            ${relatedPosts.map(p => `
-              <a href="${Routes.post(p.slug)}" class="group block rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all p-4">
-                <div class="flex flex-wrap gap-1.5 mb-2">
-                  ${p._relatedMeta && p._relatedMeta.commonTags.length > 0
-                    ? p._relatedMeta.commonTags.slice(0, 2).map(tag => `<span class="text-[10px] px-2 py-0.5 rounded-full dark:bg-[rgba(0,229,160,0.12)] bg-[rgba(0,180,125,0.1)] dark:text-[#00e5a0] text-[#00a870] font-medium">${tag}</span>`).join('')
-                    : p.tags.slice(0, 2).map(tag => `<span class="text-[10px] px-2 py-0.5 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${tag}</span>`).join('')
-                  }
-                </div>
-                <h3 class="font-semibold text-sm dark:text-white text-[#111] leading-snug mb-1.5 group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors line-clamp-2">${p.title}</h3>
-                <p class="text-xs dark:text-[#666] text-[#999] line-clamp-2">${p.excerpt}</p>
-                <div class="flex items-center gap-2 mt-3 text-[10px] dark:text-[#555] text-[#bbb]">
-                  <span>${formatDate(p.date)}</span>
-                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  <span>${p.readTime}</span>
-                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  <span id="view-count-related-${p.slug}" class="hidden flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                    <span>--</span>
-                  </span>
-                </div>
-              </a>
-            `).join('')}
-          </div>
-        </div>
-        `;
-      })()}
-    </article>
-  `;
-
-  // 初始化浏览量统计
-  setTimeout(() => {
-    updateViewCount(post.slug);
-    // 初始化相关推荐的浏览量显示
-    const relatedPosts = getRelatedPosts(post, 3);
-    relatedPosts.forEach(p => {
-      displayViewCount(p.slug, `view-count-related-${p.slug}`);
-    });
-  }, 500);
+  renderJoshPost(app, slug);
 }
 
-// 分类页
+// 分类页（Josh 风格，见 josh-site.js）
 function renderCategories(app) {
-  app.innerHTML = `
-    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
-      <div class="reveal">
-        <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">CATEGORIES</p>
-        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111] mb-4">知识分类</h1>
-        <p class="dark:text-[#888] text-[#777] mb-12 max-w-xl">按大模型知识体系组织的文章分类，每个分类都是一个值得深入的方向。</p>
-      </div>
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        ${categories.map(cat => `
-          <a href="${Routes.category(cat.name)}" class="reveal group p-6 rounded-xl dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all">
-            <div class="w-10 h-10 rounded-lg dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] flex items-center justify-center mb-4">
-              <i data-lucide="${cat.icon}" class="w-5 h-5 dark:text-[#00e5a0] text-[#00a870]"></i>
-            </div>
-            <h2 class="font-semibold text-base dark:text-white text-[#111] mb-1.5 group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${cat.name}</h2>
-            <p class="text-sm dark:text-[#666] text-[#999] mb-3 leading-relaxed">${cat.desc}</p>
-            <span class="text-xs dark:text-[#555] text-[#bbb]">${cat.count} 篇文章</span>
-          </a>
-        `).join('')}
-      </div>
-    </section>
-  `;
+  renderJoshCategories(app);
 }
 
 // 分类下的文章列表
 function renderCategoryPosts(app, categoryName) {
-  const cat = categories.find(c => c.name === categoryName);
-  const catPosts = posts.filter(p => p.category === categoryName);
-
-  app.innerHTML = `
-    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
-      <div class="reveal">
-        <a href="${Routes.categories()}" class="inline-flex items-center gap-1 text-sm dark:text-[#666] text-[#999] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors mb-6">
-          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 返回分类
-        </a>
-        <h1 class="font-serif text-3xl font-bold dark:text-white text-[#111] mb-2">${categoryName}</h1>
-        ${cat ? `<p class="dark:text-[#888] text-[#777] mb-10">${cat.desc}</p>` : '<div class="mb-10"></div>'}
-      </div>
-      ${catPosts.length === 0 ? `
-        <div class="text-center py-20 dark:text-[#555] text-[#bbb]">
-          <i data-lucide="file-x" class="w-10 h-10 mx-auto mb-4 opacity-30"></i>
-          <p>该分类下暂无文章，持续更新中</p>
-        </div>
-      ` : `
-        <div class="space-y-0 dark:divide-y dark:divide-[#1a1a1a] divide-y divide-[#eee]">
-          ${catPosts.map(post => `
-            <a href="${Routes.post(post.slug)}" class="reveal group flex flex-row items-start md:items-center gap-4 md:gap-6 py-6">
-              <div class="shrink-0 w-[104px] h-[65px] md:w-36 md:h-[88px] rounded-lg overflow-hidden dark:bg-[#1a1a1a] bg-[#f0f0f0] dark:border-[#2a2a2a] border border-[#eee]">
-                <img src="${post.cover}" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
-              </div>
-              <div class="flex-1 min-w-0">
-                <h3 class="font-semibold text-base dark:text-[#ddd] text-[#333] leading-snug group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h3>
-                <p class="text-sm dark:text-[#666] text-[#999] mt-1.5 line-clamp-2">${post.excerpt}</p>
-                <div class="flex sm:hidden items-center flex-wrap gap-x-2 gap-y-1 mt-2 text-xs dark:text-[#555] text-[#bbb]">
-                  <span>${formatDate(post.date)}</span>
-                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  <span>${post.readTime}</span>
-                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  ${viewCountMiniMarkup(`view-list-post-${post.slug}-m`)}
-                </div>
-              </div>
-              <div class="hidden sm:flex items-center flex-wrap gap-x-3 gap-y-1 text-xs dark:text-[#555] text-[#bbb] shrink-0">
-                <span>${formatDate(post.date)}</span>
-                <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                <span>${post.readTime}</span>
-                <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                ${viewCountMiniMarkup(`view-list-post-${post.slug}-d`)}
-              </div>
-            </a>
-          `).join('')}
-        </div>
-      `}
-    </section>
-  `;
-
-  queueMicrotask(() => {
-    hydrateListViewCounts(catPosts, 'view-list-post', 'post', true);
-  });
+  renderJoshCategoryPosts(app, categoryName);
 }
 
 // 标签页
 function renderTags(app) {
-  // 统计所有标签及其文章数量
-  const tagMap = new Map();
-  posts.forEach(post => {
-    post.tags.forEach(tag => {
-      if (!tagMap.has(tag)) {
-        tagMap.set(tag, []);
-      }
-      tagMap.get(tag).push(post);
-    });
-  });
-
-  // 按文章数量排序
-  const sortedTags = Array.from(tagMap.entries())
-    .sort((a, b) => b[1].length - a[1].length);
-
-  // 计算标签的字体大小（基于文章数量）
-  const maxCount = Math.max(...sortedTags.map(([_, posts]) => posts.length));
-  const minCount = Math.min(...sortedTags.map(([_, posts]) => posts.length));
-
-  const getFontSize = (count) => {
-    if (maxCount === minCount) return 1;
-    const ratio = (count - minCount) / (maxCount - minCount);
-    return 0.875 + ratio * 0.75; // 0.875rem ~ 1.625rem
-  };
-
-  app.innerHTML = `
-    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
-      <div class="reveal mb-12">
-        <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">TAGS</p>
-        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111] mb-4">标签云</h1>
-        <p class="dark:text-[#888] text-[#777] mb-8 max-w-xl">通过标签快速找到感兴趣的主题，每个标签代表一个技术领域或知识点。</p>
-
-        <!-- 统计信息 -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div class="p-4 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border">
-            <div class="text-2xl font-bold dark:text-white text-[#111] mb-1">${sortedTags.length}</div>
-            <div class="text-xs dark:text-[#666] text-[#999]">标签总数</div>
-          </div>
-          <div class="p-4 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border">
-            <div class="text-2xl font-bold dark:text-white text-[#111] mb-1">${posts.length}</div>
-            <div class="text-xs dark:text-[#666] text-[#999]">文章总数</div>
-          </div>
-          <div class="p-4 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border">
-            <div class="text-2xl font-bold dark:text-white text-[#111] mb-1">${maxCount}</div>
-            <div class="text-xs dark:text-[#666] text-[#999]">最热标签</div>
-          </div>
-          <div class="p-4 rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border">
-            <div class="text-2xl font-bold dark:text-white text-[#111] mb-1">${(posts.length / sortedTags.length).toFixed(1)}</div>
-            <div class="text-xs dark:text-[#666] text-[#999]">平均文章数</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 标签云 -->
-      <div class="reveal p-8 rounded-xl dark:bg-[#0a0a0a] bg-[#fafafa] dark:border-[#1a1a1a] border-[#eee] border">
-        <div class="flex flex-wrap items-center justify-center gap-4 leading-relaxed">
-          ${sortedTags.map(([tag, tagPosts]) => {
-            const fontSize = getFontSize(tagPosts.length);
-            const opacity = 0.6 + (fontSize - 0.875) / 0.75 * 0.4;
-            return `
-              <a href="${Routes.tag(tag)}"
-                 class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full dark:bg-[rgba(0,229,160,0.05)] bg-[rgba(0,180,125,0.04)] dark:hover:bg-[rgba(0,229,160,0.12)] hover:bg-[rgba(0,180,125,0.08)] transition-all hover:scale-110"
-                 style="font-size: ${fontSize}rem; opacity: ${opacity};">
-                <span class="font-medium dark:text-[#00e5a0] text-[#00a870]">#${tag}</span>
-                <span class="text-[0.7em] opacity-70">${tagPosts.length}</span>
-              </a>
-            `;
-          }).join('')}
-        </div>
-      </div>
-
-      <!-- 热门标签 -->
-      <div class="reveal mt-12">
-        <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-6">热门标签</h2>
-        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          ${sortedTags.slice(0, 6).map(([tag, tagPosts]) => `
-            <a href="${Routes.tag(tag)}" class="group p-5 rounded-xl dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#00e5a0] hover:border-[#00a870] transition-all">
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-lg font-semibold dark:text-white text-[#111] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">#${tag}</span>
-                <span class="text-sm px-2.5 py-1 rounded-full dark:bg-[rgba(0,229,160,0.1)] bg-[rgba(0,180,125,0.08)] dark:text-[#00e5a0] text-[#00a870] font-medium">${tagPosts.length}</span>
-              </div>
-              <div class="space-y-1.5">
-                ${tagPosts.slice(0, 2).map(post => `
-                  <div class="text-xs dark:text-[#666] text-[#999] line-clamp-1">${post.title}</div>
-                `).join('')}
-                ${tagPosts.length > 2 ? `<div class="text-xs dark:text-[#555] text-[#bbb]">+${tagPosts.length - 2} 更多</div>` : ''}
-              </div>
-            </a>
-          `).join('')}
-        </div>
-      </div>
-    </section>
-  `;
+  renderJoshTags(app);
 }
 
 // 标签文章列表页
 function renderTagPosts(app, tag) {
-  const tagPosts = posts.filter(post => post.tags.includes(tag));
-
-  app.innerHTML = `
-    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
-      <div class="reveal mb-10">
-        <a href="${Routes.tags()}" class="inline-flex items-center gap-1 text-sm dark:text-[#666] text-[#999] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors mb-6">
-          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 返回标签列表
-        </a>
-        <div class="flex items-center gap-3 mb-4">
-          <span class="text-2xl">#</span>
-          <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111]">${tag}</h1>
-          <span class="text-sm px-3 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${tagPosts.length} 篇</span>
-        </div>
-      </div>
-      ${tagPosts.length === 0 ? `
-        <div class="reveal text-center py-20">
-          <p class="dark:text-[#666] text-[#999]">该标签下暂无文章</p>
-        </div>
-      ` : `
-        <div class="space-y-0 dark:divide-y dark:divide-[#1a1a1a] divide-y divide-[#eee]">
-          ${tagPosts.map(post => `
-            <a href="${Routes.post(post.slug)}" class="reveal group flex flex-row items-start md:items-center gap-4 md:gap-6 py-6">
-              <div class="shrink-0 w-[104px] h-[65px] md:w-36 md:h-[88px] rounded-lg overflow-hidden dark:bg-[#1a1a1a] bg-[#f0f0f0] dark:border-[#2a2a2a] border border-[#eee]">
-                <img src="${post.cover}" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
-              </div>
-              <div class="flex-1 min-w-0">
-                <h3 class="font-semibold text-base dark:text-[#ddd] text-[#333] leading-snug group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${post.title}</h3>
-                <p class="text-sm dark:text-[#666] text-[#999] mt-1.5 line-clamp-2">${post.excerpt}</p>
-                <div class="flex flex-wrap gap-2 mt-2">
-                  ${post.tags.map(t => `<span class="text-[10px] px-2 py-0.5 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${t}</span>`).join('')}
-                </div>
-                <div class="flex sm:hidden items-center flex-wrap gap-x-2 gap-y-1 mt-2 text-xs dark:text-[#555] text-[#bbb]">
-                  <span>${formatDate(post.date)}</span>
-                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  <span>${post.readTime}</span>
-                  <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                  ${viewCountMiniMarkup(`view-list-post-${post.slug}-m`)}
-                </div>
-              </div>
-              <div class="hidden sm:flex items-center flex-wrap gap-x-3 gap-y-1 text-xs dark:text-[#555] text-[#bbb] shrink-0">
-                <span>${formatDate(post.date)}</span>
-                <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                <span>${post.readTime}</span>
-                <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]"></span>
-                ${viewCountMiniMarkup(`view-list-post-${post.slug}-d`)}
-              </div>
-            </a>
-          `).join('')}
-        </div>
-      `}
-    </section>
-  `;
-
-  queueMicrotask(() => {
-    hydrateListViewCounts(tagPosts, 'view-list-post', 'post', true);
-  });
+  renderJoshTagPosts(app, tag);
 }
 
 // 作品列表页
 function renderProjects(app, queryParams) {
-  const hashQuery = queryParams instanceof URLSearchParams
-    ? queryParams
-    : new URLSearchParams(location.search || '');
-  const statusFilter = hashQuery.get('status') || '全部';
-  const tagFilter = hashQuery.get('tag') || '全部';
-  const yearFilter = hashQuery.get('year') || '全部';
-
-  const statusOptions = ['全部', ...new Set(projectsData.map((project) => project.status))];
-  const tagOptions = ['全部', ...new Set(projectsData.flatMap((project) => project.tags))];
-  const yearOptions = ['全部', ...new Set(projectsData.map((project) => getProjectYear(project.period)))];
-
-  const filteredProjects = projectsData.filter((project) => {
-    const statusMatched = statusFilter === '全部' || project.status === statusFilter;
-    const tagMatched = tagFilter === '全部' || project.tags.includes(tagFilter);
-    const yearMatched = yearFilter === '全部' || getProjectYear(project.period) === yearFilter;
-    return statusMatched && tagMatched && yearMatched;
-  });
-
-  app.innerHTML = `
-    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
-      <div class="reveal mb-10">
-        <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">PROJECTS</p>
-        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111] mb-4">作品集</h1>
-        <p class="dark:text-[#888] text-[#777] max-w-2xl">这里是我做过的大模型项目。每个项目都包含架构设计、关键功能、效果展示与结果指标。</p>
-      </div>
-      ${projectsData.length > 0 ? `
-      <div class="reveal mb-8 grid md:grid-cols-3 gap-3">
-        <label class="text-sm dark:text-[#888] text-[#666]">
-          <span class="block text-xs mb-1 dark:text-[#666] text-[#999]">按状态筛选</span>
-          <select id="projectFilterStatus" class="w-full rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#2a2a2a] border-[#ddd] border px-3 py-2 text-sm">
-            ${statusOptions.map((option) => `<option value="${option}" ${option === statusFilter ? 'selected' : ''}>${option}</option>`).join('')}
-          </select>
-        </label>
-        <label class="text-sm dark:text-[#888] text-[#666]">
-          <span class="block text-xs mb-1 dark:text-[#666] text-[#999]">按标签筛选</span>
-          <select id="projectFilterTag" class="w-full rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#2a2a2a] border-[#ddd] border px-3 py-2 text-sm">
-            ${tagOptions.map((option) => `<option value="${option}" ${option === tagFilter ? 'selected' : ''}>${option}</option>`).join('')}
-          </select>
-        </label>
-        <label class="text-sm dark:text-[#888] text-[#666]">
-          <span class="block text-xs mb-1 dark:text-[#666] text-[#999]">按年份筛选</span>
-          <select id="projectFilterYear" class="w-full rounded-lg dark:bg-[#0f0f0f] bg-white dark:border-[#2a2a2a] border-[#ddd] border px-3 py-2 text-sm">
-            ${yearOptions.map((option) => `<option value="${option}" ${option === yearFilter ? 'selected' : ''}>${option}</option>`).join('')}
-          </select>
-        </label>
-      </div>
-      ` : ''}
-      ${projectsData.length === 0 ? `
-        <div class="reveal text-center py-20">
-          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full dark:bg-[#1a1a1a] bg-[#f5f5f5] mb-6">
-            <i data-lucide="folder-open" class="w-10 h-10 dark:text-[#444] text-[#ccc]"></i>
-          </div>
-          <h3 class="text-xl font-semibold dark:text-[#888] text-[#999] mb-2">暂无作品</h3>
-          <p class="text-sm dark:text-[#666] text-[#aaa]">作品集正在筹备中，敬请期待</p>
-        </div>
-      ` : `
-        <div class="grid md:grid-cols-2 gap-6">
-          ${filteredProjects.map((project) => `
-            <a href="${Routes.project(project.slug)}" class="reveal group block rounded-xl overflow-hidden dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border hover:dark:border-[#333] hover:border-[#ccc] transition-all">
-              <div class="aspect-[16/10] overflow-hidden dark:bg-[#0b1220] bg-[#0b1220]">
-                <img src="${project.cover}" alt="${project.title}" class="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-500" loading="lazy" />
-              </div>
-              <div class="p-5">
-                <div class="flex items-center justify-between gap-3 mb-3">
-                  <span class="text-[11px] px-2 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${project.status}</span>
-                  <span class="text-xs dark:text-[#666] text-[#999]">${project.period}</span>
-                </div>
-                <h2 class="font-semibold text-lg dark:text-white text-[#111] group-hover:dark:text-[#00e5a0] group-hover:text-[#00a870] transition-colors">${project.title}</h2>
-                <p class="text-sm dark:text-[#888] text-[#777] mt-1.5">${project.subtitle}</p>
-                <p class="text-sm dark:text-[#666] text-[#999] mt-3 line-clamp-2">${project.summary}</p>
-                <div class="mt-3 flex items-center gap-2 text-xs dark:text-[#555] text-[#bbb]">
-                  <span id="view-count-card-${project.slug}" class="hidden flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                    <span>--</span>
-                  </span>
-                </div>
-                <div class="mt-4 flex flex-wrap gap-2">
-                  ${project.tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}
-                </div>
-              </div>
-            </a>
-          `).join('')}
-        </div>
-        ${filteredProjects.length === 0 ? `
-          <div class="mt-8 text-center text-sm dark:text-[#666] text-[#999]">
-            没有匹配项目，试试调整筛选条件。
-          </div>
-        ` : ''}
-      `}
-    </section>
-  `;
-
-  if (projectsData.length > 0) {
-    const statusSelect = document.getElementById('projectFilterStatus');
-    const tagSelect = document.getElementById('projectFilterTag');
-    const yearSelect = document.getElementById('projectFilterYear');
-    const bindFilterEvent = () => {
-      const next = new URLSearchParams();
-      if (statusSelect.value !== '全部') next.set('status', statusSelect.value);
-      if (tagSelect.value !== '全部') next.set('tag', tagSelect.value);
-      if (yearSelect.value !== '全部') next.set('year', yearSelect.value);
-      const query = next.toString();
-      const url = Routes.projects(query);
-      history.pushState(null, '', url);
-      router();
-    };
-    statusSelect.addEventListener('change', bindFilterEvent);
-    tagSelect.addEventListener('change', bindFilterEvent);
-    yearSelect.addEventListener('change', bindFilterEvent);
-  }
-
-  // 初始化项目卡片的浏览量显示
-  setTimeout(() => {
-    filteredProjects.forEach(project => {
-      displayViewCount(project.slug, `view-count-card-${project.slug}`, 'project');
-    });
-  }, 100);
+  renderJoshProjects(app, queryParams);
 }
 
 // 作品详情页
 function renderProjectDetail(app, slug) {
-  const project = projectsData.find((item) => item.slug === slug);
-  if (!project) {
-    app.innerHTML = '<div class="max-w-3xl mx-auto px-6 pt-32 text-center dark:text-[#888] text-[#999]">作品不存在</div>';
-    return;
-  }
-
-  // 更新 SEO meta 标签
-  const baseUrl = absolutePageUrl();
-  updateMetaTags({
-    title: `${project.title} - Tangentllm Notes`,
-    description: project.summary || project.subtitle,
-    keywords: project.tags.join(','),
-    url: absolutePageUrl(`project/${project.slug}`),
-    image: coverUrlForOpenGraph(project.cover, baseUrl),
-    type: 'article',
-    article: {
-      headline: project.title,
-      datePublished: project.period || '',
-      author: 'tangentllm',
-    },
-  });
-
-  app.innerHTML = `
-    <section class="max-w-5xl mx-auto px-6 pt-24 md:pt-28 pb-20">
-      <div class="reveal mb-6">
-        <a href="${Routes.projects()}" class="inline-flex items-center gap-1 text-sm dark:text-[#666] text-[#999] hover:dark:text-[#00e5a0] hover:text-[#00a870] transition-colors mb-6">
-          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 返回作品列表
-        </a>
-        <div class="flex flex-wrap items-center gap-2 mb-3">
-          <span class="text-[11px] px-2 py-1 rounded-full dark:bg-[rgba(0,229,160,0.08)] bg-[rgba(0,180,125,0.06)] dark:text-[#00e5a0] text-[#00a870]">${project.status}</span>
-          <span class="text-xs dark:text-[#666] text-[#999]">${project.period}</span>
-          <span class="w-1 h-1 rounded-full dark:bg-[#333] bg-[#ddd]" aria-hidden="true"></span>
-          <span id="view-count-${project.slug}" class="hidden flex items-center gap-1 text-xs dark:text-[#666] text-[#999]">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            <span>加载中...</span>
-          </span>
-        </div>
-        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111]">${project.title}</h1>
-        <p class="dark:text-[#888] text-[#777] mt-3">${project.subtitle}</p>
-      </div>
-
-      <div class="reveal rounded-xl overflow-hidden mb-10 dark:bg-[#0b1220] bg-[#0b1220]">
-        <img src="${project.cover}" alt="${project.title}" class="w-full aspect-[16/8] object-contain" />
-      </div>
-      <div class="reveal mb-10 flex flex-wrap gap-3">
-        <a href="${project.links?.github || '#'}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold dark:bg-[#121212] bg-white dark:text-[#d8fff2] text-[#11664f] border dark:border-[#2a6a56] border-[#89d7bf] hover:dark:border-[#00e5a0] hover:border-[#00a870] transition-colors">
-          <svg viewBox="0 0 24 24" aria-hidden="true" class="w-4 h-4 fill-current"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.3c-3.3.7-4-1.6-4-1.6-.6-1.5-1.4-1.9-1.4-1.9-1.2-.8.1-.8.1-.8 1.3.1 2 1.4 2 1.4 1.2 2 3.1 1.4 3.9 1.1.1-.9.5-1.4.8-1.8-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.3-3.1-.1-.3-.6-1.5.1-3.1 0 0 1.1-.3 3.4 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.6 3.4-1.2 3.4-1.2.7 1.6.2 2.8.1 3.1.8.8 1.3 1.8 1.3 3.1 0 4.4-2.7 5.4-5.3 5.7.5.4.9 1.2.9 2.4v3.5c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z"/></svg> GitHub
-        </a>
-        <a href="${project.links?.demo || '#'}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold dark:bg-[#121212] bg-white dark:text-[#d8fff2] text-[#11664f] border dark:border-[#2a6a56] border-[#89d7bf] hover:dark:border-[#00e5a0] hover:border-[#00a870] transition-colors">
-          <i data-lucide="rocket" class="w-4 h-4"></i> 在线 Demo
-        </a>
-        <a href="${project.links?.docs || '#'}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold dark:bg-[#121212] bg-white dark:text-[#d8fff2] text-[#11664f] border dark:border-[#2a6a56] border-[#89d7bf] hover:dark:border-[#00e5a0] hover:border-[#00a870] transition-colors">
-          <i data-lucide="book-open" class="w-4 h-4"></i> 技术文档
-        </a>
-      </div>
-
-      <div class="grid lg:grid-cols-3 gap-8">
-        <div class="lg:col-span-2 space-y-8">
-          <section class="reveal">
-            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">项目概述</h2>
-            <p class="dark:text-[#888] text-[#666] leading-relaxed">${project.summary}</p>
-          </section>
-
-          ${project.architecture?.length ? `
-          <section class="reveal">
-            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">架构设计</h2>
-            <ul class="space-y-2 dark:text-[#888] text-[#666] list-disc pl-5">
-              ${project.architecture.map((item) => `<li>${item}</li>`).join('')}
-            </ul>
-          </section>
-          ` : ''}
-
-          ${project.features?.length ? `
-          <section class="reveal">
-            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">核心功能</h2>
-            <ul class="space-y-2 dark:text-[#888] text-[#666] list-disc pl-5">
-              ${project.features.map((item) => `<li>${item}</li>`).join('')}
-            </ul>
-          </section>
-          ` : ''}
-
-          ${project.screenshots?.length ? `
-          <section class="reveal">
-            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">效果图</h2>
-            <div class="grid sm:grid-cols-2 gap-4">
-              ${project.screenshots.map((image) => `
-                <div class="rounded-lg overflow-hidden border dark:border-[#1f1f1f] border-[#e8e8e8]">
-                  <img src="${image}" alt="${project.title} 截图" class="w-full h-full object-cover" loading="lazy" />
-                </div>
-              `).join('')}
-            </div>
-          </section>
-          ` : ''}
-          ${project.content ? `
-          <section class="reveal">
-            <h2 class="font-serif text-2xl font-bold dark:text-white text-[#111] mb-4">详细分析</h2>
-            <div class="prose dark:text-[#ccc] text-[#444] text-[1.02rem]">
-              ${project.content}
-            </div>
-          </section>
-          ` : ''}
-        </div>
-
-        <aside class="reveal lg:sticky lg:top-20 self-start rounded-xl border dark:border-[#1f1f1f] border-[#e8e8e8] dark:bg-[#0f0f0f] bg-white p-5">
-          <h3 class="font-semibold dark:text-white text-[#111] mb-4">项目信息</h3>
-          <div class="space-y-3 text-sm dark:text-[#888] text-[#666]">
-            <div>
-              <p class="dark:text-[#666] text-[#999] text-xs mb-1">技术标签</p>
-              <div class="flex flex-wrap gap-2">
-                ${project.tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}
-              </div>
-            </div>
-            <div>
-              <p class="dark:text-[#666] text-[#999] text-xs mb-1">关键指标</p>
-              ${project.metrics?.length
-                ? `<ul class="list-disc pl-5 space-y-1">${project.metrics.map((metric) => `<li>${metric}</li>`).join('')}</ul>`
-                : '<p class="text-xs dark:text-[#666] text-[#999]">暂无指标，后续补充。</p>'}
-            </div>
-          </div>
-        </aside>
-      </div>
-    </section>
-  `;
-
-  // 初始化浏览量统计
-  setTimeout(() => {
-    updateViewCount(project.slug, 'project');
-  }, 500);
+  renderJoshProjectDetail(app, slug);
 }
 
-// 关于页
+// 关于页（Josh about 模板 + 本地化内容）
 function renderAbout(app) {
-  app.innerHTML = `
-    <section class="max-w-3xl mx-auto px-6 pt-24 md:pt-28 pb-20">
-      <div class="reveal">
-        <p class="text-sm font-mono dark:text-[#00e5a0] text-[#00a870] mb-4 tracking-wider">ABOUT</p>
-        <h1 class="font-serif text-3xl md:text-4xl font-bold dark:text-white text-[#111] mb-8">关于我</h1>
-      </div>
-
-      <!-- 个人介绍 -->
-      <div class="reveal dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border rounded-xl p-8 mb-8">
-        <div class="flex flex-col sm:flex-row gap-6 items-start">
-          <div class="w-20 h-20 rounded-full dark:bg-[#1a1a1a] bg-[#eee] overflow-hidden shrink-0">
-            <img src="./content/assets/avatar.svg" alt="头像" class="w-full h-full object-cover">
-          </div>
-          <div>
-            <h2 class="font-semibold text-xl dark:text-white text-[#111] mb-2">一个对大模型充满好奇的工程师</h2>
-            <p class="dark:text-[#888] text-[#666] leading-relaxed mb-4">
-              拥有10年客户端开发经验，自2024年起开始接触并深入研究大模型相关技术，对该领域产生了浓厚兴趣并持续探索。创建此博客的主要目的是填补当前技术学习资源的空白.
-            </p>
-            <p class="dark:text-[#888] text-[#666] leading-relaxed mb-4">
-              	市场上现有教程普遍存在两个极端：要么过于浅显，仅停留在API调用的基础层面；要么过于深奥，直接引用学术论文，缺乏一个能够"从工程师视角逐步深入"的系统性学习路径。
-            </p>
-            <p class="dark:text-[#888] text-[#666] leading-relaxed mb-4">
-              需要说明的是,由于我之前的GitHub账号无法继续使用，因此重新创建了当前账号以记录和分享我的技术学习历程。
-            </p>
-            <p class="dark:text-[#888] text-[#666] leading-relaxed">
-              我相信理解原理是写好代码的前提，所以每学一个技术，我都会先搞清楚"为什么"再动手。这个博客就是这段旅程的副产品。
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 技能图谱 -->
-      <div class="reveal mb-8">
-        <h2 class="font-serif text-xl font-bold dark:text-white text-[#111] mb-6">技能图谱</h2>
-        <div class="space-y-4">
-          ${renderSkillStack()}
-        </div>
-      </div>
-
-      <!-- 联系方式 -->
-      <div class="reveal">
-        <h2 class="font-serif text-xl font-bold dark:text-white text-[#111] mb-6">保持连接</h2>
-        <div class="grid grid-cols-3 gap-3">
-          <a
-            href="https://github.com/tangentllm"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="GitHub"
-            title="GitHub"
-            class="group rounded-xl dark:bg-[#151515] bg-[#f7f7f7] border dark:border-[#242424] border-[#e6e6e6] px-3 py-3 flex flex-col items-center justify-center gap-1.5 dark:text-[#b8b8b8] text-[#666] hover:dark:text-[#00e5a0] hover:text-[#00a870] hover:dark:border-[#00e5a0] hover:border-[#00a870] hover:-translate-y-0.5 transition-all"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" class="w-5 h-5 fill-current"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.3c-3.3.7-4-1.6-4-1.6-.6-1.5-1.4-1.9-1.4-1.9-1.2-.8.1-.8.1-.8 1.3.1 2 1.4 2 1.4 1.2 2 3.1 1.4 3.9 1.1.1-.9.5-1.4.8-1.8-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.3-3.1-.1-.3-.6-1.5.1-3.1 0 0 1.1-.3 3.4 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.6 3.4-1.2 3.4-1.2.7 1.6.2 2.8.1 3.1.8.8 1.3 1.8 1.3 3.1 0 4.4-2.7 5.4-5.3 5.7.5.4.9 1.2.9 2.4v3.5c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z"/></svg>
-            <span class="text-[11px] font-medium">GitHub</span>
-          </a>
-          <a
-            href="https://tangentllm.github.io/weblog/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Blog"
-            title="Blog"
-            class="group rounded-xl dark:bg-[#151515] bg-[#f7f7f7] border dark:border-[#242424] border-[#e6e6e6] px-3 py-3 flex flex-col items-center justify-center gap-1.5 dark:text-[#b8b8b8] text-[#666] hover:dark:text-[#00e5a0] hover:text-[#00a870] hover:dark:border-[#00e5a0] hover:border-[#00a870] hover:-translate-y-0.5 transition-all"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" class="w-5 h-5 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5V4.5A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            <span class="text-[11px] font-medium">Blog</span>
-          </a>
-          <a
-            href="mailto:tangentllm@qq.com"
-            aria-label="Email"
-            title="Email"
-            class="group rounded-xl dark:bg-[#151515] bg-[#f7f7f7] border dark:border-[#242424] border-[#e6e6e6] px-3 py-3 flex flex-col items-center justify-center gap-1.5 dark:text-[#b8b8b8] text-[#666] hover:dark:text-[#00e5a0] hover:text-[#00a870] hover:dark:border-[#00e5a0] hover:border-[#00a870] hover:-translate-y-0.5 transition-all"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" class="w-5 h-5 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-            <span class="text-[11px] font-medium">Email</span>
-          </a>
-        </div>
-      </div>
-    </section>
-  `;
+  renderJoshAbout(app);
 }
 
 function render404(app) {
-  app.innerHTML = `
-    <section class="max-w-3xl mx-auto px-6 pt-32 pb-20 text-center">
-      <div class="reveal">
-        <div class="text-8xl font-bold dark:text-[#1a1a1a] text-[#f5f5f5] mb-4">404</div>
-        <h1 class="font-serif text-3xl font-bold dark:text-white text-[#111] mb-4">页面未找到</h1>
-        <p class="dark:text-[#888] text-[#666] mb-8 max-w-md mx-auto">
-          抱歉，您访问的页面不存在。可能是链接已失效，或者页面已被移除。
-        </p>
-
-        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-          <a href="${Routes.home()}" class="px-6 py-3 dark:bg-[#1a1a1a] bg-[#111] dark:text-white text-white rounded-lg hover:opacity-80 transition-opacity">
-            返回首页
-          </a>
-          <button onclick="openSearch()" class="px-6 py-3 dark:border-[#333] border-[#ddd] border dark:text-[#888] text-[#666] rounded-lg hover:dark:border-[#555] hover:border-[#999] transition-colors">
-            搜索内容
-          </button>
-        </div>
-
-        <div class="dark:bg-[#0f0f0f] bg-white dark:border-[#1e1e1e] border-[#eee] border rounded-xl p-8 max-w-md mx-auto">
-          <h2 class="font-semibold dark:text-white text-[#111] mb-4">您可能感兴趣的内容</h2>
-          <div class="space-y-3 text-left">
-            ${posts.slice(0, 3).map(post => `
-              <a href="${Routes.post(post.slug)}" class="flex gap-3 items-start dark:hover:bg-[#1a1a1a] hover:bg-[#f5f5f5] p-3 rounded-lg transition-colors">
-                <div class="shrink-0 w-16 h-10 rounded-md overflow-hidden dark:bg-[#1a1a1a] bg-[#eee] dark:border-[#2a2a2a] border border-[#ddd]">
-                  <img src="${post.cover}" alt="" class="w-full h-full object-cover" loading="lazy">
-                </div>
-                <div class="min-w-0 flex-1 flex items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <div class="font-medium dark:text-white text-[#111] mb-1">${post.title}</div>
-                    <div class="text-sm dark:text-[#666] text-[#999]">${post.category} · ${post.readTime}</div>
-                  </div>
-                  ${viewCountMiniMarkup(`view-404-post-${post.slug}`)}
-                </div>
-              </a>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-    </section>
-  `;
-
-  const suggestPosts = posts.slice(0, 3);
-  queueMicrotask(() => {
-    hydrateListViewCounts(suggestPosts, 'view-404-post', 'post', false);
-  });
+  renderJosh404(app);
 }
 
 /* ============================
    交互逻辑
    ============================ */
 
-// 搜索
-function openSearch() {
-  document.getElementById('search-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('search-input').focus(), 100);
+// 搜索（Josh 顶部下滑面板）
+let joshSearchPlaceholderTimer = null;
+
+function escapeSearchHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
-function closeSearch() {
-  document.getElementById('search-overlay').classList.remove('open');
-  document.getElementById('search-input').value = '';
+
+function highlightSearchText(text, query) {
+  const safe = escapeSearchHtml(text);
+  const trimmed = query.trim();
+  if (!trimmed) return safe;
+  const pattern = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return safe.replace(new RegExp(`(${pattern})`, 'gi'), '<mark class="josh-search__mark">$1</mark>');
+}
+
+function buildSearchExcerpt(text, query) {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  const trimmed = query.trim();
+  if (!trimmed) return escapeSearchHtml(raw);
+
+  const lowerText = raw.toLowerCase();
+  const lowerQuery = trimmed.toLowerCase();
+  const matchIndex = lowerText.indexOf(lowerQuery);
+
+  if (matchIndex === -1) {
+    const snippet = raw.slice(0, 160);
+    const prefixed = raw.length > snippet.length ? `…${snippet}…` : snippet;
+    return highlightSearchText(prefixed, query);
+  }
+
+  const start = Math.max(0, matchIndex - 64);
+  const end = Math.min(raw.length, matchIndex + trimmed.length + 96);
+  let snippet = raw.slice(start, end);
+  if (start > 0) snippet = `…${snippet}`;
+  if (end < raw.length) snippet = `${snippet}…`;
+  return highlightSearchText(snippet, query);
+}
+
+function joshSearchPlaceholderHints() {
+  const hints = posts.slice(0, 12).map((p) => p.title);
+  if (hints.length === 0) hints.push('Transformer', 'RAG', '微调');
+  return hints;
+}
+
+function startSearchPlaceholderCycle() {
+  stopSearchPlaceholderCycle();
+  const input = document.getElementById('search-input');
+  const hints = joshSearchPlaceholderHints();
+  let index = 0;
+  const tick = () => {
+    if (!document.getElementById('search-overlay').classList.contains('open')) return;
+    if (input.value.trim()) return;
+    input.placeholder = hints[index % hints.length];
+    index += 1;
+  };
+  tick();
+  joshSearchPlaceholderTimer = window.setInterval(tick, 2400);
+}
+
+function stopSearchPlaceholderCycle() {
+  if (joshSearchPlaceholderTimer) {
+    clearInterval(joshSearchPlaceholderTimer);
+    joshSearchPlaceholderTimer = null;
+  }
+}
+
+function setSearchHasResults(hasResults) {
+  const sheet = document.querySelector('.josh-search__sheet');
+  if (sheet) sheet.dataset.hasResults = hasResults ? 'true' : 'false';
+}
+
+function renderSearchIntro() {
+  const results = document.getElementById('search-results');
+  results.innerHTML = '<p class="josh-search__intro">搜索本站所有文章与作品。</p>';
+  setSearchHasResults(false);
+}
+
+function replaySearchEnterAnimations(overlay) {
+  overlay.querySelectorAll('.josh-search__sheet, .josh-search__wave-svg').forEach((el) => {
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+  });
+}
+
+function collapseSearchWave(overlay) {
+  const waveSvg = overlay.querySelector('.josh-search__wave-svg');
+  if (!waveSvg) return;
+  const initialX = getComputedStyle(waveSvg).getPropertyValue('--initial-x-scale').trim() || '0.8';
+  waveSvg.style.animation = 'none';
+  waveSvg.style.transition = 'transform 1s ease';
+  waveSvg.style.transform = getComputedStyle(waveSvg).transform;
+  void waveSvg.offsetWidth;
+  waveSvg.style.transform = `scale(${initialX}, 0) translate(0)`;
+}
+
+function replayDismissOut(overlay) {
+  const dismiss = overlay.querySelector('.josh-search__dismiss');
+  if (!dismiss) return;
+  dismiss.style.animation = 'none';
+  void dismiss.offsetWidth;
+  dismiss.style.removeProperty('animation');
+}
+
+function finishCloseSearch(overlay) {
+  overlay.classList.remove('open', 'is-closing');
+  overlay.dataset.closing = '';
+  overlay.setAttribute('aria-hidden', 'true');
+  stopSearchPlaceholderCycle();
+  const input = document.getElementById('search-input');
+  input.value = '';
+  input.placeholder = '';
+  const clearBtn = document.getElementById('search-clear');
+  if (clearBtn) clearBtn.hidden = true;
   document.getElementById('search-results').innerHTML = '';
+  setSearchHasResults(false);
+  overlay.querySelectorAll('.josh-search__sheet, .josh-search__wave-svg, .josh-search__dismiss').forEach((el) => {
+    el.style.animation = '';
+    el.style.transform = '';
+    el.style.transition = '';
+  });
 }
+
+function openSearch() {
+  const overlay = document.getElementById('search-overlay');
+  if (overlay.classList.contains('open')) return;
+  overlay.classList.remove('is-closing');
+  overlay.dataset.closing = '';
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+  replaySearchEnterAnimations(overlay);
+  renderSearchIntro();
+  startSearchPlaceholderCycle();
+  setTimeout(() => document.getElementById('search-input').focus(), 80);
+}
+
+function closeSearch() {
+  const overlay = document.getElementById('search-overlay');
+  if (!overlay.classList.contains('open') || overlay.dataset.closing === 'true') return;
+  overlay.dataset.closing = 'true';
+  overlay.classList.add('is-closing');
+  collapseSearchWave(overlay);
+  replayDismissOut(overlay);
+  window.setTimeout(() => overlay.classList.remove('open'), 32);
+  window.setTimeout(() => finishCloseSearch(overlay), 750);
+}
+
+function handleSearchInput(input) {
+  const clearBtn = document.getElementById('search-clear');
+  if (clearBtn) clearBtn.hidden = !input.value;
+  handleSearch(input.value);
+}
+
+function clearSearchInput() {
+  const input = document.getElementById('search-input');
+  input.value = '';
+  document.getElementById('search-clear').hidden = true;
+  handleSearch('');
+  input.focus();
+}
+
 function handleSearch(query) {
   const results = document.getElementById('search-results');
-  if (!query.trim()) { results.innerHTML = ''; return; }
+  if (!query.trim()) {
+    renderSearchIntro();
+    return;
+  }
+
   const q = query.toLowerCase();
   const matchedPosts = posts.filter(p =>
     p.title.toLowerCase().includes(q) ||
@@ -2656,104 +1625,69 @@ function handleSearch(query) {
   );
 
   if (matchedPosts.length === 0 && matchedProjects.length === 0) {
-    results.innerHTML = '<div class="p-5 text-sm dark:text-[#555] text-[#bbb] text-center">没有找到匹配结果</div>';
+    results.innerHTML = '<p class="josh-search__empty"><strong>没有找到结果。</strong> 抱歉，站内似乎没有相关内容！</p>';
+    setSearchHasResults(true);
     return;
   }
-  const postSection = matchedPosts.length > 0
-    ? `
-      <div class="px-4 pt-3 pb-1 text-[11px] uppercase tracking-widest dark:text-[#666] text-[#999]">文章</div>
-      ${matchedPosts.map(p => `
-        <a href="${Routes.post(p.slug)}" onclick="closeSearch()" class="search-item flex gap-3 items-start">
-          <div class="shrink-0 w-14 h-9 rounded overflow-hidden dark:bg-[#1a1a1a] bg-[#eee] mt-0.5">
-            <img src="${p.cover}" alt="" class="w-full h-full object-cover" loading="lazy">
-          </div>
-          <div class="min-w-0 flex-1 flex items-start justify-between gap-2">
-            <div class="min-w-0">
-              <p class="text-sm font-medium dark:text-[#ddd] text-[#333] mb-1">${p.title}</p>
-              <p class="text-xs dark:text-[#666] text-[#999] line-clamp-1">${p.excerpt}</p>
-              <div class="flex flex-wrap gap-2 mt-1.5">${p.tags.map(t => `<span class="text-[10px] dark:text-[#555] text-[#bbb]">#${t}</span>`).join('')}</div>
-            </div>
-            ${viewCountMiniMarkup(`view-search-post-${p.slug}`)}
-          </div>
-        </a>
-      `).join('')}
-    `
-    : '';
 
-  const projectSection = matchedProjects.length > 0
-    ? `
-      <div class="px-4 pt-3 pb-1 text-[11px] uppercase tracking-widest dark:text-[#666] text-[#999]">作品</div>
-      ${matchedProjects.map(project => `
-        <a href="${Routes.project(project.slug)}" onclick="closeSearch()" class="search-item flex gap-3 items-start justify-between">
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium dark:text-[#ddd] text-[#333] mb-1">${project.title}</p>
-            <p class="text-xs dark:text-[#666] text-[#999] line-clamp-1">${project.summary || project.subtitle || ''}</p>
-            <div class="flex gap-2 mt-1.5">${(project.tags || []).map(t => `<span class="text-[10px] dark:text-[#555] text-[#bbb]">#${t}</span>`).join('')}</div>
-          </div>
-          ${viewCountMiniMarkup(`view-search-project-${project.slug}`)}
-        </a>
-      `).join('')}
-    `
-    : '';
+  const postItems = matchedPosts.map((p) => `
+    <article class="josh-search__article">
+      <a href="${Routes.post(p.slug)}" onclick="closeSearch()" class="josh-search__hit">
+        <span class="josh-search__hit-cat">${escapeSearchHtml(p.category)}</span>
+        <p class="josh-search__hit-title">${highlightSearchText(p.title, query)}</p>
+      </a>
+      <p class="josh-search__hit-excerpt">${buildSearchExcerpt(p.excerpt, query)}</p>
+    </article>
+  `).join('');
 
-  results.innerHTML = `${postSection}${projectSection}`;
+  const projectItems = matchedProjects.map((project) => `
+    <article class="josh-search__article">
+      <a href="${Routes.project(project.slug)}" onclick="closeSearch()" class="josh-search__hit">
+        <span class="josh-search__hit-cat">作品</span>
+        <p class="josh-search__hit-title">${highlightSearchText(project.title, query)}</p>
+      </a>
+      <p class="josh-search__hit-excerpt">${buildSearchExcerpt(project.summary || project.subtitle || '', query)}</p>
+    </article>
+  `).join('');
 
-  queueMicrotask(() => {
-    if (matchedPosts.length > 0) {
-      hydrateListViewCounts(matchedPosts, 'view-search-post', 'post', false);
-    }
-    if (matchedProjects.length > 0) {
-      hydrateListViewCounts(matchedProjects, 'view-search-project', 'project', false);
-    }
-  });
+  results.innerHTML = `${postItems}${projectItems}`;
+  setSearchHasResults(true);
 }
 
 // 主题切换
 function toggleTheme() {
   const html = document.documentElement;
+  const scrollY = window.scrollY;
+  html.dataset.joshThemeScrollY = String(scrollY);
+  html.classList.add('josh-theme-swapping');
   const isDark = html.classList.contains('dark');
   html.classList.toggle('dark');
   localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  if (typeof syncJoshColorMode === 'function') syncJoshColorMode();
+  if (typeof updateGiscusTheme === 'function') updateGiscusTheme();
+  joshLockThemeScroll(scrollY);
+  if (typeof joshFinishThemeSwap === 'function') joshFinishThemeSwap();
+  else html.classList.remove('josh-theme-swapping');
 }
 function initTheme() {
   const saved = localStorage.getItem('theme');
-  // Do not follow system color scheme.
-  // Default to dark unless user explicitly switched to light.
-  if (saved === 'light') {
-    document.documentElement.classList.remove('dark');
-    return;
-  }
-  document.documentElement.classList.add('dark');
-  if (saved !== 'dark') {
-    localStorage.setItem('theme', 'dark');
-  }
+  const isDark = saved === 'dark'
+    || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.classList.toggle('dark', isDark);
+  if (typeof syncJoshColorMode === 'function') syncJoshColorMode();
 }
 
-// 移动端菜单
-function toggleMobileMenu() {
-  document.getElementById('mobile-menu').classList.toggle('open');
-}
-function closeMobileMenu() {
-  document.getElementById('mobile-menu').classList.remove('open');
-}
-
-// 阅读进度条
+// 主题切换
 function updateProgressBar() {
   const bar = document.getElementById('progress-bar');
+  if (!bar || getComputedStyle(bar).display === 'none') return;
   const scrollTop = window.scrollY;
   const docHeight = document.documentElement.scrollHeight - window.innerHeight;
   const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
   bar.style.width = progress + '%';
 }
 
-// 回到顶部
-function updateBackToTop() {
-  const btn = document.getElementById('back-to-top');
-  if (window.scrollY > 400) btn.classList.add('show');
-  else btn.classList.remove('show');
-}
-
-// 滚动渐显
+// 阅读进度条
 function initReveal() {
   const pending = [...document.querySelectorAll('.reveal:not(.visible)')];
   if (pending.length === 0) return;
@@ -2786,7 +1720,7 @@ function updateMetaTags(data) {
   const defaultUrl = absolutePageUrl();
   const defaultImage = `${SITE_ORIGIN}${getSiteBasePath() || ''}/og-image.png`.replace('//og', '/og');
 
-  document.title = data.title || 'Tangentllm Notes — 未来已来';
+  document.title = data.title || 'Tangentllm Notes';
   updateMetaTag('name', 'description', data.description || '专注于大模型技术的学习笔记、实践经验与项目分享。');
   if (data.keywords) {
     updateMetaTag('name', 'keywords', data.keywords);
@@ -2802,14 +1736,14 @@ function updateMetaTags(data) {
   canonical.href = pageUrl;
 
   const ogImage = data.image || defaultImage;
-  updateMetaTag('property', 'og:title', data.title || 'Tangentllm Notes — 未来已来');
+  updateMetaTag('property', 'og:title', data.title || 'Tangentllm Notes');
   updateMetaTag('property', 'og:description', data.description || '专注于大模型技术的学习笔记、实践经验与项目分享。');
   updateMetaTag('property', 'og:url', pageUrl);
   updateMetaTag('property', 'og:image', ogImage);
   updateMetaTag('property', 'og:type', data.type || 'website');
   updateMetaTag('property', 'og:locale', 'zh_CN');
 
-  updateMetaTag('name', 'twitter:title', data.title || 'Tangentllm Notes — 未来已来');
+  updateMetaTag('name', 'twitter:title', data.title || 'Tangentllm Notes');
   updateMetaTag('name', 'twitter:description', data.description || '专注于大模型技术的学习笔记、实践经验与项目分享。');
   updateMetaTag('name', 'twitter:url', pageUrl);
   updateMetaTag('name', 'twitter:image', ogImage);
@@ -3211,7 +2145,28 @@ function setViewCountElement(elementId, rawCount, slug, kind = 'post') {
     slug != null && String(slug).length
       ? displayViewCountValue(rawCount, slug, kind)
       : Math.max(0, Number(rawCount) || 0);
-  if (textEl) textEl.textContent = formatViewCount(shown);
+  const label = formatViewCount(shown);
+  if (el.classList.contains('josh-post-meta__views')) {
+    const text = `${label} 次阅读`;
+    if (textEl) textEl.textContent = text;
+    else el.textContent = text;
+    const dot = document.getElementById(`view-count-dot-${slug}`);
+    if (dot) dot.removeAttribute('hidden');
+  } else if (el.classList.contains('josh-hit-counter') || el.classList.contains('josh-post-tail-stats__hits-value')) {
+    const shown =
+      slug != null && String(slug).length
+        ? displayViewCountValue(rawCount, slug, kind)
+        : Math.max(0, Number(rawCount) || 0);
+    if (typeof updateJoshHitCounter === 'function') {
+      updateJoshHitCounter(el, shown);
+    } else {
+      el.textContent = String(shown).padStart(6, '0');
+    }
+  } else if (textEl) {
+    textEl.textContent = label;
+  } else {
+    el.textContent = label;
+  }
   el.classList.remove('hidden');
 }
 
@@ -3219,9 +2174,12 @@ async function updateViewCount(slug, kind = 'post') {
   try {
     const count = await bumpViewCount(slug, kind);
     setViewCountElement(`view-count-${slug}`, count, slug, kind);
+    setViewCountElement(`view-count-tail-${slug}`, count, slug, kind);
   } catch (e) {
     console.warn('updateViewCount:', e);
-    setViewCountElement(`view-count-${slug}`, readLocalViewCount(slug, kind), slug, kind);
+    const fallback = readLocalViewCount(slug, kind);
+    setViewCountElement(`view-count-${slug}`, fallback, slug, kind);
+    setViewCountElement(`view-count-tail-${slug}`, fallback, slug, kind);
   }
 }
 
@@ -3265,14 +2223,7 @@ async function displayViewCountMulti(slug, kind, elementIds) {
   } else if (mode) {
     writeLocalViewCount(slug, kind, count);
   }
-  const label = formatViewCount(displayViewCountValue(count, slug, kind));
-  ids.forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const textEl = el.querySelector('span');
-    if (textEl) textEl.textContent = label;
-    el.classList.remove('hidden');
-  });
+  ids.forEach((id) => setViewCountElement(id, count, slug, kind));
 }
 
 /** 列表/卡片用浏览量（ eye + 数字，与 setViewCountElement 配套） */
@@ -3352,18 +2303,32 @@ function showToast(message, type = 'success') {
 
 // 图片灯箱
 function initImageLightbox() {
-  document.querySelectorAll('.prose img').forEach(img => {
+  document.querySelectorAll('.josh-prose img:not([data-josh-lightbox])').forEach((img) => {
+    if (img.closest('.josh-playground')) return;
     const original = img.getAttribute('src') || '';
     const resolved = resolveAssetUrl(original);
     if (resolved && resolved !== original) {
       img.setAttribute('src', resolved);
     }
+    img.setAttribute('data-josh-lightbox', '1');
+    if (!img.getAttribute('alt')) {
+      img.setAttribute('alt', '');
+    }
     img.addEventListener('click', () => {
       const lb = document.getElementById('lightbox');
-      document.getElementById('lightbox-img').src = img.src;
+      const lbImg = document.getElementById('lightbox-img');
+      if (!lb || !lbImg) return;
+      lbImg.src = img.currentSrc || img.src;
+      lbImg.alt = img.alt || '';
       lb.classList.add('open');
     });
   });
+}
+
+function closeImageLightbox() {
+  const lb = document.getElementById('lightbox');
+  if (!lb) return;
+  lb.classList.remove('open');
 }
 
 // 图片懒加载
@@ -3397,8 +2362,55 @@ function initLazyLoading() {
   }
 }
 
+function runJoshPlaygroundMount(scope = document) {
+  const tryMount = async (attempt = 0) => {
+    if (typeof enhanceJoshPlaygrounds === 'function') {
+      await enhanceJoshPlaygrounds(scope);
+      return;
+    }
+    if (attempt < 40) {
+      setTimeout(() => { tryMount(attempt + 1); }, 50);
+    }
+  };
+  tryMount();
+}
+
+function runJoshCodeHighlight(scope = document) {
+  const fallbackHljs = () => {
+    if (typeof hljs === 'undefined') return;
+    scope.querySelectorAll('.josh-prose pre code:not(.shiki code)').forEach((block) => {
+      hljs.highlightElement(block);
+    });
+  };
+
+  const finishCodeBlocks = () => {
+    if (typeof joshWrapPlainCodeSnippets === 'function') {
+      joshWrapPlainCodeSnippets(scope);
+    } else {
+      wrapCodeBlocks(scope);
+    }
+  };
+
+  const tryShiki = async (attempt = 0) => {
+    if (typeof highlightJoshProseCode === 'function') {
+      const ok = await highlightJoshProseCode(scope);
+      if (!ok) fallbackHljs();
+      finishCodeBlocks();
+      return;
+    }
+    if (attempt < 40) {
+      setTimeout(() => { tryShiki(attempt + 1); }, 50);
+      return;
+    }
+    fallbackHljs();
+    finishCodeBlocks();
+  };
+
+  tryShiki();
+}
+
 function wrapCodeBlocks(scope = document) {
-  const preTags = scope.querySelectorAll('.prose pre:not(.code-block pre)');
+  const preTags = scope.querySelectorAll('.josh-prose pre:not(.josh-code-snippet pre), .prose pre:not(.code-block pre)');
   preTags.forEach(pre => {
     const code = pre.querySelector('code');
     if (!code) return;
@@ -3427,7 +2439,7 @@ function wrapCodeBlocks(scope = document) {
 }
 
 function styleDetailsElements(scope = document) {
-  const detailsElements = scope.querySelectorAll('.prose details');
+  const detailsElements = scope.querySelectorAll('.prose details, .josh-prose details');
   detailsElements.forEach(details => {
     if (!details.classList.contains('collapse-details')) {
       details.classList.add('collapse-details');
@@ -3498,91 +2510,56 @@ function renderMermaidDiagrams(scope = document) {
   }
 }
 
-// 文章TOC跟随
+// 文章 TOC 跟随（wt7fu6i / c1kp06zm）
 function initPostToc() {
   const sidebar = document.getElementById('toc-sidebar');
   if (!sidebar) return;
-  const tocNav = sidebar.querySelector('.toc-nav');
-  const links = sidebar.querySelectorAll('.toc-link');
+  const links = sidebar.querySelectorAll('.josh-toc-link');
   if (links.length === 0) return;
 
-  // 创建指示条元素
-  const indicator = document.createElement('div');
-  indicator.className = 'toc-indicator';
-  tocNav.appendChild(indicator);
-
-  // 更新指示条位置
-  function updateIndicator(activeLink) {
-    if (!activeLink) {
-      indicator.style.opacity = '0';
-      return;
-    }
-    const linkRect = activeLink.getBoundingClientRect();
-    const navRect = tocNav.getBoundingClientRect();
-    const offsetTop = activeLink.offsetTop;
-    const height = linkRect.height;
-
-    indicator.style.height = `${height}px`;
-    indicator.style.transform = `translateY(${offsetTop}px)`;
-    indicator.style.opacity = '1';
+  function setActive(link) {
+    links.forEach((l) => l.classList.remove('active', 'is-active'));
+    link.classList.add('active', 'is-active');
   }
 
-  // 添加点击事件处理，阻止默认跳转
-  links.forEach(link => {
+  links.forEach((link) => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      const targetId = link.dataset.target;
-      const target = document.getElementById(targetId);
-      if (target) {
-        const headerOffset = 80; // 顶部导航栏高度
-        const elementPosition = target.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      const targetId = link.dataset.target || link.getAttribute('href')?.slice(1);
+      const target = targetId ? document.getElementById(targetId) : null;
+      if (!target) return;
 
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth'
-        });
-
-        // 更新 active 状态和指示条
-        links.forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
-        updateIndicator(link);
-      }
+      const headerOffset = 112;
+      const offsetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+      setActive(link);
     });
   });
 
   const observer = new IntersectionObserver((entries) => {
-    // 找到所有正在相交的条目
-    const intersectingEntries = entries.filter(entry => entry.isIntersecting);
+    const intersectingEntries = entries.filter((entry) => entry.isIntersecting);
+    if (intersectingEntries.length === 0) return;
 
-    if (intersectingEntries.length > 0) {
-      // 如果有多个相交，选择最靠近顶部的那个
-      const topmost = intersectingEntries.reduce((prev, curr) => {
-        return curr.boundingClientRect.top < prev.boundingClientRect.top ? curr : prev;
-      });
+    const topmost = intersectingEntries.reduce((prev, curr) =>
+      curr.boundingClientRect.top < prev.boundingClientRect.top ? curr : prev
+    );
 
-      links.forEach(l => l.classList.remove('active'));
-      const active = sidebar.querySelector(`[data-target="${topmost.target.id}"]`);
-      if (active) {
-        active.classList.add('active');
-        updateIndicator(active);
-      }
-    }
-  }, { rootMargin: '-80px 0px -70% 0px' });
+    const active = sidebar.querySelector(`[data-target="${topmost.target.id}"]`);
+    if (active) setActive(active);
+  }, { rootMargin: '-112px 0px -70% 0px' });
 
-  links.forEach(link => {
-    const target = document.getElementById(link.dataset.target);
+  links.forEach((link) => {
+    const targetId = link.dataset.target || link.getAttribute('href')?.slice(1);
+    const target = targetId ? document.getElementById(targetId) : null;
     if (target) observer.observe(target);
   });
 
-  // 初始化指示条位置
   setTimeout(() => {
-    const activeLink = sidebar.querySelector('.toc-link.active');
+    const activeLink = sidebar.querySelector('.josh-toc-link.active');
     if (activeLink) {
-      updateIndicator(activeLink);
+      setActive(activeLink);
     } else if (links.length > 0) {
-      links[0].classList.add('active');
-      updateIndicator(links[0]);
+      setActive(links[0]);
     }
   }, 100);
 }
@@ -3599,10 +2576,18 @@ function copyCode(btn) {
 
 // 键盘快捷键
 document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    openSearch();
+    return;
+  }
   if (e.key === '/' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
     e.preventDefault(); openSearch();
   }
-  if (e.key === 'Escape') closeSearch();
+  if (e.key === 'Escape') {
+    closeSearch();
+    closeImageLightbox();
+  }
 });
 
 // 滚动监听
@@ -3612,7 +2597,6 @@ window.addEventListener('scroll', () => {
   isScrollScheduled = true;
   requestAnimationFrame(() => {
     updateProgressBar();
-    updateBackToTop();
     isScrollScheduled = false;
   });
 }, { passive: true });
@@ -3661,6 +2645,7 @@ async function initApp() {
     }
     console.log('作品自动加载失败，回退内置数据。', error);
   }
+  appBootstrapped = true;
   router();
   hideLoader();
 }

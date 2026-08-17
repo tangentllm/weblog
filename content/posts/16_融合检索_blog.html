@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（十六）：融合检索（Fusion Retrieval）</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle { color: var(--text-muted); font-size: 1.05rem; }
+  header .meta { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+  header .meta span { margin: 0 0.5rem; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .toc a:hover { color: var(--accent); }
+
+  h2 {
+    font-size: 1.6rem; font-weight: 700;
+    margin: 2.5rem 0 1rem; padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border); color: var(--text);
+  }
+  h3 { font-size: 1.25rem; font-weight: 600; margin: 1.8rem 0 0.8rem; color: var(--accent); }
+
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: var(--accent2); }
+  em { color: var(--accent3); font-style: normal; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+    margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.88rem; }
+  p code, li code {
+    background: var(--tag-bg); padding: 0.15rem 0.4rem;
+    border-radius: 4px; font-size: 0.85rem; color: var(--accent3);
+  }
+
+  .callout {
+    background: var(--surface); border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .callout.warning { border-left-color: var(--accent3); }
+  .callout.success { border-left-color: var(--accent2); }
+  .callout .callout-title { font-weight: 700; margin-bottom: 0.3rem; font-size: 0.95rem; }
+
+  .diagram-container {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+    text-align: center; overflow-x: auto;
+  }
+  .diagram-container .caption {
+    font-size: 0.85rem; color: var(--text-muted); margin-top: 0.8rem; text-align: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--border); padding: 0.6rem 1rem; text-align: left; }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+  }
+  .compare-card h4 { font-size: 1rem; margin-bottom: 0.6rem; }
+  .compare-card.bad h4 { color: var(--accent3); }
+  .compare-card.good h4 { color: var(--accent2); }
+  .compare-card.neutral h4 { color: var(--accent); }
+  .compare-card ul { padding-left: 1rem; }
+
+  .result-block {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem; margin: 1rem 0;
+  }
+  .result-block h4 {
+    font-size: 1rem; margin-bottom: 0.6rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .result-block .method-tag {
+    display: inline-block; padding: 0.15rem 0.6rem;
+    border-radius: 12px; font-size: 0.8rem; font-weight: 600;
+  }
+  .method-tag.vector { background: rgba(88,166,255,0.2); color: var(--accent); }
+  .method-tag.bm25 { background: rgba(240,136,62,0.2); color: var(--accent3); }
+  .method-tag.fusion { background: rgba(63,185,80,0.2); color: var(--accent2); }
+
+  .score-bar {
+    display: flex; align-items: center; gap: 0.5rem; margin: 0.4rem 0;
+  }
+  .score-bar .label { min-width: 100px; font-size: 0.88rem; color: var(--text-muted); }
+  .score-bar .bar-bg {
+    flex: 1; height: 20px; background: var(--tag-bg);
+    border-radius: 10px; overflow: hidden;
+  }
+  .score-bar .bar-fill {
+    height: 100%; border-radius: 10px;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 0.5rem; font-size: 0.75rem; font-weight: 700; color: #fff;
+  }
+  .bar-fill.vector-bar { background: linear-gradient(90deg, #58a6ff, #a371f7); }
+  .bar-fill.bm25-bar { background: linear-gradient(90deg, #f0883e, #d29922); }
+  .bar-fill.fusion-bar { background: linear-gradient(90deg, #3fb950, #56d364); }
+
+  .score-highlight {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.5rem 1rem; margin: 0.3rem;
+    font-size: 1.1rem; font-weight: 700;
+  }
+  .score-highlight.up { border-color: var(--accent2); color: var(--accent2); }
+
+  .chart-wrapper {
+    max-width: 600px; margin: 1.5rem auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem;
+  }
+
+  .formula-box {
+    background: linear-gradient(135deg, rgba(88,166,255,0.08), rgba(63,185,80,0.08));
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem; margin: 1.5rem 0;
+    text-align: center; font-size: 1.1rem;
+  }
+  .formula-box code {
+    background: none; color: var(--accent); font-size: 1.05rem;
+  }
+
+  footer {
+    margin-top: 3rem; padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center; color: var(--text-muted); font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  .nav-links {
+    display: flex; justify-content: space-between;
+    margin-top: 2rem; padding: 1.2rem 0;
+    border-top: 1px solid var(--border);
+  }
+  .nav-links a {
+    color: var(--accent); text-decoration: none;
+    padding: 0.5rem 1rem; border: 1px solid var(--border);
+    border-radius: 8px; transition: all 0.2s;
+  }
+  .nav-links a:hover { background: var(--surface); border-color: var(--accent); }
+
+  @media (max-width: 600px) {
+    header h1 { font-size: 1.6rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 &middot; 第 16 篇</div>
+  <h1>融合检索（Fusion Retrieval）</h1>
+  <p class="subtitle">语义向量搜索 + BM25 关键词搜索 &mdash; 归一化加权，双剑合璧</p>
+  <div class="meta">
+    <span>2026-07-10</span>
+    <span>&middot;</span>
+    <span>RAG / Fusion Retrieval / BM25 / 向量检索</span>
+    <span>&middot;</span>
+    <span>阅读约 18 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#motivation">引言：为什么需要融合检索？</a></li>
+    <li><a href="#core-idea">核心思想：语义 + 关键词的双路互补</a></li>
+    <li><a href="#architecture">融合检索架构总览</a></li>
+    <li><a href="#formula">核心公式：归一化 + 加权融合</a></li>
+    <li><a href="#code-bm25">代码解读：BM25 索引与搜索</a></li>
+    <li><a href="#code-fusion">代码解读：融合检索核心函数</a></li>
+    <li><a href="#code-pipeline">代码解读：完整融合 RAG 管道</a></li>
+    <li><a href="#alpha">alpha 参数：调节语义与关键词的平衡</a></li>
+    <li><a href="#results">实验结果：三种方法真实对比</a></li>
+    <li><a href="#evaluation">LLM 评估分析</a></li>
+    <li><a href="#conclusion">总结与展望</a></li>
+  </ol>
+</nav>
+
+<!-- 1. 引言 -->
+<h2 id="motivation">1. 引言：为什么需要融合检索？</h2>
+
+<p>在之前的篇章中，我们构建的 RAG 系统几乎都依赖<strong>单一的向量检索</strong>——将查询和文档编码为高维向量，通过余弦相似度找到语义最相近的文本块。这种方法在"理解意图"方面表现出色，但它有一个根本性的盲区：</p>
+
+<div class="callout warning">
+  <div class="callout-title">向量检索的盲区</div>
+  <p>当用户查询包含<strong>精确的专业术语、产品名称或特定关键词</strong>时，向量检索可能因为语义空间的"模糊匹配"特性，将包含精确术语的文档排在语义相近但术语不精确的文档之后。换句话说，向量检索擅长"理解意思"，但不擅长"精确找词"。</p>
+</div>
+
+<p>反过来，传统的关键词检索（如 BM25）恰好擅长精确匹配，却无法理解同义词和语义关系。</p>
+
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>向量检索的优势</h4>
+    <ul>
+      <li>理解语义相似性</li>
+      <li>处理同义词和改写</li>
+      <li>捕捉上下文含义</li>
+      <li>对措辞变化鲁棒</li>
+    </ul>
+  </div>
+  <div class="compare-card neutral">
+    <h4>BM25 关键词检索的优势</h4>
+    <ul>
+      <li>精确匹配专业术语</li>
+      <li>基于词频的统计信号</li>
+      <li>无需嵌入模型，成本低</li>
+      <li>对稀有关键词敏感</li>
+    </ul>
+  </div>
+</div>
+
+<p><strong>融合检索（Fusion Retrieval）</strong>的核心动机正是：为什么不把两者的优势结合起来？</p>
+
+<!-- 2. 核心思想 -->
+<h2 id="core-idea">2. 核心思想：语义 + 关键词的双路互补</h2>
+
+<p>融合检索的核心思想可以用一句话概括：<em>"先分头行动，再综合决策"</em>。系统同时运行两条检索路径——语义向量搜索和 BM25 关键词搜索——然后通过归一化和加权融合，将两种不同量纲的分数统一到同一个尺度上，最终按综合分数排序返回结果。</p>
+
+<div class="diagram-container">
+<pre class="mermaid">
+flowchart TD
+    Q["用户查询"] --> BRANCH{"双路检索"}
+
+    BRANCH -->|"路径 A"| VEC["向量嵌入<br/>text-embedding-ada-002"]
+    BRANCH -->|"路径 B"| BM["BM25 关键词匹配"]
+
+    VEC --> VS["向量搜索<br/>余弦相似度分数"]
+    BM --> BS["BM25 搜索<br/>BM25 分数"]
+
+    VS --> NORM1["Min-Max 归一化<br/>norm_vector_score"]
+    BS --> NORM2["Min-Max 归一化<br/>norm_bm25_score"]
+
+    NORM1 --> FUSE["加权融合<br/>combined = alpha * norm_vec<br/>+ (1-alpha) * norm_bm25"]
+    NORM2 --> FUSE
+
+    FUSE --> SORT["按融合分数降序排列"]
+    SORT --> TOPK["返回 Top-K 结果"]
+    TOPK --> LLM["送入 LLM 生成回答"]
+
+    style Q fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+    style BRANCH fill:#1f2937,stroke:#a371f7,color:#e6edf3
+    style VEC fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+    style BM fill:#1f2937,stroke:#f0883e,color:#e6edf3
+    style FUSE fill:#1f2937,stroke:#3fb950,color:#e6edf3
+    style TOPK fill:#1f2937,stroke:#3fb950,color:#e6edf3
+    style LLM fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+</pre>
+  <div class="caption">图 1：融合检索架构——双路检索 &rarr; 归一化 &rarr; 加权融合 &rarr; 排序</div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">关键设计决策</div>
+  <p>与第 8 篇的<strong>重排序</strong>不同，融合检索不是在初始检索之后"二次过滤"，而是在<strong>检索阶段本身</strong>就将两种信号融合。这意味着每种文档都会同时获得语义分数和关键词分数，最终的排序是两种信号的综合体现。</p>
+</div>
+
+<!-- 3. 架构总览 -->
+<h2 id="architecture">3. 融合检索架构总览</h2>
+
+<p>完整的融合 RAG 管道可以分为三个阶段：<strong>文档处理</strong>、<strong>双索引构建</strong>和<strong>融合检索</strong>。</p>
+
+<div class="diagram-container">
+<pre class="mermaid">
+flowchart LR
+    subgraph PHASE1["阶段 1：文档处理"]
+        direction TB
+        P1["PDF 提取文本"] --> P2["清理文本<br/>去除多余空白/OCR修复"]
+        P2 --> P3["分块<br/>1000字符, overlap=200"]
+        P3 --> P4["42 个文本块"]
+    end
+
+    subgraph PHASE2["阶段 2：双索引构建"]
+        direction TB
+        P4 --> I1["向量嵌入<br/>ada-002"]
+        P4 --> I2["BM25 索引<br/>rank_bm25"]
+        I1 --> I3["向量存储"]
+        I2 --> I4["BM25 索引"]
+    end
+
+    subgraph PHASE3["阶段 3：融合检索"]
+        direction TB
+        Q2["查询"] --> R1["向量搜索<br/>全量余弦相似度"]
+        Q2 --> R2["BM25 搜索<br/>全量 BM25 分数"]
+        R1 --> N1["Min-Max 归一化"]
+        R2 --> N2["Min-Max 归一化"]
+        N1 --> F["alpha * vec + (1-alpha) * bm25"]
+        N2 --> F
+        F --> TOP["Top-K"]
+    end
+
+    TOP --> LLM2["LLM 生成回答"]
+
+    style PHASE1 fill:#0d1117,stroke:#58a6ff,color:#e6edf3
+    style PHASE2 fill:#0d1117,stroke:#f0883e,color:#e6edf3
+    style PHASE3 fill:#0d1117,stroke:#3fb950,color:#e6edf3
+</pre>
+  <div class="caption">图 2：融合 RAG 管道三阶段——文档处理 &rarr; 双索引构建 &rarr; 融合检索</div>
+</div>
+
+<h3>文档处理细节</h3>
+
+<p>文档处理流程与之前的篇章类似，但有几个值得注意的参数选择：</p>
+
+<table>
+  <thead>
+    <tr><th>步骤</th><th>参数</th><th>值</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>文本清理</td><td>正则替换</td><td><code>\s+ &rarr; 空格</code></td><td>去除多余空白、修复 OCR 问题</td></tr>
+    <tr><td>分块大小</td><td><code>chunk_size</code></td><td>1000 字符</td><td>每个块约 200-300 个英文单词</td></tr>
+    <tr><td>块重叠</td><td><code>chunk_overlap</code></td><td>200 字符</td><td>20% 重叠，保持上下文连续性</td></tr>
+    <tr><td>总块数</td><td>-</td><td>42 个块</td><td>来自 AI_Information.pdf</td></tr>
+    <tr><td>嵌入模型</td><td><code>model</code></td><td>text-embedding-ada-002</td><td>1536 维向量</td></tr>
+  </tbody>
+</table>
+
+<!-- 4. 核心公式 -->
+<h2 id="formula">4. 核心公式：归一化 + 加权融合</h2>
+
+<p>融合检索的核心在于如何将两种<strong>不同量纲</strong>的分数合并。向量搜索返回的余弦相似度范围是 <code>[-1, 1]</code>（实际通常 <code>[0, 1]</code>），而 BM25 分数的范围取决于文档长度和词频分布，可能从 0 到几十不等。直接相加毫无意义——必须先归一化。</p>
+
+<div class="formula-box">
+  <p><strong>融合公式</strong></p>
+  <p><code>combined_score = alpha * norm_vector_score + (1 - alpha) * norm_bm25_score</code></p>
+</div>
+
+<h3>Min-Max 归一化</h3>
+
+<p>归一化将两种分数都映射到 <code>[0, 1]</code> 区间：</p>
+
+<div class="formula-box">
+  <p><code>norm_score = (score - min) / (max - min + epsilon)</code></p>
+  <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">其中 <code>epsilon = 1e-8</code>，防止分母为零</p>
+</div>
+
+<p>归一化后，两种分数都在 <code>[0, 1]</code> 尺度上，此时加权融合才有意义：</p>
+
+<ul>
+  <li><code>alpha = 0.5</code>：语义和关键词同等重要（默认值）</li>
+  <li><code>alpha = 0.8</code>：更侧重语义理解</li>
+  <li><code>alpha = 0.2</code>：更侧重关键词匹配</li>
+</ul>
+
+<pre><code class="language-python"># 归一化分数 —— 融合检索的核心步骤
+epsilon = 1e-8  # 防止除以零
+
+# Min-Max 归一化向量分数
+norm_vector_scores = (vector_scores - np.min(vector_scores)) / \
+                     (np.max(vector_scores) - np.min(vector_scores) + epsilon)
+
+# Min-Max 归一化 BM25 分数
+norm_bm25_scores = (bm25_scores - np.min(bm25_scores)) / \
+                   (np.max(bm25_scores) - np.min(bm25_scores) + epsilon)
+
+# 加权融合
+combined_scores = alpha * norm_vector_scores + \
+                  (1 - alpha) * norm_bm25_scores</code></pre>
+
+<div class="callout success">
+  <div class="callout-title">为什么选择 Min-Max 归一化？</div>
+  <p>Min-Max 归一化保留了原始分数的<strong>相对排序</strong>，同时将值域压缩到 <code>[0, 1]</code>。相比 Z-score 标准化，它更直观——归一化后的 0 分表示"在该方法中排名最低"，1 分表示"在该方法中排名最高"。加权融合后的分数也可以直接解读为"综合排名质量"。</p>
+</div>
+
+<!-- 5. BM25 代码 -->
+<h2 id="code-bm25">5. 代码解读：BM25 索引与搜索</h2>
+
+<p>BM25（Best Matching 25）是信息检索领域最经典的排序算法之一。它基于<strong>词频（TF）</strong>和<strong>逆文档频率（IDF）</strong>来评估文档与查询的相关性。我们使用 <code>rank_bm25</code> 库来实现。</p>
+
+<pre><code class="language-python">from rank_bm25 import BM25Okapi
+
+def create_bm25_index(chunks):
+    """
+    根据给定的文本块创建 BM25 索引。
+
+    参数:
+        chunks (List[Dict]): 文本块的列表
+
+    返回:
+        BM25Okapi: 一个 BM25 索引
+    """
+    # 从每个块中提取文本
+    texts = [chunk["text"] for chunk in chunks]
+
+    # 将每个文档按空格拆分为标记（token）
+    tokenized_docs = [text.split() for text in texts]
+
+    # 使用标记化的文档创建 BM25 索引
+    bm25 = BM25Okapi(tokenized_docs)
+
+    print(f"Created BM25 index with {len(texts)} documents")
+    return bm25</code></pre>
+
+<p>BM25 搜索函数为每个文档计算与查询的 BM25 分数，并按分数降序排列：</p>
+
+<pre><code class="language-python">def bm25_search(bm25, chunks, query, k=5):
+    """
+    使用查询搜索 BM25 索引。
+
+    参数:
+        bm25 (BM25Okapi): BM25 索引
+        chunks (List[Dict]): 文本块列表
+        query (str): 查询字符串
+        k (int): 返回的结果数量
+
+    返回:
+        List[Dict]: 带有分数的前 k 个结果
+    """
+    # 将查询按空格分割为词元
+    query_tokens = query.split()
+
+    # 获取查询词对已索引文档的 BM25 得分
+    scores = bm25.get_scores(query_tokens)
+
+    results = []
+    for i, score in enumerate(scores):
+        metadata = chunks[i].get("metadata", {}).copy()
+        metadata["index"] = i
+        results.append({
+            "text": chunks[i]["text"],
+            "metadata": metadata,
+            "bm25_score": float(score)
+        })
+
+    # 按 BM25 得分降序排序
+    results.sort(key=lambda x: x["bm25_score"], reverse=True)
+    return results[:k]</code></pre>
+
+<div class="callout">
+  <div class="callout-title">BM25 vs 向量搜索的本质区别</div>
+  <p><strong>BM25</strong> 是"词面匹配"——查询中有 <code>transformer</code>，文档中也必须有 <code>transformer</code> 才能得分。<strong>向量搜索</strong>是"语义匹配"——即使文档中没有 <code>transformer</code>，但提到了 <code>attention mechanism</code> 或 <code>BERT</code>，也可能因为语义相近而获得高分。两者互补，正是融合检索的理论基础。</p>
+</div>
+
+<!-- 6. 融合检索核心代码 -->
+<h2 id="code-fusion">6. 代码解读：融合检索核心函数</h2>
+
+<p>这是整个融合检索系统最关键的部分。函数同时执行向量搜索和 BM25 搜索，然后对结果进行归一化和加权融合：</p>
+
+<pre><code class="language-python">def fusion_retrieval(query, chunks, vector_store, bm25_index,
+                     k=5, alpha=0.5):
+    """
+    融合检索：结合向量搜索和 BM25 搜索。
+
+    参数:
+        query (str): 查询字符串
+        chunks (List[Dict]): 原始文本块
+        vector_store (SimpleVectorStore): 向量存储对象
+        bm25_index (BM25Okapi): BM25 索引对象
+        k (int): 返回结果的数量
+        alpha (float): 向量分数的权重 (0-1)
+
+    返回:
+        List[Dict]: 基于组合分数的前 k 个结果
+    """
+    epsilon = 1e-8
+
+    # === Step 1: 双路检索 ===
+
+    # 向量搜索：获取所有文档的余弦相似度
+    query_embedding = create_embeddings(query)
+    vector_results = vector_store.similarity_search_with_scores(
+        query_embedding, k=len(chunks)
+    )
+
+    # BM25 搜索：获取所有文档的 BM25 分数
+    bm25_results = bm25_search(
+        bm25_index, chunks, query, k=len(chunks)
+    )
+
+    # === Step 2: 构建分数映射 ===
+
+    # 将文档索引映射到各自的分数
+    vector_scores_dict = {
+        r["metadata"]["index"]: r["similarity"] for r in vector_results
+    }
+    bm25_scores_dict = {
+        r["metadata"]["index"]: r["bm25_score"] for r in bm25_results
+    }
+
+    # 确保所有文档在两种方法中都有分数
+    all_docs = vector_store.get_all_documents()
+    combined_results = []
+    for i, doc in enumerate(all_docs):
+        combined_results.append({
+            "text": doc["text"],
+            "metadata": doc["metadata"],
+            "vector_score": vector_scores_dict.get(i, 0.0),
+            "bm25_score": bm25_scores_dict.get(i, 0.0),
+            "index": i
+        })
+
+    # === Step 3: Min-Max 归一化 ===
+
+    vector_scores = np.array([d["vector_score"] for d in combined_results])
+    bm25_scores = np.array([d["bm25_score"] for d in combined_results])
+
+    norm_vector_scores = (vector_scores - np.min(vector_scores)) / \
+        (np.max(vector_scores) - np.min(vector_scores) + epsilon)
+    norm_bm25_scores = (bm25_scores - np.min(bm25_scores)) / \
+        (np.max(bm25_scores) - np.min(bm25_scores) + epsilon)
+
+    # === Step 4: 加权融合 ===
+
+    combined_scores = alpha * norm_vector_scores + \
+                      (1 - alpha) * norm_bm25_scores
+
+    # 将融合分数写回结果
+    for i, score in enumerate(combined_scores):
+        combined_results[i]["combined_score"] = float(score)
+
+    # === Step 5: 排序返回 Top-K ===
+
+    combined_results.sort(
+        key=lambda x: x["combined_score"], reverse=True
+    )
+    return combined_results[:k]</code></pre>
+
+<div class="callout success">
+  <div class="callout-title">全量检索的设计意图</div>
+  <p>注意：向量搜索和 BM25 搜索都使用了 <code>k=len(chunks)</code>，即<strong>全量检索</strong>所有 42 个文档的分数，而非仅取 Top-5。这是因为归一化需要知道所有分数的最大值和最小值——如果只检索部分文档，归一化的基准就不完整，融合结果会失真。</p>
+</div>
+
+<!-- 7. 完整管道 -->
+<h2 id="code-pipeline">7. 代码解读：完整融合 RAG 管道</h2>
+
+<p>将融合检索集成到 RAG 管道中非常简洁。同时，我们还实现了 <code>vector_only_rag</code> 和 <code>bm25_only_rag</code> 作为对比基线：</p>
+
+<pre><code class="language-python">def answer_with_fusion_rag(query, chunks, vector_store,
+                           bm25_index, k=5, alpha=0.5):
+    """使用融合 RAG 方法回答查询。"""
+    # 1. 融合检索
+    retrieved_docs = fusion_retrieval(
+        query, chunks, vector_store, bm25_index, k=k, alpha=alpha
+    )
+
+    # 2. 格式化上下文（用分隔符区分不同文本块）
+    context = "\n\n---\n\n".join(
+        [doc["text"] for doc in retrieved_docs]
+    )
+
+    # 3. LLM 生成回答
+    response = generate_response(query, context)
+
+    return {
+        "query": query,
+        "retrieved_documents": retrieved_docs,
+        "response": response
+    }
+
+
+def vector_only_rag(query, vector_store, k=5):
+    """仅使用向量检索的 RAG（对比基线）。"""
+    query_embedding = create_embeddings(query)
+    retrieved_docs = vector_store.similarity_search_with_scores(
+        query_embedding, k=k
+    )
+    context = "\n\n---\n\n".join(
+        [doc["text"] for doc in retrieved_docs]
+    )
+    response = generate_response(query, context)
+    return {"query": query, "retrieved_documents": retrieved_docs,
+            "response": response}
+
+
+def bm25_only_rag(query, chunks, bm25_index, k=5):
+    """仅使用 BM25 检索的 RAG（对比基线）。"""
+    retrieved_docs = bm25_search(bm25_index, chunks, query, k=k)
+    context = "\n\n---\n\n".join(
+        [doc["text"] for doc in retrieved_docs]
+    )
+    response = generate_response(query, context)
+    return {"query": query, "retrieved_documents": retrieved_docs,
+            "response": response}</code></pre>
+
+<div class="diagram-container">
+<pre class="mermaid">
+flowchart TB
+    Q["用户查询"] --> E["创建查询嵌入"]
+
+    E --> P1["路径 1: 向量检索 RAG"]
+    E --> P2["路径 2: BM25 检索 RAG"]
+    E --> P3["路径 3: 融合检索 RAG"]
+
+    P1 -->|"余弦相似度 Top-K"| R1["回答 A"]
+    P2 -->|"BM25 分数 Top-K"| R2["回答 B"]
+    P3 -->|"融合分数 Top-K"| R3["回答 C"]
+
+    R1 --> EVAL["LLM 元评估"]
+    R2 --> EVAL
+    R3 --> EVAL
+
+    EVAL --> WINNER{"哪种方法最好？"}
+
+    style Q fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+    style P1 fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+    style P2 fill:#1f2937,stroke:#f0883e,color:#e6edf3
+    style P3 fill:#1f2937,stroke:#3fb950,color:#e6edf3
+    style WINNER fill:#1f2937,stroke:#a371f7,color:#e6edf3
+</pre>
+  <div class="caption">图 3：三种检索策略的对比评估流程</div>
+</div>
+
+<!-- 8. Alpha 参数 -->
+<h2 id="alpha">8. alpha 参数：调节语义与关键词的平衡</h2>
+
+<p><code>alpha</code> 参数控制着融合检索中<strong>语义信号</strong>与<strong>关键词信号</strong>的相对权重。不同的 alpha 值适用于不同类型的查询和文档集合：</p>
+
+<table>
+  <thead>
+    <tr><th>alpha 值</th><th>向量权重</th><th>BM25 权重</th><th>适用场景</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0.0</code></td><td>0%</td><td>100%</td><td>纯关键词检索（如精确产品型号查询）</td></tr>
+    <tr><td><code>0.2</code></td><td>20%</td><td>80%</td><td>关键词主导，辅以语义理解</td></tr>
+    <tr><td><code>0.5</code></td><td>50%</td><td>50%</td><td>均衡融合（默认值，适合大多数场景）</td></tr>
+    <tr><td><code>0.8</code></td><td>80%</td><td>20%</td><td>语义主导，辅以关键词精确匹配</td></tr>
+    <tr><td><code>1.0</code></td><td>100%</td><td>0%</td><td>纯语义检索（等同于向量检索）</td></tr>
+  </tbody>
+</table>
+
+<div class="chart-wrapper">
+  <canvas id="alphaChart"></canvas>
+</div>
+
+<div class="callout">
+  <div class="callout-title">如何选择最佳 alpha？</div>
+  <p>最佳 alpha 值取决于<strong>查询类型</strong>和<strong>文档特性</strong>。经验法则：</p>
+  <ul>
+    <li>文档中包含大量专业术语 &rarr; 降低 alpha（更依赖 BM25）</li>
+    <li>查询措辞多变、同义词丰富 &rarr; 提高 alpha（更依赖向量）</li>
+    <li>不确定时 &rarr; 从 <code>alpha=0.5</code> 开始，通过评估调优</li>
+  </ul>
+</div>
+
+<!-- 9. 实验结果 -->
+<h2 id="results">9. 实验结果：三种方法真实对比</h2>
+
+<h3>实验设置</h3>
+<ul>
+  <li>文档：<code>AI_Information.pdf</code></li>
+  <li>分块参数：<code>chunk_size=1000</code>, <code>chunk_overlap=200</code></li>
+  <li>总块数：<strong>42 个块</strong></li>
+  <li>融合参数：<code>k=5</code>, <code>alpha=0.5</code></li>
+  <li>查询：<em>"What are the main applications of transformer models in natural language processing?"</em></li>
+</ul>
+
+<h3>向量检索结果</h3>
+<div class="result-block">
+  <h4><span class="method-tag vector">向量检索</span> 回答摘要</h4>
+  <p>提到了 transformer 模型在 NLP 中的应用，但表述较为笼统：</p>
+  <ul>
+    <li>提到了机器翻译、文本生成、情感分析、语言理解</li>
+    <li>提到了"处理长距离依赖"的能力</li>
+    <li>但<strong>没有提到具体的模型名称</strong>（如 BERT、GPT）</li>
+  </ul>
+  <p style="color: var(--text-muted); font-size: 0.9rem;">评价：语义理解到位，但缺乏具体细节。回答正确但不够深入。</p>
+</div>
+
+<h3>BM25 检索结果</h3>
+<div class="result-block">
+  <h4><span class="method-tag bm25">BM25 检索</span> 回答摘要</h4>
+  <p>完全无法提供有效信息：</p>
+  <blockquote style="color: var(--text-muted); border-left: 2px solid var(--border); padding-left: 1rem; margin: 0.5rem 0;">
+    "Acknowledging the limitation that the context provided does not specifically mention transformer models, I cannot provide information on the main applications of transformer models in natural language processing."
+  </blockquote>
+  <p style="color: var(--accent3); font-size: 0.9rem;">评价：BM25 检索到的文本块中缺乏与"transformer"直接相关的内容，导致 LLM 无从作答。</p>
+</div>
+
+<h3>融合检索结果</h3>
+<div class="result-block">
+  <h4><span class="method-tag fusion">融合检索</span> 回答摘要</h4>
+  <p>提供了最全面、最具体的回答：</p>
+  <ul>
+    <li>列出了具体应用：<strong>语言翻译、文本生成、情感分析、问答、摘要</strong></li>
+    <li>提到了具体模型：<strong>BERT</strong>（Bidirectional Encoder Representations from Transformers）和 <strong>GPT</strong>（Generative Pre-trained Transformer）</li>
+    <li>总结了 transformer 对 NLP 领域的深远影响</li>
+  </ul>
+  <p style="color: var(--accent2); font-size: 0.9rem;">评价：表现最好！融合检索结合了语义理解的广度和关键词匹配的精度，为 LLM 提供了最丰富的上下文。</p>
+</div>
+
+<h3>三种方法回答质量对比</h3>
+
+<div class="chart-wrapper">
+  <canvas id="comparisonChart"></canvas>
+</div>
+
+<div style="margin: 1.5rem 0;">
+  <p style="font-weight: 600; margin-bottom: 0.8rem;">各维度得分条</p>
+
+  <p style="font-size: 0.88rem; color: var(--text-muted);">查询相关性</p>
+  <div class="score-bar">
+    <span class="label">向量检索</span>
+    <div class="bar-bg"><div class="bar-fill vector-bar" style="width:70%">7</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">BM25</span>
+    <div class="bar-bg"><div class="bar-fill bm25-bar" style="width:30%">3</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">融合检索</span>
+    <div class="bar-bg"><div class="bar-fill fusion-bar" style="width:90%">9</div></div>
+  </div>
+
+  <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 0.8rem;">事实正确性</p>
+  <div class="score-bar">
+    <span class="label">向量检索</span>
+    <div class="bar-bg"><div class="bar-fill vector-bar" style="width:75%">7.5</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">BM25</span>
+    <div class="bar-bg"><div class="bar-fill bm25-bar" style="width:30%">3</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">融合检索</span>
+    <div class="bar-bg"><div class="bar-fill fusion-bar" style="width:90%">9</div></div>
+  </div>
+
+  <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 0.8rem;">回答全面性</p>
+  <div class="score-bar">
+    <span class="label">向量检索</span>
+    <div class="bar-bg"><div class="bar-fill vector-bar" style="width:65%">6.5</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">BM25</span>
+    <div class="bar-bg"><div class="bar-fill bm25-bar" style="width:20%">2</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">融合检索</span>
+    <div class="bar-bg"><div class="bar-fill fusion-bar" style="width:90%">9</div></div>
+  </div>
+
+  <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 0.8rem;">清晰度与连贯性</p>
+  <div class="score-bar">
+    <span class="label">向量检索</span>
+    <div class="bar-bg"><div class="bar-fill vector-bar" style="width:75%">7.5</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">BM25</span>
+    <div class="bar-bg"><div class="bar-fill bm25-bar" style="width:60%">6</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">融合检索</span>
+    <div class="bar-bg"><div class="bar-fill fusion-bar" style="width:85%">8.5</div></div>
+  </div>
+</div>
+
+<!-- 10. LLM 评估 -->
+<h2 id="evaluation">10. LLM 评估分析</h2>
+
+<p>我们使用 GPT-3.5-turbo 作为"裁判"，对三种方法的回答进行了详细的元评估。以下是评估的核心结论：</p>
+
+<table>
+  <thead>
+    <tr><th>评估维度</th><th>向量检索</th><th>BM25</th><th>融合检索</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>查询相关性</td>
+      <td>相关，提到了 NLP 应用</td>
+      <td style="color:var(--accent3)">无法提供相关信息</td>
+      <td style="color:var(--accent2)">高度相关，列举具体应用</td>
+    </tr>
+    <tr>
+      <td>事实正确性</td>
+      <td>正确但笼统</td>
+      <td style="color:var(--accent3)">无内容可评</td>
+      <td style="color:var(--accent2)">正确且具体（BERT、GPT）</td>
+    </tr>
+    <tr>
+      <td>回答全面性</td>
+      <td>覆盖了部分应用</td>
+      <td style="color:var(--accent3)">完全缺失</td>
+      <td style="color:var(--accent2)">最全面，涵盖翻译/摘要/问答/情感分析</td>
+    </tr>
+    <tr>
+      <td>清晰度与连贯性</td>
+      <td>清晰</td>
+      <td>清晰但无用</td>
+      <td style="color:var(--accent2)">清晰且信息密度高</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout success">
+  <div class="callout-title">关键发现</div>
+  <p><strong>融合检索在这个查询上表现最好。</strong>它不仅提供了最相关、最正确、最全面的回答，还提到了 BERT 和 GPT 等具体模型名称——这些细节在单独的向量检索和 BM25 检索中都没有出现。这证明了融合检索能够<strong>从两种检索路径中互补信息</strong>，为 LLM 提供更丰富的上下文。</p>
+</div>
+
+<h3>各方法适用场景总结</h3>
+
+<div class="compare-grid">
+  <div class="compare-card neutral">
+    <h4>向量检索擅长</h4>
+    <ul>
+      <li>语义理解类查询</li>
+      <li>同义词和改写处理</li>
+      <li>上下文含义捕捉</li>
+      <li>模糊意图查询</li>
+    </ul>
+  </div>
+  <div class="compare-card bad">
+    <h4>BM25 擅长</h4>
+    <ul>
+      <li>精确术语匹配</li>
+      <li>稀有关键词检测</li>
+      <li>低成本快速检索</li>
+      <li>可解释性强的场景</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">融合检索的最佳使用场景</div>
+  <p>融合检索在以下场景中优势最大：</p>
+  <ul>
+    <li><strong>混合查询</strong>：查询同时包含语义概念和精确术语</li>
+    <li><strong>多主题文档</strong>：文档涵盖多个相关但不同的主题</li>
+    <li><strong>高召回需求</strong>：需要尽可能多地检索相关信息</li>
+    <li><strong>不确定哪种方法更好</strong>：融合提供了"保险"策略</li>
+  </ul>
+</div>
+
+<!-- 11. 总结 -->
+<h2 id="conclusion">11. 总结与展望</h2>
+
+<h3>本篇核心收获</h3>
+
+<ol>
+  <li><strong>双路互补</strong>：向量检索擅长语义理解，BM25 擅长精确匹配——融合检索将两者结合，取长补短。</li>
+  <li><strong>归一化是关键</strong>：不同检索方法的分数具有不同量纲，必须通过 Min-Max 归一化统一到 <code>[0, 1]</code> 尺度后才能进行有意义的加权融合。</li>
+  <li><strong>alpha 参数</strong>：控制语义与关键词的平衡点，默认 <code>0.5</code> 在大多数场景下是一个合理的起点。</li>
+  <li><strong>实验验证</strong>：在 transformer 应用查询上，融合检索的回答质量显著优于单独的向量检索或 BM25 检索。</li>
+</ol>
+
+<div class="formula-box">
+  <p><strong>融合检索的核心价值</strong></p>
+  <p style="font-size: 0.95rem;">不追求任何单一方法的极致，而是通过<strong>信号互补</strong>实现更稳健的检索质量。</p>
+</div>
+
+<div class="callout success">
+  <div class="callout-title">下一篇预告</div>
+  <p>融合检索展示了如何结合不同的<strong>检索信号</strong>来提升质量。<strong>第 17 篇：图 RAG（Graph RAG）</strong>将进一步拓展检索的结构化能力——通过知识图谱捕获实体之间的关系，让 RAG 系统不仅能"找到文档"，还能"理解关系"。敬请期待！</p>
+</div>
+
+<!-- 导航 -->
+<div class="nav-links">
+  <a href="15_多模态RAG_blog.html">&larr; 第 15 篇：多模态 RAG</a>
+  <a href="17_图RAG_blog.html">第 17 篇：图 RAG &rarr;</a>
+</div>
+
+</div><!-- .container -->
+
+<footer>
+  <p>从零到 RAG 大师 系列 &middot; 第 16 篇 &middot; 融合检索（Fusion Retrieval）</p>
+  <p style="margin-top:0.5rem;">Built with Python, OpenAI API &amp; curiosity.</p>
+</footer>
+
+<script>
+  // highlight.js
+  document.addEventListener('DOMContentLoaded', () => {
+    hljs.highlightAll();
+  });
+
+  // mermaid
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      background: '#0d1117',
+      primaryColor: '#1f6feb',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#30363d',
+      lineColor: '#58a6ff',
+      secondaryColor: '#161b22',
+      tertiaryColor: '#21262d',
+      noteBkgColor: '#161b22',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d'
+    }
+  });
+
+  // ---- Chart.js: alpha 参数影响示意图 ----
+  new Chart(document.getElementById('alphaChart'), {
+    type: 'bar',
+    data: {
+      labels: ['alpha=0.0', 'alpha=0.2', 'alpha=0.5', 'alpha=0.8', 'alpha=1.0'],
+      datasets: [
+        {
+          label: '向量分数权重',
+          data: [0, 20, 50, 80, 100],
+          backgroundColor: 'rgba(88,166,255,0.7)',
+          borderColor: '#58a6ff',
+          borderWidth: 1
+        },
+        {
+          label: 'BM25 分数权重',
+          data: [100, 80, 50, 20, 0],
+          backgroundColor: 'rgba(240,136,62,0.7)',
+          borderColor: '#f0883e',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'alpha 参数对两种分数权重的影响',
+          color: '#e6edf3',
+          font: { size: 14, weight: 'bold' }
+        },
+        legend: { labels: { color: '#8b949e' } }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8b949e' },
+          grid: { color: 'rgba(48,54,61,0.5)' }
+        },
+        y: {
+          min: 0, max: 100,
+          title: { display: true, text: '权重 (%)', color: '#8b949e' },
+          ticks: { color: '#8b949e', stepSize: 20 },
+          grid: { color: 'rgba(48,54,61,0.5)' }
+        }
+      }
+    }
+  });
+
+  // ---- Chart.js: 三种方法对比 ----
+  new Chart(document.getElementById('comparisonChart'), {
+    type: 'radar',
+    data: {
+      labels: ['查询相关性', '事实正确性', '回答全面性', '清晰度与连贯性'],
+      datasets: [
+        {
+          label: '向量检索',
+          data: [7, 7.5, 6.5, 7.5],
+          backgroundColor: 'rgba(88,166,255,0.15)',
+          borderColor: '#58a6ff',
+          borderWidth: 2,
+          pointBackgroundColor: '#58a6ff',
+          pointBorderColor: '#58a6ff'
+        },
+        {
+          label: 'BM25 检索',
+          data: [3, 3, 2, 6],
+          backgroundColor: 'rgba(240,136,62,0.15)',
+          borderColor: '#f0883e',
+          borderWidth: 2,
+          pointBackgroundColor: '#f0883e',
+          pointBorderColor: '#f0883e'
+        },
+        {
+          label: '融合检索',
+          data: [9, 9, 9, 8.5],
+          backgroundColor: 'rgba(63,185,80,0.15)',
+          borderColor: '#3fb950',
+          borderWidth: 2,
+          pointBackgroundColor: '#3fb950',
+          pointBorderColor: '#3fb950'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: '三种检索方法四维评估对比（雷达图）',
+          color: '#e6edf3',
+          font: { size: 14, weight: 'bold' }
+        },
+        legend: { labels: { color: '#8b949e' } }
+      },
+      scales: {
+        r: {
+          min: 0, max: 10,
+          ticks: { stepSize: 2, color: '#8b949e', backdropColor: 'transparent' },
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          angleLines: { color: 'rgba(48,54,61,0.6)' },
+          pointLabels: { color: '#e6edf3', font: { size: 12 } }
+        }
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

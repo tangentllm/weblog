@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（十八）：分层索引检索（Hierarchical RAG）</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --accent2: #3fb950;
+  --accent3: #f0883e;
+  --code-bg: #0d1117;
+  --tag-bg: #1f2937;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+}
+.container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+header { text-align: center; margin-bottom: 3rem; }
+.series-tag {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.25rem 0.9rem;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+h1 {
+  font-size: 2.2rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+}
+.subtitle { color: var(--text-muted); font-size: 1.05rem; margin-bottom: 0.5rem; }
+.meta { color: var(--text-muted); font-size: 0.85rem; }
+.toc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 2.5rem;
+}
+.toc h2 { font-size: 1rem; border: none; margin-bottom: 0.6rem; color: var(--accent); }
+.toc ol { padding-left: 1.4rem; }
+.toc li { margin: 0.3rem 0; }
+.toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+.toc a:hover { color: var(--accent); }
+h2 {
+  font-size: 1.5rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.4rem;
+  margin: 2.5rem 0 1rem;
+}
+h3 { color: var(--accent); font-size: 1.15rem; margin: 1.8rem 0 0.8rem; }
+p { margin-bottom: 1rem; }
+em { color: var(--accent3); font-style: normal; font-weight: 600; }
+strong { color: #fff; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+  margin: 1rem 0 1.5rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-size: 0.88em;
+}
+:not(pre) > code {
+  background: var(--tag-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  color: var(--accent);
+}
+.info-box {
+  background: var(--surface);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 1rem 1.2rem;
+  margin: 1.2rem 0;
+}
+.info-box.warn { border-left-color: var(--accent3); }
+.info-box.good { border-left-color: var(--accent2); }
+.info-box strong { display: block; margin-bottom: 0.3rem; }
+.figure {
+  text-align: center;
+  margin: 1.5rem 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+.fig-caption {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.8rem;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.5rem;
+  font-size: 0.92rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+}
+th { background: var(--surface); color: var(--accent); font-weight: 600; }
+tr:nth-child(even) { background: rgba(22,27,34,0.5); }
+.tag {
+  display: inline-block;
+  background: var(--tag-bg);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  margin: 0.2rem 0.2rem;
+}
+.nav-bar {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.nav-bar a {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 1.2rem;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+.nav-bar a:hover { border-color: var(--accent); text-decoration: none; }
+@media (max-width: 600px) {
+  h1 { font-size: 1.6rem; }
+  .container { padding: 1.2rem 1rem; }
+  pre { font-size: 0.82rem; padding: 0.8rem; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 18 篇</div>
+  <h1>分层索引检索（Hierarchical RAG）</h1>
+  <p class="subtitle">两级搜索：先用摘要定位页面，再从页面中检索详细块</p>
+  <p class="meta">2026-07-10 · 阅读约 15 分钟</p>
+  <div>
+    <span class="tag">RAG</span>
+    <span class="tag">分层索引</span>
+    <span class="tag">向量检索</span>
+    <span class="tag">摘要压缩</span>
+    <span class="tag">LangChain</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#motivation">为什么需要分层检索？</a></li>
+    <li><a href="#architecture">分层 RAG 架构总览</a></li>
+    <li><a href="#flow">两级搜索流程详解</a></li>
+    <li><a href="#index-build">索引构建：摘要存储 + 详细块存储</a></li>
+    <li><a href="#retrieval">分层检索实现</a></li>
+    <li><a href="#cache">缓存机制与完整管道</a></li>
+    <li><a href="#comparison">分层 RAG vs 标准 RAG 对比</a></li>
+    <li><a href="#evaluation">评估结果与分析</a></li>
+    <li><a href="#pros-cons">优缺点与适用场景</a></li>
+    <li><a href="#summary">总结与展望</a></li>
+  </ol>
+</nav>
+
+<!-- ====== 1. 动机 ====== -->
+<h2 id="motivation">一、为什么需要分层检索？</h2>
+
+<p>在标准 RAG 中，我们将文档切分为大量小块后直接进行向量检索。当文档较长（如几十页的 PDF）时，这种方式面临几个核心问题：</p>
+
+<div class="info-box warn">
+  <strong>标准 RAG 的痛点</strong>
+  <ul>
+    <li><strong>语义稀释</strong>：小块缺乏上下文，向量表示不够精确</li>
+    <li><strong>检索噪声</strong>：Top-K 结果可能来自文档中不相关的章节</li>
+    <li><strong>上下文浪费</strong>：每个块都需要消耗 LLM 的上下文窗口</li>
+  </ul>
+</div>
+
+<p><em>分层索引检索</em>（Hierarchical RAG）通过引入<em>两级搜索</em>机制解决上述问题：先用粗粒度的页面摘要定位相关区域，再在限定的页面范围内检索细粒度的详细块。这种方式类似于人类查阅文档的过程——先翻目录找到相关章节，再仔细阅读具体内容。</p>
+
+<!-- ====== 2. 架构总览 ====== -->
+<h2 id="architecture">二、分层 RAG 架构总览</h2>
+
+<p>分层 RAG 的核心思想是构建<em>两个层级的向量存储</em>，通过页码建立关联：</p>
+
+<div class="figure">
+<pre class="mermaid">
+graph TB
+    subgraph 索引构建阶段
+        PDF["📄 PDF 文档<br/>15 页"] --> PE["按页提取文本"]
+        PE --> P1["第 1 页文本"]
+        PE --> P2["第 2 页文本"]
+        PE --> PN["... 第 N 页文本"]
+        P1 --> SG["生成摘要<br/>gpt-3.5-turbo"]
+        P2 --> SG
+        PN --> SG
+        SG --> S1["摘要 1"]
+        SG --> S2["摘要 2"]
+        SG --> SN["... 摘要 N"]
+        P1 --> DC["详细分块<br/>1000字符 / overlap=200"]
+        P2 --> DC
+        PN --> DC
+        DC --> D1["详细块 1..k₁"]
+        DC --> D2["详细块 k₁+1..k₂"]
+        DC --> DN["... 详细块"]
+    end
+
+    S1 & S2 & SN --> SS["📦 摘要向量存储<br/>15 项"]
+    D1 & D2 & DN --> DS["📦 详细块向量存储<br/>47 项"]
+
+    style SS fill:#1f3a5f,stroke:#58a6ff,color:#e6edf3
+    style DS fill:#1a3a2a,stroke:#3fb950,color:#e6edf3
+    style PDF fill:#3d2a1a,stroke:#f0883e,color:#e6edf3
+</pre>
+  <p class="fig-caption">图 1：分层 RAG 索引构建架构 —— 同一文档生成两套互补的向量索引</p>
+</div>
+
+<div class="info-box">
+  <strong>关键设计</strong>
+  摘要存储和详细块存储通过<em>页码元数据</em>关联。每个摘要对应一个页码，每个详细块也标记了所属页码。检索时，先从摘要存储找到相关页码，再用页码过滤详细块存储。
+</div>
+
+<!-- ====== 3. 两级搜索流程 ====== -->
+<h2 id="flow">三、两级搜索流程详解</h2>
+
+<div class="figure">
+<pre class="mermaid">
+sequenceDiagram
+    participant U as 用户查询
+    participant S as 摘要向量存储<br/>(15项)
+    participant D as 详细块向量存储<br/>(47项)
+
+    U->>S: ① 查询 → 摘要语义搜索
+    S-->>S: 计算相似度，返回 Top-3 摘要
+    S-->>U: ② 返回相关摘要 + 页码 [2, 5, 8]
+
+    Note over U,D: 页码过滤：仅搜索第 2、5、8 页的块
+
+    U->>D: ③ 查询 + filter(页码∈{2,5,8})
+    D-->>D: 在过滤后的子集中搜索 Top-5
+    D-->>U: ④ 返回 5 个精准详细块
+
+    Note over U: 最终结果：来自 3 个相关页面的<br/>5 个高相关性详细块
+</pre>
+  <p class="fig-caption">图 2：分层检索两级搜索流程 —— 从粗到细，逐步聚焦</p>
+</div>
+
+<p>整个检索过程分为三步：</p>
+
+<table>
+  <thead>
+    <tr><th>步骤</th><th>操作</th><th>搜索空间</th><th>结果</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>第一步</td><td>摘要语义搜索</td><td>15 个摘要</td><td>Top-3 最相关摘要</td></tr>
+    <tr><td>第二步</td><td>提取页码</td><td>—</td><td>相关页码集合 {2, 5, 8}</td></tr>
+    <tr><td>第三步</td><td>过滤后详细块搜索</td><td>3 页对应的 ~10 个块</td><td>Top-5 最相关详细块</td></tr>
+  </tbody>
+</table>
+
+<!-- ====== 4. 索引构建 ====== -->
+<h2 id="index-build">四、索引构建：摘要存储 + 详细块存储</h2>
+
+<h3>4.1 页面摘要生成</h3>
+
+<p>对每一页文本调用 LLM 生成简洁摘要，保留该页的核心信息：</p>
+
+<pre><code class="language-python">from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+
+def generate_page_summary(page_text: str) -> str:
+    """为单页文本生成摘要"""
+    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+    prompt = ChatPromptTemplate.from_template(
+        "请用 2-3 句话概括以下文本的核心内容：\n\n{text}"
+    )
+    chain = prompt | llm
+    return chain.invoke({"text": page_text}).content</code></pre>
+
+<h3>4.2 分层文档处理</h3>
+
+<p>将 PDF 按页处理，同时构建摘要列表和详细分块列表：</p>
+
+<pre><code class="language-python">from langchain_community.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_core.documents import Document
+
+def process_document_hierarchically(pdf_path: str):
+    """分层处理文档：构建摘要存储和详细块存储"""
+    # 1. 按页提取 PDF 文本
+    loader = PyPDFLoader(pdf_path)
+    pages = loader.load()  # 每个 page 带有 page 元数据
+    print(f"📄 文档共 {len(pages)} 页")
+
+    # 2. 为每页生成摘要
+    summaries = []
+    for i, page in enumerate(pages):
+        summary = generate_page_summary(page.page_content)
+        summaries.append(Document(
+            page_content=summary,
+            metadata={"page": i + 1, "source": f"page_{i+1}_summary"}
+        ))
+    print(f"📝 生成 {len(summaries)} 个页面摘要")
+
+    # 3. 每页详细分块 (1000 字符, overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len
+    )
+    detailed_chunks = []
+    for i, page in enumerate(pages):
+        chunks = text_splitter.split_text(page.page_content)
+        for j, chunk in enumerate(chunks):
+            detailed_chunks.append(Document(
+                page_content=chunk,
+                metadata={
+                    "page": i + 1,
+                    "chunk_id": j,
+                    "source": f"page_{i+1}_chunk_{j}"
+                }
+            ))
+    print(f"🧩 生成 {len(detailed_chunks)} 个详细块")
+
+    # 4. 构建两个向量存储
+    embeddings = OpenAIEmbeddings()
+    summary_store = FAISS.from_documents(summaries, embeddings)
+    detailed_store = FAISS.from_documents(detailed_chunks, embeddings)
+
+    return summary_store, detailed_store</code></pre>
+
+<div class="info-box good">
+  <strong>真实数据</strong>
+  在本教程的 15 页 PDF 上，该函数生成了 <em>15 个摘要</em>和 <em>47 个详细块</em>。摘要存储仅有 15 个向量，搜索速度极快；详细块存储有 47 个向量，远小于全量分块的规模。
+</div>
+
+<!-- ====== 5. 分层检索实现 ====== -->
+<h2 id="retrieval">五、分层检索实现</h2>
+
+<p>分层检索的核心是<em>先粗后细</em>的两步查询，通过页码元数据将两步关联起来：</p>
+
+<pre><code class="language-python">def retrieve_hierarchically(query, summary_store, detailed_store,
+                            k_summaries=3, k_chunks=5):
+    """分层检索：先摘要定位，再详细块搜索"""
+
+    # 第一步：在摘要存储中搜索 Top-K 相关摘要
+    summary_results = summary_store.similarity_search(
+        query, k=k_summaries
+    )
+
+    # 第二步：提取相关摘要对应的页码
+    relevant_pages = list(set(
+        doc.metadata["page"] for doc in summary_results
+    ))
+    print(f"📌 相关页码: {relevant_pages}")
+
+    # 第三步：仅在相关页面中搜索详细块
+    def filter_func(doc):
+        return doc.metadata["page"] in relevant_pages
+
+    detailed_results = detailed_store.similarity_search(
+        query,
+        k=k_chunks,
+        filter_func=filter_func  # 关键：过滤函数
+    )
+
+    return summary_results, detailed_results</code></pre>
+
+<div class="info-box">
+  <strong>filter_func 的作用</strong>
+  <code>filter_func</code> 是 FAISS 向量存储支持的过滤机制。它在相似度计算<em>之后</em>过滤结果，确保返回的块只来自摘要阶段定位的相关页面。这大幅缩小了搜索范围，提高了检索的针对性。
+</div>
+
+<!-- ====== 6. 缓存与完整管道 ====== -->
+<h2 id="cache">六、缓存机制与完整管道</h2>
+
+<p>由于摘要生成涉及 LLM 调用（耗时且消耗 token），我们使用 <code>pickle</code> 缓存索引：</p>
+
+<pre><code class="language-python">import pickle
+import os
+
+CACHE_DIR = "./cache"
+
+def hierarchical_rag(query, pdf_path, regenerate=False):
+    """完整分层 RAG 管道（含缓存）"""
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    cache_file = os.path.join(CACHE_DIR, "hierarchical_stores.pkl")
+
+    if not regenerate and os.path.exists(cache_file):
+        print("📂 从缓存加载索引...")
+        with open(cache_file, "rb") as f:
+            summary_store, detailed_store = pickle.load(f)
+    else:
+        print("🔨 构建分层索引...")
+        summary_store, detailed_store = \
+            process_document_hierarchically(pdf_path)
+        with open(cache_file, "wb") as f:
+            pickle.dump((summary_store, detailed_store), f)
+
+    # 执行分层检索
+    summaries, chunks = retrieve_hierarchically(
+        query, summary_store, detailed_store
+    )
+
+    # 打印摘要定位结果
+    print("\n📋 匹配的摘要：")
+    for s in summaries:
+        print(f"  第 {s.metadata['page']} 页: {s.page_content[:80]}...")
+
+    return chunks  # 返回给 LLM 生成答案</code></pre>
+
+<!-- ====== 7. 对比 ====== -->
+<h2 id="comparison">七、分层 RAG vs 标准 RAG 对比</h2>
+
+<div class="figure">
+<pre class="mermaid">
+graph LR
+    subgraph 标准RAG
+        Q1[用户查询] --> VS1[全量向量存储<br/>47 个块]
+        VS1 --> R1[Top-15 块<br/>来自全部页面]
+        R1 --> LLM1[LLM 生成答案]
+    end
+
+    subgraph 分层RAG
+        Q2[用户查询] --> SS[摘要存储<br/>15 个摘要]
+        SS --> |Top-3 页码| FS[页码过滤]
+        FS --> DS[详细块存储<br/>47 个块]
+        DS --> R2[Top-10 块<br/>来自 3 个页面]
+        R2 --> LLM2[LLM 生成答案]
+    end
+
+    style SS fill:#1f3a5f,stroke:#58a6ff,color:#e6edf3
+    style DS fill:#1a3a2a,stroke:#3fb950,color:#e6edf3
+    style VS1 fill:#3d2a1a,stroke:#f0883e,color:#e6edf3
+</pre>
+  <p class="fig-caption">图 3：分层 RAG vs 标准 RAG 架构对比 —— 分层方法通过摘要预筛选缩小搜索范围</p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>维度</th><th>标准 RAG</th><th>分层 RAG</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>索引结构</td><td>单一向量存储</td><td>摘要存储 + 详细块存储</td></tr>
+    <tr><td>搜索空间</td><td>全部 47 个块</td><td>先 15 摘要 → 再 ~10 个块</td></tr>
+    <tr><td>检索块数</td><td>15 个块</td><td>10 个块（来自 3 个相关页面）</td></tr>
+    <tr><td>来源覆盖</td><td>全部 15 页</td><td>仅 3 个相关页面</td></tr>
+    <tr><td>上下文噪声</td><td>较高（包含不相关页面）</td><td>较低（仅相关页面）</td></tr>
+    <tr><td>索引构建成本</td><td>仅分块 + 嵌入</td><td>分块 + 嵌入 + LLM 摘要生成</td></tr>
+    <tr><td>检索延迟</td><td>一次向量搜索</td><td>两次向量搜索 + 过滤</td></tr>
+  </tbody>
+</table>
+
+<p>标准 RAG 的对比基线实现：</p>
+
+<pre><code class="language-python">def standard_rag(query, pdf_path, k=15):
+    """标准 RAG：直接全量检索"""
+    loader = PyPDFLoader(pdf_path)
+    pages = loader.load()
+    full_text = "\n".join(p.page_content for p in pages)
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000, chunk_overlap=200
+    )
+    chunks = splitter.split_text(full_text)
+
+    embeddings = OpenAIEmbeddings()
+    store = FAISS.from_texts(chunks, embeddings)
+    results = store.similarity_search(query, k=k)
+    return results</code></pre>
+
+<!-- ====== 8. 评估 ====== -->
+<h2 id="evaluation">八、评估结果与分析</h2>
+
+<p>在同一个查询上对比两种方法的实际检索表现：</p>
+
+<div class="info-box good">
+  <strong>分层 RAG 检索结果</strong>
+  <ul>
+    <li>匹配摘要：第 2、5、8 页（共 3 页）</li>
+    <li>检索详细块：<em>10 个</em>（仅来自 3 个相关页面）</li>
+    <li>信息密度：高 —— 所有块都与查询主题直接相关</li>
+  </ul>
+</div>
+
+<div class="info-box warn">
+  <strong>标准 RAG 检索结果</strong>
+  <ul>
+    <li>检索块数：<em>15 个</em>（来自全部 15 页）</li>
+    <li>信息密度：中 —— 包含多个不相关页面的块</li>
+    <li>覆盖面广但噪声较多</li>
+  </ul>
+</div>
+
+<table>
+  <thead>
+    <tr><th>评估指标</th><th>分层 RAG</th><th>标准 RAG</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>检索块数</td><td>10</td><td>15</td></tr>
+    <tr><td>来源页面数</td><td>3</td><td>15（全部）</td></tr>
+    <tr><td>检索精准度</td><td>⭐⭐⭐⭐⭐</td><td>⭐⭐⭐</td></tr>
+    <tr><td>信息覆盖面</td><td>⭐⭐⭐</td><td>⭐⭐⭐⭐⭐</td></tr>
+    <tr><td>上下文噪声</td><td>低</td><td>高</td></tr>
+    <tr><td>LLM 上下文消耗</td><td>较少</td><td>较多</td></tr>
+  </tbody>
+</table>
+
+<div class="info-box">
+  <strong>评估结论</strong>
+  分层 RAG 用<em>更少的块</em>提供了<em>更有针对性的信息</em>，在检索质量上更优（更聚焦）。标准 RAG 覆盖面更全面，但引入了较多噪声。对于需要精确回答的查询，分层 RAG 是更好的选择；对于需要全面综述的场景，标准 RAG 也有其价值。
+</div>
+
+<!-- ====== 9. 优缺点 ====== -->
+<h2 id="pros-cons">九、优缺点与适用场景</h2>
+
+<h3>优势</h3>
+<ul>
+  <li><strong>检索更精准</strong>：摘要级预筛选有效缩小搜索范围，减少噪声</li>
+  <li><strong>上下文效率高</strong>：用更少的块传递更相关的信息，节省 LLM 上下文窗口</li>
+  <li><strong>符合人类阅读习惯</strong>：先概览再深入，两级粒度互补</li>
+  <li><strong>可扩展</strong>：支持多级层次结构（章节 → 页 → 段落）</li>
+</ul>
+
+<h3>劣势</h3>
+<ul>
+  <li><strong>索引构建成本高</strong>：需要额外调用 LLM 生成摘要</li>
+  <li><strong>检索延迟略增</strong>：两次向量搜索 + 过滤，比单次搜索慢</li>
+  <li><strong>摘要质量依赖 LLM</strong>：摘要不准确会导致后续检索偏离</li>
+  <li><strong>页码过滤的局限</strong>：跨页内容可能被割裂</li>
+</ul>
+
+<h3>适用场景</h3>
+<table>
+  <thead>
+    <tr><th>✅ 适合</th><th>❌ 不适合</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>长文档（几十页以上）</td><td>短文档（1-3 页）</td></tr>
+    <tr><td>结构化文档（报告、论文、手册）</td><td>非结构化碎片文本</td></tr>
+    <tr><td>需要精确回答的 QA 场景</td><td>需要全面综述的场景</td></tr>
+    <tr><td>上下文窗口有限的 LLM</td><td>上下文窗口极大的 LLM</td></tr>
+  </tbody>
+</table>
+
+<!-- ====== 10. 总结 ====== -->
+<h2 id="summary">十、总结与展望</h2>
+
+<p>分层索引检索通过引入<em>摘要-详细块</em>的两级结构，在检索精度和上下文效率之间取得了优秀的平衡。其核心思想——<em>先粗后细，逐步聚焦</em>——是处理长文档 RAG 的重要策略。</p>
+
+<div class="info-box good">
+  <strong>本篇核心要点</strong>
+  <ul>
+    <li>构建两个向量存储：摘要存储（粗粒度）+ 详细块存储（细粒度）</li>
+    <li>通过页码元数据关联两级索引</li>
+    <li>检索时先摘要定位页面，再在相关页面中搜索详细块</li>
+    <li>用更少的块（10 vs 15）实现更精准的检索</li>
+    <li>pickle 缓存避免重复构建索引</li>
+  </ul>
+</div>
+
+<p>在下一篇中，我们将探讨<em>假设文档嵌入（HyDE）</em>——通过让 LLM 先生成假设性答案，再用该答案进行检索，从而弥合查询与文档之间的语义鸿沟。</p>
+
+<nav class="nav-bar">
+  <a href="17_图rag_blog.html">← 第 17 篇：图 RAG</a>
+  <a href="19_假设文档嵌入_blog.html">第 19 篇：假设文档嵌入 →</a>
+</nav>
+
+</div>
+
+<script>
+  hljs.highlightAll();
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1f3a5f',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#58a6ff',
+      lineColor: '#58a6ff',
+      secondaryColor: '#1a3a2a',
+      tertiaryColor: '#3d2a1a',
+      noteBkgColor: '#161b22',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d'
+    }
+  });
+</script>
+</body>
+</html>

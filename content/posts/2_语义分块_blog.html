@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG 系列教程 第2篇：语义分块 — 让检索更"懂"文本</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --bg-card: #1a1d2e;
+            --bg-code: #161925;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #6366f1;
+            --accent-light: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --green: #34d399;
+            --orange: #fb923c;
+            --red: #f87171;
+            --cyan: #22d3ee;
+            --border: #2d3148;
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.8;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Hero */
+        .hero {
+            position: relative;
+            padding: 100px 0 60px;
+            text-align: center;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -120px; left: 50%; transform: translateX(-50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: var(--accent-glow);
+            color: var(--accent-light);
+            border: 1px solid rgba(99,102,241,0.3);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+        .hero h1 {
+            font-size: 2.6em;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 30%, var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero .subtitle {
+            font-size: 1.15em;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Section */
+        section {
+            padding: 48px 0;
+        }
+        section h2 {
+            font-size: 1.6em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        section h2 .icon {
+            font-size: 1.2em;
+        }
+        section h3 {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin: 28px 0 12px;
+            color: var(--accent-light);
+        }
+        p { margin-bottom: 16px; color: var(--text-muted); }
+        strong { color: var(--text); }
+
+        /* Callout */
+        .callout {
+            background: var(--bg-card);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+        }
+        .callout.warn { border-left-color: var(--orange); }
+        .callout.success { border-left-color: var(--green); }
+        .callout-title {
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        /* Code block */
+        .code-block {
+            position: relative;
+            margin: 20px 0;
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .code-header {
+            background: #1e2132;
+            padding: 10px 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .code-header .lang-tag {
+            background: var(--accent-glow);
+            color: var(--accent-light);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        pre {
+            margin: 0;
+            padding: 20px;
+            overflow-x: auto;
+            background: var(--bg-code);
+        }
+        pre code {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 13.5px;
+            line-height: 1.7;
+        }
+
+        /* Diagram container */
+        .diagram-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px 24px;
+            margin: 28px 0;
+            text-align: center;
+        }
+        .diagram-container .caption {
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Comparison table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 14px;
+        }
+        .comparison-table th {
+            background: var(--bg-card);
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--accent);
+            color: var(--text);
+        }
+        .comparison-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+        .comparison-table tr:hover td {
+            background: rgba(99,102,241,0.05);
+        }
+
+        /* Result card */
+        .result-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin: 20px 0;
+        }
+        .result-card .label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-light);
+            margin-bottom: 10px;
+        }
+        .result-card .content {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        .result-card .content .highlight {
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        /* Pros/Cons */
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 24px 0;
+        }
+        .pros-cons .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+        }
+        .pros-cons .card h4 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            font-size: 1em;
+        }
+        .pros-cons ul {
+            list-style: none;
+            padding: 0;
+        }
+        .pros-cons li {
+            padding: 6px 0;
+            color: var(--text-muted);
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .pros-cons li::before {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .pros li::before { content: '✅'; }
+        .cons li::before { content: '⚠️'; }
+
+        /* Chart */
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin: 28px 0;
+        }
+        .chart-container canvas {
+            max-height: 320px;
+        }
+
+        /* Pipeline steps */
+        .pipeline {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 24px 0;
+        }
+        .pipeline .step {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .pipeline .step.active {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            color: var(--accent-light);
+        }
+        .pipeline .arrow {
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 48px 0;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        .footer a {
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+
+        /* Nav */
+        .series-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin: 32px 0;
+        }
+        .series-nav a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 500;
+            transition: border-color 0.2s;
+            flex: 1;
+        }
+        .series-nav a:hover { border-color: var(--accent); }
+        .series-nav a .dir { color: var(--text-muted); font-size: 12px; }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .hero h1 { font-size: 1.8em; }
+            .pros-cons { grid-template-columns: 1fr; }
+            .series-nav { flex-direction: column; }
+        }
+
+        /* Inline code */
+        code:not(pre code) {
+            background: var(--bg-card);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--cyan);
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        /* SVG diagrams */
+        .svg-diagram {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<header class="hero">
+    <div class="container">
+        <div class="hero-badge">RAG 系列教程 · 第 2 篇</div>
+        <h1>语义分块：让检索更"懂"文本</h1>
+        <p class="subtitle">告别暴力切割——基于内容相似度的智能分块策略，显著提升 RAG 检索精度</p>
+    </div>
+</header>
+
+<!-- ==================== 目录概览 ==================== -->
+<div class="container">
+    <div class="callout">
+        <div class="callout-title">📑 本文结构</div>
+        <p style="margin-bottom:0;">
+            1. <a href="#motivation" style="color:var(--accent-light);text-decoration:none;">为什么需要语义分块？</a> →
+            2. <a href="#principle" style="color:var(--accent-light);text-decoration:none;">核心原理</a> →
+            3. <a href="#pipeline" style="color:var(--accent-light);text-decoration:none;">完整流水线</a> →
+            4. <a href="#code" style="color:var(--accent-light);text-decoration:none;">关键代码解读</a> →
+            5. <a href="#result" style="color:var(--accent-light);text-decoration:none;">效果展示</a> →
+            6. <a href="#summary" style="color:var(--accent-light);text-decoration:none;">优缺点与适用场景</a>
+        </p>
+    </div>
+</div>
+
+<!-- ==================== 1. 动机 ==================== -->
+<section id="motivation">
+    <div class="container">
+        <h2><span class="icon">🎯</span> 1. 为什么需要语义分块？</h2>
+
+        <p>在上一篇文章中，我们实现了<strong>基础 RAG</strong>：将文档按固定字符数或 token 数进行切块，然后基于向量相似度检索最相关的片段。这种"固定长度分块"简单高效，但存在一个根本问题——</p>
+
+        <div class="callout warn">
+            <div class="callout-title">💥 痛点：语义断裂</div>
+            <p style="margin-bottom:0;">固定长度分块不关心内容边界，可能在一段完整论述的<strong>正中间</strong>切下一刀。结果：前半块和后半块各自丢失上下文，检索时要么匹配不到正确片段，要么把不相关的内容混入上下文窗口。</p>
+        </div>
+
+        <p>举个例子：假设一段文本在讲"机器学习的应用"，紧接着下一段在讲"自然语言处理的挑战"。固定分块可能把两个主题各切一半，生成一个"半机器半 NLP"的无效块。</p>
+
+        <h3>朴素分块 vs 语义分块</h3>
+
+        <!-- 对比图：固定分块 vs 语义分块 -->
+        <div class="diagram-container">
+            <svg class="svg-diagram" viewBox="0 0 780 340" xmlns="http://www.w3.org/2000/svg">
+                <!-- 左侧：固定分块 -->
+                <text x="195" y="24" fill="#94a3b8" font-size="14" font-weight="700" text-anchor="middle">❌ 固定长度分块</text>
+                <!-- 文档条 -->
+                <rect x="20" y="40" width="350" height="36" rx="6" fill="#1e2132" stroke="#2d3148"/>
+                <text x="195" y="63" fill="#e2e8f0" font-size="12" text-anchor="middle">完整文档：Topic A → Topic A → Topic B → Topic B</text>
+                <!-- 切割线 -->
+                <line x1="130" y1="40" x2="130" y2="76" stroke="#f87171" stroke-width="2" stroke-dasharray="4"/>
+                <line x1="240" y1="40" x2="240" y2="76" stroke="#f87171" stroke-width="2" stroke-dasharray="4"/>
+                <!-- 分块 -->
+                <rect x="20" y="90" width="110" height="50" rx="6" fill="rgba(99,102,241,0.15)" stroke="#6366f1"/>
+                <text x="75" y="112" fill="#818cf8" font-size="11" text-anchor="middle">Chunk 1</text>
+                <text x="75" y="127" fill="#94a3b8" font-size="9" text-anchor="middle">Topic A (半)</text>
+
+                <rect x="135" y="90" width="105" height="50" rx="6" fill="rgba(251,146,60,0.15)" stroke="#fb923c"/>
+                <text x="187" y="112" fill="#fb923c" font-size="11" text-anchor="middle">Chunk 2</text>
+                <text x="187" y="127" fill="#94a3b8" font-size="9" text-anchor="middle">A(半)+B(半) ⚠️</text>
+
+                <rect x="245" y="90" width="125" height="50" rx="6" fill="rgba(99,102,241,0.15)" stroke="#6366f1"/>
+                <text x="307" y="112" fill="#818cf8" font-size="11" text-anchor="middle">Chunk 3</text>
+                <text x="307" y="127" fill="#94a3b8" font-size="9" text-anchor="middle">Topic B (半)</text>
+
+                <!-- 问题标注 -->
+                <text x="187" y="165" fill="#f87171" font-size="11" text-anchor="middle" font-weight="600">↑ 语义被截断！主题混杂</text>
+
+                <!-- 分隔线 -->
+                <line x1="390" y1="30" x2="390" y2="320" stroke="#2d3148" stroke-width="1" stroke-dasharray="6"/>
+
+                <!-- 右侧：语义分块 -->
+                <text x="585" y="24" fill="#94a3b8" font-size="14" font-weight="700" text-anchor="middle">✅ 语义分块</text>
+                <!-- 文档条 -->
+                <rect x="410" y="40" width="350" height="36" rx="6" fill="#1e2132" stroke="#2d3148"/>
+                <text x="585" y="63" fill="#e2e8f0" font-size="12" text-anchor="middle">完整文档：Topic A → Topic A → Topic B → Topic B</text>
+                <!-- 语义切割线 -->
+                <line x1="530" y1="40" x2="530" y2="76" stroke="#34d399" stroke-width="2" stroke-dasharray="4"/>
+                <!-- 分块 -->
+                <rect x="410" y="90" width="120" height="50" rx="6" fill="rgba(52,211,153,0.15)" stroke="#34d399"/>
+                <text x="470" y="112" fill="#34d399" font-size="11" text-anchor="middle">Chunk 1</text>
+                <text x="470" y="127" fill="#94a3b8" font-size="9" text-anchor="middle">Topic A 完整 ✓</text>
+
+                <rect x="535" y="90" width="225" height="50" rx="6" fill="rgba(34,211,238,0.15)" stroke="#22d3ee"/>
+                <text x="647" y="112" fill="#22d3ee" font-size="11" text-anchor="middle">Chunk 2</text>
+                <text x="647" y="127" fill="#94a3b8" font-size="9" text-anchor="middle">Topic B 完整 ✓</text>
+
+                <!-- 优势标注 -->
+                <text x="555" y="165" fill="#34d399" font-size="11" text-anchor="middle" font-weight="600">↑ 沿语义边界切分，主题完整</text>
+
+                <!-- 底部对比说明 -->
+                <rect x="20" y="195" width="740" height="130" rx="10" fill="#1a1d2e" stroke="#2d3148"/>
+                <text x="390" y="222" fill="#e2e8f0" font-size="13" font-weight="700" text-anchor="middle">核心区别</text>
+                <text x="60" y="250" fill="#f87171" font-size="12" font-weight="600">固定分块：</text>
+                <text x="150" y="250" fill="#94a3b8" font-size="12">按字符数/token 数等距切割 → 可能截断语义</text>
+                <text x="60" y="278" fill="#34d399" font-size="12" font-weight="600">语义分块：</text>
+                <text x="150" y="278" fill="#94a3b8" font-size="12">先计算相邻句子的 embedding 余弦相似度，在相似度骤降处切割</text>
+                <text x="60" y="306" fill="#818cf8" font-size="12" font-weight="600">关键指标：</text>
+                <text x="150" y="306" fill="#94a3b8" font-size="12">相邻句子间的余弦相似度下降幅度 = 话题转换的信号</text>
+            </svg>
+            <div class="caption">图 1：固定长度分块 vs 语义分块 — 语义分块在话题转换处切割，保证每个块的主题一致性</div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 2. 核心原理 ==================== -->
+<section id="principle">
+    <div class="container">
+        <h2><span class="icon">🧠</span> 2. 核心原理</h2>
+
+        <p>语义分块的核心思想可以用一句话概括：</p>
+
+        <div class="callout success">
+            <div class="callout-title">💡 核心思想</div>
+            <p style="margin-bottom:0;"><strong>如果相邻两句话的 embedding 相似度突然下降，说明它们很可能属于不同的话题——这里就是天然的切块边界。</strong></p>
+        </div>
+
+        <h3>Step-by-Step 流程</h3>
+
+        <div class="diagram-container">
+            <div class="mermaid">
+flowchart LR
+    A["原始文档"] --> B["句子分割"]
+    B --> C["逐句 Embedding"]
+    C --> D["计算相邻句\n余弦相似度"]
+    D --> E["找到相似度\n骤降的断点"]
+    E --> F["在断点处\n切分文本"]
+    F --> G["语义块"]
+
+    style A fill:#1e2132,stroke:#6366f1,color:#e2e8f0
+    style B fill:#1e2132,stroke:#6366f1,color:#e2e8f0
+    style C fill:#1e2132,stroke:#6366f1,color:#e2e8f0
+    style D fill:#1e2132,stroke:#fb923c,color:#e2e8f0
+    style E fill:#1e2132,stroke:#f87171,color:#e2e8f0
+    style F fill:#1e2132,stroke:#34d399,color:#e2e8f0
+    style G fill:#1e2132,stroke:#34d399,color:#e2e8f0
+            </div>
+            <div class="caption">图 2：语义分块的完整流水线 — 从原始文档到语义块的 6 个步骤</div>
+        </div>
+
+        <h3>三种断点检测方法</h3>
+        <p>如何定义"相似度骤降"？Notebook 中介绍了三种统计学方法：</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>方法</th>
+                    <th>原理</th>
+                    <th>直觉理解</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>百分位法 (Percentile)</strong></td>
+                    <td>取所有相似度的第 P 百分位作为阈值，低于该值的位置即为断点</td>
+                    <td>相似度排在"最差的 10%"的相邻句对之间切开</td>
+                </tr>
+                <tr>
+                    <td><strong>标准差法 (Std Dev)</strong></td>
+                    <td>阈值 = 均值 − k × 标准差，低于该值即为断点</td>
+                    <td>相似度比"平均水平"低了 k 个标准差的地方</td>
+                </tr>
+                <tr>
+                    <td><strong>四分位距法 (IQR)</strong></td>
+                    <td>阈值 = Q1 − 1.5 × IQR，利用异常值检测思路</td>
+                    <td>把相似度异常低的相邻句对视为"离群点"</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- 三种方法示意图 -->
+        <div class="diagram-container">
+            <svg class="svg-diagram" viewBox="0 0 780 220" xmlns="http://www.w3.org/2000/svg">
+                <!-- 坐标轴 -->
+                <line x1="60" y1="180" x2="740" y2="180" stroke="#2d3148" stroke-width="1"/>
+                <line x1="60" y1="30" x2="60" y2="180" stroke="#2d3148" stroke-width="1"/>
+                <text x="30" y="110" fill="#94a3b8" font-size="11" text-anchor="middle" transform="rotate(-90,30,110)">相似度</text>
+                <text x="400" y="210" fill="#94a3b8" font-size="11" text-anchor="middle">相邻句子对索引 →</text>
+
+                <!-- 模拟相似度曲线 -->
+                <polyline points="80,60 120,55 160,65 200,58 240,140 280,60 320,55 360,150 400,50 440,55 480,130 520,58 560,62 600,145 640,55 680,60 720,58"
+                    fill="none" stroke="#6366f1" stroke-width="2"/>
+
+                <!-- 标注低谷 -->
+                <circle cx="240" cy="140" r="6" fill="#f87171" opacity="0.8"/>
+                <circle cx="360" cy="150" r="6" fill="#f87171" opacity="0.8"/>
+                <circle cx="480" cy="130" r="6" fill="#f87171" opacity="0.8"/>
+                <circle cx="600" cy="145" r="6" fill="#f87171" opacity="0.8"/>
+
+                <!-- 百分位阈值线 -->
+                <line x1="60" y1="125" x2="740" y2="125" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="6"/>
+                <text x="745" y="129" fill="#fb923c" font-size="10">P90 阈值</text>
+
+                <!-- 均值线 -->
+                <line x1="60" y1="68" x2="740" y2="68" stroke="#34d399" stroke-width="1" stroke-dasharray="4"/>
+                <text x="745" y="72" fill="#34d399" font-size="10">均值</text>
+
+                <!-- 标准差阈值线 -->
+                <line x1="60" y1="105" x2="740" y2="105" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="6"/>
+                <text x="745" y="109" fill="#22d3ee" font-size="10">μ−kσ 阈值</text>
+
+                <!-- 图例 -->
+                <text x="100" y="24" fill="#f87171" font-size="11">● 断点（相似度骤降处）</text>
+            </svg>
+            <div class="caption">图 3：相邻句子余弦相似度曲线 — 红色圆点标记的位置是相似度骤降处，即语义断点</div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 3. 完整流水线 ==================== -->
+<section id="pipeline">
+    <div class="container">
+        <h2><span class="icon">🔗</span> 3. 语义分块在 RAG 中的位置</h2>
+
+        <p>语义分块改进的是 RAG 流水线中的<strong>索引阶段</strong>（Indexing），即"如何切块"这一步。其余环节（嵌入、检索、生成）与基础 RAG 相同。</p>
+
+        <div class="diagram-container">
+            <div class="pipeline">
+                <div class="step">📄 文档加载</div>
+                <span class="arrow">→</span>
+                <div class="step active">✂️ 语义分块</div>
+                <span class="arrow">→</span>
+                <div class="step">🧮 向量化 (Embedding)</div>
+                <span class="arrow">→</span>
+                <div class="step">💾 存入向量数据库</div>
+                <span class="arrow">→</span>
+                <div class="step">🔍 检索</div>
+                <span class="arrow">→</span>
+                <div class="step">🤖 LLM 生成</div>
+            </div>
+            <div class="caption">图 4：语义分块在 RAG 流水线中的位置 — 改进的是索引阶段的切块策略</div>
+        </div>
+
+        <h3>与基础 RAG 的架构对比</h3>
+
+        <div class="diagram-container">
+            <div class="mermaid">
+flowchart TB
+    subgraph naive["基础 RAG"]
+        N1["文档"] --> N2["固定长度切块\n(500 tokens)"]
+        N2 --> N3["Embedding"]
+        N3 --> N4["向量检索"]
+        N4 --> N5["LLM 生成"]
+    end
+
+    subgraph semantic["语义分块 RAG"]
+        S1["文档"] --> S2["句子分割"]
+        S2 --> S3["逐句 Embedding"]
+        S3 --> S4["相似度分析\n找断点"]
+        S4 --> S5["语义切块"]
+        S5 --> S6["块级 Embedding"]
+        S6 --> S7["向量检索"]
+        S7 --> S8["LLM 生成"]
+    end
+
+    style N2 fill:#2d1b1b,stroke:#f87171,color:#e2e8f0
+    style S4 fill:#2d2416,stroke:#fb923c,color:#e2e8f0
+    style S5 fill:#1a2d22,stroke:#34d399,color:#e2e8f0
+            </div>
+            <div class="caption">图 5：基础 RAG vs 语义分块 RAG 架构对比 — 红色为简单切块，绿色/橙色为语义感知切块</div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 4. 关键代码解读 ==================== -->
+<section id="code">
+    <div class="container">
+        <h2><span class="icon">💻</span> 4. 关键代码解读</h2>
+
+        <p>下面提炼 Notebook 中最核心的代码片段，逐步解释每一步在做什么、为什么这么做。</p>
+
+        <h3>4.1 从 PDF 提取文本</h3>
+        <p>使用 <code>PyMuPDF</code> 库从 PDF 中逐页提取纯文本。这一步是所有 RAG 流水线的起点——你需要先把"死"的 PDF 变成"活"的字符串。</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>extract_text_from_pdf</span>
+                <span class="lang-tag">Python</span>
+            </div>
+            <pre><code class="language-python">def extract_text_from_pdf(pdf_path):
+    mypdf = fitz.open(pdf_path)
+    all_text = ""
+    for page in mypdf:
+        all_text += page.get_text("text") + " "
+    return all_text.strip()</code></pre>
+        </div>
+
+        <h3>4.2 句子分割 + 逐句 Embedding</h3>
+        <p>语义分块的前提是<strong>先拆到句子粒度</strong>，再在句子之间找断点。这里用简单的 <code>". "</code> 分割（实际项目中建议使用 <code>nltk.sent_tokenize</code> 或 <code>spacy</code> 的 sentence boundary detection）。</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>get_embedding + 句子分割</span>
+                <span class="lang-tag">Python</span>
+            </div>
+            <pre><code class="language-python">def get_embedding(text, model="text-embedding-ada-002"):
+    """使用 OpenAI 的嵌入模型将文本转为向量"""
+    response = client.embeddings.create(model=model, input=text)
+    return np.array(response.data[0].embedding)
+
+# 按句子分割
+sentences = extracted_text.split(". ")
+
+# 为每个句子生成 embedding
+embeddings = [get_embedding(sentence) for sentence in sentences]
+# → 得到 257 个句子的 embedding 向量</code></pre>
+        </div>
+
+        <div class="callout">
+            <div class="callout-title">🤔 为什么用 <code>text-embedding-ada-002</code>？</div>
+            <p style="margin-bottom:0;">这是 OpenAI 的经典嵌入模型，输出 1536 维向量，在语义相似度任务上表现优异。它能捕捉句子级别的语义信息——两句话意思越接近，向量间的余弦相似度越高。</p>
+        </div>
+
+        <h3>4.3 计算相邻句子的余弦相似度</h3>
+        <p>这是语义分块的<strong>核心计算</strong>：比较第 i 句和第 i+1 句的 embedding，得到一个相似度序列。</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>cosine_similarity + 相似度序列</span>
+                <span class="lang-tag">Python</span>
+            </div>
+            <pre><code class="language-python">def cosine_similarity(vec1, vec2):
+    """余弦相似度 = 点积 / (模长之积)"""
+    return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+
+# 计算 256 个相邻句对的相似度
+similarities = [
+    cosine_similarity(embeddings[i], embeddings[i + 1])
+    for i in range(len(embeddings) - 1)
+]</code></pre>
+        </div>
+
+        <p>相似度接近 1 → 两句话语义连贯；接近 0 或更低 → 话题可能发生了切换。</p>
+
+        <h3>4.4 断点检测：百分位法</h3>
+        <p>这是最关键的一步。Notebook 实现了三种方法，我们重点看百分位法：</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>compute_breakpoints — 核心断点检测</span>
+                <span class="lang-tag">Python</span>
+            </div>
+            <pre><code class="language-python">def compute_breakpoints(similarities, method="percentile", threshold=90):
+    if method == "percentile":
+        # 第 90 百分位：只有最差的 10% 相似度会被视为断点
+        threshold_value = np.percentile(similarities, threshold)
+    elif method == "standard_deviation":
+        mean = np.mean(similarities)
+        std_dev = np.std(similarities)
+        threshold_value = mean - (threshold * std_dev)
+    elif method == "interquartile":
+        q1, q3 = np.percentile(similarities, [25, 75])
+        threshold_value = q1 - 1.5 * (q3 - q1)
+
+    # 返回所有低于阈值的索引位置
+    return [i for i, sim in enumerate(similarities) if sim < threshold_value]</code></pre>
+        </div>
+
+        <div class="callout">
+            <div class="callout-title">📐 直觉理解</div>
+            <p style="margin-bottom:0;">想象你有一组考试成绩。百分位法的逻辑是："把分数最低的 10% 的学生挑出来"——对应到语义分块，就是把相似度最低的 10% 的相邻句对挑出来，在它们之间切一刀。</p>
+        </div>
+
+        <h3>4.5 在断点处切分文本</h3>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>split_into_chunks</span>
+                <span class="lang-tag">Python</span>
+            </div>
+            <pre><code class="language-python">def split_into_chunks(sentences, breakpoints):
+    chunks = []
+    start = 0
+    for bp in breakpoints:
+        # 从 start 到当前断点之间的句子组成一个块
+        chunks.append(". ".join(sentences[start:bp + 1]) + ".")
+        start = bp + 1
+    # 最后剩余的句子作为最后一个块
+    chunks.append(". ".join(sentences[start:]))
+    return chunks
+
+text_chunks = split_into_chunks(sentences, breakpoints)
+# → 257 个句子被分成 231 个语义块</code></pre>
+        </div>
+
+        <p>注意：257 个句子产生了 231 个块，说明大部分块只包含 1-2 个句子。这是因为示例文本较短且话题切换频繁。在实际长文档中，每个块通常包含多个句子。</p>
+
+        <h3>4.6 语义搜索 + LLM 生成</h3>
+        <p>切块完成后，后续流程与基础 RAG 一致：为每个块生成 embedding → 用查询做余弦相似度检索 → 把 top-k 结果喂给 LLM 生成回答。</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>semantic_search — 检索最相关的语义块</span>
+                <span class="lang-tag">Python</span>
+            </div>
+            <pre><code class="language-python">def semantic_search(query, text_chunks, chunk_embeddings, k=5):
+    query_embedding = get_embedding(query)
+    similarities = [
+        cosine_similarity(query_embedding, emb) for emb in chunk_embeddings
+    ]
+    top_indices = np.argsort(similarities)[-k:][::-1]
+    return [text_chunks[i] for i in top_indices]</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 5. 效果展示 ==================== -->
+<section id="result">
+    <div class="container">
+        <h2><span class="icon">📊</span> 5. 效果展示</h2>
+
+        <h3>5.1 分块统计</h3>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>指标</th>
+                    <th>数值</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>原始句子数</td>
+                    <td><strong>257</strong></td>
+                    <td>按 <code>". "</code> 分割后的句子数</td>
+                </tr>
+                <tr>
+                    <td>相邻句对数</td>
+                    <td><strong>256</strong></td>
+                    <td>257 - 1</td>
+                </tr>
+                <tr>
+                    <td>检测到的断点数</td>
+                    <td><strong>230</strong></td>
+                    <td>第 90 百分位阈值以下的句对</td>
+                </tr>
+                <tr>
+                    <td>生成的语义块数</td>
+                    <td><strong>231</strong></td>
+                    <td>230 个断点 → 231 个块</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>5.2 检索效果示例</h3>
+
+        <div class="result-card">
+            <div class="label">🔍 查询 (Query)</div>
+            <div class="content">What is 'Explainable AI' and why is it considered important?</div>
+        </div>
+
+        <div class="result-card">
+            <div class="label">📄 检索到的语义块 #1</div>
+            <div class="content">
+                Transparency and Explainability<br>
+                Transparency and explainability are essential for building trust in AI systems.
+            </div>
+        </div>
+
+        <div class="result-card">
+            <div class="label">📄 检索到的语义块 #2</div>
+            <div class="content">
+                Explainable AI (XAI)<br>
+                Explainable AI (XAI) aims to make AI systems more transparent and understandable. Research in XAI focuses on developing methods for explaining AI decisions, enhancing trust, and improving accountability.
+            </div>
+        </div>
+
+        <div class="result-card">
+            <div class="label">🤖 LLM 生成的回答</div>
+            <div class="content">
+                'Explainable AI' (XAI) aims to make AI systems more transparent and understandable. It is considered important because transparency and explainability are essential for building trust in AI systems, and XAI helps in developing methods for explaining AI decisions, enhancing trust, and improving accountability.
+            </div>
+        </div>
+
+        <div class="result-card">
+            <div class="label">⚖️ 自动评估结果</div>
+            <div class="content">
+                评分：<span class="highlight">0.5 / 1.0</span><br>
+                评语：回答提供了关于 XAI 是什么以及为何重要的良好解释，但缺少对"提供 AI 系统决策方式的洞察"这一关键方面的具体提及。
+            </div>
+        </div>
+
+        <div class="callout warn">
+            <div class="callout-title">📝 关于评分</div>
+            <p style="margin-bottom:0;">0.5 分说明检索到了正确的上下文，但 LLM 没有充分利用上下文中的所有信息。这提示我们：分块质量只是 RAG 的一个环节，prompt 工程和 LLM 能力同样重要。</p>
+        </div>
+
+        <h3>5.3 分块大小分布（模拟对比）</h3>
+
+        <div class="chart-container">
+            <canvas id="chunkSizeChart"></canvas>
+            <div class="caption" style="text-align:center;margin-top:12px;font-size:13px;color:var(--text-muted);font-style:italic;">
+                图 6：固定分块 vs 语义分块的块大小分布对比 — 语义分块的块大小更不均匀但语义更一致
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 6. 总结 ==================== -->
+<section id="summary">
+    <div class="container">
+        <h2><span class="icon">⚖️</span> 6. 优缺点与适用场景</h2>
+
+        <div class="pros-cons">
+            <div class="card">
+                <h4>✅ 优势</h4>
+                <ul class="pros">
+                    <li>保持语义完整性，避免话题被截断</li>
+                    <li>检索质量更高，返回的上下文更相关</li>
+                    <li>适应不同长度的段落，不强制统一大小</li>
+                    <li>三种断点方法灵活可调</li>
+                    <li>特别适合结构化程度低的长文本</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>⚠️ 局限</h4>
+                <ul class="cons">
+                    <li>需要为每个句子调用 Embedding API，成本高</li>
+                    <li>句子分割质量直接影响分块效果</li>
+                    <li>短文本上优势不明显（示例中 257 句 → 231 块）</li>
+                    <li>百分位阈值需要调参，不同文档可能需要不同设置</li>
+                    <li>无法处理跨段落的语义关联</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>适用场景</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>场景</th>
+                    <th>推荐度</th>
+                    <th>原因</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>长篇技术文档 / 论文</td>
+                    <td>⭐⭐⭐⭐⭐</td>
+                    <td>话题切换频繁，语义分块优势最大</td>
+                </tr>
+                <tr>
+                    <td>法律合同 / 法规</td>
+                    <td>⭐⭐⭐⭐⭐</td>
+                    <td>条款之间边界清晰但长度不一</td>
+                </tr>
+                <tr>
+                    <td>FAQ / 短问答对</td>
+                    <td>⭐⭐</td>
+                    <td>每条本身就很短，固定分块即可</td>
+                </tr>
+                <tr>
+                    <td>代码仓库</td>
+                    <td>⭐⭐</td>
+                    <td>代码有自身的结构边界（函数/类），用 AST 分块更合适</td>
+                </tr>
+                <tr>
+                    <td>对话记录 / 聊天日志</td>
+                    <td>⭐⭐⭐⭐</td>
+                    <td>话题切换频繁，但需注意对话轮次的边界</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>与系列前后篇的关系</h3>
+        <div class="callout">
+            <div class="callout-title">📚 系列导航</div>
+            <p style="margin-bottom:0;">
+                <strong>← 上一篇：</strong><a href="1_基础rag_blog.html" style="color:var(--accent-light);">基础 RAG — 从零搭建最小可用检索增强生成系统</a><br>
+                本文在基础 RAG 的基础上，将"固定长度切块"升级为"语义感知切块"，是 RAG 优化的第一步。<br>
+                <strong>下一篇预告 →</strong> 我们将探索<strong>嵌入模型的选择与微调</strong>，进一步提升检索精度。
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== Footer ==================== -->
+<footer class="footer">
+    <div class="container">
+        <p>从零到 RAG 大师 · 系列教程第 2 篇</p>
+        <p>基于 OpenAI <code>text-embedding-ada-002</code> + <code>gpt-3.5-turbo</code> 实现</p>
+    </div>
+</footer>
+
+<!-- ==================== Scripts ==================== -->
+<script>
+    // Highlight.js 初始化
+    hljs.highlightAll();
+
+    // Mermaid 初始化
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        themeVariables: {
+            primaryColor: '#1e2132',
+            primaryTextColor: '#e2e8f0',
+            primaryBorderColor: '#6366f1',
+            lineColor: '#94a3b8',
+            secondaryColor: '#1a1d2e',
+            tertiaryColor: '#161925',
+            noteBkgColor: '#1a1d2e',
+            noteTextColor: '#e2e8f0',
+            noteBorderColor: '#2d3148'
+        }
+    });
+
+    // Chart.js — 分块大小分布对比
+    const ctx = document.getElementById('chunkSizeChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['1 句', '2-3 句', '4-6 句', '7-10 句', '10+ 句'],
+            datasets: [
+                {
+                    label: '固定分块 (500 tokens)',
+                    data: [5, 10, 65, 18, 2],
+                    backgroundColor: 'rgba(248, 113, 113, 0.6)',
+                    borderColor: '#f87171',
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: '语义分块 (百分位法 P90)',
+                    data: [55, 30, 10, 4, 1],
+                    backgroundColor: 'rgba(52, 211, 153, 0.6)',
+                    borderColor: '#34d399',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: { color: '#94a3b8', font: { size: 12 } }
+                },
+                title: {
+                    display: true,
+                    text: '分块大小分布对比（模拟数据）',
+                    color: '#e2e8f0',
+                    font: { size: 14, weight: '600' }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(45,49,72,0.5)' }
+                },
+                y: {
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(45,49,72,0.5)' },
+                    title: {
+                        display: true,
+                        text: '块数量占比 (%)',
+                        color: '#94a3b8'
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

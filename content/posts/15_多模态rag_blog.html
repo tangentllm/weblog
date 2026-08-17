@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（十五）：多模态 RAG 与图像描述</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #161b22;
+  --surface2: #1c2230;
+  --border: #2d3148;
+  --text: #e2e8f0;
+  --text-muted: #8b949e;
+  --accent: #6366f1;
+  --accent-light: #818cf8;
+  --accent-glow: rgba(99,102,241,0.15);
+  --green: #34d399;
+  --orange: #fb923c;
+  --red: #f87171;
+  --cyan: #22d3ee;
+  --pink: #f472b6;
+  --yellow: #fbbf24;
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  font-size: 16px;
+}
+.container { max-width: 880px; margin: 0 auto; padding: 0 24px 60px; }
+
+/* ===== Hero ===== */
+.hero {
+  position: relative;
+  padding: 100px 0 60px;
+  text-align: center;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -120px; left: 50%; transform: translateX(-50%);
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-block;
+  background: var(--accent-glow);
+  color: var(--accent-light);
+  border: 1px solid rgba(99,102,241,0.3);
+  padding: 6px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 20px;
+}
+.hero h1 {
+  font-size: 2.5em;
+  font-weight: 800;
+  line-height: 1.25;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #fff 30%, var(--accent-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero .subtitle {
+  font-size: 1.12em;
+  color: var(--text-muted);
+  max-width: 640px;
+  margin: 0 auto;
+}
+.hero .meta {
+  margin-top: 18px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+.hero .meta span { margin: 0 0.4rem; }
+
+/* ===== TOC ===== */
+.toc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem 2rem;
+  margin-bottom: 2.5rem;
+}
+.toc h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--accent-light); }
+.toc ol { padding-left: 1.3rem; }
+.toc li { margin: 0.35rem 0; }
+.toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+.toc a:hover { color: var(--accent-light); }
+
+/* ===== Section ===== */
+section { padding: 40px 0; }
+h2 {
+  font-size: 1.55em;
+  font-weight: 700;
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 1.8rem 0 0.8rem;
+  color: var(--text);
+}
+p { margin-bottom: 1rem; }
+
+/* ===== Code ===== */
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+  overflow-x: auto;
+  margin: 1.2rem 0 1.6rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; }
+:not(pre) > code {
+  background: var(--surface2);
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 0.88em;
+  color: var(--cyan);
+}
+
+/* ===== Info / Tip / Warning boxes ===== */
+.info-box, .tip-box, .warn-box {
+  border-radius: var(--radius);
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+  border-left: 4px solid;
+}
+.info-box { background: rgba(99,102,241,0.08); border-color: var(--accent); }
+.tip-box  { background: rgba(52,211,153,0.08); border-color: var(--green); }
+.warn-box { background: rgba(251,146,60,0.08); border-color: var(--orange); }
+.box-title {
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+}
+
+/* ===== Figure / Mermaid ===== */
+.figure {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+}
+.fig-caption {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-top: 0.8rem;
+}
+
+/* ===== Table ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2rem 0;
+  font-size: 0.92rem;
+}
+th, td {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+th { background: var(--surface2); color: var(--accent-light); font-weight: 600; }
+td { background: var(--surface); }
+
+/* ===== Nav ===== */
+.series-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+.series-nav a {
+  display: inline-block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.4rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s;
+  flex: 1;
+  max-width: 48%;
+}
+.series-nav a:hover { border-color: var(--accent); background: var(--surface2); }
+.series-nav .nav-label { font-size: 0.8rem; color: var(--text-muted); }
+.series-nav .nav-title { font-weight: 600; margin-top: 4px; }
+.series-nav .next { text-align: right; }
+
+/* ===== Tags ===== */
+.tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 1rem 0; }
+.tag {
+  display: inline-block;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ===== Pipeline steps ===== */
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 1.5rem 0;
+}
+.pipeline-step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem;
+  text-align: center;
+  position: relative;
+}
+.pipeline-step .step-num {
+  display: inline-block;
+  width: 32px; height: 32px;
+  line-height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+.pipeline-step h4 { font-size: 0.95rem; margin-bottom: 6px; }
+.pipeline-step p { font-size: 0.82rem; color: var(--text-muted); margin: 0; }
+
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+  .hero h1 { font-size: 1.7em; }
+  .container { padding: 0 16px 40px; }
+  .series-nav { flex-direction: column; }
+  .series-nav a { max-width: 100%; }
+  .pipeline { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<header class="hero">
+  <div class="container">
+    <span class="hero-badge">从零到 RAG 大师 · 第 15 篇</span>
+    <h1>多模态 RAG 与图像描述</h1>
+    <p class="subtitle">让 RAG 系统同时「看懂」文字与图像 —— 从 PDF 中提取文本和图表，用视觉模型为图像生成描述，统一嵌入检索，构建真正的多模态知识库。</p>
+    <p class="meta">
+      <span>2026-07-10</span> ·
+      <span>阅读约 25 分钟</span> ·
+      <span>Python / PyMuPDF / LLaVA / OpenAI Embedding</span>
+    </p>
+    <div class="tag-row" style="justify-content:center; margin-top:14px;">
+      <span class="tag">Multi-Modal RAG</span>
+      <span class="tag">Image Captioning</span>
+      <span class="tag">LLaVA-1.5-7B</span>
+      <span class="tag">PyMuPDF</span>
+      <span class="tag">text-embedding-ada-002</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- ==================== TOC ==================== -->
+<nav class="toc">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#why">为什么需要多模态 RAG？</a></li>
+    <li><a href="#architecture">系统架构总览</a></li>
+    <li><a href="#pipeline">完整流水线：从 PDF 到答案</a></li>
+    <li><a href="#extract">第一步 —— 从 PDF 提取文本和图像</a></li>
+    <li><a href="#chunk">第二步 —— 文本分块</a></li>
+    <li><a href="#caption">第三步 —— 用视觉模型生成图像描述</a></li>
+    <li><a href="#embed">第四步 —— 统一嵌入与向量存储</a></li>
+    <li><a href="#query">第五步 —— 多模态检索与生成</a></li>
+    <li><a href="#compare">多模态 vs 纯文本 RAG 架构对比</a></li>
+    <li><a href="#eval">评估：谁更适合回答图表问题？</a></li>
+    <li><a href="#summary">总结与展望</a></li>
+  </ol>
+</nav>
+
+<!-- ==================== 1. WHY ==================== -->
+<section id="why">
+<h2>一、为什么需要多模态 RAG？</h2>
+
+<p>传统 RAG 系统只处理文本。然而现实中的文档——论文、报告、教科书——往往包含大量<strong>图表、示意图、表格</strong>，这些视觉元素承载着不可替代的信息。</p>
+
+<p>想象一下：你正在检索一篇机器学习论文，问「Transformer base model 的 BLEU 分数是多少？」如果这个数值恰好出现在一张表格图片中，纯文本 RAG 将完全无法触及它。</p>
+
+<div class="info-box">
+  <div class="box-title">核心思路</div>
+  <p>多模态 RAG 的解决方案很优雅：<strong>用视觉模型为每张图像生成一段文字描述（caption）</strong>，然后将这些描述和文本块一起嵌入到同一个向量空间中。检索时，文本和图像描述统一参与相似度匹配。</p>
+</div>
+
+<p>这样做的好处：</p>
+<ul style="padding-left:1.5rem; margin-bottom:1rem;">
+  <li>解锁图表和示意图中「锁定」的信息</li>
+  <li>理解补充文本的表格和数据可视化</li>
+  <li>构建更全面的知识库，覆盖文档的所有模态</li>
+  <li>回答依赖视觉数据的问题</li>
+</ul>
+</section>
+
+<!-- ==================== 2. ARCHITECTURE ==================== -->
+<section id="architecture">
+<h2>二、系统架构总览</h2>
+
+<p>下面的流程图展示了多模态 RAG 的完整流水线——从原始 PDF 一直到最终答案生成：</p>
+
+<div class="figure">
+  <div class="mermaid">
+flowchart TD
+    A["📄 PDF 文档"] --> B["PyMuPDF 解析"]
+    B --> C["📝 文本段"]
+    B --> D["🖼️ 图像文件"]
+
+    C --> E["文本分块\n1000字符 / overlap=200"]
+    D --> F["LLaVA-1.5-7B\n图像描述生成"]
+
+    E --> G["文本块集合\n56 chunks"]
+    F --> H["图像描述集合\n3 captions"]
+
+    G --> I["text-embedding-ada-002\n统一嵌入"]
+    H --> I
+
+    I --> J["MultiModalVectorStore\n59 项向量"]
+
+    K["🔍 用户查询"] --> L["查询嵌入"]
+    L --> M["余弦相似度检索\nTop-K = 5"]
+    J --> M
+
+    M --> N["检索结果\n文本 + 图像描述"]
+    N --> O["GPT-3.5-Turbo\n答案生成"]
+    O --> P["💬 最终回答"]
+
+    style A fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    style B fill:#374151,stroke:#6b7280,color:#fff
+    style C fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    style D fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style E fill:#1a3630,stroke:#34d399,color:#fff
+    style F fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style G fill:#1a3630,stroke:#34d399,color:#fff
+    style H fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style I fill:#3b2e1a,stroke:#fbbf24,color:#fff
+    style J fill:#3b2e1a,stroke:#fbbf24,color:#fff
+    style K fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    style L fill:#3b2e1a,stroke:#fbbf24,color:#fff
+    style M fill:#374151,stroke:#6b7280,color:#fff
+    style N fill:#374151,stroke:#6b7280,color:#fff
+    style O fill:#1a3630,stroke:#34d399,color:#fff
+    style P fill:#1e3a5f,stroke:#3b82f6,color:#fff
+  </div>
+  <p class="fig-caption">图 1：多模态 RAG 完整流水线 —— PDF → 文本+图像 → 分块+描述 → 统一嵌入 → 检索 → 生成</p>
+</div>
+
+<p>整个系统可以拆解为两条并行路径，最终汇合：</p>
+
+<div class="pipeline">
+  <div class="pipeline-step">
+    <span class="step-num">1</span>
+    <h4>PDF 解析</h4>
+    <p>PyMuPDF 逐页提取文本和嵌入图像</p>
+  </div>
+  <div class="pipeline-step">
+    <span class="step-num">2</span>
+    <h4>文本路径</h4>
+    <p>文本分块 → 1000 字符 / 200 重叠</p>
+  </div>
+  <div class="pipeline-step">
+    <span class="step-num">3</span>
+    <h4>图像路径</h4>
+    <p>LLaVA 视觉模型 → 生成文字描述</p>
+  </div>
+  <div class="pipeline-step">
+    <span class="step-num">4</span>
+    <h4>统一嵌入</h4>
+    <p>ada-002 将文本块和描述映射到同一向量空间</p>
+  </div>
+  <div class="pipeline-step">
+    <span class="step-num">5</span>
+    <h4>检索 + 生成</h4>
+    <p>余弦相似度 Top-K → LLM 生成答案</p>
+  </div>
+</div>
+</section>
+
+<!-- ==================== 3. PIPELINE OVERVIEW ==================== -->
+<section id="pipeline">
+<h2>三、完整流水线：从 PDF 到答案</h2>
+
+<p>下面这张图更细致地展示了<strong>数据处理流程</strong>——文本路径和图像路径如何从同一个 PDF 出发，最终汇合到向量存储中：</p>
+
+<div class="figure">
+  <div class="mermaid">
+flowchart LR
+    subgraph 提取
+      PDF["📄 PDF"] --> TXT["文本段 ×15"]
+      PDF --> IMG["图像 ×3"]
+    end
+
+    subgraph 文本路径
+      TXT --> CHUNK["分块\nchunk_size=1000\noverlap=200"]
+      CHUNK --> TC["56 个文本块"]
+    end
+
+    subgraph 图像路径
+      IMG --> CAP["LLaVA-1.5-7B\n图像描述"]
+      CAP --> IC["3 个图像描述"]
+    end
+
+    TC --> MERGE["合并"]
+    IC --> MERGE
+    MERGE --> EMB["text-embedding-ada-002"]
+    EMB --> VS["MultiModalVectorStore\n59 项"]
+
+    style PDF fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    style TXT fill:#1a3630,stroke:#34d399,color:#fff
+    style IMG fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style CHUNK fill:#1a3630,stroke:#34d399,color:#fff
+    style CAP fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style TC fill:#1a3630,stroke:#34d399,color:#fff
+    style IC fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style MERGE fill:#3b2e1a,stroke:#fbbf24,color:#fff
+    style EMB fill:#3b2e1a,stroke:#fbbf24,color:#fff
+    style VS fill:#3b2e1a,stroke:#fbbf24,color:#fff
+  </div>
+  <p class="fig-caption">图 2：数据处理流程 —— 文本路径（绿色）与图像路径（紫色）最终汇合到统一向量存储</p>
+</div>
+
+<h3>环境依赖</h3>
+<pre><code class="language-python">import os
+import io
+import numpy as np
+import json
+import fitz            # PyMuPDF —— PDF 解析
+from PIL import Image   # 图像验证
+from openai import OpenAI
+import base64
+import re
+import tempfile
+import shutil</code></pre>
+
+<h3>初始化 OpenAI 客户端</h3>
+<pre><code class="language-python">from dotenv import load_dotenv
+load_dotenv()
+
+client = OpenAI(
+    base_url="https://api.openai.com/v1/",
+    api_key=os.getenv("OPENAI_API_KEY")
+)</code></pre>
+</section>
+
+<!-- ==================== 4. EXTRACT ==================== -->
+<section id="extract">
+<h2>四、第一步 —— 从 PDF 提取文本和图像</h2>
+
+<p>我们使用 <code>PyMuPDF</code>（即 <code>fitz</code>）逐页遍历 PDF，分别提取文本内容和嵌入的图像。每一页的文本保存为字典，图像则写入磁盘并记录元数据。</p>
+
+<pre><code class="language-python">def extract_content_from_pdf(pdf_path, output_dir=None):
+    """
+    从 PDF 文件中提取文本和图像。
+
+    参数:
+        pdf_path (str): PDF 文件路径
+        output_dir (str, optional): 图像保存目录
+
+    返回:
+        Tuple[List[Dict], List[Dict]]: 文本数据, 图像数据
+    """
+    temp_dir = None
+    if output_dir is None:
+        temp_dir = tempfile.mkdtemp()
+        output_dir = temp_dir
+    else:
+        os.makedirs(output_dir, exist_ok=True)
+
+    text_data = []
+    image_paths = []
+
+    print(f"Extracting content from {pdf_path}...")
+
+    try:
+        with fitz.open(pdf_path) as pdf_file:
+            for page_number in range(len(pdf_file)):
+                page = pdf_file[page_number]
+
+                # ---- 提取文本 ----
+                text = page.get_text().strip()
+                if text:
+                    text_data.append({
+                        "content": text,
+                        "metadata": {
+                            "source": pdf_path,
+                            "page": page_number + 1,
+                            "type": "text"
+                        }
+                    })
+
+                # ---- 提取图像 ----
+                image_list = page.get_images(full=True)
+                for img_index, img in enumerate(image_list):
+                    xref = img[0]
+                    base_image = pdf_file.extract_image(xref)
+
+                    if base_image:
+                        image_bytes = base_image["image"]
+                        image_ext = base_image["ext"]
+
+                        img_filename = (
+                            f"page_{page_number+1}"
+                            f"_img_{img_index+1}.{image_ext}"
+                        )
+                        img_path = os.path.join(output_dir, img_filename)
+
+                        with open(img_path, "wb") as img_file:
+                            img_file.write(image_bytes)
+
+                        image_paths.append({
+                            "path": img_path,
+                            "metadata": {
+                                "source": pdf_path,
+                                "page": page_number + 1,
+                                "image_index": img_index + 1,
+                                "type": "image"
+                            }
+                        })
+
+        print(f"Extracted {len(text_data)} text segments "
+              f"and {len(image_paths)} images")
+        return text_data, image_paths
+
+    except Exception as e:
+        print(f"Error extracting content: {e}")
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+        raise</code></pre>
+
+<div class="tip-box">
+  <div class="box-title">💡 关键细节</div>
+  <p><code>page.get_images(full=True)</code> 会提取页面中所有引用的图像（包括共享的图像），<code>extract_image(xref)</code> 返回的字典包含 <code>image</code>（原始字节）和 <code>ext</code>（格式后缀如 png / jpeg）。元数据中用 <code>"type"</code> 字段区分文本和图像，后续检索时据此分类结果。</p>
+</div>
+
+<h3>提取结果（Attention Is All You Need 论文）</h3>
+<table>
+  <thead><tr><th>指标</th><th>数值</th></tr></thead>
+  <tbody>
+    <tr><td>文本段数</td><td>15</td></tr>
+    <tr><td>提取图像数</td><td>3</td></tr>
+    <tr><td>文本分块数（chunk_size=1000, overlap=200）</td><td>56</td></tr>
+    <tr><td>图像描述数</td><td>3</td></tr>
+    <tr><td><strong>向量库总项数</strong></td><td><strong>59</strong></td></tr>
+  </tbody>
+</table>
+</section>
+
+<!-- ==================== 5. CHUNK ==================== -->
+<section id="chunk">
+<h2>五、第二步 —— 文本分块</h2>
+
+<p>文本分块策略沿用经典的<strong>固定大小 + 滑动窗口重叠</strong>方案。每个块 1000 字符，相邻块重叠 200 字符，确保语义不会在边界处被截断。</p>
+
+<pre><code class="language-python">def chunk_text(text_data, chunk_size=1000, overlap=200):
+    """
+    将文本数据分割为重叠的块。
+
+    参数:
+        text_data (List[Dict]): 从 PDF 提取的文本数据
+        chunk_size (int): 每块字符数
+        overlap (int): 块间重叠字符数
+
+    返回:
+        List[Dict]: 分块后的文本数据
+    """
+    chunked_data = []
+
+    for item in text_data:
+        text = item["content"]
+        metadata = item["metadata"]
+
+        # 短文本直接保留
+        if len(text) < chunk_size / 2:
+            chunked_data.append({"content": text, "metadata": metadata})
+            continue
+
+        # 滑动窗口分块
+        chunks = []
+        for i in range(0, len(text), chunk_size - overlap):
+            chunk = text[i:i + chunk_size]
+            if chunk:
+                chunks.append(chunk)
+
+        for i, chunk in enumerate(chunks):
+            chunk_metadata = metadata.copy()
+            chunk_metadata["chunk_index"] = i
+            chunk_metadata["chunk_count"] = len(chunks)
+
+            chunked_data.append({
+                "content": chunk,
+                "metadata": chunk_metadata
+            })
+
+    print(f"Created {len(chunked_data)} text chunks")
+    return chunked_data</code></pre>
+
+<div class="info-box">
+  <div class="box-title">为什么 overlap=200？</div>
+  <p>重叠区域确保跨越块边界的句子不会被割裂。1000 字符约 200-250 个英文单词，200 字符的重叠约覆盖 1-2 句话，在语义完整性和冗余之间取得平衡。</p>
+</div>
+</section>
+
+<!-- ==================== 6. CAPTION ==================== -->
+<section id="caption">
+<h2>六、第三步 —— 用视觉模型生成图像描述</h2>
+
+<p>这是多模态 RAG 的<strong>核心创新点</strong>。我们将每张图像发送给视觉大模型 <code>LLaVA-1.5-7B</code>，让它生成一段详细的文字描述。这段描述将代替图像本身参与后续的文本嵌入和检索。</p>
+
+<h3>6.1 图像 Base64 编码</h3>
+<pre><code class="language-python">def encode_image(image_path):
+    """将图像文件编码为 base64 字符串。"""
+    with open(image_path, "rb") as image_file:
+        encoded_image = base64.b64encode(image_file.read())
+        return encoded_image.decode('utf-8')</code></pre>
+
+<h3>6.2 调用 LLaVA 生成描述</h3>
+<pre><code class="language-python">def generate_image_caption(image_path):
+    """
+    使用视觉模型为图像生成文字描述。
+
+    参数:
+        image_path (str): 图像文件路径
+
+    返回:
+        str: 生成的图像描述
+    """
+    if not os.path.exists(image_path):
+        return "Error: Image file not found"
+
+    try:
+        Image.open(image_path)  # 验证图像有效性
+        base64_image = encode_image(image_path)
+
+        response = client.chat.completions.create(
+            model="llava-hf/llava-1.5-7b-hf",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an assistant specialized in "
+                        "describing images from academic papers. "
+                        "Provide detailed captions that capture key "
+                        "information. If the image contains charts, "
+                        "tables, or diagrams, describe their content "
+                        "and purpose clearly. Your caption should be "
+                        "optimized for future retrieval when people "
+                        "ask questions about this content."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Describe this image in detail, "
+                                    "focusing on its academic content:"
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,"
+                                       f"{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=300
+        )
+
+        caption = response.choices[0].message.content
+        return caption
+
+    except Exception as e:
+        return f"Error generating caption: {str(e)}"</code></pre>
+
+<div class="tip-box">
+  <div class="box-title">💡 Prompt 工程要点</div>
+  <p>注意 system prompt 的关键指令：<strong>「Your caption should be optimized for future retrieval」</strong>。这不是让模型随意描述图像，而是专门为后续的嵌入检索优化描述内容。模型会倾向于提取关键数据点和语义信息，而非泛泛而谈。</p>
+</div>
+
+<h3>6.3 批量处理所有图像</h3>
+<pre><code class="language-python">def process_images(image_paths):
+    """
+    批量处理所有图像，为每张生成描述。
+
+    参数:
+        image_paths (List[Dict]): 提取的图像路径列表
+
+    返回:
+        List[Dict]: 带有描述的图像数据
+    """
+    image_data = []
+    print(f"Generating captions for {len(image_paths)} images...")
+
+    for i, img_item in enumerate(image_paths):
+        print(f"Processing image {i+1}/{len(image_paths)}...")
+        img_path = img_item["path"]
+        metadata = img_item["metadata"]
+
+        caption = generate_image_caption(img_path)
+
+        image_data.append({
+            "content": caption,        # 生成的描述
+            "metadata": metadata,       # 原始元数据
+            "image_path": img_path      # 图像路径（可溯源）
+        })
+
+    return image_data</code></pre>
+
+<div class="warn-box">
+  <div class="box-title">⚠️ 图像处理注意事项</div>
+  <p>LLaVA-1.5-7B 是一个 70 亿参数的视觉语言模型，推理时需要 GPU 支持。如果使用 API 方式调用（如通过 OpenAI 兼容接口），需确认服务端已部署该模型。对于本地部署，建议至少 16GB 显存。</p>
+</div>
+</section>
+
+<!-- ==================== 7. EMBED ==================== -->
+<section id="embed">
+<h2>七、第四步 —— 统一嵌入与向量存储</h2>
+
+<p>文本块和图像描述现在都是字符串。我们用同一个嵌入模型 <code>text-embedding-ada-002</code> 将它们映射到<strong>同一个向量空间</strong>。这就是多模态 RAG 的精髓——通过文字描述将视觉信息「翻译」成文本，从而复用成熟的文本嵌入基础设施。</p>
+
+<h3>7.1 创建嵌入</h3>
+<pre><code class="language-python">def create_embeddings(texts, model="text-embedding-ada-002"):
+    """
+    为文本列表创建嵌入向量。
+
+    参数:
+        texts (List[str]): 输入文本列表
+        model (str): 嵌入模型名称
+
+    返回:
+        List[List[float]]: 嵌入向量列表
+    """
+    if not texts:
+        return []
+
+    batch_size = 100
+    all_embeddings = []
+
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i + batch_size]
+        response = client.embeddings.create(
+            model=model,
+            input=batch
+        )
+        batch_embeddings = [item.embedding for item in response.data]
+        all_embeddings.extend(batch_embeddings)
+
+    return all_embeddings</code></pre>
+
+<h3>7.2 MultiModalVectorStore 实现</h3>
+<pre><code class="language-python">class MultiModalVectorStore:
+    """多模态内容向量存储（基于余弦相似度）。"""
+
+    def __init__(self):
+        self.vectors = []
+        self.contents = []
+        self.metadata = []
+
+    def add_item(self, content, embedding, metadata=None):
+        self.vectors.append(np.array(embedding))
+        self.contents.append(content)
+        self.metadata.append(metadata or {})
+
+    def add_items(self, items, embeddings):
+        for item, embedding in zip(items, embeddings):
+            self.add_item(
+                content=item["content"],
+                embedding=embedding,
+                metadata=item.get("metadata", {})
+            )
+
+    def similarity_search(self, query_embedding, k=5):
+        """余弦相似度检索，返回 Top-K 结果。"""
+        if not self.vectors:
+            return []
+
+        query_vector = np.array(query_embedding)
+
+        similarities = []
+        for i, vector in enumerate(self.vectors):
+            similarity = np.dot(query_vector, vector) / (
+                np.linalg.norm(query_vector)
+                * np.linalg.norm(vector)
+            )
+            similarities.append((i, similarity))
+
+        similarities.sort(key=lambda x: x[1], reverse=True)
+
+        results = []
+        for i in range(min(k, len(similarities))):
+            idx, score = similarities[i]
+            results.append({
+                "content": self.contents[idx],
+                "metadata": self.metadata[idx],
+                "similarity": float(score)
+            })
+
+        return results</code></pre>
+
+<h3>7.3 完整处理管道</h3>
+<pre><code class="language-python">def process_document(pdf_path, chunk_size=1000, chunk_overlap=200):
+    """
+    端到端处理文档，构建多模态向量存储。
+
+    返回:
+        Tuple[MultiModalVectorStore, Dict]: 向量存储 + 文档信息
+    """
+    image_dir = "extracted_images"
+    os.makedirs(image_dir, exist_ok=True)
+
+    # 1. 提取
+    text_data, image_paths = extract_content_from_pdf(
+        pdf_path, image_dir
+    )
+
+    # 2. 文本分块
+    chunked_text = chunk_text(text_data, chunk_size, chunk_overlap)
+
+    # 3. 图像描述
+    image_data = process_images(image_paths)
+
+    # 4. 合并 → 嵌入 → 存储
+    all_items = chunked_text + image_data
+    contents = [item["content"] for item in all_items]
+
+    print("Creating embeddings for all content...")
+    embeddings = create_embeddings(contents)
+
+    vector_store = MultiModalVectorStore()
+    vector_store.add_items(all_items, embeddings)
+
+    doc_info = {
+        "text_count": len(chunked_text),    # 56
+        "image_count": len(image_data),      # 3
+        "total_items": len(all_items),       # 59
+    }
+
+    print(f"Added {len(all_items)} items to vector store "
+          f"({len(chunked_text)} text chunks, "
+          f"{len(image_data)} image captions)")
+
+    return vector_store, doc_info</code></pre>
+</section>
+
+<!-- ==================== 8. QUERY ==================== -->
+<section id="query">
+<h2>八、第五步 —— 多模态检索与生成</h2>
+
+<p>查询阶段与标准 RAG 无异：将用户问题嵌入，在向量库中做余弦相似度检索，取回 Top-K 结果后交给 LLM 生成答案。唯一区别是检索结果中可能同时包含文本块和图像描述。</p>
+
+<pre><code class="language-python">def query_multimodal_rag(query, vector_store, k=5):
+    """
+    查询多模态 RAG 系统。
+
+    参数:
+        query (str): 用户查询
+        vector_store (MultiModalVectorStore): 向量存储
+        k (int): 检索结果数
+
+    返回:
+        Dict: 查询结果和生成的回复
+    """
+    print(f"\n=== Processing query: {query} ===\n")
+
+    # 查询嵌入
+    query_embedding = create_embeddings(query)
+
+    # 相似度检索
+    results = vector_store.similarity_search(query_embedding, k=k)
+
+    # 按类型分类结果
+    text_results = [
+        r for r in results if r["metadata"].get("type") == "text"
+    ]
+    image_results = [
+        r for r in results if r["metadata"].get("type") == "image"
+    ]
+
+    print(f"Retrieved {len(results)} relevant items "
+          f"({len(text_results)} text, "
+          f"{len(image_results)} image captions)")
+
+    # 生成回复
+    response = generate_response(query, results)
+
+    return {
+        "query": query,
+        "results": results,
+        "response": response,
+        "text_results_count": len(text_results),
+        "image_results_count": len(image_results)
+    }</code></pre>
+
+<h3>回复生成</h3>
+<pre><code class="language-python">def generate_response(query, results):
+    """根据检索结果生成回复。"""
+    context = ""
+    for i, result in enumerate(results):
+        content_type = (
+            "Text" if result["metadata"].get("type") == "text"
+            else "Image caption"
+        )
+        page_num = result["metadata"].get("page", "unknown")
+
+        context += f"[{content_type} from page {page_num}]\n"
+        context += result["content"]
+        context += "\n\n"
+
+    system_message = (
+        "You are an AI assistant specializing in answering "
+        "questions about documents that contain both text and "
+        "images. Use the retrieved text passages and image "
+        "captions to provide a comprehensive response. "
+        "If information comes from an image or chart, "
+        "mention this in your answer."
+    )
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": (
+                f"Query: {query}\n\n"
+                f"Retrieved content:\n{context}\n"
+                f"Please answer the query based on the "
+                f"retrieved content."
+            )}
+        ],
+        temperature=0.1
+    )
+
+    return response.choices[0].message.content</code></pre>
+</section>
+
+<!-- ==================== 9. COMPARE ==================== -->
+<section id="compare">
+<h2>九、多模态 vs 纯文本 RAG 架构对比</h2>
+
+<p>为了理解多模态 RAG 的优劣，我们实现了一个纯文本 RAG 作为对照组。两者的唯一区别在于：多模态版本在向量库中额外包含了图像描述。</p>
+
+<div class="figure">
+  <div class="mermaid">
+block-beta
+    columns 2
+
+    block:A:1
+        columns 1
+        A1["📄 PDF"]
+        A2["文本提取 + 分块"]
+        A3["文本嵌入"]
+        A4["文本向量库"]
+        A5["🔍 检索 → 生成"]
+        A1 --> A2 --> A3 --> A4 --> A5
+    end
+
+    block:B:1
+        columns 1
+        B1["📄 PDF"]
+        B2a["文本提取 + 分块"]
+        B2b["图像提取 + 描述生成"]
+        B3["文本 + 图像描述\n统一嵌入"]
+        B4["多模态向量库"]
+        B5["🔍 检索 → 生成"]
+        B1 --> B2a --> B3 --> B4 --> B5
+        B1 --> B2b --> B3
+    end
+
+    style A1 fill:#1a3630,stroke:#34d399,color:#fff
+    style A2 fill:#1a3630,stroke:#34d399,color:#fff
+    style A3 fill:#1a3630,stroke:#34d399,color:#fff
+    style A4 fill:#1a3630,stroke:#34d399,color:#fff
+    style A5 fill:#1e3a5f,stroke:#3b82f6,color:#fff
+
+    style B1 fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    style B2a fill:#1a3630,stroke:#34d399,color:#fff
+    style B2b fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style B3 fill:#3b2e1a,stroke:#fbbf24,color:#fff
+    style B4 fill:#3b2e1a,stroke:#fbbf24,color:#fff
+    style B5 fill:#1e3a5f,stroke:#3b82f6,color:#fff
+  </div>
+  <p class="fig-caption">图 3：纯文本 RAG（左）vs 多模态 RAG（右）架构对比 —— 多模态版本增加了图像提取和描述生成路径</p>
+</div>
+
+<h3>对照组：纯文本向量存储</h3>
+<pre><code class="language-python">def build_text_only_store(pdf_path,
+                          chunk_size=1000,
+                          chunk_overlap=200):
+    """构建仅包含文本的向量存储（对照组）。"""
+    text_data, _ = extract_content_from_pdf(pdf_path, None)
+    chunked_text = chunk_text(text_data, chunk_size, chunk_overlap)
+
+    contents = [item["content"] for item in chunked_text]
+    print("Creating embeddings for text-only content...")
+    embeddings = create_embeddings(contents)
+
+    vector_store = MultiModalVectorStore()
+    vector_store.add_items(chunked_text, embeddings)
+
+    print(f"Added {len(chunked_text)} text items "
+          f"to text-only vector store")
+    return vector_store</code></pre>
+
+<h3>评估框架</h3>
+<p>我们使用 <strong>LLM-as-Judge</strong> 的方式，让 GPT-3.5-Turbo 充当评估者，从准确性、完整性、相关性和视觉信息利用四个维度对比两种方案的回答质量。</p>
+
+<pre><code class="language-python">def evaluate_multimodal_vs_textonly(pdf_path, test_queries,
+                                     reference_answers=None):
+    """比较多模态 RAG 与纯文本 RAG。"""
+    print("=== EVALUATING MULTI-MODAL RAG VS TEXT-ONLY RAG ===\n")
+
+    # 构建两种向量存储
+    mm_vector_store, mm_doc_info = process_document(pdf_path)
+    text_vector_store = build_text_only_store(pdf_path)
+
+    results = []
+    for i, query in enumerate(test_queries):
+        print(f"\n=== Evaluating Query {i+1}: {query} ===")
+
+        reference = (reference_answers[i]
+                     if reference_answers and i < len(reference_answers)
+                     else None)
+
+        # 分别运行两种 RAG
+        mm_result = query_multimodal_rag(query, mm_vector_store)
+        text_result = query_multimodal_rag(query, text_vector_store)
+
+        # LLM-as-Judge 对比
+        comparison = compare_responses(
+            query,
+            mm_result["response"],
+            text_result["response"],
+            reference
+        )
+
+        results.append({
+            "query": query,
+            "multimodal_response": mm_result["response"],
+            "textonly_response": text_result["response"],
+            "multimodal_results": {
+                "text_count": mm_result["text_results_count"],
+                "image_count": mm_result["image_results_count"]
+            },
+            "reference_answer": reference,
+            "comparison": comparison
+        })
+
+    overall_analysis = generate_overall_analysis(results)
+
+    return {
+        "results": results,
+        "overall_analysis": overall_analysis,
+        "multimodal_doc_info": mm_doc_info
+    }</code></pre>
+</section>
+
+<!-- ==================== 10. EVAL ==================== -->
+<section id="eval">
+<h2>十、评估：谁更适合回答图表问题？</h2>
+
+<h3>测试设置</h3>
+<table>
+  <thead><tr><th>配置项</th><th>值</th></tr></thead>
+  <tbody>
+    <tr><td>测试文档</td><td>"Attention Is All You Need" 论文 (PDF)</td></tr>
+    <tr><td>提取文本段</td><td>15 段</td></tr>
+    <tr><td>提取图像</td><td>3 张</td></tr>
+    <tr><td>文本块</td><td>56 个</td></tr>
+    <tr><td>图像描述</td><td>3 个</td></tr>
+    <tr><td>向量库总项</td><td>59 项</td></tr>
+    <tr><td>检索 Top-K</td><td>5</td></tr>
+  </tbody>
+</table>
+
+<h3>测试查询</h3>
+<pre><code class="language-python">test_queries = [
+    "What is the BLEU score of the Transformer (base model)?",
+]
+
+reference_answers = [
+    "The Transformer (base model) achieves a BLEU score of 27.3 "
+    "on the WMT 2014 English-to-German translation task and 38.1 "
+    "on the WMT 2014 English-to-French translation task.",
+]</code></pre>
+
+<h3>评估结果</h3>
+
+<div class="figure">
+  <div class="mermaid">
+flowchart TD
+    Q["🔍 查询\nWhat is the BLEU score\nof the Transformer (base model)?"]
+
+    Q --> MM["多模态 RAG"]
+    Q --> TX["纯文本 RAG"]
+
+    MM --> MM_R["检索结果\n5 个文本 · 0 个图像描述"]
+    TX --> TX_R["检索结果\n5 个文本"]
+
+    MM_R --> MM_A["答案生成 ✅"]
+    TX_R --> TX_A["答案生成 ✅"]
+
+    MM_A --> VERDICT["📊 结论"]
+    TX_A --> VERDICT
+
+    VERDICT --> V1["对此查询\n纯文本 RAG 表现更好"]
+    VERDICT --> V2["原因：答案完全在文本中\n图像描述未贡献额外信息"]
+
+    style Q fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    style MM fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style TX fill:#1a3630,stroke:#34d399,color:#fff
+    style MM_R fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style TX_R fill:#1a3630,stroke:#34d399,color:#fff
+    style MM_A fill:#4a1d6a,stroke:#a855f7,color:#fff
+    style TX_A fill:#1a3630,stroke:#34d399,color:#fff
+    style VERDICT fill:#3b2e1a,stroke:#fbbf24,color:#fff
+    style V1 fill:#3b2e1a,stroke:#fbbf24,color:#fff
+    style V2 fill:#3b2e1a,stroke:#fbbf24,color:#fff
+  </div>
+  <p class="fig-caption">图 4：评估结果 —— 对于纯文本可回答的查询，多模态 RAG 的图像路径未被激活</p>
+</div>
+
+<h3>关键发现</h3>
+
+<table>
+  <thead><tr><th>维度</th><th>多模态 RAG</th><th>纯文本 RAG</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>检索到的文本</td>
+      <td>5 个文本块</td>
+      <td>5 个文本块</td>
+    </tr>
+    <tr>
+      <td>检索到的图像描述</td>
+      <td>0 个</td>
+      <td>N/A</td>
+    </tr>
+    <tr>
+      <td>答案准确性</td>
+      <td>✅ 正确</td>
+      <td>✅ 正确</td>
+    </tr>
+    <tr>
+      <td>额外开销</td>
+      <td>⚠️ 图像描述生成成本</td>
+      <td>无</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="info-box">
+  <div class="box-title">📌 评估结论</div>
+  <p>对于查询「What is the BLEU score of the Transformer (base model)?」，答案完全存在于论文正文中，因此<strong>纯文本 RAG 表现更好</strong>（因为无额外开销）。多模态 RAG 检索到的 5 个结果全部是文本块，3 个图像描述的相似度排名较低，未能进入 Top-5。</p>
+</div>
+
+<div class="tip-box">
+  <div class="box-title">💡 多模态 RAG 的真正舞台</div>
+  <p>多模态 RAG 的优势在以下场景中才会显现：</p>
+  <ul style="padding-left:1.2rem; margin-top:0.5rem;">
+    <li>查询涉及图表中的具体数据（如「Figure 3 中的准确率曲线」）</li>
+    <li>文档以视觉信息为主（如产品手册中的装配图）</li>
+    <li>表格以图片形式嵌入 PDF（无法直接提取为文本）</li>
+    <li>需要理解架构图、流程图的语义</li>
+  </ul>
+</div>
+</section>
+
+<!-- ==================== 11. SUMMARY ==================== -->
+<section id="summary">
+<h2>十一、总结与展望</h2>
+
+<h3>本篇核心收获</h3>
+
+<div class="info-box">
+  <div class="box-title">📌 关键要点</div>
+  <ol style="padding-left:1.2rem;">
+    <li><strong>图像 → 文字描述 → 嵌入</strong>：多模态 RAG 的核心思路是将视觉信息「翻译」成文本，复用文本嵌入基础设施</li>
+    <li><strong>LLaVA-1.5-7B</strong> 作为视觉模型，能为学术论文中的图表生成高质量的描述</li>
+    <li><strong>统一向量空间</strong>：文本块和图像描述使用同一个嵌入模型（ada-002），在同一个向量库中统一检索</li>
+    <li><strong>适用场景很重要</strong>：当答案在文本中时，纯文本 RAG 更高效；当答案在图表中时，多模态 RAG 不可替代</li>
+  </ol>
+</div>
+
+<h3>技术栈总结</h3>
+<table>
+  <thead><tr><th>组件</th><th>技术选型</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>PDF 解析</td><td>PyMuPDF (fitz)</td><td>提取文本和嵌入图像</td></tr>
+    <tr><td>视觉模型</td><td>LLaVA-1.5-7B</td><td>为图像生成文字描述</td></tr>
+    <tr><td>文本分块</td><td>固定大小 + 重叠</td><td>1000 字符 / 200 重叠</td></tr>
+    <tr><td>嵌入模型</td><td>text-embedding-ada-002</td><td>统一嵌入文本和图像描述</td></tr>
+    <tr><td>向量存储</td><td>MultiModalVectorStore</td><td>基于 NumPy 余弦相似度</td></tr>
+    <tr><td>回复生成</td><td>GPT-3.5-Turbo</td><td>temperature=0.1</td></tr>
+    <tr><td>评估方法</td><td>LLM-as-Judge</td><td>GPT 对比两种方案的回答质量</td></tr>
+  </tbody>
+</table>
+
+<h3>改进方向</h3>
+<ul style="padding-left:1.5rem; margin-bottom:1rem;">
+  <li><strong>直接图像嵌入</strong>：使用 CLIP 等模型直接嵌入图像（而非先生成描述），可保留更丰富的视觉信息</li>
+  <li><strong>更强的视觉模型</strong>：GPT-4V、Gemini Pro Vision 等可生成更精确的图像描述</li>
+  <li><strong>混合检索策略</strong>：文本和图像分别检索后融合结果（第 16 篇「融合检索」将深入探讨）</li>
+  <li><strong>表格专项处理</strong>：使用专门的表格识别模型（如 Table Transformer）提升表格信息的提取质量</li>
+</ul>
+
+<h3>系列导航</h3>
+<p>本篇是多模态 RAG 的入门实践。下一篇「融合检索」将探讨如何组合多种检索策略（稠密 + 稀疏 + 多模态），通过融合排序获得更鲁棒的检索结果。</p>
+</section>
+
+<!-- ==================== NAV ==================== -->
+<div class="series-nav">
+  <a href="#" class="prev">
+    <div class="nav-label">← 上一篇</div>
+    <div class="nav-title">第 14 篇：命题分块</div>
+  </a>
+  <a href="#" class="next">
+    <div class="nav-label">下一篇 →</div>
+    <div class="nav-title">第 16 篇：融合检索</div>
+  </a>
+</div>
+
+</div><!-- end container -->
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    darkMode: true,
+    background: '#161b22',
+    primaryColor: '#6366f1',
+    primaryTextColor: '#e2e8f0',
+    primaryBorderColor: '#818cf8',
+    lineColor: '#6366f1',
+    secondaryColor: '#34d399',
+    tertiaryColor: '#1c2230',
+    noteTextColor: '#e2e8f0',
+    noteBkgColor: '#161b22',
+    fontSize: '14px'
+  },
+  flowchart: { curve: 'basis', padding: 15 }
+});
+
+hljs.highlightAll();
+</script>
+
+</body>
+</html>

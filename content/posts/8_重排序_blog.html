@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零到 RAG 大师（八）：重排序（Reranking）</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  header .series-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #a371f7);
+    color: #fff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle { color: var(--text-muted); font-size: 1.05rem; }
+  header .meta { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+  header .meta span { margin: 0 0.5rem; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin: 0.35rem 0; }
+  .toc a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .toc a:hover { color: var(--accent); }
+
+  h2 {
+    font-size: 1.6rem; font-weight: 700;
+    margin: 2.5rem 0 1rem; padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border); color: var(--text);
+  }
+  h3 { font-size: 1.25rem; font-weight: 600; margin: 1.8rem 0 0.8rem; color: var(--accent); }
+
+  p { margin: 0.8rem 0; color: var(--text); }
+  strong { color: var(--accent2); }
+  em { color: var(--accent3); font-style: normal; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+    margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.88rem; }
+  p code, li code {
+    background: var(--tag-bg); padding: 0.15rem 0.4rem;
+    border-radius: 4px; font-size: 0.85rem; color: var(--accent3);
+  }
+
+  .callout {
+    background: var(--surface); border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .callout.warning { border-left-color: var(--accent3); }
+  .callout.success { border-left-color: var(--accent2); }
+  .callout .callout-title { font-weight: 700; margin-bottom: 0.3rem; font-size: 0.95rem; }
+
+  .diagram-container {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0;
+    text-align: center; overflow-x: auto;
+  }
+  .diagram-container .caption {
+    font-size: 0.85rem; color: var(--text-muted); margin-top: 0.8rem; text-align: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--border); padding: 0.6rem 1rem; text-align: left; }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(22, 27, 34, 0.5); }
+
+  ul, ol { padding-left: 1.5rem; margin: 0.6rem 0; }
+  li { margin: 0.3rem 0; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+  }
+  .compare-card h4 { font-size: 1rem; margin-bottom: 0.6rem; }
+  .compare-card.bad h4 { color: var(--accent3); }
+  .compare-card.good h4 { color: var(--accent2); }
+  .compare-card.neutral h4 { color: var(--accent); }
+  .compare-card ul { padding-left: 1rem; }
+
+  .result-block {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem; margin: 1rem 0;
+  }
+  .result-block h4 {
+    font-size: 1rem; margin-bottom: 0.6rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .result-block .method-tag {
+    display: inline-block; padding: 0.15rem 0.6rem;
+    border-radius: 12px; font-size: 0.8rem; font-weight: 600;
+  }
+  .method-tag.standard { background: rgba(240,136,62,0.2); color: var(--accent3); }
+  .method-tag.llm { background: rgba(88,166,255,0.2); color: var(--accent); }
+  .method-tag.keyword { background: rgba(63,185,80,0.2); color: var(--accent2); }
+
+  .score-bar {
+    display: flex; align-items: center; gap: 0.5rem; margin: 0.4rem 0;
+  }
+  .score-bar .label { min-width: 100px; font-size: 0.88rem; color: var(--text-muted); }
+  .score-bar .bar-bg {
+    flex: 1; height: 20px; background: var(--tag-bg);
+    border-radius: 10px; overflow: hidden;
+  }
+  .score-bar .bar-fill {
+    height: 100%; border-radius: 10px;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 0.5rem; font-size: 0.75rem; font-weight: 700; color: #fff;
+  }
+  .bar-fill.llm-bar { background: linear-gradient(90deg, #58a6ff, #a371f7); }
+  .bar-fill.keyword-bar { background: linear-gradient(90deg, #3fb950, #56d364); }
+  .bar-fill.standard-bar { background: linear-gradient(90deg, #f0883e, #d29922); }
+
+  .chart-wrapper {
+    max-width: 500px; margin: 1.5rem auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem;
+  }
+
+  footer {
+    margin-top: 3rem; padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center; color: var(--text-muted); font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  .series-nav { display: flex; justify-content: space-between; margin-top: 2rem; gap: 1rem; }
+  .series-nav a {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.8rem 1.2rem; color: var(--accent);
+    text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .series-nav a:hover { border-color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header h1 { font-size: 1.5rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    pre { padding: 0.8rem; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="series-tag">从零到 RAG 大师 · 第 8 篇</div>
+  <h1>重排序（Reranking）</h1>
+  <p class="subtitle">初始检索后的第二道过滤——用 LLM 评分与关键词加权让最相关内容浮出水面</p>
+  <div class="meta">
+    <span>2026-07-10</span>
+    <span>·</span>
+    <span>RAG / Reranking / LLM-as-Judge / 关键词匹配</span>
+    <span>·</span>
+    <span>阅读约 15 分钟</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- 目录 -->
+<nav class="toc">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#motivation">问题动机：向量相似 ≠ 问答相关</a></li>
+    <li><a href="#overview">重排序流程总览</a></li>
+    <li><a href="#method-compare">两种重排方法对比</a></li>
+    <li><a href="#pipeline-compare">三种检索策略流程对比</a></li>
+    <li><a href="#code-llm">代码解读：基于 LLM 的重排序</a></li>
+    <li><a href="#code-keyword">代码解读：基于关键词的重排序</a></li>
+    <li><a href="#code-pipeline">代码解读：完整 RAG + 重排序管道</a></li>
+    <li><a href="#results">真实结果展示</a></li>
+    <li><a href="#evaluation">LLM 评估结论</a></li>
+    <li><a href="#summary">总结与展望</a></li>
+  </ol>
+</nav>
+
+<!-- 1. 问题动机 -->
+<h2 id="motivation">1. 问题动机：向量相似 ≠ 问答相关</h2>
+
+<p>在前面的篇章中，我们已经构建了基础的 RAG 管道：将文档切块、生成嵌入向量、通过余弦相似度检索最相关的文本块。但实际运行中，一个核心痛点逐渐浮现：</p>
+
+<div class="callout warning">
+  <div class="callout-title">核心问题</div>
+  <p><strong>向量空间中的"相似"并不等于"能回答问题"</strong>。一个文本块可能在主题上与查询高度相关（余弦相似度很高），但其中并不包含可直接摘录的答案句；而真正能回答问题的块可能因为切块边界或表述差异被排在 Top-k 之外。</p>
+</div>
+
+<p>例如，查询"中国政府对 AI 大模型发展有哪些支持政策？"时，向量检索可能返回大量讨论"AI 政策"的文本块，但其中有些只是泛泛提及政策背景，有些则包含了具体的城市级政策细节。我们需要一道<strong>"二次过滤"</strong>来区分谁更有价值。</p>
+
+<p>这就是<strong>重排序（Reranking）</strong>的角色——在初始检索之后、答案生成之前，插入一个评分与排序步骤，确保最终进入 LLM 上下文的是真正"能回答问题的"文本块。</p>
+
+<!-- 2. 重排序流程总览 -->
+<h2 id="overview">2. 重排序流程总览</h2>
+
+<p>重排序的核心思想可以用一句话概括：<em>"先广撒网，再精挑选"</em>。初始检索取回较多的候选（如 Top-10），然后通过某种评分机制对每个候选重新打分，最后只取评分最高的 Top-N 进入生成阶段。</p>
+
+<div class="diagram-container">
+  <pre class="mermaid">
+flowchart LR
+    A["用户查询"] --> B["向量嵌入"]
+    B --> C["初始检索<br/>Top-10"]
+    C --> D["重排序评分"]
+    D --> E{"评分方法"}
+    E -->|"LLM 逐个打分"| F["0-10 相关性分数"]
+    E -->|"关键词加权"| G["位置+频率+相似度"]
+    F --> H["按分数降序排列"]
+    G --> H
+    H --> I["选择 Top-N<br/>(如 Top-3)"]
+    I --> J["拼接上下文"]
+    J --> K["LLM 生成回答"]
+
+    style A fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+    style C fill:#1f2937,stroke:#f0883e,color:#e6edf3
+    style D fill:#1f2937,stroke:#a371f7,color:#e6edf3
+    style I fill:#1f2937,stroke:#3fb950,color:#e6edf3
+    style K fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+  </pre>
+  <div class="caption">图 1：重排序流程图——初始检索 → 评分 → 重排 → 选择 Top-N</div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">关键设计决策</div>
+  <p>初始检索的 <code>k=10</code> 要大于最终使用的 <code>top_n=3</code>。这为后续的"纠错"留出了空间——即使向量检索把某些相关块排在了第 5~8 位，重排序仍有机会将它们提到前面。</p>
+</div>
+
+<!-- 3. 两种重排方法对比 -->
+<h2 id="method-compare">3. 两种重排方法对比</h2>
+
+<p>本系列实现了两种截然不同的重排序策略，分别代表了"重量级"与"轻量级"两条路线：</p>
+
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>基于 LLM 的重排序</h4>
+    <ul>
+      <li><strong>原理</strong>：调用 gpt-4o 对每个文档独立评分（0-10），评估其对查询的回答能力</li>
+      <li><strong>优势</strong>：深度语义理解，能判断"虽不相似但能回答问题"的文档</li>
+      <li><strong>代价</strong>：每个文档一次 API 调用，延迟与费用线性增长</li>
+      <li><strong>适用场景</strong>：对质量要求高、候选数量可控（10-20 个）</li>
+    </ul>
+  </div>
+  <div class="compare-card neutral">
+    <h4>基于关键词的重排序</h4>
+    <ul>
+      <li><strong>原理</strong>：用 jieba 分词提取查询关键词，根据出现位置、频率等规则加分</li>
+      <li><strong>优势</strong>：无需额外 API 调用，速度快、成本低、可解释</li>
+      <li><strong>代价</strong>：无法理解同义改写，依赖精确词匹配</li>
+      <li><strong>适用场景</strong>：成本敏感、中文关键词明显的场景</li>
+    </ul>
+  </div>
+</div>
+
+<div class="diagram-container">
+  <pre class="mermaid">
+graph TB
+    subgraph LLM["基于 LLM 的重排序"]
+        direction TB
+        L1["查询 + 文档"] --> L2["GPT-4o 评分<br/>0-10 分"]
+        L2 --> L3["按分数排序"]
+        L3 --> L4["取 Top-3"]
+    end
+
+    subgraph KW["基于关键词的重排序"]
+        direction TB
+        K1["jieba 分词"] --> K2["关键词匹配"]
+        K2 --> K3["位置加分 + 频率加分"]
+        K3 --> K4["基础分(相似度×0.5)<br/>+ 关键词加分"]
+        K4 --> K5["取 Top-3"]
+    end
+
+    style LLM fill:#161b22,stroke:#58a6ff,color:#e6edf3
+    style KW fill:#161b22,stroke:#3fb950,color:#e6edf3
+  </pre>
+  <div class="caption">图 2：两种重排方法对比——LLM 语义评分 vs 关键词规则加权</div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>维度</th>
+      <th>LLM 重排序</th>
+      <th>关键词重排序</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>评分方式</td>
+      <td>LLM 逐文档打分 0-10</td>
+      <td>规则公式：相似度×0.5 + 关键词加分</td>
+    </tr>
+    <tr>
+      <td>语义理解</td>
+      <td>深度理解，可判断隐含相关性</td>
+      <td>仅精确词匹配，不理解同义替换</td>
+    </tr>
+    <tr>
+      <td>API 成本</td>
+      <td>每文档 1 次调用（10 文档 = 10 次）</td>
+      <td>零额外 API 调用</td>
+    </tr>
+    <tr>
+      <td>延迟</td>
+      <td>较高（秒级 × 文档数）</td>
+      <td>极低（毫秒级）</td>
+    </tr>
+    <tr>
+      <td>可解释性</td>
+      <td>低（黑盒评分）</td>
+      <td>高（可追踪每个关键词的加分逻辑）</td>
+    </tr>
+    <tr>
+      <td>回退机制</td>
+      <td>解析失败时回退到相似度分数</td>
+      <td>无额外回退（公式确定性计算）</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- 4. 三种检索策略流程对比 -->
+<h2 id="pipeline-compare">4. 三种检索策略流程对比</h2>
+
+<p>在实际评估中，我们对比了三种检索策略：标准检索（无重排序）、LLM 重排序、关键词重排序。它们的管道流程如下：</p>
+
+<div class="diagram-container">
+  <pre class="mermaid">
+flowchart TB
+    Q["用户查询"] --> E["创建查询嵌入"]
+    E --> S["向量相似度检索<br/>返回 Top-10"]
+
+    S --> P1["策略 1: 标准检索"]
+    S --> P2["策略 2: LLM 重排序"]
+    S --> P3["策略 3: 关键词重排序"]
+
+    P1 -->|"直接取前 3"| R1["上下文 A"]
+    P2 -->|"GPT-4o 逐个评分<br/>取最高分前 3"| R2["上下文 B"]
+    P3 -->|"jieba 分词+规则打分<br/>取最高分前 3"| R3["上下文 C"]
+
+    R1 --> G["LLM 生成回答"]
+    R2 --> G
+    R3 --> G
+
+    G --> O1["回答 1: 标准"]
+    G --> O2["回答 2: LLM重排"]
+    G --> O3["回答 3: 关键词重排"]
+
+    O1 --> EV["LLM 元评估：哪种更好？"]
+    O2 --> EV
+    O3 --> EV
+
+    style Q fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+    style S fill:#1f2937,stroke:#f0883e,color:#e6edf3
+    style P1 fill:#1f2937,stroke:#8b949e,color:#e6edf3
+    style P2 fill:#1f2937,stroke:#58a6ff,color:#e6edf3
+    style P3 fill:#1f2937,stroke:#3fb950,color:#e6edf3
+    style EV fill:#1f2937,stroke:#a371f7,color:#e6edf3
+  </pre>
+  <div class="caption">图 3：三种检索策略的完整流程对比——从同一初始检索出发，走向不同的重排路径</div>
+</div>
+
+<!-- 5. 代码解读：LLM 重排序 -->
+<h2 id="code-llm">5. 代码解读：基于 LLM 的重排序</h2>
+
+<p>LLM 重排序的核心思路是 <em>"LLM-as-a-Judge"</em>——让大模型充当裁判，逐一对每个候选文档进行相关性评分。</p>
+
+<pre><code class="language-python">def rerank_with_llm(query, results, top_n=3, model="gpt-4o"):
+    """
+    使用 LLM 进行相关性评分来重新排序搜索结果。
+
+    参数:
+        query (str): 用户查询
+        results (List[Dict]): 初始搜索结果
+        top_n (int): 重新排序后返回的结果数量
+        model (str): 用于评分的模型
+
+    返回:
+        List[Dict]: 重新排序后的结果
+    """
+    scored_results = []
+
+    # 系统提示：定义评分标准，要求 LLM 只返回一个整数分数
+    system_prompt = """你是一名擅长评估文档与查询相关性的专家。
+你的任务是根据文档对查询的回答程度，对文档进行0到10分的打分。
+
+评分标准：
+- 0-2分：文档与查询完全无关
+- 3-5分：文档包含部分相关信息，但未能直接回答查询
+- 6-8分：文档相关，能够部分回答查询
+- 9-10分：文档高度相关，能够直接回答查询
+
+你必须只回复一个0到10之间的整数分数，不要包含任何其他文本。"""
+
+    for i, result in enumerate(results):
+        user_prompt = f"""查询：{query}
+
+文档内容：
+{result['text']}
+
+请根据上述查询，对该文档与查询的相关性进行0到10分的打分："""
+
+        # 调用 LLM，temperature=0 确保评分稳定可复现
+        response = client.chat.completions.create(
+            model=model,
+            temperature=0,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+        )
+
+        score_text = response.choices[0].message.content.strip()
+
+        # 用正则提取 0-10 的整数分数
+        score_match = re.search(r'\b(10|[0-9])\b', score_text)
+        if score_match:
+            score = float(score_match.group(1))
+        else:
+            # 回退方案：用向量相似度 × 10 作为替代分数
+            score = result["similarity"] * 10
+
+        scored_results.append({
+            "text": result["text"],
+            "metadata": result["metadata"],
+            "similarity": result["similarity"],
+            "relevance_score": score
+        })
+
+    # 按相关性分数降序排列，取前 top_n
+    reranked_results = sorted(
+        scored_results, key=lambda x: x["relevance_score"], reverse=True
+    )
+    return reranked_results[:top_n]</code></pre>
+
+<div class="callout">
+  <div class="callout-title">设计要点</div>
+  <p><strong>temperature=0</strong>：评分任务需要确定性输出，随机性会引入排序噪声。<br>
+  <strong>正则回退</strong>：当 LLM 未严格遵循"只返回数字"的指令时，正则解析可能失败。此时回退到 <code>similarity * 10</code>，将余弦相似度（0~1）映射到 0~10 的量纲，保持排序不至于完全崩溃。</p>
+</div>
+
+<!-- 6. 代码解读：关键词重排序 -->
+<h2 id="code-keyword">6. 代码解读：基于关键词的重排序</h2>
+
+<p>关键词重排序是一种零成本的替代方案——不依赖额外 API 调用，而是通过 <code>jieba</code> 中文分词提取查询中的关键词，并根据它们在文档中的<strong>出现与否</strong>、<strong>位置</strong>和<strong>频率</strong>来加分。</p>
+
+<pre><code class="language-python">import jieba
+
+def rerank_with_keywords(query, results, top_n=3):
+    """
+    基于中文关键词分词和位置的简单重排序方法。
+
+    参数:
+        query (str): 用户查询（中文）
+        results (List[Dict]): 初始搜索结果
+        top_n (int): 重排序后返回的结果数量
+
+    返回:
+        List[Dict]: 重排序后的结果
+    """
+    # 用 jieba 分词，过滤掉单字词（通常是停用词）
+    keywords = [word for word in jieba.lcut(query) if len(word) > 1]
+
+    scored_results = []
+
+    for result in results:
+        document_text = result["text"]
+
+        # 基础分数：保留向量检索信号，权重 0.5
+        base_score = result["similarity"] * 0.5
+
+        # 关键词加分
+        keyword_score = 0
+        for keyword in keywords:
+            if keyword in document_text:
+                # 命中加分：+0.1
+                keyword_score += 0.1
+
+                # 位置加分：出现在文档前 1/4 额外 +0.1
+                first_position = document_text.find(keyword)
+                if 0 <= first_position < len(document_text) / 4:
+                    keyword_score += 0.1
+
+                # 频率加分：每次出现 +0.05，上限 +0.2
+                frequency = document_text.count(keyword)
+                keyword_score += min(0.05 * frequency, 0.2)
+
+        # 最终分数 = 基础分 + 关键词加分
+        final_score = base_score + keyword_score
+
+        scored_results.append({
+            "text": result["text"],
+            "metadata": result["metadata"],
+            "similarity": result["similarity"],
+            "relevance_score": final_score
+        })
+
+    reranked_results = sorted(
+        scored_results, key=lambda x: x["relevance_score"], reverse=True
+    )
+    return reranked_results[:top_n]</code></pre>
+
+<h3>评分公式解析</h3>
+
+<p>关键词重排序的最终分数由以下公式决定：</p>
+
+<div class="callout success">
+  <div class="callout-title">评分公式</div>
+  <p><code>final_score = similarity × 0.5 + keyword_score</code></p>
+  <p>其中 <code>keyword_score</code> 由三部分组成：</p>
+  <ul>
+    <li><strong>命中分</strong>：每个关键词在文档中出现 → <code>+0.1</code></li>
+    <li><strong>位置分</strong>：关键词出现在文档前 25% → 额外 <code>+0.1</code></li>
+    <li><strong>频率分</strong>：每次出现 <code>+0.05</code>，单词上限 <code>+0.2</code></li>
+  </ul>
+</div>
+
+<p>这种设计的直觉是：如果一个关键词不仅出现了，而且出现在文档开头（通常是主题句的位置），并且多次出现，那这个文档大概率是在重点讨论这个主题。</p>
+
+<!-- 7. 代码解读：完整管道 -->
+<h2 id="code-pipeline">7. 代码解读：完整 RAG + 重排序管道</h2>
+
+<p>将重排序集成到 RAG 管道中非常简洁——只需在初始检索和答案生成之间插入一个分支：</p>
+
+<pre><code class="language-python">def rag_with_reranking(query, vector_store, reranking_method="llm",
+                        top_n=3, model="gpt-4o"):
+    """
+    完整的 RAG 管道，包含重排序步骤。
+
+    参数:
+        query (str): 用户查询
+        vector_store (SimpleVectorStore): 向量存储
+        reranking_method (str): 重排序方法（'llm' 或 'keywords'）
+        top_n (int): 重排序后返回的结果数量
+        model (str): 回复生成模型
+
+    返回:
+        Dict: 包括查询、上下文和回复的结果字典
+    """
+    # 1. 创建查询嵌入
+    query_embedding = create_embeddings(query)
+
+    # 2. 初始检索：取比最终需要更多的候选（k=10）
+    initial_results = vector_store.similarity_search(query_embedding, k=10)
+
+    # 3. 根据方法选择重排序策略
+    if reranking_method == "llm":
+        reranked_results = rerank_with_llm(
+            query, initial_results, top_n=top_n
+        )
+    elif reranking_method == "keywords":
+        reranked_results = rerank_with_keywords(
+            query, initial_results, top_n=top_n
+        )
+    else:
+        # 无重排序，直接取初始检索的前 N 个
+        reranked_results = initial_results[:top_n]
+
+    # 4. 拼接上下文（用分隔符降低模型混读概率）
+    context = "\n\n===\n\n".join(
+        [result["text"] for result in reranked_results]
+    )
+
+    # 5. 基于上下文生成回复
+    response = generate_response(query, context, model)
+
+    return {
+        "query": query,
+        "reranking_method": reranking_method,
+        "initial_results": initial_results[:top_n],
+        "reranked_results": reranked_results,
+        "context": context,
+        "response": response
+    }</code></pre>
+
+<div class="callout">
+  <div class="callout-title">管道设计亮点</div>
+  <p><strong>统一接口</strong>：<code>reranking_method</code> 参数支持 <code>"llm"</code>、<code>"keywords"</code>、<code>"none"</code> 三种模式，方便 A/B 对比实验。<br>
+  <strong>上下文分隔符</strong>：使用 <code>===</code> 分隔不同文本块，降低 LLM 将两段无关文本混读的概率——这是一个简单但有效的工程技巧。</p>
+</div>
+
+<!-- 8. 真实结果展示 -->
+<h2 id="results">8. 真实结果展示</h2>
+
+<p>我们使用"2024年AI行业报告.pdf"（35 个文本块）进行测试，查询为：<em>"中国政府对AI大模型发展有哪些支持政策？"</em></p>
+
+<h3>标准检索（无重排序）</h3>
+<div class="result-block">
+  <h4><span class="method-tag standard">标准检索</span> 回答摘要</h4>
+  <p>列出了北京、深圳、杭州、成都及"其他地方"的政策，但描述较为笼统：</p>
+  <ul>
+    <li>北京：推动技术创新、建设开源平台、设立算力中心</li>
+    <li>深圳：支持开源通用大模型研发</li>
+    <li>杭州："高算力+强算法+大数据"产业生态</li>
+    <li>成都：推动大模型相关技术创新</li>
+  </ul>
+  <p style="color: var(--text-muted); font-size: 0.9rem;">评价：覆盖面尚可，但细节不够丰富，缺少具体政策文件和更多地方信息。</p>
+</div>
+
+<h3>LLM 重排序</h3>
+<div class="result-block">
+  <h4><span class="method-tag llm">LLM 重排序</span> 回答摘要</h4>
+  <p>在北京政策描述中提供了更丰富的细节：</p>
+  <ul>
+    <li>北京：<strong>"组建全栈国产化人工智能创新联合体"</strong>、<strong>"研发全栈国产化的生成式大模型"</strong>、"搭建基于国产软硬件的人工智能训练和服务基础设施"</li>
+    <li>深圳：增加了"支持重点企业持续研发和迭代商用通用大模型"</li>
+    <li>杭州：增加了"到2025年"的时间目标</li>
+    <li>成都：增加了"数据与知识深度联合学习、大规模认知与推理、可控内容生成"等具体技术方向</li>
+  </ul>
+  <p style="color: var(--accent2); font-size: 0.9rem;">评价：细节显著丰富，"全栈国产化"等关键概念被准确提取。</p>
+</div>
+
+<h3>关键词重排序</h3>
+<div class="result-block">
+  <h4><span class="method-tag keyword">关键词重排序</span> 回答摘要</h4>
+  <p>提到了国家政策文件和更多地方便策：</p>
+  <ul>
+    <li><strong>国家政策</strong>：国务院《新一代人工智能发展规划》（2017）、科技部等六部门《关于加快场景创新》（2022）、2024年《政府工作报告》"人工智能+"行动</li>
+    <li>地方：除北京、深圳、杭州、成都外，还提到了<strong>上海</strong>（打造国际竞争力大模型）、<strong>安徽</strong>（资源吸引大模型企业入驻）、<strong>福建</strong>、<strong>广东</strong>等</li>
+  </ul>
+  <p style="color: var(--accent2); font-size: 0.9rem;">评价：覆盖面最广，引入了国家政策文件和更多地方信息。</p>
+</div>
+
+<h3>结果对比可视化</h3>
+
+<div class="diagram-container">
+  <pre class="mermaid">
+xychart-beta
+    title "三种检索策略的回答质量对比（LLM 评估打分）"
+    x-axis ["上下文相关性", "答案准确性", "答案全面性", "总体表现"]
+    y-axis "评分" 0 --> 10
+    bar [7, 7, 6, 7]
+    bar [8, 9, 9, 9]
+    bar [8, 8, 9, 8]
+  </pre>
+  <div class="caption">图 4：三种策略在四个评估维度上的表现对比（基于 LLM 元评估定性分析）</div>
+</div>
+
+<div style="margin: 1.5rem 0;">
+  <p style="font-weight: 600; margin-bottom: 0.8rem;">各维度得分条</p>
+
+  <p style="font-size: 0.88rem; color: var(--text-muted);">上下文相关性</p>
+  <div class="score-bar">
+    <span class="label">标准检索</span>
+    <div class="bar-bg"><div class="bar-fill standard-bar" style="width:70%">7</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">LLM 重排</span>
+    <div class="bar-bg"><div class="bar-fill llm-bar" style="width:80%">8</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">关键词重排</span>
+    <div class="bar-bg"><div class="bar-fill keyword-bar" style="width:80%">8</div></div>
+  </div>
+
+  <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 0.8rem;">答案准确性</p>
+  <div class="score-bar">
+    <span class="label">标准检索</span>
+    <div class="bar-bg"><div class="bar-fill standard-bar" style="width:70%">7</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">LLM 重排</span>
+    <div class="bar-bg"><div class="bar-fill llm-bar" style="width:90%">9</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">关键词重排</span>
+    <div class="bar-bg"><div class="bar-fill keyword-bar" style="width:80%">8</div></div>
+  </div>
+
+  <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 0.8rem;">答案全面性</p>
+  <div class="score-bar">
+    <span class="label">标准检索</span>
+    <div class="bar-bg"><div class="bar-fill standard-bar" style="width:60%">6</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">LLM 重排</span>
+    <div class="bar-bg"><div class="bar-fill llm-bar" style="width:90%">9</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">关键词重排</span>
+    <div class="bar-bg"><div class="bar-fill keyword-bar" style="width:90%">9</div></div>
+  </div>
+
+  <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 0.8rem;">总体表现</p>
+  <div class="score-bar">
+    <span class="label">标准检索</span>
+    <div class="bar-bg"><div class="bar-fill standard-bar" style="width:70%">7</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">LLM 重排</span>
+    <div class="bar-bg"><div class="bar-fill llm-bar" style="width:90%">9</div></div>
+  </div>
+  <div class="score-bar">
+    <span class="label">关键词重排</span>
+    <div class="bar-bg"><div class="bar-fill keyword-bar" style="width:80%">8</div></div>
+  </div>
+</div>
+
+<!-- 9. LLM 评估结论 -->
+<h2 id="evaluation">9. LLM 评估结论</h2>
+
+<p>我们使用 GPT-4o 作为"裁判"，对标准检索与 LLM 重排序的结果进行了元评估。以下是评估的核心结论：</p>
+
+<div class="result-block">
+  <h4>元评估报告摘要</h4>
+  <table>
+    <thead>
+      <tr>
+        <th>评估维度</th>
+        <th>结论</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>上下文相关性</td>
+        <td>两种方式基本一致，均详细列出了各地政策</td>
+      </tr>
+      <tr>
+        <td>答案准确性</td>
+        <td>LLM 重排更优——提供了"全栈国产化"等标准检索未提及的细节</td>
+      </tr>
+      <tr>
+        <td>答案全面性</td>
+        <td>LLM 重排更全面——在北京政策描述中展示了多层次支持措施</td>
+      </tr>
+      <tr>
+        <td>总体表现</td>
+        <td><strong>重排序方式表现更好</strong>，提供了更详细和全面的答案</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout success">
+  <div class="callout-title">关键发现</div>
+  <p>重排序的核心价值不在于"找到全新的信息"，而在于<strong>调整信息的优先级</strong>。同样的 10 个候选文档，经过重排序后，真正包含细节的文本块被提到了最前面，使得 LLM 在生成回答时能优先利用这些高质量证据。</p>
+</div>
+
+<!-- 10. 总结与展望 -->
+<h2 id="summary">10. 总结与展望</h2>
+
+<h3>本篇核心收获</h3>
+
+<ol>
+  <li><strong>重排序是 RAG 质量提升的关键环节</strong>：在初始检索后加入二次过滤，可以显著提高进入生成阶段的上下文质量。</li>
+  <li><strong>两种互补的策略</strong>：LLM 重排序质量更高但成本大，关键词重排序速度快但理解有限。实际生产中可以根据场景灵活选择或组合使用。</li>
+  <li><strong>"先广后精"的设计模式</strong>：初始检索取大集合（k=10），重排序后取小集合（top_n=3），在召回率与精确度之间取得平衡。</li>
+  <li><strong>评估同样重要</strong>：通过 LLM 元评估，我们可以系统性地比较不同检索策略的效果，指导参数调优。</li>
+</ol>
+
+<h3>进阶方向</h3>
+
+<ul>
+  <li><strong>专用 Reranker 模型</strong>：如 Cohere Rerank、BGE-Reranker、Cross-Encoder 等，在速度和质量之间取得更好的平衡</li>
+  <li><strong>混合检索 + 重排序</strong>：结合 BM25 关键词检索与向量检索，再用 Reranker 统一排序</li>
+  <li><strong>批量化 LLM 评分</strong>：将多个文档放入一次 prompt 中打分，减少 API 调用次数</li>
+  <li><strong>学习排序（Learning to Rank）</strong>：用标注数据训练专用的排序模型</li>
+</ul>
+
+<div class="callout">
+  <div class="callout-title">下一篇预告</div>
+  <p>在第 9 篇<em>「相关段落提取」</em>中，我们将探索如何从文档中智能提取与查询最相关的完整段落，而非简单的固定大小切块——这是提升检索精度的另一个重要方向。</p>
+</div>
+
+<!-- 系列导航 -->
+<nav class="series-nav">
+  <a href="7_查询转换_blog.html">上一篇：第 7 篇 查询转换</a>
+  <a href="9_相关段落提取_blog.html">下一篇：第 9 篇 相关段落提取</a>
+</nav>
+
+</div>
+
+<footer>
+  <p>从零到 RAG 大师 系列 · 第 8 篇 · 重排序（Reranking）</p>
+  <p>基于 Jupyter Notebook 实践 · 2026</p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#0d1117',
+      primaryColor: '#1f2937',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#58a6ff',
+      lineColor: '#8b949e',
+      secondaryColor: '#161b22',
+      tertiaryColor: '#161b22',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Noto Sans SC", sans-serif'
+    },
+    flowchart: { useMaxWidth: true, htmlLabels: true },
+    xychart: { width: 600, height: 400 }
+  });
+  hljs.highlightAll();
+</script>
+</body>
+</html>

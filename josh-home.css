@@ -1,0 +1,557 @@
+/* Josh W. Comeau homepage — hero & home grid only (tokens/components in josh-tokens.css / josh-components.css) */
+
+html.josh-home-page #progress-bar {
+  display: none !important;
+}
+
+/* Josh homepage: html shows sky band (not page bg); body stays transparent */
+html.josh-home-page {
+  background: var(--josh-color-sky-from);
+}
+
+html.josh-home-page body {
+  background: transparent;
+}
+
+/* === Home shell (h1w8168s sticky context — hero + main, not clipped sky) === */
+.josh-home-shell {
+  position: relative;
+}
+
+/* === Hero === */
+.josh-hero {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin-top: calc(-5rem - 2rem);
+  background: var(--josh-color-sky-from);
+}
+
+.josh-sky {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 100%;
+  padding-top: calc(5rem + 2rem);
+  --josh-nav-scroll-progress: 0;
+  background: var(--josh-color-sky-from);
+  overflow: clip;
+  cursor: default;
+}
+
+.josh-sky__sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  margin-top: 2rem;
+  overflow: visible;
+  --josh-nav-scroll-progress: 0;
+  background: linear-gradient(to top, transparent 0%, var(--josh-top-color) 100%);
+}
+
+/* Leaving scrolled state: snap nav color back to sky (avoids white flash on fast scroll-up) */
+html.josh-site[data-color-mode="light"] .josh-sky__sticky:not([data-is-over-threshold="true"]),
+html.josh-site[data-color-mode="dark"] .josh-sky__sticky:not([data-is-over-threshold="true"]) {
+  --josh-top-color: var(--josh-color-sky-from);
+  transition: --josh-top-color 0s;
+}
+
+html.josh-home-page .josh-sky__sticky[data-is-over-threshold="true"] {
+  --josh-top-color: var(--josh-color-background);
+  transition: --josh-top-color var(--josh-color-swap-duration) var(--josh-color-swap-timing-function);
+}
+
+.josh-sky__sticky:not([data-is-over-threshold="true"]) .josh-sky__blur {
+  opacity: 0;
+  transition: opacity 0s;
+}
+
+.josh-sky__blur {
+  --extended-by: 100px;
+  --cutoff: calc(100% - var(--extended-by));
+  position: absolute;
+  inset: 0;
+  bottom: calc(var(--extended-by) * -1);
+  z-index: 1;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.6s;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 var(--cutoff), transparent var(--cutoff));
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 var(--cutoff), transparent var(--cutoff));
+}
+
+.josh-sky__sticky[data-is-over-threshold="true"] .josh-sky__blur {
+  opacity: 1;
+}
+
+.josh-sky__header-wrap {
+  position: relative;
+  z-index: 2;
+  height: 5rem;
+}
+
+/* Josh homepage: 48px header row centered in 80px wrap (wisp6v7 / h1w8168s) */
+html.josh-home-page .josh-sky__header-wrap {
+  display: flex;
+  align-items: center;
+}
+
+html.josh-home-page .josh-header {
+  min-height: auto;
+  height: 3rem;
+}
+
+html.josh-home-page .josh-nav__link,
+html.josh-home-page .josh-nav__trigger {
+  border-radius: 0;
+}
+
+html.josh-home-page .josh-pill {
+  font-weight: 400;
+}
+
+.josh-sky__sticky .josh-mobile-menu {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+}
+
+.josh-sky__sticky[data-is-over-threshold="true"] .josh-mobile-menu {
+  border-bottom-color: var(--josh-color-gray-500);
+}
+
+/* === Clouds & decor (Josh w180az57 — single ground stacks back → horizon → arcs → mascot) === */
+.josh-sky__clouds-back {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  overflow: clip;
+  background: linear-gradient(to bottom, var(--josh-color-sky-from), var(--josh-color-sky-to));
+  margin-top: -32px;
+}
+
+/* Josh .afruw7b — rainbow arcs (z1, under white horizon z3) */
+.josh-sky__hero-arcs {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding-bottom: 1rem;
+  opacity: 0.8;
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.josh-sky__clouds-horizon {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  overflow: clip;
+}
+
+.josh-sky__cloud-svg {
+  display: block;
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 320rem;
+  max-width: revert;
+  height: calc(28.5rem + var(--josh-sky-extra, 0px));
+  transform: translateY(1px);
+}
+
+.josh-sky__cloud-path--500 {
+  fill: var(--josh-color-cloud-500);
+}
+
+.josh-sky__cloud-path--300 {
+  fill: var(--josh-color-cloud-300);
+}
+
+.josh-sky__cloud-path--horizon {
+  fill: var(--josh-color-background);
+}
+
+@media (max-width: 50rem) {
+  .josh-sky__cloud-svg {
+    --josh-cloud-shift: calc(-50vw + 25rem);
+    height: calc(5rem + 50vw + var(--josh-sky-extra, 0px));
+    margin-top: -1rem;
+    transform: translate(var(--josh-cloud-shift), 1px);
+  }
+
+  .josh-sky__sticky {
+    margin-top: 0;
+  }
+}
+
+/* Josh .w180az57 — overlays clouds-back (horizon, arcs, mascot); height from clouds-back in flow */
+.josh-sky__mascot-ground {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  overflow: clip;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+/* Josh .a1mwec1d — 1000×520 canvas, centered then shifted right */
+.josh-sky__hero-arcs-wrap {
+  flex-shrink: 0;
+  width: 62.5rem;
+  height: 32.5rem;
+  transform: translateX(330px);
+}
+
+.josh-sky__hero-arcs-canvas {
+  display: block;
+  width: 62.5rem;
+  height: 32.5rem;
+  overflow: clip;
+}
+
+/* Josh .mcbelrx — 800px lane, feet 60px above sky bottom, mascot right-aligned */
+.josh-sky__mascot-lane {
+  --josh-mascot-drop-shadow-color: 200deg 50% 40%;
+  position: absolute;
+  bottom: 60px;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  width: 50rem;
+  height: 14.5rem;
+  margin-inline: auto;
+  overflow: visible;
+  filter:
+    drop-shadow(0 1px 2px hsl(var(--josh-mascot-drop-shadow-color) / 0.15))
+    drop-shadow(0 3px 6px hsl(var(--josh-mascot-drop-shadow-color) / 0.15))
+    drop-shadow(0 8px 16px hsl(var(--josh-mascot-drop-shadow-color) / 0.15));
+  pointer-events: none;
+  user-select: none;
+}
+
+html.josh-site.dark .josh-sky__mascot-lane,
+html.josh-site[data-color-mode="dark"] .josh-sky__mascot-lane {
+  --josh-mascot-drop-shadow-color: 210deg 15% 6%;
+}
+
+.josh-sky__mascot-spring {
+  --josh-mascot-spring-easing: linear(
+    0,
+    0.005,
+    0.02 2%,
+    0.08 4.4%,
+    0.47 15%,
+    0.568,
+    0.651,
+    0.723 24.2%,
+    0.785,
+    0.837 30.9%,
+    0.879 34.6%,
+    0.915 38.9%,
+    0.943 43.6%,
+    0.964 48.9%,
+    0.98 55.1%,
+    0.989 62.1%,
+    0.995 70.9%,
+    1
+  );
+  --josh-mascot-spring-duration: 0.833s;
+  position: relative;
+  flex-shrink: 0;
+  width: 8.59375rem;
+  height: 14.5rem;
+  animation: josh-mascot-fade-in 0.5s 0.25s backwards;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .josh-sky__mascot-spring {
+    animation: josh-mascot-pop-up var(--josh-mascot-spring-easing) var(--josh-mascot-spring-duration) both;
+    animation-delay: 0.25s;
+  }
+}
+
+.josh-sky__mascot-figure {
+  position: relative;
+  width: 8.59375rem;
+  height: 14.5rem;
+}
+
+.josh-sky__mascot-picture--dark {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+}
+
+.josh-sky__mascot-picture--light {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity var(--josh-color-swap-duration) var(--josh-color-swap-timing-function);
+}
+
+html.josh-site.dark .josh-sky__mascot-picture--light[data-use-global-color-mode="true"],
+html.josh-site[data-color-mode="dark"] .josh-sky__mascot-picture--light[data-use-global-color-mode="true"] {
+  opacity: 0;
+}
+
+.josh-sky__mascot-picture img {
+  display: block;
+  width: 8.59375rem;
+  height: 14.5rem;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (max-width: 55.25rem) {
+  .josh-sky__mascot-lane {
+    width: min(50rem, calc(100% - 32px));
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 48rem) {
+  .josh-sky__hero-arcs {
+    display: none;
+  }
+
+  .josh-sky__mascot-ground {
+    position: relative;
+    min-height: 0;
+    height: calc(14.5rem + 24px);
+  }
+
+  .josh-sky__mascot-lane {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    width: calc(100% - 32px);
+    max-width: 50rem;
+    margin-inline: auto;
+    transform: none;
+    justify-content: center;
+  }
+
+  .josh-sky__mascot-spring {
+    animation: josh-mascot-fade-in 0.3s 0.8s backwards;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .josh-sky__mascot-spring {
+      animation: josh-mascot-fade-in 0.3s 0.8s backwards;
+    }
+  }
+}
+
+@keyframes josh-mascot-pop-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes josh-mascot-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* === Home main grid === */
+.josh-main {
+  position: relative;
+  display: grid;
+  align-items: start;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 0 auto 1fr;
+  grid-template-areas:
+    "blocker blocker"
+    "newest categories"
+    "newest popular";
+  gap: 64px 96px;
+  padding-top: 32px;
+  padding-bottom: 6rem;
+  margin-top: -64px;
+}
+
+@media (max-width: 48rem) {
+  .josh-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "blocker"
+      "newest"
+      "categories"
+      "popular";
+    gap: 48px;
+    margin-top: -32px;
+  }
+}
+
+.josh-blocker {
+  grid-area: blocker;
+  position: sticky;
+  top: 0;
+  height: 5rem;
+  z-index: 1;
+  pointer-events: none;
+  background: var(--josh-color-background);
+  opacity: 0;
+}
+
+.josh-blocker[data-is-stuck="true"] {
+  opacity: 1;
+}
+
+/* Homepage: article list — no scroll-reveal */
+html.josh-home-page .josh-page .josh-article:not(.is-hidden),
+html.josh-home-page .josh-page .josh-article:not(.is-hidden) > * {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.josh-articles {
+  grid-area: newest;
+  margin-top: -96px;
+}
+
+.josh-articles__list {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  scroll-margin-top: 96px;
+}
+
+.josh-categories {
+  grid-area: categories;
+}
+
+.josh-popular {
+  grid-area: popular;
+  position: sticky;
+  top: calc(5rem + 32px);
+}
+
+.josh-show-more-wrap {
+  position: relative;
+  margin-top: -2rem;
+  padding-top: 3.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.josh-show-more-wrap::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 300px;
+  background: linear-gradient(to top, var(--josh-color-background) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.josh-show-more {
+  /* Josh ehtpyuh — fixed dark chip; not theme semantic gray-900 */
+  --josh-show-more-bg: #262d40;
+  --josh-show-more-highlight: color-mix(in srgb, var(--josh-show-more-bg) 85%, #fff);
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 250px;
+  max-width: 100%;
+  height: 2.625rem;
+  margin: 0 auto;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: var(--josh-show-more-bg);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: var(--josh-font-weight-medium);
+  cursor: pointer;
+  overflow: hidden;
+  transition: filter 0.25s ease;
+}
+
+html.josh-site.dark .josh-show-more,
+html.josh-site[data-color-mode="dark"] .josh-show-more {
+  --josh-show-more-bg: #272e35;
+  --josh-show-more-highlight: color-mix(in srgb, var(--josh-show-more-bg) 90%, #000);
+}
+
+.josh-show-more:hover {
+  filter: brightness(1.12);
+}
+
+.josh-show-more__icon {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  place-content: center;
+  width: 2.625rem;
+  height: 2.625rem;
+  transition: transform 0.2s cubic-bezier(0, 0.67, 0.6, 1.24);
+}
+
+.josh-show-more__icon::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 2px;
+  background: var(--josh-show-more-highlight);
+}
+
+.josh-show-more__icon svg {
+  position: relative;
+  display: block;
+  transition: transform 0.3s cubic-bezier(0, 0.67, 0.6, 1.24);
+}
+
+.josh-show-more:active .josh-show-more__icon {
+  transform: scale(0.8);
+  transition: transform 0s;
+}
+
+.josh-show-more:active .josh-show-more__icon svg {
+  transform: scale(1.25);
+  transition: transform 0s;
+}
+
+.josh-show-more__label {
+  flex: 1;
+  padding: 0 1rem 0 0.25rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.josh-show-more.is-hidden {
+  display: none;
+}

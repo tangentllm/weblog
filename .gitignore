@@ -41,3 +41,19 @@ reports/
 # Project local-only files
 .claude/settings.local.json
 FEATURES_SUMMARY.md
+
+# Local Josh reference / audit dumps (moved to ../josh-refs)
+/_*
+/assets/
+/content/assets/src/
+/content/assets/_px-ref*
+
+# Local tool dirs
+.qwen/
+
+# Unused legacy (if recreated)
+site-styles.css
+tangent-about.css
+tangent-about.js
+tangent-about-v2.css
+tangent-about-v2.js

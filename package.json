@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "dev": "npx serve -s . -l 3456"
+  },
+  "devDependencies": {
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.61.0",
+    "pngjs": "^7.0.0",
+    "sharp": "^0.35.2"
+  }
+}

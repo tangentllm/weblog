@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG 从零到精通 · 前言 — 检索增强生成技术全景导读</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-tertiary: #21262d;
+    --bg-card: #1c2128;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #6e7681;
+    --accent-blue: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-orange: #d29922;
+    --accent-red: #f85149;
+    --accent-purple: #bc8cff;
+    --accent-cyan: #39d2c0;
+    --border-color: #30363d;
+    --code-bg: #1a1e24;
+    --link-color: #58a6ff;
+    --toc-bg: #161b22;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+
+  /* ===== Header ===== */
+  .hero {
+    background: linear-gradient(135deg, #0d1117 0%, #1a1e3a 50%, #0d1117 100%);
+    border-bottom: 1px solid var(--border-color);
+    padding: 60px 20px 50px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(88,166,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(88,166,255,0.15);
+    color: var(--accent-blue);
+    border: 1px solid rgba(88,166,255,0.3);
+    border-radius: 20px;
+    padding: 4px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800;
+    background: linear-gradient(135deg, #e6edf3 0%, #58a6ff 50%, #bc8cff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+    line-height: 1.3;
+  }
+  .hero .subtitle {
+    font-size: clamp(15px, 2.5vw, 19px);
+    color: var(--text-secondary);
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .hero .meta {
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .hero .meta span { margin: 0 8px; }
+
+  /* ===== Layout ===== */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .content {
+    padding: 40px 0 80px;
+  }
+
+  /* ===== TOC ===== */
+  .toc {
+    background: var(--toc-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 48px;
+  }
+  .toc h2 {
+    font-size: 16px;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toc ol {
+    list-style: none;
+    counter-reset: toc-counter;
+  }
+  .toc ol li {
+    counter-increment: toc-counter;
+    margin-bottom: 8px;
+  }
+  .toc ol li a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 15px;
+    transition: color 0.2s;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .toc ol li a::before {
+    content: counter(toc-counter, decimal) ".";
+    color: var(--accent-blue);
+    font-weight: 700;
+    min-width: 24px;
+  }
+  .toc ol li a:hover { color: var(--accent-blue); }
+
+  /* ===== Headings ===== */
+  h2.section-title {
+    font-size: clamp(22px, 3.5vw, 28px);
+    font-weight: 700;
+    margin: 56px 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  h2.section-title .icon { font-size: 24px; }
+  h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 36px 0 14px;
+    color: var(--text-primary);
+  }
+  h4 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 24px 0 10px;
+    color: var(--accent-blue);
+  }
+
+  /* ===== Paragraphs ===== */
+  p { margin-bottom: 18px; color: var(--text-primary); }
+  .lead {
+    font-size: 17px;
+    color: var(--text-secondary);
+    line-height: 1.9;
+  }
+  strong { color: var(--text-primary); font-weight: 600; }
+  em { color: var(--accent-cyan); font-style: normal; }
+  a { color: var(--link-color); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ===== Code ===== */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    overflow-x: auto;
+    margin: 20px 0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  pre code {
+    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+    background: none;
+    padding: 0;
+    border-radius: 0;
+  }
+  code {
+    font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    background: var(--bg-tertiary);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 14px;
+    color: var(--accent-orange);
+  }
+  pre code { color: var(--text-primary); }
+
+  /* ===== Callout ===== */
+  .callout {
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 24px 0;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  .callout-info {
+    background: rgba(88,166,255,0.08);
+    border-left: 4px solid var(--accent-blue);
+  }
+  .callout-warn {
+    background: rgba(210,153,34,0.08);
+    border-left: 4px solid var(--accent-orange);
+  }
+  .callout-success {
+    background: rgba(63,185,80,0.08);
+    border-left: 4px solid var(--accent-green);
+  }
+  .callout-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .callout-info .callout-title { color: var(--accent-blue); }
+  .callout-warn .callout-title { color: var(--accent-orange); }
+  .callout-success .callout-title { color: var(--accent-green); }
+
+  /* ===== Figures ===== */
+  figure {
+    margin: 32px 0;
+    text-align: center;
+  }
+  figure svg {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+  }
+  figcaption {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* ===== Charts ===== */
+  .chart-container {
+    position: relative;
+    max-width: 100%;
+    margin: 24px auto;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+  }
+  .chart-container canvas {
+    max-height: 420px;
+  }
+
+  /* ===== Cards Grid ===== */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover {
+    border-color: var(--accent-blue);
+    transform: translateY(-2px);
+  }
+  .card h4 {
+    margin: 0 0 8px;
+    font-size: 16px;
+  }
+  .card p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.6;
+  }
+  .card .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .tag-basic { background: rgba(63,185,80,0.15); color: var(--accent-green); }
+  .tag-advanced { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+  .tag-dynamic { background: rgba(210,153,34,0.15); color: var(--accent-orange); }
+
+  /* ===== Table ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 14px;
+  }
+  th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+  }
+  th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td { color: var(--text-secondary); }
+  tr:hover td { background: rgba(88,166,255,0.03); }
+
+  /* ===== Series Map (tree) ===== */
+  .series-map {
+    margin: 32px 0;
+    padding: 24px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow-x: auto;
+  }
+  .series-map svg { display: block; margin: 0 auto; }
+
+  /* ===== Comparison ===== */
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin: 24px 0;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+  }
+  .comparison-side {
+    padding: 24px;
+  }
+  .comparison-side.naive {
+    background: rgba(248,81,73,0.05);
+    border-right: 1px solid var(--border-color);
+  }
+  .comparison-side.rag {
+    background: rgba(63,185,80,0.05);
+  }
+  .comparison-side h4 {
+    margin-top: 0;
+    font-size: 18px;
+  }
+  .comparison-side.naive h4 { color: var(--accent-red); }
+  .comparison-side.rag h4 { color: var(--accent-green); }
+  .comparison-side ul {
+    list-style: none;
+    padding: 0;
+  }
+  .comparison-side ul li {
+    padding: 6px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .comparison-side ul li::before {
+    content: '✗';
+    color: var(--accent-red);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .comparison-side.rag ul li::before {
+    content: '✓';
+    color: var(--accent-green);
+  }
+
+  /* ===== Footer ===== */
+  .footer {
+    border-top: 1px solid var(--border-color);
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 640px) {
+    .hero { padding: 40px 16px 36px; }
+    .container { padding: 0 16px; }
+    .comparison { grid-template-columns: 1fr; }
+    .comparison-side.naive { border-right: none; border-bottom: 1px solid var(--border-color); }
+    .card-grid { grid-template-columns: 1fr; }
+    table { font-size: 13px; }
+    th, td { padding: 8px 10px; }
+  }
+
+  /* ===== Scrollbar ===== */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+  /* ===== Smooth scroll ===== */
+  html { scroll-behavior: smooth; }
+
+  /* ===== Inline SVG diagrams ===== */
+  .diagram-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .diagram-box svg {
+    display: block;
+    margin: 0 auto;
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<header class="hero">
+  <div class="hero-badge">RAG 系列教程 · 第 0 篇</div>
+  <h1>检索增强生成（RAG）技术全景导读</h1>
+  <p class="subtitle">
+    从「大模型为什么需要外部知识」出发，系统梳理 RAG 的双流程架构、核心组件与 21 个进阶专题，
+    带你从零基础到工业级 RAG 系统实战。
+  </p>
+  <div class="meta">
+    <span>📅 2026-07-10</span>
+    <span>·</span>
+    <span>⏱ 约 15 分钟阅读</span>
+    <span>·</span>
+    <span>🏷 RAG · LLM · 信息检索</span>
+  </div>
+</header>
+
+<!-- ==================== MAIN ==================== -->
+<div class="container">
+<div class="content">
+
+<!-- ===== TOC ===== -->
+<nav class="toc" aria-label="文章目录">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#why-rag">为什么需要 RAG？—— 大模型的「知识焦虑」</a></li>
+    <li><a href="#what-is-rag">什么是 RAG？—— 双流程架构总览</a></li>
+    <li><a href="#architecture">RAG 核心架构详解</a></li>
+    <li><a href="#transformer-bg">底层基石：Transformer 与注意力机制</a></li>
+    <li><a href="#comparison">RAG vs 朴素 LLM：对比分析</a></li>
+    <li><a href="#series-overview">21 篇系列教程全景地图</a></li>
+    <li><a href="#tech-categories">技术专题分类解读</a></li>
+    <li><a href="#use-cases">典型应用场景</a></li>
+    <li><a href="#summary">总结与学习路线建议</a></li>
+  </ol>
+</nav>
+
+<!-- ===== 1. WHY RAG ===== -->
+<h2 class="section-title" id="why-rag"><span class="icon"></span> 为什么需要 RAG？—— 大模型的「知识焦虑」</h2>
+
+<p class="lead">
+  大语言模型（LLM）虽然展现出惊人的语言理解和生成能力，但它们本质上是一个<strong>「被冻结的知识快照」</strong>——
+  训练数据截止于某个时间点，无法感知此后发生的事件，也无法访问企业内部的私有文档。
+</p>
+
+<p>这种局限性带来了三个核心痛点：</p>
+
+<div class="card-grid">
+  <div class="card">
+    <h4> 知识时效性</h4>
+    <p>模型的知识停留在训练截止日期。例如，GPT-4 无法回答 2024 年之后的新闻事件，也无法获取实时股价。</p>
+  </div>
+  <div class="card">
+    <h4>🔒 私有知识缺失</h4>
+    <p>企业内部的 SOP 文档、产品手册、客服记录等私有数据从未进入模型训练集，LLM 对此一无所知。</p>
+  </div>
+  <div class="card">
+    <h4> 幻觉问题</h4>
+    <p>当模型缺乏相关知识时，它会「自信地编造」答案（hallucination），在医疗、法律等高风险场景尤为致命。</p>
+  </div>
+</div>
+
+<div class="callout callout-info">
+  <div class="callout-title">💡 核心洞察</div>
+  与其花数百万美元重新训练模型来更新知识，不如在<strong>推理时（inference time）</strong>为模型注入相关的外部上下文。
+  这就是 RAG 的核心思想——<em>Retrieval-Augmented Generation</em>，检索增强生成。
+</div>
+
+<!-- ===== 2. WHAT IS RAG ===== -->
+<h2 class="section-title" id="what-is-rag"><span class="icon">🔍</span> 什么是 RAG？—— 双流程架构总览</h2>
+
+<p>
+  RAG 的全称是 <strong>Retrieval-Augmented Generation</strong>（检索增强生成），由 Lewis 等人在 2020 年的论文
+  <em>"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"</em> 中首次提出。
+  其核心思路可以用一句话概括：
+</p>
+
+<div class="callout callout-success">
+  <div class="callout-title">🎯 RAG 一句话定义</div>
+  在 LLM 生成回答之前，先从外部知识库中<strong>检索</strong>与用户问题最相关的文档片段，
+  将这些片段作为<strong>上下文</strong>拼接到 Prompt 中，让模型基于真实证据生成回答。
+</div>
+
+<p>
+  RAG 系统由两条并行的流水线（Pipeline）组成——<strong>离线文档处理流程</strong>和<strong>在线查询检索流程</strong>。
+  下图展示了完整的双流程架构：
+</p>
+
+<!-- ===== RAG Architecture SVG ===== -->
+<figure>
+<svg viewBox="0 0 1100 720" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:1100px;">
+  <defs>
+    <style>
+      .ft { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 13px; font-weight: bold; fill: #fff; }
+      .ft2 { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 11px; fill: #ccc; }
+      .ft3 { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 10px; fill: #999; }
+      .ft-title { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 18px; font-weight: bold; fill: #fff; }
+      .ft-sub { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 14px; font-weight: bold; fill: #fff; }
+    </style>
+    <marker id="ag" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4ade80"/></marker>
+    <marker id="ap" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a855f7"/></marker>
+    <marker id="ao" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/></marker>
+    <marker id="ar" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ef4444"/></marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1100" height="720" rx="12" fill="#0d1117"/>
+
+  <!-- Title -->
+  <text class="ft-title" x="30" y="36">RAG 双流程架构：检索增强生成</text>
+
+  <!-- Legend -->
+  <line x1="30" y1="56" x2="60" y2="56" stroke="#4ade80" stroke-width="3" stroke-dasharray="5,3"/>
+  <text class="ft3" x="66" y="60">文档处理流程（离线）</text>
+  <line x1="200" y1="56" x2="230" y2="56" stroke="#a855f7" stroke-width="3" stroke-dasharray="5,3"/>
+  <text class="ft3" x="236" y="60">查询检索流程（在线）</text>
+
+  <!-- ========== DOCUMENT PIPELINE ========== -->
+  <text class="ft-sub" x="30" y="100">文档处理流程（Document Processing Pipeline）</text>
+  <line x1="30" y1="110" x2="700" y2="110" stroke="#4ade80" stroke-width="2" stroke-dasharray="5,3" opacity="0.5"/>
+
+  <!-- Step boxes -->
+  <rect x="30" y="125" width="110" height="55" rx="6" fill="#1a3a2a" stroke="#4ade80" stroke-width="1.5"/>
+  <text class="ft" x="85" y="148" text-anchor="middle">原始文档</text>
+  <text class="ft3" x="85" y="165" text-anchor="middle">PDF / Word / HTML</text>
+
+  <line x1="140" y1="152" x2="175" y2="152" stroke="#4ade80" stroke-width="2" marker-end="url(#ag)"/>
+
+  <rect x="175" y="125" width="110" height="55" rx="6" fill="#1a3a2a" stroke="#4ade80" stroke-width="1.5"/>
+  <text class="ft" x="230" y="148" text-anchor="middle">文档解析</text>
+  <text class="ft3" x="230" y="165" text-anchor="middle">文本提取</text>
+
+  <line x1="285" y1="152" x2="320" y2="152" stroke="#4ade80" stroke-width="2" marker-end="url(#ag)"/>
+
+  <rect x="320" y="125" width="110" height="55" rx="6" fill="#1a3a2a" stroke="#4ade80" stroke-width="1.5"/>
+  <text class="ft" x="375" y="148" text-anchor="middle">文本分块</text>
+  <text class="ft3" x="375" y="165" text-anchor="middle">Chunking</text>
+
+  <line x1="430" y1="152" x2="465" y2="152" stroke="#4ade80" stroke-width="2" marker-end="url(#ag)"/>
+
+  <rect x="465" y="125" width="110" height="55" rx="6" fill="#1a3a2a" stroke="#4ade80" stroke-width="1.5"/>
+  <text class="ft" x="520" y="148" text-anchor="middle">向量化</text>
+  <text class="ft3" x="520" y="165" text-anchor="middle">Embedding</text>
+
+  <line x1="575" y1="152" x2="610" y2="152" stroke="#4ade80" stroke-width="2" marker-end="url(#ag)"/>
+
+  <rect x="610" y="125" width="110" height="55" rx="6" fill="#1a2a3a" stroke="#3b82f6" stroke-width="1.5"/>
+  <text class="ft" x="665" y="148" text-anchor="middle">向量存储</text>
+  <text class="ft3" x="665" y="165" text-anchor="middle">Vector DB</text>
+
+  <!-- ========== QUERY PIPELINE ========== -->
+  <text class="ft-sub" x="30" y="240">查询检索流程（Query Retrieval Pipeline）</text>
+  <line x1="30" y1="250" x2="700" y2="250" stroke="#a855f7" stroke-width="2" stroke-dasharray="5,3" opacity="0.5"/>
+
+  <rect x="30" y="265" width="110" height="55" rx="6" fill="#2a1a3a" stroke="#a855f7" stroke-width="1.5"/>
+  <text class="ft" x="85" y="288" text-anchor="middle">用户查询</text>
+  <text class="ft3" x="85" y="305" text-anchor="middle">User Query</text>
+
+  <line x1="140" y1="292" x2="175" y2="292" stroke="#a855f7" stroke-width="2" marker-end="url(#ap)"/>
+
+  <rect x="175" y="265" width="110" height="55" rx="6" fill="#2a1a3a" stroke="#a855f7" stroke-width="1.5"/>
+  <text class="ft" x="230" y="288" text-anchor="middle">查询向量化</text>
+  <text class="ft3" x="230" y="305" text-anchor="middle">Query Embed</text>
+
+  <line x1="285" y1="292" x2="320" y2="292" stroke="#a855f7" stroke-width="2" marker-end="url(#ap)"/>
+
+  <rect x="320" y="265" width="110" height="55" rx="6" fill="#2a1a3a" stroke="#a855f7" stroke-width="1.5"/>
+  <text class="ft" x="375" y="288" text-anchor="middle">相似度检索</text>
+  <text class="ft3" x="375" y="305" text-anchor="middle">Top-K Search</text>
+
+  <line x1="430" y1="292" x2="465" y2="292" stroke="#a855f7" stroke-width="2" marker-end="url(#ap)"/>
+
+  <rect x="465" y="265" width="110" height="55" rx="6" fill="#2a1a3a" stroke="#a855f7" stroke-width="1.5"/>
+  <text class="ft" x="520" y="288" text-anchor="middle">上下文组装</text>
+  <text class="ft3" x="520" y="305" text-anchor="middle">Context Build</text>
+
+  <!-- Vector DB connection -->
+  <line x1="665" y1="180" x2="665" y2="230" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#ao)"/>
+  <line x1="665" y1="230" x2="375" y2="230" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#ao)"/>
+  <line x1="375" y1="230" x2="375" y2="265" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#ao)"/>
+
+  <!-- ========== GENERATION ========== -->
+  <text class="ft-sub" x="30" y="380">增强生成流程（Augmented Generation）</text>
+  <line x1="30" y1="390" x2="700" y2="390" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5,3" opacity="0.5"/>
+
+  <rect x="100" y="410" width="140" height="70" rx="6" fill="#3a2a1a" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="ft" x="170" y="435" text-anchor="middle">提示词构建</text>
+  <text class="ft3" x="170" y="452" text-anchor="middle">Prompt = Context</text>
+  <text class="ft3" x="170" y="467" text-anchor="middle">+ Query + Instruction</text>
+
+  <line x1="240" y1="445" x2="290" y2="445" stroke="#f59e0b" stroke-width="2" marker-end="url(#ao)"/>
+
+  <rect x="290" y="410" width="140" height="70" rx="6" fill="#3a2a1a" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="ft" x="360" y="435" text-anchor="middle">大语言模型</text>
+  <text class="ft3" x="360" y="452" text-anchor="middle">LLM Generation</text>
+  <text class="ft3" x="360" y="467" text-anchor="middle">基于上下文推理</text>
+
+  <line x1="430" y1="445" x2="480" y2="445" stroke="#ef4444" stroke-width="2" marker-end="url(#ar)"/>
+
+  <rect x="480" y="410" width="140" height="70" rx="6" fill="#3a1a1a" stroke="#ef4444" stroke-width="1.5"/>
+  <text class="ft" x="550" y="435" text-anchor="middle">最终答案</text>
+  <text class="ft3" x="550" y="452" text-anchor="middle">Final Answer</text>
+  <text class="ft3" x="550" y="467" text-anchor="middle">可追溯来源</text>
+
+  <!-- Arrows from context assembly to prompt -->
+  <line x1="520" y1="320" x2="520" y2="370" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ap)"/>
+  <line x1="520" y1="370" x2="170" y2="370" stroke="#a855f7" stroke-width="1.5"/>
+  <line x1="170" y1="370" x2="170" y2="410" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ap)"/>
+
+  <!-- ========== COMPONENTS PANEL ========== -->
+  <rect x="740" y="100" width="330" height="380" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text class="ft-sub" x="760" y="130">核心组件</text>
+
+  <rect x="760" y="145" width="140" height="36" rx="5" fill="#1a3a2a" stroke="#4ade80" stroke-width="1"/>
+  <text class="ft" x="830" y="167" text-anchor="middle">嵌入模型</text>
+  <text class="ft3" x="830" y="178" text-anchor="middle">统一向量空间</text>
+
+  <rect x="915" y="145" width="140" height="36" rx="5" fill="#1a2a3a" stroke="#3b82f6" stroke-width="1"/>
+  <text class="ft" x="985" y="167" text-anchor="middle">向量数据库</text>
+  <text class="ft3" x="985" y="178" text-anchor="middle">高效索引检索</text>
+
+  <rect x="760" y="195" width="140" height="36" rx="5" fill="#3a2a1a" stroke="#f59e0b" stroke-width="1"/>
+  <text class="ft" x="830" y="217" text-anchor="middle">生成模型</text>
+  <text class="ft3" x="830" y="228" text-anchor="middle">理解 + 生成</text>
+
+  <rect x="915" y="195" width="140" height="36" rx="5" fill="#2a1a3a" stroke="#a855f7" stroke-width="1"/>
+  <text class="ft" x="985" y="217" text-anchor="middle">检索引擎</text>
+  <text class="ft3" x="985" y="228" text-anchor="middle">相似度计算</text>
+
+  <text class="ft-sub" x="760" y="265">关键特性</text>
+  <rect x="760" y="278" width="295" height="130" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text class="ft2" x="775" y="298">• 离线文档处理：批量预处理文档库</text>
+  <text class="ft2" x="775" y="318">• 在线实时检索：快速响应用户查询</text>
+  <text class="ft2" x="775" y="338">• 语义匹配：基于语义相似度检索</text>
+  <text class="ft2" x="775" y="358">• 上下文增强：外部知识注入生成</text>
+  <text class="ft2" x="775" y="378">• 可扩展架构：支持大规模文档库</text>
+  <text class="ft2" x="775" y="398">• 来源可追溯：答案附带引用出处</text>
+
+  <!-- ========== METRICS PANEL ========== -->
+  <rect x="740" y="500" width="330" height="190" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text class="ft-sub" x="760" y="530">典型性能指标</text>
+
+  <text class="ft2" x="775" y="555"> 检索延迟: <tspan fill="#4ade80" font-weight="bold">&lt; 100ms</tspan></text>
+  <text class="ft2" x="775" y="578">🔹 生成延迟: <tspan fill="#f59e0b" font-weight="bold">1 ~ 3s</tspan></text>
+  <text class="ft2" x="775" y="601">🔹 检索准确率: <tspan fill="#3b82f6" font-weight="bold">85 ~ 95%</tspan></text>
+  <text class="ft2" x="775" y="624">🔹 知识时效性: <tspan fill="#a855f7" font-weight="bold">实时更新</tspan></text>
+  <text class="ft2" x="775" y="647">🔹 幻觉降低率: <tspan fill="#ef4444" font-weight="bold">40 ~ 60%</tspan></text>
+
+  <text class="ft-sub" x="760" y="680">适用场景</text>
+  <text class="ft2" x="775" y="700">• 知识密集型问答 • 企业知识库</text>
+  <text class="ft2" x="775" y="718">• 客服机器人 • 文档分析</text>
+</svg>
+<figcaption>图 1：RAG 双流程架构——上方为离线文档处理流程，下方为在线查询检索流程，右侧为核心组件与性能指标</figcaption>
+</figure>
+
+<!-- ===== 3. ARCHITECTURE DETAIL ===== -->
+<h2 class="section-title" id="architecture"><span class="icon">⚙️</span> RAG 核心架构详解</h2>
+
+<h3>3.1 离线文档处理流程</h3>
+
+<p>这条流水线在<strong>系统部署前</strong>或<strong>文档更新时</strong>运行，负责将原始文档转化为可检索的向量表示：</p>
+
+<table>
+  <thead>
+    <tr><th>步骤</th><th>操作</th><th>关键工具 / 模型</th><th>输出</th></tr>
+  </thead>
+  <tbody>
+    <tr><td> 文档加载</td><td>读取 PDF / Word / HTML 等格式</td><td>PyMuPDF, Unstructured, LangChain</td><td>原始文本</td></tr>
+    <tr><td>② 文本解析</td><td>提取纯文本，去除格式噪声</td><td>pdfplumber, BeautifulSoup</td><td>结构化文本</td></tr>
+    <tr><td> 文本分块</td><td>将长文档切为固定或语义块</td><td>RecursiveCharacterTextSplitter</td><td>Chunks（512~1024 tokens）</td></tr>
+    <tr><td>④ 向量化</td><td>将文本块编码为高维向量</td><td>OpenAI text-embedding-3, BGE</td><td>Embedding Vectors</td></tr>
+    <tr><td> 向量存储</td><td>存入向量数据库并建立索引</td><td>FAISS, Chroma, Pinecone, Milvus</td><td>可检索的向量索引</td></tr>
+  </tbody>
+</table>
+
+<p>以下代码展示了使用 LangChain 构建文档处理流水线的核心逻辑：</p>
+
+<pre><code class="language-python">from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
+
+# 1. 文本分块 —— 按字符递归切分，保持语义完整性
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,      # 每块最大 token 数
+    chunk_overlap=200,    # 块间重叠，避免信息在边界丢失
+    length_function=len
+)
+chunks = text_splitter.split_documents(documents)
+
+# 2. 向量化 + 存储 —— 使用 OpenAI Embedding 模型
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+vectorstore = FAISS.from_documents(chunks, embeddings)
+
+# 3. 持久化到磁盘，避免重复计算
+vectorstore.save_local("faiss_index")</code></pre>
+
+<div class="callout callout-warn">
+  <div class="callout-title">⚠️ 分块策略的重要性</div>
+  <code>chunk_size</code> 和 <code>chunk_overlap</code> 是 RAG 系统最关键的超参数之一。
+  块太大会引入噪声、降低检索精度；块太小会丢失上下文。本系列第 2~3 篇将深入探讨语义分块和切块大小选择。
+</div>
+
+<h3>3.2 在线查询检索流程</h3>
+
+<p>当用户提出问题时，系统执行以下步骤：</p>
+
+<pre><code class="language-python">from langchain_openai import ChatOpenAI
+from langchain.chains import RetrievalQA
+
+# 1. 查询向量化 —— 使用与文档相同的 Embedding 模型
+query = "特斯拉2023年的毛利率是多少？"
+
+# 2. 相似度检索 —— 在向量库中查找 Top-K 最相似的文档块
+retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
+relevant_docs = retriever.invoke(query)
+
+# 3. 上下文组装 + LLM 生成
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+qa_chain = RetrievalQA.from_chain_type(
+    llm=llm,
+    retriever=retriever,
+    return_source_documents=True  # 返回来源，便于追溯
+)
+result = qa_chain.invoke({"query": query})
+
+print(result["result"])          # 生成的答案
+print(result["source_documents"])  # 引用的文档块</code></pre>
+
+<p>整个流程可以概括为：<strong>Query → Embed → Search → Assemble → Generate</strong>，
+其中 Embedding 模型保证了查询和文档在<strong>同一向量空间</strong>中进行语义匹配，
+而非简单的关键词匹配。</p>
+
+<!-- ===== 4. TRANSFORMER BACKGROUND ===== -->
+<h2 class="section-title" id="transformer-bg"><span class="icon"></span> 底层基石：Transformer 与注意力机制</h2>
+
+<p>
+  RAG 系统中的 Embedding 模型和 LLM 都建立在 <strong>Transformer</strong> 架构之上。
+  理解 Transformer 的核心——<em>自注意力机制（Self-Attention）</em>，有助于我们理解 RAG 为何有效。
+</p>
+
+<h3>4.1 自注意力机制（Self-Attention）</h3>
+
+<p>
+  自注意力机制允许模型在处理每个 token 时，动态地关注输入序列中所有其他 token 的信息。
+  其核心计算流程如下：
+</p>
+
+<!-- Attention Mechanism SVG -->
+<figure>
+<svg viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;">
+  <defs>
+    <style>
+      .at { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 13px; font-weight: bold; fill: #fff; }
+      .at2 { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 11px; fill: #ccc; }
+      .at3 { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 10px; fill: #999; }
+    </style>
+    <marker id="aaw" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#888"/></marker>
+  </defs>
+
+  <rect width="700" height="420" rx="12" fill="#0d1117"/>
+  <text class="at" x="20" y="30" font-size="16">Scaled Dot-Product Attention 计算流程</text>
+
+  <!-- Input: Q, K, V -->
+  <rect x="40" y="340" width="80" height="40" rx="6" fill="#2a1a3a" stroke="#a855f7" stroke-width="1.5"/>
+  <text class="at" x="80" y="365" text-anchor="middle">Q 查询</text>
+
+  <rect x="160" y="340" width="80" height="40" rx="6" fill="#1a3a2a" stroke="#4ade80" stroke-width="1.5"/>
+  <text class="at" x="200" y="365" text-anchor="middle">K 键</text>
+
+  <rect x="280" y="340" width="80" height="40" rx="6" fill="#3a2a1a" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="at" x="320" y="365" text-anchor="middle">V 值</text>
+
+  <!-- Arrows up -->
+  <line x1="80" y1="340" x2="80" y2="290" stroke="#a855f7" stroke-width="2" marker-end="url(#aaw)"/>
+  <line x1="200" y1="340" x2="200" y2="290" stroke="#4ade80" stroke-width="2" marker-end="url(#aaw)"/>
+
+  <!-- MatMul Q*K -->
+  <rect x="40" y="240" width="200" height="45" rx="6" fill="#1a1e3a" stroke="#58a6ff" stroke-width="1.5"/>
+  <text class="at" x="140" y="260" text-anchor="middle">MatMul: Q × Kᵀ</text>
+  <text class="at3" x="140" y="278" text-anchor="middle">计算注意力分数</text>
+
+  <line x1="320" y1="340" x2="320" y2="130" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- Scale -->
+  <rect x="40" y="170" width="200" height="45" rx="6" fill="#1a1e3a" stroke="#58a6ff" stroke-width="1.5"/>
+  <text class="at" x="140" y="190" text-anchor="middle">Scale: ÷ √dₖ</text>
+  <text class="at3" x="140" y="208" text-anchor="middle">防止梯度消失</text>
+
+  <line x1="140" y1="240" x2="140" y2="215" stroke="#58a6ff" stroke-width="2" marker-end="url(#aaw)"/>
+
+  <!-- SoftMax -->
+  <rect x="40" y="100" width="200" height="45" rx="6" fill="#1a3a2a" stroke="#4ade80" stroke-width="1.5"/>
+  <text class="at" x="140" y="120" text-anchor="middle">SoftMax</text>
+  <text class="at3" x="140" y="138" text-anchor="middle">归一化为概率分布</text>
+
+  <line x1="140" y1="170" x2="140" y2="145" stroke="#58a6ff" stroke-width="2" marker-end="url(#aaw)"/>
+
+  <!-- MatMul with V -->
+  <rect x="40" y="40" width="200" height="45" rx="6" fill="#3a1a2a" stroke="#ef4444" stroke-width="1.5"/>
+  <text class="at" x="140" y="60" text-anchor="middle">MatMul × V</text>
+  <text class="at3" x="140" y="78" text-anchor="middle">加权求和得到输出</text>
+
+  <line x1="140" y1="100" x2="140" y2="85" stroke="#4ade80" stroke-width="2" marker-end="url(#aaw)"/>
+  <line x1="320" y1="130" x2="240" y2="62" stroke="#f59e0b" stroke-width="2" marker-end="url(#aaw)"/>
+
+  <!-- Output -->
+  <rect x="40" y="0" width="200" height="30" rx="6" fill="#1a2a3a" stroke="#3b82f6" stroke-width="1.5"/>
+  <text class="at" x="140" y="20" text-anchor="middle">Output = Attention(Q,K,V)</text>
+
+  <!-- Formula -->
+  <rect x="310" y="180" width="370" height="120" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text class="at" x="495" y="210" text-anchor="middle" font-size="15">核心公式</text>
+  <text class="at2" x="495" y="240" text-anchor="middle" font-size="14" font-family="monospace">Attention(Q,K,V) =</text>
+  <text class="at2" x="495" y="262" text-anchor="middle" font-size="14" font-family="monospace">softmax(QKᵀ / √dₖ) · V</text>
+  <text class="at3" x="495" y="288" text-anchor="middle">dₖ = 键向量的维度</text>
+
+  <!-- Multi-Head -->
+  <rect x="310" y="320" width="370" height="80" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text class="at" x="495" y="345" text-anchor="middle">多头注意力（Multi-Head Attention）</text>
+  <text class="at3" x="495" y="365" text-anchor="middle">将 Q/K/V 投影到 h 个子空间，并行计算注意力后拼接</text>
+  <text class="at3" x="495" y="385" text-anchor="middle">MultiHead(Q,K,V) = Concat(head₁,...,headₕ) · Wᴼ</text>
+</svg>
+<figcaption>图 2：自注意力机制的计算流程——Q（查询）、K（键）、V（值）通过缩放点积计算注意力权重，最终加权求和得到输出</figcaption>
+</figure>
+
+<h3>4.2 为什么 Attention 对 RAG 至关重要？</h3>
+
+<p>
+  RAG 的本质是将检索到的文档片段作为额外的上下文注入到 Prompt 中。
+  当 LLM 处理这个扩展后的输入时，<strong>自注意力机制</strong>会自动计算用户问题（Query tokens）
+  与检索文档（Context tokens）之间的关联权重，从而让模型「聚焦」在最相关的信息上生成回答。
+</p>
+
+<p>
+  这也是为什么 RAG 的效果高度依赖于<strong>检索质量</strong>——如果检索到的文档与问题不相关，
+  注意力机制会将权重分散到噪声上，导致生成质量下降。
+</p>
+
+<!-- ===== 5. COMPARISON ===== -->
+<h2 class="section-title" id="comparison"><span class="icon">️</span> RAG vs 朴素 LLM：对比分析</h2>
+
+<div class="comparison">
+  <div class="comparison-side naive">
+    <h4> 朴素 LLM（无 RAG）</h4>
+    <ul>
+      <li>知识局限于训练数据，无法获取最新信息</li>
+      <li>对企业私有文档一无所知</li>
+      <li>容易产生幻觉，编造看似合理但错误的答案</li>
+      <li>答案无法追溯来源，缺乏可信度</li>
+      <li>更新知识需要昂贵的重新训练</li>
+      <li>长上下文窗口浪费大量 token 在无关信息上</li>
+    </ul>
+  </div>
+  <div class="comparison-side rag">
+    <h4>✅ RAG 增强 LLM</h4>
+    <ul>
+      <li>实时检索外部知识库，知识永不过时</li>
+      <li>可接入任意私有文档库，打破知识边界</li>
+      <li>基于检索证据生成，大幅降低幻觉率</li>
+      <li>答案附带引用来源，可验证可追溯</li>
+      <li>更新知识只需更新文档库，零训练成本</li>
+      <li>只检索相关片段，高效利用上下文窗口</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Performance comparison chart -->
+<div class="chart-container">
+  <canvas id="comparisonChart"></canvas>
+</div>
+
+<!-- ===== 6. SERIES OVERVIEW ===== -->
+<h2 class="section-title" id="series-overview"><span class="icon">🗺️</span> 21 篇系列教程全景地图</h2>
+
+<p>
+  本系列共包含 <strong>21 个 Jupyter Notebook</strong>，覆盖从基础实现到工业级优化的完整 RAG 技术栈。
+  下图展示了全部专题的层级结构：
+</p>
+
+<!-- Series Tree Map SVG -->
+<figure>
+<svg viewBox="0 0 1000 680" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:1000px;">
+  <defs>
+    <style>
+      .st { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 12px; fill: #fff; }
+      .st2 { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 10px; fill: #aaa; }
+      .st-title { font-family: "Noto Sans SC", Arial, sans-serif; font-size: 16px; font-weight: bold; fill: #fff; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="680" rx="12" fill="#0d1117"/>
+  <text class="st-title" x="30" y="30">RAG 从零到精通 · 21 篇教程全景地图</text>
+
+  <!-- Root -->
+  <rect x="400" y="50" width="200" height="40" rx="8" fill="#1a2a3a" stroke="#58a6ff" stroke-width="2"/>
+  <text class="st" x="500" y="75" text-anchor="middle" font-weight="bold">RAG 从零到精通</text>
+
+  <!-- 4 main branches -->
+  <!-- Branch 1: 基础组件 -->
+  <line x1="500" y1="90" x2="150" y2="130" stroke="#4ade80" stroke-width="2"/>
+  <rect x="50" y="130" width="200" height="36" rx="6" fill="#1a3a2a" stroke="#4ade80" stroke-width="1.5"/>
+  <text class="st" x="150" y="153" text-anchor="middle" font-weight="bold">📦 基础组件（数据预处理）</text>
+
+  <line x1="150" y1="166" x2="80" y2="200" stroke="#4ade80" stroke-width="1" opacity="0.5"/>
+  <line x1="150" y1="166" x2="220" y2="200" stroke="#4ade80" stroke-width="1" opacity="0.5"/>
+  <line x1="150" y1="166" x2="150" y2="200" stroke="#4ade80" stroke-width="1" opacity="0.5"/>
+
+  <rect x="10" y="200" width="140" height="30" rx="4" fill="#162016" stroke="#4ade80" stroke-width="1"/>
+  <text class="st2" x="80" y="220" text-anchor="middle">02 · 语义分块</text>
+
+  <rect x="155" y="200" width="140" height="30" rx="4" fill="#162016" stroke="#4ade80" stroke-width="1"/>
+  <text class="st2" x="225" y="220" text-anchor="middle">03 · 切块大小选择</text>
+
+  <rect x="80" y="240" width="140" height="30" rx="4" fill="#162016" stroke="#4ade80" stroke-width="1"/>
+  <text class="st2" x="150" y="260" text-anchor="middle">05 · 上下文片段标题</text>
+
+  <rect x="225" y="240" width="140" height="30" rx="4" fill="#162016" stroke="#4ade80" stroke-width="1"/>
+  <text class="st2" x="295" y="260" text-anchor="middle">14 · 命题分块</text>
+
+  <!-- Branch 2: 检索优化 -->
+  <line x1="500" y1="90" x2="400" y2="130" stroke="#3b82f6" stroke-width="2"/>
+  <rect x="300" y="130" width="200" height="36" rx="6" fill="#1a2a3a" stroke="#3b82f6" stroke-width="1.5"/>
+  <text class="st" x="400" y="153" text-anchor="middle" font-weight="bold"> 检索优化</text>
+
+  <line x1="400" y1="166" x2="330" y2="200" stroke="#3b82f6" stroke-width="1" opacity="0.5"/>
+  <line x1="400" y1="166" x2="470" y2="200" stroke="#3b82f6" stroke-width="1" opacity="0.5"/>
+
+  <rect x="260" y="200" width="140" height="30" rx="4" fill="#161a2a" stroke="#3b82f6" stroke-width="1"/>
+  <text class="st2" x="330" y="220" text-anchor="middle">08 · 重排序</text>
+
+  <rect x="400" y="200" width="140" height="30" rx="4" fill="#161a2a" stroke="#3b82f6" stroke-width="1"/>
+  <text class="st2" x="470" y="220" text-anchor="middle">09 · 相关段落提取</text>
+
+  <rect x="260" y="240" width="140" height="30" rx="4" fill="#161a2a" stroke="#3b82f6" stroke-width="1"/>
+  <text class="st2" x="330" y="260" text-anchor="middle">10 · 上下文压缩</text>
+
+  <rect x="400" y="240" width="140" height="30" rx="4" fill="#161a2a" stroke="#3b82f6" stroke-width="1"/>
+  <text class="st2" x="470" y="260" text-anchor="middle">16 · 融合检索</text>
+
+  <!-- Branch 3: 查询优化 -->
+  <line x1="500" y1="90" x2="650" y2="130" stroke="#a855f7" stroke-width="2"/>
+  <rect x="550" y="130" width="200" height="36" rx="6" fill="#2a1a3a" stroke="#a855f7" stroke-width="1.5"/>
+  <text class="st" x="650" y="153" text-anchor="middle" font-weight="bold">💡 查询优化</text>
+
+  <line x1="650" y1="166" x2="580" y2="200" stroke="#a855f7" stroke-width="1" opacity="0.5"/>
+  <line x1="650" y1="166" x2="720" y2="200" stroke="#a855f7" stroke-width="1" opacity="0.5"/>
+
+  <rect x="510" y="200" width="140" height="30" rx="4" fill="#20162a" stroke="#a855f7" stroke-width="1"/>
+  <text class="st2" x="580" y="220" text-anchor="middle">07 · 查询转换</text>
+
+  <rect x="650" y="200" width="140" height="30" rx="4" fill="#20162a" stroke="#a855f7" stroke-width="1"/>
+  <text class="st2" x="720" y="220" text-anchor="middle">19 · 假设文档嵌入(HyDE)</text>
+
+  <rect x="510" y="240" width="140" height="30" rx="4" fill="#20162a" stroke="#a855f7" stroke-width="1"/>
+  <text class="st2" x="580" y="260" text-anchor="middle">12 · 自适应检索</text>
+
+  <rect x="650" y="240" width="140" height="30" rx="4" fill="#20162a" stroke="#a855f7" stroke-width="1"/>
+  <text class="st2" x="720" y="260" text-anchor="middle">13 · 自适应 RAG</text>
+
+  <!-- Branch 4: 架构创新 -->
+  <line x1="500" y1="90" x2="870" y2="130" stroke="#f59e0b" stroke-width="2"/>
+  <rect x="770" y="130" width="200" height="36" rx="6" fill="#3a2a1a" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="st" x="870" y="153" text-anchor="middle" font-weight="bold">🏗️ 架构创新</text>
+
+  <line x1="870" y1="166" x2="800" y2="200" stroke="#f59e0b" stroke-width="1" opacity="0.5"/>
+  <line x1="870" y1="166" x2="940" y2="200" stroke="#f59e0b" stroke-width="1" opacity="0.5"/>
+
+  <rect x="730" y="200" width="140" height="30" rx="4" fill="#2a2016" stroke="#f59e0b" stroke-width="1"/>
+  <text class="st2" x="800" y="220" text-anchor="middle">17 · 图 RAG</text>
+
+  <rect x="870" y="200" width="120" height="30" rx="4" fill="#2a2016" stroke="#f59e0b" stroke-width="1"/>
+  <text class="st2" x="930" y="220" text-anchor="middle">18 · 分层检索</text>
+
+  <rect x="730" y="240" width="140" height="30" rx="4" fill="#2a2016" stroke="#f59e0b" stroke-width="1"/>
+  <text class="st2" x="800" y="260" text-anchor="middle">15 · 多模态 RAG</text>
+
+  <rect x="870" y="240" width="120" height="30" rx="4" fill="#2a2016" stroke="#f59e0b" stroke-width="1"/>
+  <text class="st2" x="930" y="260" text-anchor="middle">06 · 文档增强 RAG</text>
+
+  <!-- Bottom: 动态优化 -->
+  <line x1="500" y1="90" x2="500" y2="310" stroke="#ef4444" stroke-width="2"/>
+  <rect x="380" y="310" width="240" height="36" rx="6" fill="#3a1a1a" stroke="#ef4444" stroke-width="1.5"/>
+  <text class="st" x="500" y="333" text-anchor="middle" font-weight="bold">🔄 动态优化与自进化</text>
+
+  <line x1="500" y1="346" x2="200" y2="380" stroke="#ef4444" stroke-width="1" opacity="0.5"/>
+  <line x1="500" y1="346" x2="400" y2="380" stroke="#ef4444" stroke-width="1" opacity="0.5"/>
+  <line x1="500" y1="346" x2="600" y2="380" stroke="#ef4444" stroke-width="1" opacity="0.5"/>
+  <line x1="500" y1="346" x2="800" y2="380" stroke="#ef4444" stroke-width="1" opacity="0.5"/>
+
+  <rect x="120" y="380" width="160" height="30" rx="4" fill="#2a1616" stroke="#ef4444" stroke-width="1"/>
+  <text class="st2" x="200" y="400" text-anchor="middle">11 · 反馈回路机制</text>
+
+  <rect x="310" y="380" width="180" height="30" rx="4" fill="#2a1616" stroke="#ef4444" stroke-width="1"/>
+  <text class="st2" x="400" y="400" text-anchor="middle">20 · 动态纠正 RAG(CRAG)</text>
+
+  <rect x="500" y="380" width="200" height="30" rx="4" fill="#2a1616" stroke="#ef4444" stroke-width="1"/>
+  <text class="st2" x="600" y="400" text-anchor="middle">21 · 强化学习增强 RAG</text>
+
+  <rect x="710" y="380" width="180" height="30" rx="4" fill="#2a1616" stroke="#ef4444" stroke-width="1"/>
+  <text class="st2" x="800" y="400" text-anchor="middle">04 · 上下文增强检索</text>
+
+  <!-- More items row 2 -->
+  <rect x="120" y="420" width="160" height="30" rx="4" fill="#2a1616" stroke="#ef4444" stroke-width="1"/>
+  <text class="st2" x="200" y="440" text-anchor="middle">01 · 基础 RAG</text>
+
+  <rect x="310" y="420" width="180" height="30" rx="4" fill="#2a1616" stroke="#ef4444" stroke-width="1"/>
+  <text class="st2" x="400" y="440" text-anchor="middle">20 · 动态纠正 RAG</text>
+
+  <!-- Legend -->
+  <rect x="30" y="490" width="940" height="170" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text class="st" x="50" y="515" font-weight="bold">学习路线建议</text>
+
+  <text class="st2" x="50" y="540">🟢 入门阶段（Week 1-2）</text>
+  <text class="st2" x="50" y="558">  01 基础RAG → 02 语义分块 → 03 切块大小 → 08 重排序 → 07 查询转换</text>
+
+  <text class="st2" x="50" y="585">🔵 进阶阶段（Week 3-4）</text>
+  <text class="st2" x="50" y="603">  04 上下文增强 → 10 上下文压缩 → 16 融合检索 → 19 HyDE → 12 自适应检索</text>
+
+  <text class="st2" x="50" y="630">🟡 高级阶段（Week 5-6）</text>
+  <text class="st2" x="50" y="648">  17 图RAG → 18 分层检索 → 15 多模态RAG → 14 命题分块 → 06 文档增强RAG</text>
+</svg>
+<figcaption>图 3：21 篇 RAG 教程全景地图——按基础组件、检索优化、查询优化、架构创新、动态优化五大方向组织</figcaption>
+</figure>
+
+<!-- ===== 7. TECH CATEGORIES ===== -->
+<h2 class="section-title" id="tech-categories"><span class="icon">📚</span> 技术专题分类解读</h2>
+
+<p>以下是本系列涵盖的核心技术，按功能维度分为四大类：</p>
+
+<h3>📦 数据预处理</h3>
+<div class="card-grid">
+  <div class="card">
+    <span class="tag tag-basic">基础</span>
+    <h4>语义分块（Semantic Chunking）</h4>
+    <p>采用百分位法、标准差法和 IQR 法进行语义感知的文本分割，相比固定长度分块可提升 15-20% 的检索准确率。</p>
+  </div>
+  <div class="card">
+    <span class="tag tag-basic">基础</span>
+    <h4>上下文分块头（Contextual Chunk Headers）</h4>
+    <p>为每个文本块添加文档标题/章节头信息，解决传统分块导致的上下文丢失问题。</p>
+  </div>
+  <div class="card">
+    <span class="tag tag-advanced">进阶</span>
+    <h4>命题分块（Proposition Chunking）</h4>
+    <p>将文档分解为原子性事实陈述，实现更精确的细粒度检索。</p>
+  </div>
+</div>
+
+<h3> 检索优化</h3>
+<div class="card-grid">
+  <div class="card">
+    <span class="tag tag-advanced">进阶</span>
+    <h4>融合检索（Fusion Retrieval）</h4>
+    <p>结合向量搜索与 BM25 关键词检索，通过分数归一化和加权融合提升召回率。</p>
+  </div>
+  <div class="card">
+    <span class="tag tag-advanced">进阶</span>
+    <h4>上下文压缩（Contextual Compression）</h4>
+    <p>对检索结果进行二次过滤，保留与查询最相关的 30-50% 内容，降低噪声干扰。</p>
+  </div>
+  <div class="card">
+    <span class="tag tag-basic">基础</span>
+    <h4>重排序（Reranking）</h4>
+    <p>使用 Cross-Encoder 对初步检索结果进行精细排序，显著提升 Top-K 精度。</p>
+  </div>
+</div>
+
+<h3>💡 查询优化</h3>
+<div class="card-grid">
+  <div class="card">
+    <span class="tag tag-basic">基础</span>
+    <h4>查询转换（Query Transformations）</h4>
+    <p>实现查询重写、退步提示和子查询分解三种技术，使原始查询的意图表达更充分。</p>
+  </div>
+  <div class="card">
+    <span class="tag tag-advanced">进阶</span>
+    <h4>假设文档嵌入（HyDE）</h4>
+    <p>通过 LLM 生成假设性答案文档作为查询扩展，有效解决短查询与长文档的语义鸿沟。</p>
+  </div>
+  <div class="card">
+    <span class="tag tag-dynamic">动态</span>
+    <h4>自适应检索（Adaptive Retrieval）</h4>
+    <p>根据问题类型（事实型/分析型/观点型）动态选择最优检索策略。</p>
+  </div>
+</div>
+
+<h3>🔄 动态优化与自进化</h3>
+<div class="card-grid">
+  <div class="card">
+    <span class="tag tag-dynamic">动态</span>
+    <h4>自优化 RAG（Self-RAG）</h4>
+    <p>引入检索必要性判断、文档相关性评估等 6 个反射点，实现生成过程的自监督。</p>
+  </div>
+  <div class="card">
+    <span class="tag tag-dynamic">动态</span>
+    <h4>纠错 RAG（CRAG）</h4>
+    <p>当本地知识不足时自动触发网络搜索，动态校正检索结果。</p>
+  </div>
+  <div class="card">
+    <span class="tag tag-dynamic">动态</span>
+    <h4>强化学习 RAG（RL RAG）</h4>
+    <p>基于用户反馈构建奖励模型，持续优化检索和生成策略。</p>
+  </div>
+</div>
+
+<!-- ===== 8. USE CASES ===== -->
+<h2 class="section-title" id="use-cases"><span class="icon">🎯</span> 典型应用场景</h2>
+
+<table>
+  <thead>
+    <tr><th>场景</th><th>核心技术组合</th><th>解决的关键问题</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>知识密集型 QA</strong></td>
+      <td>文档增强 + 命题分块 + HyDE</td>
+      <td>复杂事实型查询的精确回答，如"特斯拉2023年毛利率"</td>
+    </tr>
+    <tr>
+      <td><strong>多模态内容分析</strong></td>
+      <td>多模态 RAG + 图像 Captioning</td>
+      <td>科研论文图表理解、医疗影像报告解析</td>
+    </tr>
+    <tr>
+      <td><strong>动态知识系统</strong></td>
+      <td>反馈循环 + 自适应检索 + CRAG</td>
+      <td>客服场景中持续优化 FAQ，处理时效性数据</td>
+    </tr>
+    <tr>
+      <td><strong>企业知识图谱</strong></td>
+      <td>Graph RAG + 分层索引</td>
+      <td>大规模文档集（十亿级）的关联概念检索</td>
+    </tr>
+    <tr>
+      <td><strong>代码助手</strong></td>
+      <td>语义分块 + 融合检索 + 重排序</td>
+      <td>代码仓库中的精准函数/类检索与补全</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== 9. SUMMARY ===== -->
+<h2 class="section-title" id="summary"><span class="icon"></span> 总结与学习路线建议</h2>
+
+<p>
+  RAG 是当前大语言模型落地应用的<strong>最关键工程范式</strong>之一。它巧妙地绕开了重新训练模型的高昂成本，
+  通过在推理时注入外部知识，实现了<strong>知识可更新、来源可追溯、幻觉可控制</strong>的增强生成系统。
+</p>
+
+<div class="callout callout-success">
+  <div class="callout-title">📌 本系列的核心价值</div>
+  不同于市面上泛泛而谈的 RAG 教程，本系列以 <strong>21 个可运行的 Jupyter Notebook</strong> 为载体，
+  每个专题都包含完整的代码实现、效果对比和可视化分析。从最基础的 RAG 流水线到 Self-RAG、RL-RAG 等前沿技术，
+  循序渐进地带你构建工业级 RAG 系统。
+</div>
+
+<h3>推荐学习路线</h3>
+
+<div class="chart-container">
+  <canvas id="learningPathChart"></canvas>
+</div>
+
+<p>
+  建议按照 <strong>基础 → 进阶 → 高级 → 动态优化</strong> 的顺序学习，每个阶段配合实际项目练习。
+  从下一篇「<a href="#">基础 RAG</a>」开始，我们将手把手搭建第一个完整的 RAG 系统。
+</p>
+
+<div class="callout callout-info">
+  <div class="callout-title"> 下一篇预告</div>
+  <strong>第 1 篇：基础 RAG</strong> —— 使用 LangChain + FAISS + OpenAI 搭建第一个端到端 RAG 系统，
+  理解文档加载、分块、向量化、检索、生成的完整流程。
+</div>
+
+</div><!-- .content -->
+</div><!-- .container -->
+
+<footer class="footer">
+  <p>RAG 从零到精通 · 系列教程前言 · 基于 Jupyter Notebook 实验生成</p>
+  <p style="margin-top:8px;">使用 Python · LangChain · FAISS · OpenAI API 构建</p>
+</footer>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script>
+// Syntax highlighting
+hljs.highlightAll();
+
+// ===== Chart 1: RAG vs Naive LLM Comparison =====
+new Chart(document.getElementById('comparisonChart'), {
+  type: 'radar',
+  data: {
+    labels: ['知识时效性', '私有知识支持', '幻觉控制', '答案可追溯', '更新成本', '长文档处理'],
+    datasets: [
+      {
+        label: '朴素 LLM',
+        data: [20, 10, 30, 15, 20, 40],
+        backgroundColor: 'rgba(248, 81, 73, 0.1)',
+        borderColor: '#f85149',
+        borderWidth: 2,
+        pointBackgroundColor: '#f85149',
+        pointRadius: 4,
+      },
+      {
+        label: 'RAG 增强 LLM',
+        data: [90, 95, 80, 90, 90, 75],
+        backgroundColor: 'rgba(63, 185, 80, 0.1)',
+        borderColor: '#3fb950',
+        borderWidth: 2,
+        pointBackgroundColor: '#3fb950',
+        pointRadius: 4,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: {
+        labels: { color: '#e6edf3', font: { size: 13 } }
+      },
+      title: {
+        display: true,
+        text: 'RAG vs 朴素 LLM：六维能力对比（满分 100）',
+        color: '#e6edf3',
+        font: { size: 15, weight: 'bold' },
+        padding: { bottom: 20 }
+      }
+    },
+    scales: {
+      r: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { color: '#8b949e', backdropColor: 'transparent', stepSize: 20 },
+        grid: { color: 'rgba(48,54,61,0.5)' },
+        angleLines: { color: 'rgba(48,54,61,0.5)' },
+        pointLabels: { color: '#e6edf3', font: { size: 12 } }
+      }
+    }
+  }
+});
+
+// ===== Chart 2: Learning Path =====
+new Chart(document.getElementById('learningPathChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Week 1-2\n入门', 'Week 3-4\n进阶', 'Week 5-6\n高级', 'Week 7-8\n动态优化'],
+    datasets: [
+      {
+        label: '基础组件',
+        data: [5, 2, 1, 0],
+        backgroundColor: 'rgba(63,185,80,0.7)',
+        borderColor: '#3fb950',
+        borderWidth: 1,
+      },
+      {
+        label: '检索优化',
+        data: [2, 3, 1, 0],
+        backgroundColor: 'rgba(59,130,246,0.7)',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
+      },
+      {
+        label: '查询优化',
+        data: [1, 3, 1, 0],
+        backgroundColor: 'rgba(188,140,255,0.7)',
+        borderColor: '#bc8cff',
+        borderWidth: 1,
+      },
+      {
+        label: '架构创新',
+        data: [0, 1, 4, 0],
+        backgroundColor: 'rgba(245,158,11,0.7)',
+        borderColor: '#f59e0b',
+        borderWidth: 1,
+      },
+      {
+        label: '动态优化',
+        data: [0, 0, 1, 4],
+        backgroundColor: 'rgba(248,81,73,0.7)',
+        borderColor: '#f85149',
+        borderWidth: 1,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: {
+        labels: { color: '#e6edf3', font: { size: 12 } }
+      },
+      title: {
+        display: true,
+        text: '8 周学习路线：各阶段技术专题分布',
+        color: '#e6edf3',
+        font: { size: 15, weight: 'bold' },
+        padding: { bottom: 20 }
+      }
+    },
+    scales: {
+      x: {
+        stacked: true,
+        ticks: { color: '#e6edf3', font: { size: 12 } },
+        grid: { color: 'rgba(48,54,61,0.3)' }
+      },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: {
+          color: '#8b949e',
+          stepSize: 1,
+          callback: function(v) { return v + ' 篇'; }
+        },
+        grid: { color: 'rgba(48,54,61,0.3)' },
+        title: { display: true, text: '专题数量', color: '#8b949e' }
+      }
+    }
+  }
+});
+</script>
+
+</body>
+</html>

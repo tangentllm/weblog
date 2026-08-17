@@ -1,0 +1,16 @@
+{
+  "public": ".",
+  "rewrites": [
+    { "source": "categories", "destination": "/index.html" },
+    { "source": "categories/**", "destination": "/index.html" },
+    { "source": "tags", "destination": "/index.html" },
+    { "source": "tags/**", "destination": "/index.html" },
+    { "source": "about", "destination": "/index.html" },
+    { "source": "about/**", "destination": "/index.html" },
+    { "source": "projects", "destination": "/index.html" },
+    { "source": "projects/**", "destination": "/index.html" },
+    { "source": "category/**", "destination": "/index.html" },
+    { "source": "tag/**", "destination": "/index.html" },
+    { "source": "project/**", "destination": "/index.html" }
+  ]
+}
