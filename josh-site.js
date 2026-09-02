@@ -3657,12 +3657,14 @@ function joshAboutGridMarkup() {
       <svg class="josh-about-quote-mark josh-about-quote-mark--open" width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M10 11H6C6 7.5 7.5 6 10 5L11 7C9.5 7.5 9 8 9 9H10C11 9 12 10 12 11V13C12 14 11 15 10 15H8C7 15 6 14 6 13V11ZM20 11H16C16 7.5 17.5 6 20 5L21 7C19.5 7.5 19 8 19 9H20C21 9 22 10 22 11V13C22 14 21 15 20 15H18C17 15 16 14 16 13V11Z" fill="currentColor"/>
       </svg>
-      <button type="button" class="josh-about-name-btn" id="josh-about-name-btn" aria-label="播放一句激励名言。">
-        <span>Do what you can't.</span>
-        ${joshAboutNameSpeakMarkup()}
-      </button>
-      <p>— Kathrine Switzer</p>
-      <p class="small">做别人说不可能的事。</p>
+      <div class="josh-about-quote">
+        <button type="button" class="josh-about-name-btn" id="josh-about-name-btn" aria-label="播放一句激励名言。">
+          <span>Do what you can't.</span>
+          ${joshAboutNameSpeakMarkup()}
+        </button>
+        <p>— Kathrine Switzer</p>
+        <p class="small">做别人说不可能的事。</p>
+      </div>
       <svg class="josh-about-quote-mark josh-about-quote-mark--close" width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M14 13H18C18 16.5 16.5 18 14 19L13 17C14.5 16.5 15 16 15 15H14C13 15 12 14 12 13V11C12 10 13 9 14 9H16C17 9 18 10 18 11V13ZM4 13H8C8 16.5 6.5 18 4 19L3 17C4.5 16.5 5 16 5 15H4C3 15 2 14 2 13V11C2 10 3 9 4 9H6C7 9 8 10 8 11V13Z" fill="currentColor"/>
       </svg>

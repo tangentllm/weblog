@@ -1750,6 +1750,22 @@ html.josh-site[data-color-mode="dark"] .josh-about-flag {
 /* Name / phonetic */
 .josh-about-card--name {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 100%;
+}
+
+.josh-about-card--name .josh-about-name-btn,
+.josh-about-card--name .josh-about-quote > p {
+  width: 100%;
+}
+
+.josh-about-quote {
+  width: 100%;
+  text-align: center;
 }
 
 .josh-about-quote-mark {
