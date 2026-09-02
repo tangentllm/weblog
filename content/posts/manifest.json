@@ -18,21 +18,54 @@
     "htmlFile": "./content/posts/claude-code-best-practices.html"
   },
   {
-    "slug": "scroll-driven-animations",
-    "title": "滚动驱动动画：深入理解 `animation-timeline` API",
-    "date": "2026-04-28",
-    "readTime": "22 分钟",
+    "slug": "blog-gqa-rope",
+    "title": "深入理解 GQA 与 RoPE：LLM 推理优化的两个关键组件",
+    "date": "2026-09-01",
+    "readTime": "18 分钟",
     "category": "基础原理",
     "tags": [
-      "CSS",
-      "Animation",
-      "Scroll",
-      "animation-timeline"
+      "Transformer",
+      "GQA",
+      "RoPE",
+      "KV Cache",
+      "推理优化"
     ],
-    "cover": "./content/assets/posts/covers/scroll-driven-animations.svg",
-    "excerpt": "用原生 CSS 把关键帧动画绑定到滚动距离而非时间——从 view() 与 scroll() 入门，到 animation-range、联动时间线与 fill-mode 踩坑。",
-    "file": "./content/posts/scroll-driven-animations.md",
-    "subtitle": "探索宏大的新 `animation-timeline` API"
+    "cover": "./content/assets/posts/covers/attention.svg",
+    "excerpt": "GQA 压缩 KV Cache 显存，RoPE 编码 token 相对位置；从手撕实现讲清 LLaMA 系模型推理优化的两个核心组件。",
+    "file": "./content/posts/blog-gqa-rope.md"
+  },
+  {
+    "slug": "blog-kv-cache",
+    "title": "深入理解 KV Cache：Transformer 自回归推理的核心优化",
+    "date": "2026-08-30",
+    "readTime": "14 分钟",
+    "category": "基础原理",
+    "tags": [
+      "Transformer",
+      "KV Cache",
+      "推理优化",
+      "自回归"
+    ],
+    "cover": "./content/assets/posts/covers/transformer.svg",
+    "excerpt": "自回归生成为何每步重算历史 K/V？从朴素实现到手撕 KV Cache，讲清推理加速的核心机制与显存权衡。",
+    "file": "./content/posts/blog-kv-cache.md"
+  },
+  {
+    "slug": "reranker-training-finetune",
+    "title": "从召回到精排：用 Sentence Transformers 训练你自己的 Reranker 模型",
+    "date": "2026-08-28",
+    "readTime": "22 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "Reranker",
+      "Cross-Encoder",
+      "Sentence Transformers",
+      "微调"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Bi-encoder 召回后如何用 Cross-Encoder 精排？从数据集、损失函数到评估器，系统讲解 Sentence Transformers 训练与微调 Reranker 的完整流程。",
+    "file": "./content/posts/训练与微调Reranker模型.md"
   },
   {
     "slug": "r1-distill-medical-lora-200-steps",
