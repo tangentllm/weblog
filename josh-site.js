@@ -3,7 +3,7 @@
 /* Feature flags — set true to re-enable nav / chrome entries */
 var JOSH_SHOW_PROJECTS = false;
 var JOSH_SHOW_GITHUB = false;
-var JOSH_SHOW_POST_DATES = false;
+var JOSH_SHOW_POST_DATES = false; /* hides publication dates and read-time labels in article UI */
 
 const JOSH_MASCOT_LIGHT = 'https://www.joshwcomeau.com/images/josh/josh-happy-light.png';
 const JOSH_MASCOT_DARK = 'https://www.joshwcomeau.com/images/josh/josh-happy-dark.png';
@@ -251,6 +251,7 @@ function syncJoshSiteClass(isHome) {
   const html = document.documentElement;
   html.classList.add('josh-site');
   html.classList.toggle('josh-home-page', isHome);
+  html.classList.toggle('josh-show-post-dates', JOSH_SHOW_POST_DATES);
   syncJoshColorMode();
 }
 
@@ -1306,16 +1307,18 @@ function joshPageIntroMarkup({ label, title, description, backHref, backLabel })
 }
 
 function joshArticleMetaMarkup(post) {
-  const dateHtml = JOSH_SHOW_POST_DATES && post.date
-    ? `<time datetime="${post.date}">${formatDate(post.date)}</time>
-    <span class="josh-post-meta__dot" aria-hidden="true"></span>`
-    : '';
-  return `<p class="josh-article__meta">
-    ${dateHtml}
-    <span>${post.readTime}</span>
-    <span class="josh-post-meta__dot" aria-hidden="true"></span>
-    <span id="view-list-post-${post.slug}">…</span>
-  </p>`;
+  const parts = [];
+  if (JOSH_SHOW_POST_DATES && post.date) {
+    parts.push(`<time datetime="${post.date}">${formatDate(post.date)}</time>`);
+  }
+  if (JOSH_SHOW_POST_DATES && post.readTime) {
+    parts.push(`<span>${post.readTime}</span>`);
+  }
+  parts.push(`<span id="view-list-post-${post.slug}">…</span>`);
+  const inner = parts.map((part, index) => (
+    index === 0 ? part : `<span class="josh-post-meta__dot" aria-hidden="true"></span>${part}`
+  )).join('');
+  return `<p class="josh-article__meta">${inner}</p>`;
 }
 
 function joshArticleListItemMarkup(post, options = {}) {
@@ -1680,7 +1683,7 @@ function joshBlogCardMetaMarkup(post, options = {}) {
   if (JOSH_SHOW_POST_DATES && post.date) {
     parts.push(`<time datetime="${post.date}">${formatDate(post.date)}</time>`);
   }
-  if (post.readTime) {
+  if (JOSH_SHOW_POST_DATES && post.readTime) {
     parts.push(`<span>${post.readTime}</span>`);
   }
   if (!parts.length) return '';
@@ -4367,7 +4370,11 @@ function renderJosh404(app) {
           ${suggestPosts.map((post) => `
             <a class="josh-not-found__link" href="${Routes.post(post.slug)}">
               <p class="josh-not-found__link-title">${post.title}</p>
-              <p class="josh-not-found__link-meta">${post.category} · ${post.readTime} · <span id="view-404-post-${post.slug}">…</span></p>
+              <p class="josh-not-found__link-meta">${[
+                post.category,
+                JOSH_SHOW_POST_DATES && post.readTime ? post.readTime : '',
+                `<span id="view-404-post-${post.slug}">…</span>`,
+              ].filter(Boolean).join(' · ')}</p>
             </a>
           `).join('')}
         </div>
@@ -4610,8 +4617,8 @@ function renderJoshPost(app, slug) {
                 ${JOSH_SHOW_POST_DATES && post.date ? `<span class="josh-post-meta__sep" aria-hidden="true">·</span>
                 <span>发布于</span>
                 <time datetime="${post.date}">${formatDate(post.date)}</time>` : ''}
-                <span class="josh-post-meta__sep" aria-hidden="true">·</span>
-                <span>${post.readTime}</span>
+                ${JOSH_SHOW_POST_DATES && post.readTime ? `<span class="josh-post-meta__sep" aria-hidden="true">·</span>
+                <span>${post.readTime}</span>` : ''}
               </div>
             </header>
           </div>
