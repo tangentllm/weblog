@@ -3,6 +3,7 @@
 /* Feature flags — set true to re-enable nav / chrome entries */
 var JOSH_SHOW_PROJECTS = false;
 var JOSH_SHOW_GITHUB = false;
+var JOSH_SHOW_POST_DATES = false;
 
 const JOSH_MASCOT_LIGHT = 'https://www.joshwcomeau.com/images/josh/josh-happy-light.png';
 const JOSH_MASCOT_DARK = 'https://www.joshwcomeau.com/images/josh/josh-happy-dark.png';
@@ -614,7 +615,7 @@ function joshProjectStatusPillMarkup(project) {
 }
 
 function joshPostTailStatsMarkup(slug, options = {}) {
-  const updated = String(options.updated || '').trim();
+  const updated = JOSH_SHOW_POST_DATES ? String(options.updated || '').trim() : '';
   const updatedHtml = updated
     ? `<p class="josh-post-tail-stats__updated">最后更新于 <strong>${updated}</strong></p>`
     : '';
@@ -1305,9 +1306,12 @@ function joshPageIntroMarkup({ label, title, description, backHref, backLabel })
 }
 
 function joshArticleMetaMarkup(post) {
+  const dateHtml = JOSH_SHOW_POST_DATES && post.date
+    ? `<time datetime="${post.date}">${formatDate(post.date)}</time>
+    <span class="josh-post-meta__dot" aria-hidden="true"></span>`
+    : '';
   return `<p class="josh-article__meta">
-    <time datetime="${post.date}">${formatDate(post.date)}</time>
-    <span class="josh-post-meta__dot" aria-hidden="true"></span>
+    ${dateHtml}
     <span>${post.readTime}</span>
     <span class="josh-post-meta__dot" aria-hidden="true"></span>
     <span id="view-list-post-${post.slug}">…</span>
@@ -1673,7 +1677,7 @@ function joshBlogCardMetaMarkup(post, options = {}) {
   if (options.showCategory && post.category) {
     parts.push(`<a class="josh-blog-card__meta-link" href="${Routes.category(post.category)}">${post.category}</a>`);
   }
-  if (post.date) {
+  if (JOSH_SHOW_POST_DATES && post.date) {
     parts.push(`<time datetime="${post.date}">${formatDate(post.date)}</time>`);
   }
   if (post.readTime) {
@@ -4603,9 +4607,9 @@ function renderJoshPost(app, slug) {
               <div class="josh-post-meta" role="contentinfo" aria-label="文章元信息">
                 <span>收录于</span>
                 <a class="josh-post-meta__link" href="${Routes.category(post.category)}">${post.category}</a>
-                <span class="josh-post-meta__sep" aria-hidden="true">·</span>
+                ${JOSH_SHOW_POST_DATES && post.date ? `<span class="josh-post-meta__sep" aria-hidden="true">·</span>
                 <span>发布于</span>
-                <time datetime="${post.date}">${formatDate(post.date)}</time>
+                <time datetime="${post.date}">${formatDate(post.date)}</time>` : ''}
                 <span class="josh-post-meta__sep" aria-hidden="true">·</span>
                 <span>${post.readTime}</span>
               </div>
