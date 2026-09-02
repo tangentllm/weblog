@@ -297,24 +297,17 @@ function joshLogoMarkup(homeHref) {
   </a>`;
 }
 
-let joshThemeToggleUid = 0;
-
 function joshThemeToggleMarkup() {
-  const uid = `jtt-${++joshThemeToggleUid}`;
-  const sunDots = [
-    [22, 12, 280], [19.0711, 19.0711, 200], [12, 22, 120], [4.9289, 19.0711, 40],
-    [2, 12, 0], [4.9289, 4.9289, 80], [12, 2, 160], [19.0711, 4.9289, 240],
-  ].map(([cx, cy, delay]) => (
-    `<circle class="josh-theme-toggle__orbit-dot" cx="${cx}" cy="${cy}" r="1.5" style="--enter-delay:${delay}ms"/>`
-  )).join('');
-  return `<button type="button" class="josh-icon-btn josh-theme-toggle" aria-label="切换主题">
-    <svg class="josh-theme-toggle__glyph" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-      <mask id="${uid}-sun-dot"><rect x="-10" y="-10" width="44" height="44" fill="#FFF"/><circle r="6" cx="12" cy="12" fill="#000"/></mask>
-      <mask id="${uid}-moon-cut"><rect x="0" y="0" width="24" height="24" fill="#FFF"/><circle cx="12" cy="-4" r="8" fill="#000"/></mask>
-      <mask id="${uid}-moon-cres"><rect x="0" y="0" width="24" height="24" fill="#000"/><circle r="7" cx="12" cy="12" fill="#FFF"/></mask>
-      <g class="josh-theme-toggle__sun" mask="url(#${uid}-sun-dot)">${sunDots}</g>
-      <g class="josh-theme-toggle__moon-cut" mask="url(#${uid}-moon-cut)"><circle cx="12" cy="12" stroke="currentColor" fill="none" r="6"/></g>
-      <g class="josh-theme-toggle__moon-cres" mask="url(#${uid}-moon-cres)"><circle cx="12" cy="-4" r="8" stroke="currentColor" fill="none"/></g>
+  return `<button type="button" class="josh-icon-btn josh-theme-toggle" aria-label="切换主题" title="切换主题">
+    <svg class="josh-theme-toggle__icon josh-theme-toggle__sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2"/><path d="M12 20v2"/>
+      <path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/>
+      <path d="M2 12h2"/><path d="M20 12h2"/>
+      <path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+    </svg>
+    <svg class="josh-theme-toggle__icon josh-theme-toggle__moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
     </svg>
   </button>`;
 }

@@ -511,25 +511,12 @@ function initJoshPostHeart(scope, slug) {
   });
 }
 
-function joshReplayThemeToggleEnter(btn) {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  btn.querySelectorAll('.josh-theme-toggle__orbit-dot').forEach((dot) => {
-    dot.classList.remove('josh-theme-toggle__orbit-dot--enter');
-    void dot.offsetWidth;
-    dot.classList.add('josh-theme-toggle__orbit-dot--enter');
-  });
-}
-
 function initJoshThemeToggles(scope) {
   scope.querySelectorAll('.josh-theme-toggle').forEach((btn) => {
-    btn.querySelectorAll('.josh-theme-toggle__orbit-dot').forEach((dot) => {
-      dot.classList.add('josh-theme-toggle__orbit-dot--enter');
-    });
     btn.addEventListener('click', () => {
       if (typeof toggleTheme === 'function') {
         toggleTheme();
       }
-      joshReplayThemeToggleEnter(btn);
       joshPlaySound('toggle');
     });
   });
