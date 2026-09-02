@@ -1975,25 +1975,25 @@ const JOSH_ABOUT_CUTOUT_LIGHT_PATH = 'content/assets/about-cutout-ceramic-light.
 function joshAboutArcUnits() {
   return [
     {
-      value: '10+',
+      value: 'RAG',
       width: '2.75rem',
-      prefix: '',
-      suffix: '年，都在跟交付打交道。',
-      detail: '性能、架构、上线后的告警——先问「会不会在用户那边爆」。',
+      prefix: '深耕 ',
+      suffix: '：检索链路要能进生产。',
+      detail: '向量、关键词、Rerank——先问上线后的召回和延迟。',
     },
     {
-      value: '2015',
+      value: 'Agent',
       width: '3.25rem',
-      prefix: '',
-      suffix: '年入行，从客户端开始。',
-      detail: 'UI、稳定性、版本节奏，在那套环境里磨出来的习惯。',
+      prefix: '专注 ',
+      suffix: '：工具调用要可追溯。',
+      detail: '规划、执行、回传——每一步都得能复盘。',
     },
     {
-      value: '2024',
-      width: '3.25rem',
-      prefix: '',
-      suffix: '年转向 LLM 应用。',
-      detail: 'Demo 能跑不算数；第一次被灰度里的 P95 曲线教育。',
+      value: '推理',
+      width: '2.75rem',
+      prefix: '关注 ',
+      suffix: '链路：延迟和成本要可量化。',
+      detail: 'Demo 能跑不算数；灰度里的 P95 曲线才说话。',
     },
   ];
 }
@@ -2141,7 +2141,7 @@ function joshAboutHeroMarkup({ title, paragraphs, activeHref }) {
   </div>`;
 }
 
-const JOSH_ABOUT_AUTHOR_GEO = { lat: 22.5431, lon: 114.0579, city: '深圳' };
+const JOSH_ABOUT_AUTHOR_GEO = { lat: 22.5431, lon: 114.0579, city: JOSH_ABOUT_AUTHOR_CITY };
 const JOSH_ABOUT_LEAFLET_VERSION = '1.9.4';
 // Leaflet sets SVG stroke attributes directly — use hex/rgb literals, not hsl()/oklch() tokens.
 const JOSH_ABOUT_MAP_ROUTE_COLORS = {
@@ -2752,8 +2752,8 @@ function joshAboutCatMarkup() {
   </button>
   <div class="josh-about-cat-body">
     <img class="josh-about-cat-head" src="https://www.joshwcomeau.com/images/star-cat-head.svg" alt="" width="150" height="150">
-    <p>十年客户端，两年 LLM。路还长。</p>
-    <p class="small">2014 入行 → 2024 转型 → 现在，还在写代码、画交互图。</p>
+    <p>大模型应用，越挖越深。</p>
+    <p class="small">写代码、画交互图、跟进新论文——新品种鱼，值得多试几竿。</p>
   </div>
   <button type="button" class="josh-about-cat-pet" id="josh-about-cat-btn" aria-label="Illustration of a cat. Triggering this button pets the cat. This is a purely cosmetic effect.">
     ${joshAboutCatMainSvg()}
@@ -2862,7 +2862,7 @@ function joshAboutArcMarkup() {
   const unit = joshAboutArcUnits()[0];
   return `${joshAboutTallFigureMarkup()}
   <div class="josh-about-arc-copy" id="josh-about-arc-copy">
-    <p><strong class="josh-about-focus-line"><span id="josh-about-arc-prefix">${unit.prefix}</span><button type="button" class="josh-about-focus-btn" id="josh-about-arc-btn" aria-label="切换职业里程碑：工程年限、入行年份、转型年份。" style="width:${unit.width}"><span class="josh-about-focus-btn__value josh-about-swap-text" id="josh-about-arc-value">${unit.value}</span></button><span id="josh-about-arc-suffix">${unit.suffix}</span></strong></p>
+    <p><strong class="josh-about-focus-line"><span id="josh-about-arc-prefix">${unit.prefix}</span><button type="button" class="josh-about-focus-btn" id="josh-about-arc-btn" aria-label="切换关注方向：RAG、Agent、推理链路。" style="width:${unit.width}"><span class="josh-about-focus-btn__value josh-about-swap-text" id="josh-about-arc-value">${unit.value}</span></button><span id="josh-about-arc-suffix">${unit.suffix}</span></strong></p>
   </div>`;
 }
 
@@ -3590,7 +3590,7 @@ function joshAboutGridMarkup() {
     <article class="josh-about-card josh-about-card--job" style="--josh-about-area: job">
       <img class="josh-about-job-mascot josh-about-job-mascot--react" src="https://www.joshwcomeau.com/images/newsletter/joy-of-react-mascot.png" alt="" width="260" height="228">
       <img class="josh-about-job-mascot josh-about-job-mascot--css" src="https://www.joshwcomeau.com/images/css-for-js-mascot-light.png" alt="" width="200" height="178">
-      <p class="josh-about-job-lead">工作室做 LLM 落地；博客和 side project，是我一直对外说话的地方。</p>
+      <p class="josh-about-job-lead">博客是主要的公开输出；side project 和踩坑复盘，都写在这里。</p>
       <p>写给已经会调模型、还想知道 <strong>为什么这样设计、踩坑后怎么改</strong> 的人——不是入门课，也不是软文。</p>
       <p>目前沉淀了 <em><span class="josh-about-stat" id="josh-about-stat" data-target="${postCount}">0</span> 篇</em> 长文。</p>
       ${joshAboutJobCategoriesMarkup()}
@@ -4319,7 +4319,7 @@ function renderJoshProjectDetail(app, slug) {
 function renderJoshAbout(app) {
   updateMetaTags({
     title: '关于我 - Tangentllm Notes',
-    description: '深圳客户端出身，转向 LLM 应用落地。博客记录上线前后的判断与踩坑复盘。',
+    description: '目前专注大模型应用开发：RAG、Agent 与推理链路。博客记录上线前后的判断、踩坑与迭代复盘。',
     url: absolutePageUrl('about'),
     type: 'website',
   });
@@ -4327,9 +4327,9 @@ function renderJoshAbout(app) {
   const heroHtml = joshAboutHeroMarkup({
     title: '你好，我是 Tangentllm。',
     paragraphs: [
-      '人在深圳，做了十年客户端。2024 年开始把主要精力放在大模型应用上——RAG、Agent、推理链路，能进生产的那种。',
-      '平时通过个人工作室接一些落地项目；博客是我主要的公开输出，side project 也会写在这里。',
-      '我不写「十分钟上手」类教程。更想留下的是：当时怎么判断、上线后哪里出了问题、以及为什么最后改成现在这样。',
+      '目前专注于大模型应用开发——RAG、Agent、推理链路，做能进生产、能长期维护的系统。',
+      '博客是主要的公开输出：side project、踩坑复盘，以及从方案到上线的完整思考都会写在这里。不写「十分钟上手」类教程，更想留下的是——当时为什么这样判断、上线后哪里出了问题、以及最后为什么改成现在这样。',
+      '对大模型开发保持持续热情，也看好它在真实业务里的长期空间。愿意投入额外精力跟进新论文、新框架与新范式；遇到难题会追到根因，直到跑通、跑稳、跑得久。',
     ],
     activeHref: Routes.about(),
   });
