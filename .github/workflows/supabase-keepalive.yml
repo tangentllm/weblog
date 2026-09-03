@@ -1,0 +1,25 @@
+name: Supabase keepalive
+
+on:
+  schedule:
+    # 每天 03:00 UTC（北京时间 11:00）
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ping Supabase (read-only RPC)
+        run: node scripts/supabase-keepalive.mjs
