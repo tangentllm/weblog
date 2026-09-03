@@ -32,3 +32,13 @@ SELECT slug, kind, count, updated_at FROM public.page_views ORDER BY count DESC;
 - Actions 页可手动 **Run workflow** 立即保活
 
 合并到 `main` 后，在 GitHub → Actions → **Supabase keepalive** 确认已启用 scheduled runs。
+
+## Umami（国家 / 来源 / 设备）
+
+文章真实 PV 仍看 Supabase。国家分布、来源、设备走 [Umami Cloud](https://cloud.umami.is)（Hobby 免费档，数据保留 6 个月）。
+
+- Website ID 写在 `index.html` 的 `siteMeta.umamiWebsiteId`
+- 仅在 `tangentllm.github.io` 上报（本地预览不计）
+- SPA 路由切换会单独记一次 pageview
+
+部署后打开线上任意页面，再在 Umami 后台看实时访问。

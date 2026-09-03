@@ -267,6 +267,9 @@ const siteMeta = {
   viewCounterEndpoint: '',
   /** GitHub Pages 子路径；根域名部署时改为 '' */
   siteBasePath: '/weblog',
+  /** Umami Cloud：国家/来源/设备；仅统计 tangentllm.github.io，SPA 路由手动上报 */
+  umamiWebsiteId: '7e37f7ba-5599-4c36-9c97-3cc267b56f53',
+  umamiScriptSrc: 'https://cloud.umami.is/script.js',
   /** 站长验证码：在 docs/WEBMASTER_SETUP.md 查看说明，留空则不输出 meta */
   siteVerification: {
     baidu: '',
@@ -274,6 +277,43 @@ const siteMeta = {
     sogou: '',
   },
 };
+
+function installUmamiTracker() {
+  const id = String(siteMeta.umamiWebsiteId || '').trim();
+  const src = String(siteMeta.umamiScriptSrc || '').trim();
+  if (!id || !src || document.querySelector('script[data-website-id]')) return;
+  const script = document.createElement('script');
+  script.defer = true;
+  script.src = src;
+  script.dataset.websiteId = id;
+  script.dataset.autoTrack = 'false';
+  script.dataset.domains = 'tangentllm.github.io';
+  document.head.appendChild(script);
+}
+
+function trackUmamiPageview() {
+  const id = String(siteMeta.umamiWebsiteId || '').trim();
+  if (!id) return;
+  const payload = {
+    url: `${location.pathname}${location.search}`,
+    title: document.title,
+  };
+  let sent = false;
+  const send = () => {
+    if (sent) return true;
+    if (window.umami && typeof window.umami.track === 'function') {
+      window.umami.track((props) => ({ ...props, ...payload }));
+      sent = true;
+      return true;
+    }
+    return false;
+  };
+  if (send()) return;
+  window.setTimeout(send, 400);
+  window.setTimeout(send, 1500);
+}
+
+installUmamiTracker();
 
 const SITE_ORIGIN = 'https://tangentllm.github.io';
 
@@ -1380,6 +1420,7 @@ function router() {
   app.classList.remove('page-transition');
   app.offsetHeight; // 强制重排
   app.classList.add('page-transition');
+  trackUmamiPageview();
 }
 
 /* ============================

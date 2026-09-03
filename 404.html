@@ -125,6 +125,7 @@
       --bg-color: #fafaf9;
     }
 
+    /* HTML 长文：iframe 原样渲染独立 HTML */
     .html-article-page {
       max-width: none !important;
       padding-left: 0 !important;
@@ -160,7 +161,7 @@
     }
   </style>
 </head>
-<body class="dark:bg-[#050505] bg-[#fafaf9] dark:text-[#e5e5e5] text-[#1a1a1a] min-h-screen">
+<body class="min-h-screen">
 
   <!-- 加载动画 -->
   <div id="page-loader" class="josh-page-loader" aria-hidden="true">
@@ -266,6 +267,9 @@ const siteMeta = {
   viewCounterEndpoint: '',
   /** GitHub Pages 子路径；根域名部署时改为 '' */
   siteBasePath: '/weblog',
+  /** Umami Cloud：国家/来源/设备；仅统计 tangentllm.github.io，SPA 路由手动上报 */
+  umamiWebsiteId: '7e37f7ba-5599-4c36-9c97-3cc267b56f53',
+  umamiScriptSrc: 'https://cloud.umami.is/script.js',
   /** 站长验证码：在 docs/WEBMASTER_SETUP.md 查看说明，留空则不输出 meta */
   siteVerification: {
     baidu: '',
@@ -273,6 +277,43 @@ const siteMeta = {
     sogou: '',
   },
 };
+
+function installUmamiTracker() {
+  const id = String(siteMeta.umamiWebsiteId || '').trim();
+  const src = String(siteMeta.umamiScriptSrc || '').trim();
+  if (!id || !src || document.querySelector('script[data-website-id]')) return;
+  const script = document.createElement('script');
+  script.defer = true;
+  script.src = src;
+  script.dataset.websiteId = id;
+  script.dataset.autoTrack = 'false';
+  script.dataset.domains = 'tangentllm.github.io';
+  document.head.appendChild(script);
+}
+
+function trackUmamiPageview() {
+  const id = String(siteMeta.umamiWebsiteId || '').trim();
+  if (!id) return;
+  const payload = {
+    url: `${location.pathname}${location.search}`,
+    title: document.title,
+  };
+  let sent = false;
+  const send = () => {
+    if (sent) return true;
+    if (window.umami && typeof window.umami.track === 'function') {
+      window.umami.track((props) => ({ ...props, ...payload }));
+      sent = true;
+      return true;
+    }
+    return false;
+  };
+  if (send()) return;
+  window.setTimeout(send, 400);
+  window.setTimeout(send, 1500);
+}
+
+installUmamiTracker();
 
 const SITE_ORIGIN = 'https://tangentllm.github.io';
 
@@ -319,9 +360,10 @@ function sitePath(subpath = '') {
 }
 
 function absolutePageUrl(subpath = '') {
-  const p = sitePath(subpath);
-  const normalized = p.startsWith('/') ? p : `/${p}`;
-  return `${SITE_ORIGIN}${normalized}`;
+  const base = getDeployBasePath();
+  const tail = String(subpath || '').replace(/^\//, '');
+  if (!tail) return `${SITE_ORIGIN}${base ? `${base}/` : '/'}`;
+  return `${SITE_ORIGIN}${base ? `${base}/` : '/'}${tail}`;
 }
 
 const Routes = {
@@ -914,10 +956,21 @@ function resolveAssetUrl(inputUrl) {
     }
 
     if (cleaned.startsWith('/')) {
-      return new URL(cleaned, window.location.origin).toString();
+      let path = cleaned;
+      const configured = getDeployBasePath();
+      for (const prefix of [configured, '/weblog'].filter(Boolean)) {
+        if (prefix && path.startsWith(`${prefix}/`)) {
+          path = path.slice(prefix.length) || '/';
+          break;
+        }
+      }
+      const siteBase = getSiteBasePath();
+      const rel = path.replace(/^\/+/, '');
+      const deployPrefix = siteBase ? `${siteBase}/` : '/';
+      return new URL(`${deployPrefix}${rel}`, window.location.origin).toString();
     }
 
-    // 静态资源始终相对站点根（/weblog/），勿用当前文章路径 /weblog/post/slug/
+    // 静态资源始终相对站点根，勿用当前文章路径 /weblog/post/slug/
     const siteBase = getSiteBasePath();
     const prefix = siteBase ? `${siteBase}/` : '/';
     const rel = cleaned.replace(/^\/+/, '');
@@ -966,12 +1019,14 @@ function buildImageUrlCandidates(inputUrl) {
   const prefix = siteBase ? `${siteBase}/` : '/';
   const prefixedCandidate = new URL(`${prefix}${rel}`, window.location.origin).toString();
 
+  // 已是 /weblog/... 绝对站内路径时，勿再拼 prefix，避免 /weblog/weblog/... 404
   if (baseNoSlash && rel.startsWith(`${baseNoSlash}/`)) {
     push(rootCandidate);
     return Array.from(candidates);
   }
 
   push(prefixedCandidate);
+  // 本地开发（根目录 serve）可回退到无子路径；线上 GHP /weblog 部署仍以 prefixed 为准
   if (siteBase) {
     push(rootCandidate);
   } else {
@@ -1047,6 +1102,15 @@ function buildInlineCoverDataUrl(titleText) {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+function rewriteInlineAssetUrls(html) {
+  if (!html || typeof html !== 'string') return html;
+  return html.replace(/\b(src|href)=(["'])([^"']+)\2/gi, (full, attr, quote, url) => {
+    const trimmed = String(url || '').trim();
+    if (!trimmed || /^(https?:|data:|blob:|#|mailto:|tel:)/i.test(trimmed)) return full;
+    return `${attr}=${quote}${resolveAssetUrl(trimmed)}${quote}`;
+  });
+}
+
 function normalizeLoadedPost(item, markdownText, index) {
   const safeSlug = item.slug || `post-${index + 1}`;
   const fm = parsePostFrontmatter(markdownText);
@@ -1071,11 +1135,13 @@ function normalizeLoadedPost(item, markdownText, index) {
     htmlFile: isHtml ? htmlFile : '',
     content: isHtml
       ? ''
-      : (typeof joshParseJoshMarkdown === 'function'
-        ? joshParseJoshMarkdown(contentMarkdown)
-        : (typeof marked === 'undefined'
-          ? contentMarkdown
-          : marked.parse(contentMarkdown))),
+      : rewriteInlineAssetUrls(
+        typeof joshParseJoshMarkdown === 'function'
+          ? joshParseJoshMarkdown(contentMarkdown)
+          : (typeof marked === 'undefined'
+            ? contentMarkdown
+            : marked.parse(contentMarkdown)),
+      ),
   };
 }
 
@@ -1112,7 +1178,7 @@ function normalizeLoadedProject(item, markdownText, index) {
     links: typeof item.links === 'object' && item.links
       ? item.links
       : { github: '#', demo: '#', docs: '#' },
-    content: contentHtml,
+    content: rewriteInlineAssetUrls(contentHtml),
     rawMarkdown: markdownText || '',
     updated: item.updated || item.period || '',
     readTime: item.readTime || estimateReadTimeFromMarkdown(contentMarkdown),
@@ -1266,7 +1332,10 @@ async function loadProjectsFromManifest() {
 /* ============================
    路由系统
    ============================ */
+let appBootstrapped = false;
+
 function router() {
+  if (!appBootstrapped) return;
   let route = parseRoute();
   if (!JOSH_SHOW_PROJECTS && (route.type === 'projects' || route.type === 'project')) {
     history.replaceState(null, '', Routes.home());
@@ -1334,6 +1403,9 @@ function router() {
       if (typeof initJoshHeadingAnchors === 'function') initJoshHeadingAnchors(app);
       if (typeof initPostToc === 'function') initPostToc();
     }
+    if (typeof initJoshFooterMascotAnimation === 'function') {
+      initJoshFooterMascotAnimation(app);
+    }
     initLazyLoading();
   };
   requestAnimationFrame(runImmediateEnhancements);
@@ -1348,6 +1420,7 @@ function router() {
   app.classList.remove('page-transition');
   app.offsetHeight; // 强制重排
   app.classList.add('page-transition');
+  trackUmamiPageview();
 }
 
 /* ============================
@@ -1394,7 +1467,7 @@ function renderProjectDetail(app, slug) {
   renderJoshProjectDetail(app, slug);
 }
 
-// 关于页
+// 关于页（Josh about 模板 + 本地化内容）
 function renderAbout(app) {
   renderJoshAbout(app);
 }
@@ -1638,7 +1711,7 @@ function toggleTheme() {
   localStorage.setItem('theme', isDark ? 'light' : 'dark');
   if (typeof syncJoshColorMode === 'function') syncJoshColorMode();
   if (typeof updateGiscusTheme === 'function') updateGiscusTheme();
-  if (typeof joshLockThemeScroll === 'function') joshLockThemeScroll(scrollY);
+  joshLockThemeScroll(scrollY);
   if (typeof joshFinishThemeSwap === 'function') joshFinishThemeSwap();
   else html.classList.remove('josh-theme-swapping');
 }
@@ -1649,7 +1722,7 @@ function initTheme() {
   if (typeof syncJoshColorMode === 'function') syncJoshColorMode();
 }
 
-// 阅读进度条
+// 主题切换
 function updateProgressBar() {
   const bar = document.getElementById('progress-bar');
   if (!bar || getComputedStyle(bar).display === 'none') return;
@@ -1659,7 +1732,7 @@ function updateProgressBar() {
   bar.style.width = progress + '%';
 }
 
-// 滚动渐显
+// 阅读进度条
 function initReveal() {
   const pending = [...document.querySelectorAll('.reveal:not(.visible)')];
   if (pending.length === 0) return;
@@ -2617,6 +2690,7 @@ async function initApp() {
     }
     console.log('作品自动加载失败，回退内置数据。', error);
   }
+  appBootstrapped = true;
   router();
   hideLoader();
 }

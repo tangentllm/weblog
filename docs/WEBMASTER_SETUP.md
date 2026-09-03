@@ -34,7 +34,13 @@ node scripts/prerender-posts.mjs
 # 404.html 由 deploy 工作流从 index.html 复制
 ```
 
-## 4. 验证收录
+## 4. Umami 分析
+
+国家、来源、设备看 [Umami Cloud](https://cloud.umami.is)。Website ID 写在 `index.html` 的 `siteMeta.umamiWebsiteId`。域名填 `tangentllm.github.io`（不要带 `https://` 或 `/weblog`）。
+
+部署后访问线上站点，再在 Umami 实时面板确认有数据。本地预览不会上报。
+
+## 5. 验证收录
 
 - Google：[Rich Results Test](https://search.google.com/test/rich-results) 测试 `https://tangentllm.github.io/weblog/post/attention-from-scratch/`
 - 百度：搜索 `site:tangentllm.github.io`
