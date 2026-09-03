@@ -39,6 +39,6 @@ SELECT slug, kind, count, updated_at FROM public.page_views ORDER BY count DESC;
 
 - Website ID 写在 `index.html` 的 `siteMeta.umamiWebsiteId`
 - 仅在 `tangentllm.github.io` 上报（本地预览不计）
-- SPA 路由切换会单独记一次 pageview
+- 脚本自动监听 History API，SPA 换页会记 pageview
 
-部署后打开线上任意页面，再在 Umami 后台看实时访问。
+部署后打开**线上站点**（不要用 localhost），再在 Umami 看 **Views**（访问次数），不要只看 Visitors（独立访客）。首页一次打开就会打很多条 Supabase `get_page_view`，所以后台请求数会涨得很快，和 Umami 的 1 次浏览不是一回事。

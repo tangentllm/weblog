@@ -286,31 +286,8 @@ function installUmamiTracker() {
   script.defer = true;
   script.src = src;
   script.dataset.websiteId = id;
-  script.dataset.autoTrack = 'false';
   script.dataset.domains = 'tangentllm.github.io';
   document.head.appendChild(script);
-}
-
-function trackUmamiPageview() {
-  const id = String(siteMeta.umamiWebsiteId || '').trim();
-  if (!id) return;
-  const payload = {
-    url: `${location.pathname}${location.search}`,
-    title: document.title,
-  };
-  let sent = false;
-  const send = () => {
-    if (sent) return true;
-    if (window.umami && typeof window.umami.track === 'function') {
-      window.umami.track((props) => ({ ...props, ...payload }));
-      sent = true;
-      return true;
-    }
-    return false;
-  };
-  if (send()) return;
-  window.setTimeout(send, 400);
-  window.setTimeout(send, 1500);
 }
 
 installUmamiTracker();
@@ -1420,7 +1397,6 @@ function router() {
   app.classList.remove('page-transition');
   app.offsetHeight; // 强制重排
   app.classList.add('page-transition');
-  trackUmamiPageview();
 }
 
 /* ============================
