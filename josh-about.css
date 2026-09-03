@@ -1312,28 +1312,91 @@ html.josh-site[data-color-mode="dark"] .josh-about-desk-tag:hover {
   align-self: start;
 }
 
-.josh-about-card--conf .josh-about-card__inset img {
-  height: 14.875rem;
-  object-fit: cover;
-  object-position: center top;
+.josh-about-card--conf p {
+  text-align: left;
+  text-wrap: pretty;
 }
 
-.josh-about-conf-cover {
+/* Hot posts — cover left, hook + takeaway + title right */
+.josh-about-hot-posts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.josh-about-hot-posts li + li {
+  margin-top: 0.65rem;
+}
+
+.josh-about-card .josh-about-hot-post,
+.josh-about-card .josh-about-hot-post:hover {
+  text-decoration: none;
+}
+
+.josh-about-hot-post {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.35rem 0.25rem;
+  border-radius: 8px;
   color: inherit;
   text-decoration: none;
-  transition: opacity 0.25s ease;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
-.josh-about-conf-cover:hover {
-  opacity: 0.92;
+.josh-about-hot-post:hover {
+  color: var(--josh-color-primary);
+  background: color-mix(in srgb, var(--josh-color-primary) 8%, transparent);
 }
 
-.josh-about-conf-cover img {
-  transition: transform 0.45s var(--josh-spring-easing);
+.josh-about-hot-post__cover {
+  flex-shrink: 0;
+  display: block;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--josh-color-cloud-500) 25%, transparent);
 }
 
-.josh-about-conf-cover:hover img {
-  transform: scale(1.02);
+.josh-about-hot-post__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.josh-about-hot-post__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.josh-about-hot-post__hook {
+  font-size: 0.875rem;
+  font-weight: var(--josh-font-weight-medium);
+  line-height: 1.45;
+  color: var(--josh-color-text);
+  text-wrap: pretty;
+}
+
+.josh-about-hot-post__takeaway {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--josh-color-gray-700);
+  text-wrap: pretty;
+}
+
+.josh-about-hot-post__title {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--josh-color-primary);
+  text-wrap: pretty;
 }
 
 /* Map card — w11cvrps / m1tnw1tv */

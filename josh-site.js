@@ -1956,8 +1956,6 @@ const JOSH_ABOUT_POST_HOOKS = {
   },
 };
 
-const JOSH_ABOUT_CONF_COVER = 'https://www.joshwcomeau.com/images/josh-grabby-hands.jpg';
-
 const JOSH_ABOUT_TOPIC_FALLBACK = ['RAG', 'Transformer', 'RLHF', 'Agent'];
 
 const JOSH_ABOUT_DRUM_PADS = [
@@ -2602,12 +2600,6 @@ function joshAboutDeskMarkup() {
   return joshAboutDeskRadarMarkup();
 }
 
-function joshAboutConfCoverMarkup() {
-  return `<span class="josh-about-card__inset josh-about-conf-cover">
-    <img src="${JOSH_ABOUT_CONF_COVER}" alt="Josh presenting at CSS Day 2024" loading="lazy" width="500" height="318">
-  </span>`;
-}
-
 function joshAboutSetCatMood(catBtn, mood) {
   if (!catBtn) return;
   if (!mood || mood === 'normal') {
@@ -2752,8 +2744,8 @@ function joshAboutCatMarkup() {
   </button>
   <div class="josh-about-cat-body">
     <img class="josh-about-cat-head" src="https://www.joshwcomeau.com/images/star-cat-head.svg" alt="" width="150" height="150">
-    <p>大模型应用，越挖越深。</p>
-    <p class="small">写代码、画交互图、跟进新论文——新品种鱼，值得多试几竿。</p>
+    <p>我喜欢钓鱼。周末常去岸边坐着——等漂的时候，脑子反而最干净。</p>
+    <p class="small">看风向、换饵、调漂，跟调参差不多；上鱼是副产物。</p>
   </div>
   <button type="button" class="josh-about-cat-pet" id="josh-about-cat-btn" aria-label="Illustration of a cat. Triggering this button pets the cat. This is a purely cosmetic effect.">
     ${joshAboutCatMainSvg()}
@@ -2762,17 +2754,30 @@ function joshAboutCatMarkup() {
 
 function joshAboutHotPostsMarkup(limit = 3) {
   const postList = typeof posts !== 'undefined' ? posts : [];
+  const fallbackCover = 'content/assets/posts/covers/rag.svg';
   const items = joshAboutHotPostSlugs(limit)
     .map((slug) => postList.find((post) => post.slug === slug))
     .filter(Boolean);
   if (!items.length) return '';
-  return `<ul class="josh-about-talks">
-    ${items.map((post) => `<li>
-      <a href="${Routes.post(post.slug)}">
-        ${joshAboutTalkArrowMarkup()}
-        <span>${post.title}</span>
-      </a>
-    </li>`).join('')}
+  return `<ul class="josh-about-hot-posts">
+    ${items.map((post) => {
+      const href = Routes.post(post.slug);
+      const coverPath = post.cover || fallbackCover;
+      const cover = typeof resolveAssetUrl === 'function' ? resolveAssetUrl(coverPath) : coverPath;
+      const { hook, takeaway } = joshAboutPostHook(post);
+      return `<li>
+        <a class="josh-about-hot-post" href="${href}">
+          <span class="josh-about-hot-post__cover">
+            <img src="${cover}" alt="" loading="lazy" width="64" height="64">
+          </span>
+          <span class="josh-about-hot-post__body">
+            <span class="josh-about-hot-post__hook">${hook}</span>
+            <span class="josh-about-hot-post__takeaway">${takeaway}</span>
+            <span class="josh-about-hot-post__title">${post.title}</span>
+          </span>
+        </a>
+      </li>`;
+    }).join('')}
   </ul>`;
 }
 
@@ -3601,7 +3606,6 @@ function joshAboutGridMarkup() {
     </article>
 
     <article class="josh-about-card josh-about-card--conf" style="--josh-about-area: conf">
-      ${joshAboutConfCoverMarkup()}
       <p>想先感受我写的东西，从下面三段开始：</p>
       ${joshAboutHotPostsMarkup(3)}
     </article>
