@@ -235,10 +235,10 @@ const JOSH_HERO_ARCS_BASE = {
   height: 520,
 };
 
-/** Josh ArtProvider RESET_VALUES default (chunk 21768). */
+/** Josh ArtProvider RESET_VALUES default (chunk 21768), biased slightly coarser. */
 const JOSH_HERO_ARCS_RESET_CONFIG = {
-  lineWidth: 0,
-  lineLength: 0.25,
+  lineWidth: -0.35,
+  lineLength: 0.45,
   density: 55,
   numOfRows: 10,
   linecap: 'round',
@@ -248,20 +248,22 @@ const JOSH_HERO_ARCS_RESET_CONFIG = {
 
 /** Josh drawArt — render caps; random configs are clamped below these ceilings. */
 const JOSH_HERO_ARCS_STROKE_MAX = {
-  line: 10,
-  circle: 12,
-  dot: 8,
-  tick: 10,
-  cross: 9,
-  diamond: 9,
+  line: 12,
+  circle: 14,
+  dot: 10,
+  tick: 12,
+  cross: 11,
+  diamond: 11,
 };
-const JOSH_HERO_ARCS_STROKE_MIN = 2;
-const JOSH_HERO_ARCS_SEGMENT_MAX = 24;
+/** Floor so random draws never land on hairline grains. */
+const JOSH_HERO_ARCS_STROKE_MIN = 5;
+const JOSH_HERO_ARCS_SEGMENT_MIN = 10;
+const JOSH_HERO_ARCS_SEGMENT_MAX = 28;
 /** Max rendered grain size — prevents thick strokes from blobbing together. */
-const JOSH_HERO_ARCS_GRAIN_STROKE_CEILING = 8;
-const JOSH_HERO_ARCS_GRAIN_SEGMENT_CEILING = 20;
+const JOSH_HERO_ARCS_GRAIN_STROKE_CEILING = 11;
+const JOSH_HERO_ARCS_GRAIN_SEGMENT_CEILING = 24;
 /** Minimum clear gap (px) between grain edges along the arc. */
-const JOSH_HERO_ARCS_GRAIN_GAP_MIN = 5;
+const JOSH_HERO_ARCS_GRAIN_GAP_MIN = 4;
 const JOSH_HERO_ARCS_DENSITY_SPACING_MIN = 115;
 const JOSH_HERO_ARCS_DENSITY_SPACING_MAX = 450;
 const JOSH_HERO_ARCS_MOUSE_BUFFER = {
@@ -311,7 +313,13 @@ function joshHeroArcsGrainStrokeWidth(config) {
 }
 
 function joshHeroArcsGrainSegmentLength(config) {
-  return joshHeroArcsMapRange(config.lineLength, -1, 1, 4, JOSH_HERO_ARCS_SEGMENT_MAX);
+  return joshHeroArcsMapRange(
+    config.lineLength,
+    -1,
+    1,
+    JOSH_HERO_ARCS_SEGMENT_MIN,
+    JOSH_HERO_ARCS_SEGMENT_MAX,
+  );
 }
 
 /** Along-arc footprint used to keep center-to-center spacing above grain size + gap. */
@@ -380,13 +388,15 @@ function joshHeroArcsEnforceGrainSpacing(config) {
   return { ...config, density };
 }
 
-/** Mirrors Josh ArtProvider randomizeValues() in chunk 21768. */
+/** Mirrors Josh ArtProvider randomizeValues() in chunk 21768, biased toward coarser grains. */
 function joshHeroArcsRandomizeConfig() {
   return joshHeroArcsNormalizeConfig(
     joshHeroArcsEnforceGrainThresholds({
       ...JOSH_HERO_ARCS_BASE,
-      lineWidth: joshHeroArcsRandomFloat(-1, 1),
-      lineLength: joshHeroArcsRandomFloat(-1, 1),
+      // lineWidth: -1 = thick, 1 = thin — keep most draws on the thick half.
+      lineWidth: joshHeroArcsRandomFloat(-1, 0.25),
+      // lineLength: -1 = short, 1 = long — avoid the hairline-short end.
+      lineLength: joshHeroArcsRandomFloat(-0.2, 1),
       density: joshHeroArcsPickRandom(JOSH_HERO_ARCS_RANDOM_DENSITY),
       numOfRows: joshHeroArcsPickRandom(JOSH_HERO_ARCS_RANDOM_NUM_ROWS),
       linecap: joshHeroArcsPickRandom(JOSH_HERO_ARCS_RANDOM_LINECAP),
