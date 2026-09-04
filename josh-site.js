@@ -565,20 +565,20 @@ function processPostProseHeadings(proseHtml) {
   return { headings, contentWithIds };
 }
 
-function joshShouldShowPostCover(post) {
-  const cover = String(post?.cover || '').trim();
+function joshShouldShowPostCover(_post) {
+  // 文章详情页不展示封面：固定 2:1 + max-height 会裁切/压扁非横图
+  return false;
+}
+
+function joshShouldShowProjectCover(project) {
+  const cover = String(project?.cover || '').trim();
   if (!cover) return false;
   if (/picsum\.photos/i.test(cover)) return false;
   if (cover.startsWith('data:') && decodeURIComponent(cover).includes('Inline fallback cover')) {
     return false;
   }
-  // OG / 社交用 SVG 封面不在正文展示（对齐 joshwcomeau.com 文章页）
   if (/\.svg([?#]|$)/i.test(cover) || /\/covers\//i.test(cover)) return false;
   return true;
-}
-
-function joshShouldShowProjectCover(project) {
-  return joshShouldShowPostCover(project);
 }
 
 function joshProjectCoverSrc(project) {
