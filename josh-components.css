@@ -3673,6 +3673,11 @@ html.josh-site[data-color-mode='dark'] .josh-page--post {
   padding-bottom: 10rem;
 }
 
+/* 文章详情已隐藏封面：收紧标题带到正文的天空留白（作品详情仍保留 10rem） */
+.josh-page--post:not(.josh-page--project-detail) .josh-post-header {
+  padding-bottom: 5.5rem;
+}
+
 /* w1cg7uq0 / s1trgvaz — article-only cloud wave at title block bottom */
 .josh-post-hero__wave {
   position: absolute;
