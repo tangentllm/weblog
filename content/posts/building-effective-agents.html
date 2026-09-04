@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>别再迷信复杂框架：从 Anthropic 的实践看 Agent 系统的六种简约模式</title>
+<meta name="description" content="解读 Anthropic《Building Effective Agents》：Workflow 与 Agent 的分野，以及提示链、路由、并行、编排者和评估优化五种简约模式。">
+<link rel="canonical" href="https://tangentllm.github.io/weblog/post/building-effective-agents/">
+<style>
+  :root{
+    --bg: #faf9f6;
+    --ink: #1c1f24;
+    --ink-soft: #4a4f58;
+    --line: #dcd9d0;
+    --accent: #2b5f7a;
+    --accent-soft: #e4eef1;
+    --code-bg: #1c1f24;
+    --code-ink: #e7e9ec;
+    --code-accent: #7fb8d1;
+    --warn-bg: #f4ede3;
+    --warn-line: #c9895a;
+    --serif: Georgia, "Iowan Old Style", "Noto Serif SC", "Songti SC", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+  }
+
+  *{box-sizing:border-box;}
+
+  html{background:var(--bg);}
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .page{
+    max-width:720px;
+    margin:0 auto;
+    padding:64px 24px 96px;
+  }
+
+  header.hero{
+    margin-bottom:52px;
+  }
+
+  .kicker{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--accent);
+    letter-spacing:0.02em;
+    margin-bottom:18px;
+  }
+
+  h1{
+    font-family:var(--serif);
+    font-size:2.5rem;
+    line-height:1.2;
+    margin:0 0 20px;
+    color:var(--ink);
+    font-weight:600;
+  }
+
+  .lede{
+    font-size:1.15rem;
+    color:var(--ink-soft);
+    line-height:1.7;
+    margin:0;
+    max-width:62ch;
+  }
+
+  h2{
+    font-family:var(--serif);
+    font-size:1.65rem;
+    margin:56px 0 18px;
+    padding-top:28px;
+    border-top:1px solid var(--line);
+    font-weight:600;
+  }
+
+  h3{
+    font-family:var(--sans);
+    font-size:1.08rem;
+    font-weight:700;
+    margin:34px 0 12px;
+    color:var(--ink);
+  }
+
+  p{
+    margin:0 0 18px;
+    max-width:68ch;
+  }
+
+  ul, ol{
+    margin:0 0 18px;
+    padding-left:22px;
+    max-width:66ch;
+  }
+
+  li{
+    margin-bottom:8px;
+  }
+
+  strong{ color:var(--ink); font-weight:700; }
+
+  a{ color:var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px;}
+
+  code.inline{
+    font-family:var(--mono);
+    background:var(--accent-soft);
+    color:#1a4a5f;
+    padding:1px 6px;
+    border-radius:3px;
+    font-size:0.88em;
+  }
+
+  /* 代码块 */
+  .codeblock{
+    background:var(--code-bg);
+    color:var(--code-ink);
+    border-radius:8px;
+    margin:22px 0 26px;
+    overflow-x:auto;
+    font-family:var(--mono);
+    font-size:0.84rem;
+  }
+  .codeblock .cb-title{
+    font-family:var(--sans);
+    font-size:0.75rem;
+    color:#9aa3ad;
+    padding:10px 18px 0;
+    letter-spacing:0.02em;
+  }
+  .codeblock pre{
+    margin:0;
+    padding:14px 0 18px;
+    display:table;
+    min-width:100%;
+  }
+  .codeblock ol{
+    margin:0;
+    padding:0 20px 0 46px;
+    list-style:none;
+    counter-reset:line;
+  }
+  .codeblock li{
+    counter-increment:line;
+    position:relative;
+    white-space:pre;
+    padding-left:8px;
+    margin:0;
+    line-height:1.6;
+  }
+  .codeblock li::before{
+    content:counter(line);
+    position:absolute;
+    left:-38px;
+    width:30px;
+    text-align:right;
+    color:#5a636e;
+    font-size:0.78rem;
+  }
+  .cm{ color:#7f8b96; }
+  .kw{ color:var(--code-accent); }
+  .st{ color:#c9a26d; }
+  .fn{ color:#b9d19f; }
+
+  /* 示意图 */
+  .diagram{
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:6px;
+    padding:26px 20px;
+    margin:20px 0 28px;
+  }
+  .diagram-caption{
+    font-family:var(--mono);
+    font-size:0.75rem;
+    color:var(--ink-soft);
+    margin-top:14px;
+    text-align:center;
+  }
+  .flow-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .node{
+    border:1.5px solid var(--accent);
+    color:var(--accent);
+    font-family:var(--mono);
+    font-size:0.78rem;
+    padding:9px 14px;
+    border-radius:5px;
+    background:var(--accent-soft);
+    text-align:center;
+    line-height:1.4;
+    white-space:nowrap;
+  }
+  .node.gate{
+    border-style:dashed;
+    background:#fff;
+    color:var(--ink-soft);
+    border-color:var(--line);
+  }
+  .node.center{
+    background:var(--accent);
+    color:#fff;
+    font-weight:700;
+  }
+  .arrow{
+    font-family:var(--mono);
+    color:var(--ink-soft);
+    font-size:1rem;
+  }
+  .branch-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  .branch-cols{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .fan{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .hub-wrap{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:0;
+  }
+  .spokes{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .loop-wrap{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+  }
+  .loop-label{
+    font-family:var(--mono);
+    font-size:0.72rem;
+    color:var(--ink-soft);
+  }
+
+  /* 提示框 */
+  .callout{
+    border-left:3px solid var(--warn-line);
+    background:var(--warn-bg);
+    padding:14px 18px;
+    margin:22px 0;
+    font-size:0.95rem;
+    color:#4a3c30;
+    border-radius:0 4px 4px 0;
+  }
+  .callout strong{ color:#8a4a1f; }
+
+  .note-source{
+    font-size:0.82rem;
+    color:var(--ink-soft);
+    font-style:italic;
+    margin-top:-8px;
+    margin-bottom:20px;
+  }
+
+  table.compare{
+    width:100%;
+    border-collapse:collapse;
+    margin:20px 0 28px;
+    font-size:0.92rem;
+  }
+  table.compare th, table.compare td{
+    border:1px solid var(--line);
+    padding:10px 12px;
+    text-align:left;
+    vertical-align:top;
+  }
+  table.compare th{
+    background:#f2f0ea;
+    font-family:var(--sans);
+    font-weight:700;
+  }
+
+  footer{
+    margin-top:70px;
+    padding-top:22px;
+    border-top:1px solid var(--line);
+    font-family:var(--mono);
+    font-size:0.8rem;
+    color:var(--ink-soft);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  @media (max-width:600px){
+    .page{ padding:40px 18px 70px; }
+    h1{ font-size:1.9rem; }
+    h2{ font-size:1.35rem; }
+    .flow-row{ flex-direction:column; }
+    .arrow{ transform:rotate(90deg); }
+    .hub-wrap{ flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+<div class="page container">
+
+  <header class="hero">
+    <div class="kicker">工程实践 · Agent 架构</div>
+    <h1>别再迷信复杂框架：<br>Agent 系统的六种简约模式</h1>
+    <p class="lede">
+      解读 Anthropic 工程团队《Building Effective Agents》一文的核心方法论——
+      为什么给几十个团队做完 Agent 落地咨询之后，他们得出的结论居然是「越简单越好」。
+    </p>
+  </header>
+
+  <section>
+    <p>
+      过去两年，"Agent" 几乎成了大模型应用领域最拥挤的赛道：LangChain、AutoGPT、CrewAI、各种带图形界面的编排平台层出不穷，每家都在强调自己的编排能力有多强、多灵活。但当 Anthropic 的工程团队真正深入到几十个生产环境的客户项目里去看时，他们发现一个反直觉的事实：<strong>做得最好的团队，用的往往不是最花哨的框架，而是几个可以用几十行代码写清楚的简单模式</strong>。
+    </p>
+    <p>
+      这篇发布于 2024 年底的工程博客，与其说是在介绍一个新技术，不如说是在做一次"祛魅"——把 Agent 这个被过度营销的概念，拆解成几种可以被工程师理解、调试、组合的基础构件。这也是为什么它至今仍被广泛引用：它给出的不是某个框架的用法手册，而是一套判断"什么时候该用什么"的思维框架。本文将在原文脉络的基础上，结合具体代码示例和工程实践中的取舍，做一次更贴近开发者视角的拆解。
+    </p>
+    <p>
+      原文：<a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener noreferrer">Building effective agents</a>（Anthropic Engineering，2024-12-19）。站内相关阅读：<a href="/weblog/post/mcp-kw-guide/">深入理解 MCP</a>、<a href="/weblog/post/claude-code-best-practices/">Claude Code 最佳实践</a>。
+    </p>
+  </section>
+
+  <h2>一、Workflow 与 Agent：一个常被混用却至关重要的区分</h2>
+  <p>
+    在深入具体模式之前，有一个概念上的分野必须先厘清，因为它直接决定了你的系统该怎么设计。行业里很多人把"Agent"当作一个筐，什么都能往里装。Anthropic 的做法是把这个筐拆成两个边界清晰的子类：
+  </p>
+  <ul>
+    <li><strong>工作流（Workflow）</strong>：LLM 和工具的调用路径是<strong>预先写死在代码里</strong>的。也就是说，"第一步做什么、第二步做什么"是开发者决定的，模型只负责在每一步里把具体的内容填好。</li>
+    <li><strong>智能体（Agent）</strong>：LLM <strong>动态地</strong>决定自己下一步要做什么、要调用哪个工具、要不要继续。控制权从代码转移到了模型本身。</li>
+  </ul>
+  <p>
+    这个区分之所以重要，是因为它对应着完全不同的工程权衡。工作流可预测、可测试、成本可控，但灵活性差；Agent 灵活、能应对开放式问题，但代价是更高的延迟、更高的 token 成本，以及"模型可能在第 15 步就走偏了"的不确定性。原文给出的建议非常朴素：<strong>先问自己是否真的需要 Agent</strong>。很多时候，一次优化好的单轮 LLM 调用，配合检索和上下文示例，就已经足够解决问题——而这几乎是零成本、零风险的选项。
+  </p>
+
+  <div class="callout">
+    <strong>补充延伸：</strong>这里可以类比传统软件工程里"该不该引入微服务"的讨论。微服务解决的是规模化协作和独立部署的问题，但如果你只有一个小团队和一个不算复杂的业务，强上微服务只会带来额外的运维成本。Agent 也是一样——它是用延迟和成本，换取任务处理的灵活性和上限，这笔账不是在所有场景下都划算。
+  </div>
+
+  <h2>二、构建的基本单元：从「被增强的 LLM」到五种工作流模式</h2>
+  <p>
+    原文的核心贡献，是把生产环境中反复出现的编排模式归纳成了几种"积木"。理解它们最好的方式不是死记定义，而是看清楚每种模式里<strong>信息和控制权是怎么流动的</strong>。
+  </p>
+
+  <h3>基础单元：被增强的 LLM（Augmented LLM）</h3>
+  <p>
+    所有模式的起点，都是一个具备检索、工具调用、记忆能力的 LLM 调用。现在的模型已经能够自主生成搜索查询、挑选合适的工具、决定要记住什么信息。Anthropic 自家的 <a href="https://www.anthropic.com/news/model-context-protocol" target="_blank" rel="noopener noreferrer">Model Context Protocol（MCP）</a> 就是为了让这种"增强"标准化——开发者只需要实现一个客户端，就能接入一个不断扩张的第三方工具生态（站内长文：<a href="/weblog/post/mcp-kw-guide/">MCP 完全技术指南</a>）。后面所有的模式，都默认每一次 LLM 调用背后都带着这些能力。
+  </p>
+
+  <div class="diagram">
+    <div class="flow-row">
+      <div class="fan">
+        <div class="node gate">检索 Retrieval</div>
+        <div class="node gate">工具 Tools</div>
+        <div class="node gate">记忆 Memory</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node center">LLM</div>
+      <div class="arrow">→</div>
+      <div class="node">输出</div>
+    </div>
+    <div class="diagram-caption">augmented-llm · 所有编排模式共享的最小单元</div>
+  </div>
+
+  <h3>模式一：Prompt Chaining（提示链）</h3>
+  <p>
+    把一个任务拆成一串顺序执行的子任务，前一步的输出是后一步的输入。你还可以在中间插入程序化的检查点（原文称为 <em>gate</em>），一旦发现中途跑偏就提前终止，避免把错误一路带到最后。这本质上是用"多次简单调用"替代"一次困难调用"，用延迟换准确率。
+  </p>
+  <div class="diagram">
+    <div class="flow-row">
+      <div class="node">生成大纲</div>
+      <div class="arrow">→</div>
+      <div class="node gate">校验 Gate</div>
+      <div class="arrow">→</div>
+      <div class="node">撰写正文</div>
+      <div class="arrow">→</div>
+      <div class="node">润色定稿</div>
+    </div>
+    <div class="diagram-caption">prompt-chaining · 每一步只做一件容易的事</div>
+  </div>
+  <p>典型场景：先写营销文案，再翻译成目标语言；先出大纲、校验大纲是否符合要求，再基于大纲成文。</p>
+
+  <h3>模式二：Routing（路由）</h3>
+  <p>
+    先对输入做分类，再分发给专门优化过的下游处理流程。它的价值在于"专精"：如果你用同一个 prompt 既要处理退款请求又要处理技术支持，为了照顾一类输入而做的优化，很可能会拖累另一类的表现。路由把这种耦合拆开。
+  </p>
+  <div class="diagram">
+    <div class="flow-row">
+      <div class="node">用户输入</div>
+      <div class="arrow">→</div>
+      <div class="node center">路由分类器</div>
+      <div class="branch-cols" style="margin-left:6px;">
+        <div class="node">通用咨询</div>
+        <div class="node">退款流程</div>
+        <div class="node">技术支持</div>
+      </div>
+    </div>
+    <div class="diagram-caption">routing · 用分类换专精，也可以是「简单问题给小模型」</div>
+  </div>
+  <p>
+    一个很实用的延伸用法：把"简单/常见"的问题路由给成本更低的小模型（比如 Claude Haiku），把"疑难/罕见"的问题路由给能力更强的模型（比如 Claude Sonnet），用分类换成本。
+  </p>
+
+  <h3>模式三：Parallelization（并行化）</h3>
+  <p>
+    让多个 LLM 调用同时跑，再把结果聚合。原文区分了两种玩法：<strong>Sectioning</strong>（把任务切成互相独立的子任务并行处理）和 <strong>Voting</strong>（让同一个任务跑多次，取多数结果或综合判断）。
+  </p>
+  <div class="diagram">
+    <div class="branch-wrap">
+      <div class="node">输入任务</div>
+      <div class="arrow">↓</div>
+      <div class="branch-cols">
+        <div class="node">子任务 A</div>
+        <div class="node">子任务 B</div>
+        <div class="node">子任务 C</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node center">结果聚合</div>
+    </div>
+    <div class="diagram-caption">parallelization · sectioning 拆分任务 / voting 拆分置信度</div>
+  </div>
+  <p>
+    Sectioning 的一个很典型的应用是护栏机制：让一个模型专心生成回复，另一个模型专门审查内容是否合规——比让同一个调用既要回答又要自我审查效果更好，因为每次调用只需要专注一件事。Voting 常用于代码安全审查：多个 prompt 分别审查同一段代码是否有漏洞，用"多数发现"来降低误判和漏判。
+  </p>
+
+  <h3>模式四：Orchestrator-Workers（编排者-执行者）</h3>
+  <p>
+    这个模式和并行化在拓扑上很像，但关键区别在于<strong>子任务不是提前定义好的</strong>，而是由中枢 LLM 根据具体输入动态拆解、分派给多个 worker，再综合结果。适合那些"你没法提前预测需要拆成几步"的复杂任务——比如一次代码改动到底要动几个文件，只有看到具体需求才知道。
+  </p>
+  <div class="diagram">
+    <div class="hub-wrap">
+      <div class="node center" style="margin-right:10px;">编排者 Orchestrator</div>
+      <div class="arrow">→</div>
+      <div class="spokes" style="margin-left:10px;">
+        <div class="node">Worker：改文件 A</div>
+        <div class="node">Worker：改文件 B</div>
+        <div class="node">Worker：写测试</div>
+      </div>
+    </div>
+    <div class="diagram-caption">orchestrator-workers · 拆分方式由模型现场决定</div>
+  </div>
+
+  <h3>模式五：Evaluator-Optimizer（评估-优化）</h3>
+  <p>
+    一个 LLM 生成内容，另一个 LLM 专门负责挑毛病、给反馈，如此循环，直到评估者认为满意。这很像人类写作时"自己写、别人审、反复改"的过程。它对场景有两个前提：评估标准足够清晰；模型确实能根据反馈给出有效的改进意见。
+  </p>
+  <div class="diagram">
+    <div class="loop-wrap">
+      <div class="node">生成者 Generator</div>
+      <div class="arrow">⇄</div>
+      <div class="node gate">评估者 Evaluator</div>
+    </div>
+    <div class="diagram-caption">evaluator-optimizer · 文学翻译、多轮检索式研究都是典型场景</div>
+  </div>
+
+  <p>下面用一段简化的 Python 伪代码，把「路由 + 提示链」组合起来，展示这些模式如何落地成真正可运行的代码——注意它们本质上就是几个函数调用，完全不需要引入重型框架：</p>
+
+  <div class="codeblock">
+    <div class="cb-title">pseudo_agent_workflow.py</div>
+    <pre><ol>
+<li><span class="cm"># 路由：先分类，再分发给专门的处理链</span></li>
+<li><span class="kw">def</span> <span class="fn">route_and_handle</span>(user_query, llm_call):</li>
+<li>    category = llm_call(</li>
+<li>        prompt=<span class="st">f"将下面的问题分类为 refund / support / general：{user_query}"</span></li>
+<li>    )</li>
+<li></li>
+<li>    <span class="kw">if</span> category == <span class="st">"refund"</span>:</li>
+<li>        <span class="kw">return</span> handle_refund_chain(user_query, llm_call)</li>
+<li>    <span class="kw">elif</span> category == <span class="st">"support"</span>:</li>
+<li>        <span class="kw">return</span> handle_support_chain(user_query, llm_call)</li>
+<li>    <span class="kw">else</span>:</li>
+<li>        <span class="kw">return</span> llm_call(prompt=user_query)</li>
+<li></li>
+<li><span class="cm"># 提示链：拆成「起草 -> 校验 gate -> 定稿」三步</span></li>
+<li><span class="kw">def</span> <span class="fn">handle_refund_chain</span>(user_query, llm_call):</li>
+<li>    draft = llm_call(prompt=<span class="st">f"起草退款处理方案：{user_query}"</span>)</li>
+<li></li>
+<li>    <span class="cm"># gate：程序化检查，不合格直接打回，不进入下一步</span></li>
+<li>    <span class="kw">if</span> <span class="kw">not</span> passes_policy_check(draft):</li>
+<li>        <span class="kw">return</span> escalate_to_human(draft)</li>
+<li></li>
+<li>    final = llm_call(prompt=<span class="st">f"基于以下草案生成最终回复：{draft}"</span>)</li>
+<li>    <span class="kw">return</span> final</li>
+</ol></pre>
+  </div>
+
+  <h2>三、真正的 Agent：什么时候该把方向盘交给模型</h2>
+  <p>
+    以上五种都还是"工作流"——路径是人定的。而真正的 Agent，是当模型具备了足够的理解、规划和错误恢复能力之后，<strong>把控制权交出去</strong>：LLM 在一个循环里持续调用工具，根据环境反馈（比如工具返回结果、代码执行结果）判断下一步该做什么，直到任务完成或触碰到终止条件（比如最大迭代次数）。
+  </p>
+  <div class="diagram">
+    <div class="loop-wrap">
+      <div class="node">人类下达任务</div>
+      <div class="arrow">→</div>
+      <div class="node center">LLM 规划 + 调用工具</div>
+      <div class="arrow">→</div>
+      <div class="node gate">环境反馈</div>
+    </div>
+    <p class="diagram-caption">agent-loop · 循环直到完成，或触发人工介入的检查点</p>
+  </div>
+  <p>
+    这类系统最典型的例子，是 Anthropic 自己在 <a href="https://www.anthropic.com/research/swe-bench-sonnet" target="_blank" rel="noopener noreferrer">SWE-bench</a> 上的编码 Agent——它需要根据一份 PR 描述，自主决定要改哪些文件、怎么改，这种"步骤数量无法提前预测"的开放式问题正是 Agent 的用武之地。日常工程里更接近落地形态的，是 <a href="/weblog/post/claude-code-best-practices/">Claude Code 这类编码助手工作流</a>。但代价也很直白：更高的成本，以及错误会随着步数不断累积的风险。原文的建议是——在沙箱环境里做充分测试，并配上合理的护栏，而不是直接放到生产环境里"裸奔"。
+  </p>
+
+  <table class="compare">
+    <tr><th>维度</th><th>Workflow（工作流）</th><th>Agent（智能体）</th></tr>
+    <tr><td>控制权</td><td>在代码里，路径写死</td><td>在模型里，动态决定</td></tr>
+    <tr><td>可预测性</td><td>高，便于测试和回归</td><td>低，需要信任模型的判断</td></tr>
+    <tr><td>成本/延迟</td><td>可控</td><td>通常更高，且随步数增长</td></tr>
+    <tr><td>适用场景</td><td>子任务边界清晰的固定流程</td><td>步骤数无法预知的开放式任务</td></tr>
+  </table>
+
+  <h2>四、Agent-Computer Interface（ACI）：容易被忽视的最后一公里</h2>
+  <p>
+    原文有一个非常工程化的洞察：Agent 的失败，很多时候不是因为模型"不够聪明"，而是因为<strong>工具的接口设计得不好</strong>。这里提出了一个很有意思的类比——我们花了几十年时间打磨人机交互（HCI），却常常随手写一个 JSON schema 就把工具扔给模型。Anthropic 把这件事称为 <strong>Agent-Computer Interface（ACI）</strong>，并给出了几条具体建议：
+  </p>
+  <ul>
+    <li><strong>格式要贴近模型"自然见过"的形式。</strong>比如要求模型输出完整文件重写，比输出精确的 diff（需要提前数好改动的行号）要容易得多；在 Markdown 里写代码，也比塞进 JSON 字符串（需要转义换行和引号）更顺手。</li>
+    <li><strong>给模型留出"思考"的 token 空间</strong>，不要让它在还没想清楚之前就被迫下笔。</li>
+    <li><strong>像写给新人同事的文档一样打磨参数名和说明</strong>，边界情况和示例用法都要写清楚。</li>
+    <li><strong>用 Poka-yoke（防呆设计）思路改造参数</strong>，让模型更难犯错。</li>
+  </ul>
+  <p>
+    原文举了一个非常具体的例子：在 SWE-bench 项目里，团队发现模型在切换出根目录之后，经常在使用相对路径的工具时出错；解决办法不是优化 prompt，而是<strong>直接把工具改成强制要求绝对路径</strong>——问题就消失了。这也印证了原文的另一句话：他们在这个项目上花在打磨工具本身的时间，甚至超过了打磨整体 prompt 的时间。
+  </p>
+
+  <h2>实践启示：落地时该怎么选、怎么避坑</h2>
+  <p>
+    把上面这些模式对照到实际项目里，有几条经验值得在动手之前先想清楚：
+  </p>
+  <ol>
+    <li><strong>先用最朴素的方案验证问题。</strong>很多团队一上来就搭多 Agent 系统，结果发现问题本可以用一次带检索的单轮调用解决。复杂度应该是"因为简单方案不够用"而增加的，而不是默认起点。</li>
+    <li><strong>先用原生 API 手写，再考虑框架。</strong>原文明确建议开发者先直接调用 LLM API 把模式跑通——很多模式几十行代码就能实现。如果一定要用框架（比如 Claude Agent SDK、AWS 的 Strands），一定要搞清楚框架底层到底在做什么，"对底层实现的错误假设"是原文点名的最常见客户错误之一。框架省的是搭积木的时间，省不了你对系统行为负责的义务。</li>
+    <li><strong>把工具文档当成一等公民来打磨。</strong>参数命名、边界条件说明、示例用法，都值得像写给团队新人的文档那样反复推敲，并在 Workbench 之类的环境里跑大量样例，观察模型具体在哪里"犯迷糊"。</li>
+    <li><strong>给 Agent 设计"止损点"，而不是让它无限跑下去。</strong>最大迭代次数、关键节点的人工审核、程序化的 gate 检查——这些看似"限制自由度"的设计，恰恰是 Agent 能安全上生产的前提。</li>
+    <li><strong>透明地暴露规划过程。</strong>原文把"透明地展示 Agent 的规划步骤"列为核心原则之一，这不仅方便调试，也让人类审核者能在关键节点介入，而不是面对一个黑箱等结果。</li>
+  </ol>
+  <p class="note-source">
+    以上第 1、4 条为原文明确观点的直接提炼；第 2、3、5 条在原文基础上结合了通用工程实践做了延伸阐述。
+  </p>
+
+  <h2>总结与展望</h2>
+  <p>
+    这篇文章最有价值的地方，不是提出了什么惊天动地的新技术，而是把"Agent"这个被过度包装的词，重新还原成几种可以被工程师理解、测试、组合的基本模式。它传递的核心原则可以浓缩成三句话：<strong>保持简单、保持透明、把工具接口当成一等工程问题来对待</strong>。
+  </p>
+  <p>
+    往前看，随着模型在长上下文理解、多步推理和错误自我纠正能力上的持续进化，"Agent"和"Workflow"之间的边界大概率会继续模糊——未来的系统很可能是两者的混合体：核心链路用可预测的工作流兜底，在需要开放式探索的局部环节，才把控制权临时交给模型。而 MCP 这类标准化协议的普及，也会让"给 Agent 接工具"这件事，从每个团队各自手搓 JSON schema，逐渐变成像装应用商店插件一样即插即用。但无论工具链怎么变，"先问自己是否真的需要 Agent、再决定复杂度"这条判断准则，大概率会一直有效——这本来就不是一个关于技术细节的结论，而是一个关于工程判断力的结论。
+  </p>
+  <p>
+    延伸阅读：<a href="/weblog/post/mcp-kw-guide/">深入理解 MCP</a> · <a href="/weblog/post/claude-code-best-practices/">Claude Code 最佳实践</a> · <a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener noreferrer">Anthropic 原文</a>
+  </p>
+
+  <footer>
+    <span>作者：技术编译 / 工程解读专栏</span>
+    <span>发布日期：2026-09-03</span>
+  </footer>
+
+</div>
+</body>
+</html>

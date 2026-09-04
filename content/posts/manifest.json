@@ -1,5 +1,23 @@
 [
   {
+    "slug": "building-effective-agents",
+    "title": "别再迷信复杂框架：从 Anthropic 的实践看 Agent 系统的六种简约模式",
+    "date": "2026-09-03",
+    "readTime": "18 分钟",
+    "category": "论文解读",
+    "tags": [
+      "Agent",
+      "Anthropic",
+      "Workflow",
+      "MCP"
+    ],
+    "cover": "./content/assets/posts/covers/building-effective-agents.svg",
+    "excerpt": "解读 Anthropic《Building Effective Agents》：先分清 Workflow 与 Agent，再用提示链、路由、并行、编排者和评估优化五种可组合模式落地，而不是一上来上复杂框架。",
+    "file": "./content/posts/building-effective-agents.md",
+    "format": "html",
+    "htmlFile": "./content/posts/building-effective-agents.html"
+  },
+  {
     "slug": "claude-code-best-practices",
     "title": "Claude Code 最佳实践：2026 年 10 倍生产力指南",
     "date": "2026-05-25",

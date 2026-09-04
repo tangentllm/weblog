@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "dev": "npx serve -s . -l 3456"
+    "dev": "npx serve . -l 3456"
   },
   "devDependencies": {
     "pixelmatch": "^7.2.0",

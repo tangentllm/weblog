@@ -708,6 +708,165 @@ html.josh-site.dark .josh-prose .shiki span {
   height: auto;
 }
 
+.josh-prose .diagram-caption,
+.josh-prose .loop-label {
+  margin-top: 0.875rem;
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--josh-color-text-muted);
+}
+
+.josh-prose .flow-row,
+.josh-prose .branch-wrap,
+.josh-prose .hub-wrap,
+.josh-prose .loop-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.josh-prose .branch-wrap,
+.josh-prose .fan,
+.josh-prose .spokes {
+  flex-direction: column;
+}
+
+.josh-prose .branch-cols {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.625rem;
+}
+
+.josh-prose .node {
+  padding: 0.55rem 0.85rem;
+  border: 1.5px solid var(--josh-color-primary);
+  border-radius: 0.3125rem;
+  background: color-mix(in srgb, var(--josh-color-primary) 10%, var(--josh-color-background));
+  color: var(--josh-color-primary);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.josh-prose .node.gate {
+  border-style: dashed;
+  border-color: var(--josh-color-cloud-500);
+  background: var(--josh-color-background);
+  color: var(--josh-color-text-muted);
+}
+
+.josh-prose .node.center {
+  background: var(--josh-color-primary);
+  color: var(--josh-color-background);
+  font-weight: 700;
+}
+
+.josh-prose .arrow {
+  color: var(--josh-color-text-muted);
+  font-size: 1rem;
+}
+
+.josh-prose .codeblock {
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: var(--josh-syntax-bg, #1c1f24);
+  color: var(--josh-syntax-text, #e7e9ec);
+}
+
+.josh-prose .codeblock .cb-title {
+  padding: 0.625rem 1.125rem 0;
+  font-size: 0.75rem;
+  color: var(--josh-color-gray-700);
+}
+
+.josh-prose .codeblock pre {
+  margin: 0;
+  padding: 0.875rem 0 1.125rem;
+  background: transparent;
+  border: none;
+}
+
+.josh-prose .codeblock ol {
+  margin: 0;
+  padding: 0 1.25rem 0 2.875rem;
+  list-style: none;
+  counter-reset: line;
+}
+
+.josh-prose .codeblock li {
+  position: relative;
+  margin: 0;
+  padding-left: 0.5rem;
+  line-height: 1.6;
+  white-space: pre;
+  counter-increment: line;
+}
+
+.josh-prose .codeblock li::before {
+  content: counter(line);
+  position: absolute;
+  left: -2.375rem;
+  width: 1.875rem;
+  text-align: right;
+  color: color-mix(in srgb, var(--josh-color-text-muted) 80%, transparent);
+  font-size: 0.75rem;
+}
+
+.josh-prose .codeblock .cm { color: #7f8b96; }
+.josh-prose .codeblock .kw { color: #7fb8d1; }
+.josh-prose .codeblock .st { color: #c9a26d; }
+.josh-prose .codeblock .fn { color: #b9d19f; }
+
+.josh-prose table.compare {
+  width: 100%;
+  margin: 1.5rem 0;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.josh-prose table.compare th,
+.josh-prose table.compare td {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--josh-color-cloud-500);
+  text-align: left;
+  vertical-align: top;
+}
+
+.josh-prose table.compare th {
+  background: color-mix(in srgb, var(--josh-color-cloud-300) 50%, var(--josh-color-background));
+  font-weight: 700;
+}
+
+.josh-prose .note-source {
+  margin: -0.25rem 0 1.25rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--josh-color-text-muted);
+}
+
+@media (max-width: 600px) {
+  .josh-prose .flow-row {
+    flex-direction: column;
+  }
+
+  .josh-prose .arrow {
+    transform: rotate(90deg);
+  }
+
+  .josh-prose .hub-wrap {
+    flex-direction: column;
+  }
+
+  .josh-prose .node {
+    white-space: normal;
+  }
+}
+
 .josh-prose .code-title {
   display: flex;
   align-items: center;
@@ -907,9 +1066,11 @@ html.josh-site[data-color-mode='dark'] .josh-page--post .josh-prose table {
 /* syntax-bg matches post body in dark mode — use cloud-500 so code surfaces read clearly */
 html.josh-site.dark .josh-page--post .josh-prose .josh-code-snippet,
 html.josh-site.dark .josh-page--post .josh-prose .code-block,
+html.josh-site.dark .josh-page--post .josh-prose .codeblock,
 html.josh-site.dark .josh-page--post .josh-prose pre:not(.shiki),
 html.josh-site[data-color-mode='dark'] .josh-page--post .josh-prose .josh-code-snippet,
 html.josh-site[data-color-mode='dark'] .josh-page--post .josh-prose .code-block,
+html.josh-site[data-color-mode='dark'] .josh-page--post .josh-prose .codeblock,
 html.josh-site[data-color-mode='dark'] .josh-page--post .josh-prose pre:not(.shiki) {
   background: var(--josh-color-cloud-500);
 }

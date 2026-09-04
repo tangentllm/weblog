@@ -520,7 +520,7 @@ function extractHtmlArticleProse(html, title) {
   const doc = parser.parseFromString(html, 'text/html');
   doc.querySelectorAll('script, style, link[rel="stylesheet"]').forEach((el) => el.remove());
 
-  const container = doc.querySelector('.container, .wrap') || doc.body;
+  const container = doc.querySelector('.container, .wrap, .page') || doc.body;
   container.querySelectorAll('header, nav, footer').forEach((el) => el.remove());
   container.querySelectorAll('.toc').forEach((el) => el.remove());
   container.querySelectorAll('.callout[style]').forEach((el) => el.removeAttribute('style'));
