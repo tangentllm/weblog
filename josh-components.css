@@ -3654,6 +3654,11 @@ html.josh-site[data-color-mode='dark'] .josh-page--post {
   background: var(--josh-color-background);
 }
 
+/* 文章详情无封面：收紧白底顶部占位，正文上移；不动 hero / 云朵 */
+.josh-page--post:not(.josh-page--project-detail) .josh-post-layout__blocker {
+  height: 2rem;
+}
+
 .josh-post-hero__inner {
   position: relative;
   z-index: 1;
@@ -3671,11 +3676,6 @@ html.josh-site[data-color-mode='dark'] .josh-page--post {
   margin: 0;
   padding-top: 0;
   padding-bottom: 10rem;
-}
-
-/* 文章详情已隐藏封面：收紧标题带到正文的天空留白（作品详情仍保留 10rem） */
-.josh-page--post:not(.josh-page--project-detail) .josh-post-header {
-  padding-bottom: 5.5rem;
 }
 
 /* w1cg7uq0 / s1trgvaz — article-only cloud wave at title block bottom */
