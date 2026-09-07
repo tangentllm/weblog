@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generative Agents：给每个 Agent 一套"记忆—反思—规划"系统</title>
+<style>
+  :root{
+    --paper:#faf9f6;
+    --ink:#1f2328;
+    --ink-soft:#4b5563;
+    --accent:#2f5d8a;
+    --accent-2:#c2703d;
+    --line:#e3e0d8;
+    --card:#ffffff;
+    --radius:14px;
+    --maxw:860px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",Georgia,serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.9;
+    font-size:17px;
+  }
+
+  /* ---------- Hero（与正文同底色） ---------- */
+  .hero{
+    background:var(--paper);
+    color:var(--ink);
+    padding:64px 24px 12px;
+    text-align:center;
+    border-bottom:1px solid var(--line);
+  }
+  .hero .kicker{
+    font-family:"SF Mono",Menlo,monospace;
+    font-size:13px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--accent-2);margin-bottom:18px;
+  }
+  .hero h1{
+    font-size:clamp(26px,4.5vw,38px);
+    font-weight:700;line-height:1.4;max-width:760px;margin:0 auto 20px;
+  }
+  .hero .subtitle{
+    max-width:680px;margin:0 auto;font-size:16px;color:var(--ink-soft);line-height:1.8;
+  }
+  .hero .meta{
+    margin-top:24px;font-size:13.5px;color:var(--ink-soft);line-height:2;
+    border-top:1px solid var(--line);
+    display:inline-block;padding-top:16px;
+  }
+  .hero .meta a{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent);}
+
+  main{max-width:var(--maxw);margin:0 auto;padding:56px 24px 80px;}
+
+  section{margin-bottom:88px;scroll-margin-top:40px;}
+  .sec-num{
+    font-family:"SF Mono",Menlo,monospace;
+    color:var(--accent-2);font-size:13px;letter-spacing:3px;margin-bottom:6px;
+  }
+  h2{
+    font-size:26px;font-weight:700;line-height:1.5;margin-bottom:26px;
+    padding-bottom:14px;border-bottom:2px solid var(--ink);
+  }
+  h3{
+    font-size:19px;font-weight:700;margin:36px 0 14px;color:var(--accent);
+  }
+  p{margin-bottom:18px;text-align:justify;}
+  strong{color:var(--accent);font-weight:700;}
+  em{font-style:normal;background:linear-gradient(transparent 62%,#f5d9a8 62%);}
+
+  /* ---------- 引文块 ---------- */
+  .callout{
+    background:var(--card);border-left:4px solid var(--accent-2);
+    border-radius:0 var(--radius) var(--radius) 0;
+    padding:20px 24px;margin:26px 0;
+    box-shadow:0 2px 10px rgba(31,35,40,.05);
+    font-size:16px;
+  }
+  .callout .tag{
+    display:inline-block;font-family:-apple-system,"PingFang SC",sans-serif;
+    font-size:12px;font-weight:700;color:#fff;background:var(--accent-2);
+    padding:2px 10px;border-radius:20px;margin-right:8px;transform:translateY(-2px);
+  }
+  .callout.blue{border-left-color:var(--accent);}
+  .callout.blue .tag{background:var(--accent);}
+
+  /* ---------- 机制卡片 ---------- */
+  .mech-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:30px 0;}
+  .mech-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px 20px;text-align:center;
+    box-shadow:0 2px 10px rgba(31,35,40,.04);
+    transition:transform .2s,box-shadow .2s;
+  }
+  .mech-card:hover{transform:translateY(-4px);box-shadow:0 10px 24px rgba(31,35,40,.1);}
+  .mech-card .icon{font-size:26px;margin-bottom:8px;}
+  .mech-card .name{font-weight:700;color:var(--accent);font-size:16px;margin-bottom:6px;}
+  .mech-card .desc{font-size:13.5px;color:var(--ink-soft);line-height:1.7;}
+
+  /* ---------- 论文架构图 ---------- */
+  .figure{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:24px 18px;margin:30px 0;box-shadow:0 2px 10px rgba(31,35,40,.05);
+  }
+  .figure img{display:block;width:100%;height:auto;border-radius:8px;}
+  .figure .fig-title{
+    text-align:center;font-size:13px;color:var(--ink-soft);letter-spacing:1px;
+    margin-top:14px;font-family:-apple-system,"PingFang SC",sans-serif;
+  }
+
+  /* ---------- 公式条 ---------- */
+  .formula{
+    background:var(--card);border:1px dashed var(--accent);border-radius:var(--radius);
+    padding:16px 22px;margin:24px 0;text-align:center;
+    font-family:"SF Mono",Menlo,Consolas,monospace;font-size:15px;color:var(--accent);
+  }
+  .formula small{display:block;font-family:-apple-system,"PingFang SC",sans-serif;
+    color:var(--ink-soft);font-size:13px;margin-top:6px;}
+
+  /* ---------- 代码块 ---------- */
+  .code-block{
+    background:#24292f;color:#e6edf3;border-radius:var(--radius);
+    margin:26px 0;overflow:hidden;
+    box-shadow:0 4px 16px rgba(31,35,40,.12);
+  }
+  .code-block .code-head{
+    display:flex;justify-content:space-between;align-items:center;
+    background:#1b1f24;padding:10px 18px;
+    font-family:-apple-system,"PingFang SC",sans-serif;font-size:13px;color:#b0b8c0;
+  }
+  .code-block .code-head .dot{color:var(--accent-2);}
+  .code-block pre{
+    padding:20px 22px;overflow-x:auto;
+    font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;line-height:1.75;
+  }
+  .kw{color:#ff9d6b;} .fn{color:#79c0ff;} .num{color:#a5d6ff;}
+  .cm{color:#7ee787;font-style:italic;}      /* 原理性注释 */
+  .cm2{color:#8b949e;font-style:italic;}     /* 普通注释 */
+
+  /* ---------- 数据卡片 ---------- */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:30px 0;}
+  .stat{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:24px 16px;text-align:center;box-shadow:0 2px 10px rgba(31,35,40,.04);
+  }
+  .stat .val{
+    font-family:"SF Mono",Menlo,monospace;font-size:28px;font-weight:700;color:var(--accent);
+    display:block;margin-bottom:6px;
+  }
+  .stat .lab{font-size:13px;color:var(--ink-soft);line-height:1.6;}
+
+  /* ---------- 表格 ---------- */
+  .table-wrap{
+    margin:26px 0;border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;box-shadow:0 2px 10px rgba(31,35,40,.05);
+  }
+  .table-title{
+    font-family:-apple-system,"PingFang SC",sans-serif;font-size:13.5px;font-weight:700;
+    color:var(--ink);padding:12px 16px;background:#f1eee7;border-bottom:1px solid var(--line);
+  }
+  table{width:100%;border-collapse:collapse;font-size:14.5px;
+    font-family:-apple-system,"PingFang SC",sans-serif;}
+  thead th{
+    background:var(--accent);color:#fff;padding:12px 16px;text-align:left;
+    font-weight:600;letter-spacing:.5px;
+  }
+  tbody td{padding:12px 16px;border-top:1px solid var(--line);background:var(--card);}
+  tbody tr:nth-child(even) td{background:#f7f5f0;}
+  tbody td:first-child{font-weight:600;color:var(--ink);}
+  tbody tr.best td{background:#eef7ee;}
+  tbody tr.best td:first-child::after{
+    content:" ★ 最优";color:#5a7d5a;font-size:12px;font-weight:700;
+  }
+  .qa-col{color:var(--accent-2);font-weight:600;}
+  .num-col{font-family:"SF Mono",Menlo,monospace;color:var(--accent);font-weight:600;}
+
+  /* ---------- 流程条 ---------- */
+  .pipeline{
+    display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:30px 0;
+    font-family:-apple-system,"PingFang SC",sans-serif;
+  }
+  .pipeline .step{
+    background:var(--card);border:1.5px solid var(--accent);color:var(--accent);
+    border-radius:10px;padding:10px 18px;text-align:center;min-width:120px;
+    box-shadow:0 2px 8px rgba(47,93,138,.08);
+  }
+  .pipeline .step b{display:block;font-size:14.5px;}
+  .pipeline .step span{font-size:12px;color:var(--ink-soft);}
+  .pipeline .arrow{align-self:center;color:var(--accent-2);font-size:20px;font-weight:700;}
+
+  /* ---------- 论文信息 ---------- */
+  .paper-info{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:28px 30px;margin-top:20px;font-size:14.5px;color:var(--ink-soft);
+    line-height:2;
+  }
+  .paper-info .title-en{font-weight:700;color:var(--ink);font-size:16px;display:block;margin-bottom:6px;}
+  .paper-info a{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent);}
+  .paper-info small{color:#9a958a;}
+
+  @media (max-width:720px){
+    body{font-size:16px;}
+    .mech-grid,.stats{grid-template-columns:1fr;}
+    .hero{padding:48px 20px 8px;}
+    main{padding:44px 18px 60px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="kicker">论文深读 · Generative Agents · UIST 2023</div>
+  <h1>Generative Agents：给每个 Agent 一套"记忆—反思—规划"系统</h1>
+  <p class="subtitle">这篇 2023 年的经典工作为什么至今仍在影响 Multi-Agent、Memory Agent 与 AI 社会模拟？答案不是"让 LLM 更像人"，而是让 Agent 拥有一套能长期积累经验、提炼认知并驱动下一步行为的架构。</p>
+  <div class="meta">
+    Joon Sung Park · Joseph C. O'Brien · Carrie J. Cai · Meredith Ringel Morris · Percy Liang · Michael S. Bernstein<br>
+    <a href="https://arxiv.org/abs/2304.03442" target="_blank">arXiv:2304.03442</a> · UIST 2023
+  </div>
+</header>
+
+<main>
+
+<!-- ================= 01 ================= -->
+<section id="s1">
+  <div class="sec-num">SECTION 01</div>
+  <h2>引言：一个 Agent，为什么会"活不久"？</h2>
+
+  <p>早期的大模型 Agent 很容易给人一种"聪明但健忘"的感觉：它能够围绕当前输入生成一段合理回答，却很难在数小时、数天甚至更长时间里保持稳定的人格、关系与目标。传统游戏 NPC 则恰恰相反——状态稳定，但大量行为需要工程师提前写死。论文 <strong>Generative Agents: Interactive Simulacra of Human Behavior</strong> 把两条路线接了起来：让大语言模型负责开放式语言推理，再用计算架构管理长期记忆、反思和规划。</p>
+
+  <p>作者在一个名为 Smallville 的沙盒环境里放入 <em>25 个 Agent</em>。每个 Agent 都有职业、家庭、兴趣与生活安排，会做饭、上班、聊天、形成关系，还会记住过去发生的事情，并据此安排未来。更令人印象深刻的是：只需要让 Isabella 想举办一次情人节派对，消息就能在 Agent 社会中自然扩散，其他人会决定是否参加、与谁同行，并最终形成集体活动。</p>
+
+  <div class="callout">
+    <strong>这篇论文真正重要的地方：</strong>它第一次用一套相对完整的 Memory → Reflection → Planning → Action 架构，把"长期一致性"和"群体涌现行为"变成了可以工程化设计的问题。
+  </div>
+</section>
+
+<!-- ================= 02 ================= -->
+<section id="s2">
+  <div class="sec-num">SECTION 02</div>
+  <h2>背景与动机：为什么单次 Prompt 无法构造长期人格？</h2>
+
+  <p>论文面对的问题很明确：如果只在每次交互前给 LLM 一段 Persona Prompt，模型可以在某个时间点表现得像"一个人"，却很难处理不断增长的经历。今天与朋友发生的争执、昨天收到的邀请、下周要完成的计划，这些信息必须在未来某个具体时刻重新被找到、综合和利用。</p>
+
+  <p>规则系统的问题是<strong>覆盖不了开放世界</strong>。行为树、有限状态机可以精确控制"如果 A 就做 B"，但社交互动组合空间巨大，新出现的情境往往不在脚本里。强化学习虽然擅长学习策略，却需要稳定的奖励和可控环境，而开放式社会行为很难用单一奖励函数定义。</p>
+
+  <p>于是作者采取了一种更接近认知架构的思路：不要要求 LLM 把所有长期状态装进上下文，而是让 Agent 拥有一个不断增长的 Memory Stream；当需要做决定时，只检索当前最相关的记忆；更高层的规律则通过 Reflection 从多条记忆中逐步抽象出来；最后由 Planning 把目标、记忆与环境转成未来行动。</p>
+
+  <div class="mech-grid">
+    <div class="mech-card">
+      <div class="icon">🗂️</div>
+      <div class="name">Memory Stream</div>
+      <div class="desc">记录"发生了什么"——可检索的经历库</div>
+    </div>
+    <div class="mech-card">
+      <div class="icon">💡</div>
+      <div class="name">Reflection</div>
+      <div class="desc">提炼"这些经历意味着什么"——高层抽象</div>
+    </div>
+    <div class="mech-card">
+      <div class="icon">🗺️</div>
+      <div class="name">Planning</div>
+      <div class="desc">决定"下一步做什么"——可被打断的意图</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>补充阐释：</strong>从今天的 Agent 工程角度，可以把它理解为把 Context Window 从"唯一状态容器"降级为<em>工作内存</em>，再用外部 Memory Store 承担长期状态。
+  </div>
+</section>
+
+<!-- ================= 03 ================= -->
+<section id="s3">
+  <div class="sec-num">SECTION 03</div>
+  <h2>核心原理与技术架构</h2>
+
+  <p>论文的核心并不是一个新模型，而是一种围绕 LLM 搭建的 <strong>Agent Cognitive Loop</strong>。它把一个 Agent 的行为拆为三个关键模块：<strong>Memory & Retrieval、Reflection、Planning</strong>；同时把环境感知、行动执行和 Agent 间对话接入这条闭环。</p>
+
+  <div class="figure">
+    <img src="https://t1.chatglm.cn/file/6a9e67bde7db4e2eabba0d8f.png?expired_at=1789198196&sign=ccdbb243b7d59a60984ba1a2705ed271&ext=png&x-oss-process=image/resize,w_1080/format,webp"
+         alt="Generative Agents 架构图：Question → LLM Models（Reasoning + Search / Code 工具调用）→ Mind Map 输出">
+    <div class="fig-title">图 · Generative Agents 的工作闭环（"问题—模型—工具/状态—结果"阅读方式）</div>
+  </div>
+
+  <h3>3.1 · Memory Stream：不是把全部历史塞进 Prompt</h3>
+  <p>Memory Stream 是 Agent 的长期经历库。每条记忆包含自然语言描述、创建时间和最近访问时间。真正关键的是 Retrieval：它综合<strong>相关性、近期性、重要性</strong>三个信号，为当前情况选出少量记忆。</p>
+
+  <p>论文实现中，recency 使用随 sandbox 时间衰减的指数函数，衰减因子为 <strong>0.995</strong>；importance 由 LLM 对事件"是否重大"打 1~10 分；relevance 则通过 embedding 计算记忆与当前 query 的余弦相似度。三者归一化后线性加权，最终取能放入上下文窗口的 Top memories。</p>
+
+  <div class="formula">
+    Retrieval Score = Recency + Importance + Relevance
+    <small>论文实现中三个权重均为 1</small>
+  </div>
+
+  <h3>3.2 · Reflection：把"发生过什么"变成"我认识到什么"</h3>
+  <p>只检索原始事件仍然不够。假设一个 Agent 在过去几天里反复观察到"我喜欢研究""我经常阅读论文""我总是在实验室待到很晚"，单独看每条记录都很普通，但组合起来可以形成更高层的认知——<em>"我是一个非常投入研究的人"</em>。</p>
+
+  <p>Reflection 就负责这个抽象过程。模型从一批近期、重要或相关的记忆出发，先形成局部结论，再将结论继续向上综合，形成 <strong>Reflection Tree</strong>。更高层的 Reflection 再写回 Memory Stream，于是它们可以影响之后的 Planning。</p>
+
+  <h3>3.3 · Planning：先规划一天，再落到具体行动</h3>
+  <p>Planning 让 Agent 不只是"看到什么就回答什么"。系统先根据 Agent 的身份、当前环境、已有记忆和 Reflection 生成较粗粒度的日程，然后递归细化到更具体的行动。行动进入环境后又会产生新的 Observation；如果环境发生变化，Agent 可以 React 并更新原有计划。</p>
+
+  <div class="pipeline">
+    <div class="step"><b>Plan</b><span>自顶向下分解</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Act</b><span>执行具体行动</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Observe</b><span>接收环境反馈</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Re-plan</b><span>必要时更新计划</span></div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-head"><span><span class="dot">●</span> 简化后的 Generative Agent 主循环（附原理注释）</span><span>pseudocode</span></div>
+    <pre><span class="cm">// ════════════════════════════════════════════════════════════
+// 原理：Agent 的本质是"感知—认知—行动"的持续闭环，
+// 重点不是调用哪个 API，而是"状态持续写回"：
+//   观察产生记忆 → 记忆影响计划 → 行动改变环境 → 新观察进入下一轮
+// 因此 Agent 拥有跨时间延续的状态，而不是每轮从零开始的问答。
+// ════════════════════════════════════════════════════════════</span>
+<span class="kw">while</span> simulation_running:
+
+    <span class="cm">// ── ① 感知：观察环境（他 Agent 的行为、事件、对话等）──</span>
+    observation = <span class="fn">observe</span>(environment)
+
+    <span class="cm">// ── ② 记忆检索：以当前观察为线索，从记忆流中唤醒最相关的经历
+    //    检索得分 = Recency(0.995^小时衰减) + Importance(LLM 1~10 分)
+    //              + Relevance(embedding 余弦相似度)，三项等权 ──</span>
+    memories = <span class="fn">retrieve</span>(observation, memory_stream)
+
+    <span class="cm">// ── ③ 反思：当近期经历重要性积分累积到阈值（150）时触发，
+    //    先生成高层问题，再检索证据，综合出抽象结论。
+    //    Reflection 本身也写回记忆流 → 可层层递归成 Reflection Tree ──</span>
+    reflections = <span class="fn">reflect</span>(memories, memory_stream)
+
+    <span class="cm">// ── ④ 规划：综合 人设 + 具体记忆 + 抽象反思 + 当前观察，
+    //    先生成粗粒度日程，再递归细化到具体行动 ──</span>
+    plan = <span class="fn">plan</span>(persona, memories, reflections, observation)
+
+    <span class="cm">// ── ⑤ 行动：执行计划的下一步，作用到共享环境 ──</span>
+    action = <span class="fn">select_next_action</span>(plan, observation)
+    result = <span class="fn">act</span>(action, environment)
+
+    <span class="cm">// ── ⑥ 状态写回：新事件、计划和反思继续沉淀为长期记忆。
+    //    注意：Plan 也被写入记忆 —— "我打算做什么"本身就是经历，
+    //    行动改变了环境，下一轮的新观察可能触发 re-plan ──</span>
+    memory_stream.<span class="fn">append</span>(observation)
+    memory_stream.<span class="fn">append</span>(result)
+    memory_stream.<span class="fn">append</span>(plan)</pre>
+  </div>
+</section>
+
+<!-- ================= 04 ================= -->
+<section id="s4">
+  <div class="sec-num">SECTION 04</div>
+  <h2>实验结果：真正被验证的是"长期一致性"和"群体涌现"</h2>
+
+  <p>论文没有采用传统的单一任务 Accuracy，而是针对"可置信的人类行为"设计了两阶段评价。第一阶段对单个 Agent 做控制实验：<em>100 名参与者</em>比较不同架构产生的回答。第二阶段让 25 个 Agent 在 Smallville 连续运行两个完整游戏日，观察信息传播、关系形成和群体协调。</p>
+
+  <div class="stats">
+    <div class="stat"><span class="val">29.89</span><span class="lab">完整架构 TrueSkill μ</span></div>
+    <div class="stat"><span class="val">d = 8.16</span><span class="lab">完整架构 vs 无记忆/规划/反思基线</span></div>
+    <div class="stat"><span class="val">0.167 → 0.74</span><span class="lab">Agent 社交网络密度</span></div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-title">表 1 · 单 Agent 可信度：控制实验</div>
+    <table>
+      <thead>
+        <tr><th>条件</th><th>TrueSkill μ</th><th>含义</th></tr>
+      </thead>
+      <tbody>
+        <tr class="best"><td>完整架构</td><td class="num-col">29.89</td><td>Memory + Reflection + Planning</td></tr>
+        <tr><td>去掉 Reflection</td><td class="num-col">26.88</td><td>仍有观察与计划，但缺少高层综合</td></tr>
+        <tr><td>去掉 Reflection + Planning</td><td class="num-col">25.64</td><td>基本退化为观察驱动</td></tr>
+        <tr><td>Human crowdworker</td><td class="num-col">22.95</td><td>人工角色扮演基线</td></tr>
+        <tr><td>去掉 Memory + Planning + Reflection</td><td class="num-col">21.21</td><td>接近早期"只靠 Prompt"的方案</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>完整架构在受控实验中取得最高的行为可信度，且相对完全消融条件的标准化效应量达到 <strong>d=8.16</strong>；Kruskal–Wallis 检验表明不同条件存在显著差异（<strong>H(4)=150.29，p&lt;0.001</strong>），后续 Dunn 检验除两个最差条件外，其余两两差异均显著。</p>
+
+  <h3>群体实验更有意思：社会行为是"长出来"的</h3>
+
+  <div class="table-wrap">
+    <div class="table-title">表 2 · 群体涌现现象（25 个 Agent × 2 个游戏日）</div>
+    <table>
+      <thead>
+        <tr><th>涌现现象</th><th>实验结果</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>市长竞选信息传播</td><td class="num-col">4% → 32%</td><td>25 个 Agent 中从 1 人增加到 8 人知道</td></tr>
+        <tr><td>情人节派对传播</td><td class="num-col">4% → 52%</td><td>从 1 人增加到 13 人知道</td></tr>
+        <tr><td>关系网络密度</td><td class="num-col">0.167 → 0.74</td><td>两天内形成大量新的相互认识关系</td></tr>
+        <tr><td>派对协调</td><td class="num-col">5 / 12</td><td>12 名受邀 Agent 中有 5 人最终参加</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>值得注意的是，作者还<em>回查了记忆流</em>，确认那些声称知道派对或选举信息的 Agent 确实拥有对应对话记录；说明这种信息扩散并不只是"回答时凭空编造"。</p>
+
+  <div class="callout">
+    <strong>真正的实验结论：</strong>论文不是证明"LLM 可以模拟人类"，而是证明长期记忆、反思与规划的组合确实能让行为更连续、更可信，并进一步产生非脚本式的群体行为。
+  </div>
+</section>
+
+<!-- ================= 05 ================= -->
+<section id="s5">
+  <div class="sec-num">SECTION 05</div>
+  <h2>这篇论文真正创新在哪里？</h2>
+
+  <div class="pipeline">
+    <div class="step"><b>Memory</b><span>记录经历</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Reflection</b><span>抽象规律</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Planning</b><span>形成意图</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Action</b><span>改变世界</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Observation</b><span>产生新经历</span></div>
+  </div>
+
+  <h3>第一：Memory 不等于 Chat History</h3>
+  <p>今天很多 Agent 仍把 Memory 理解为"历史消息 + 向量数据库"。这篇论文更早地指出，长期 Agent 需要的是<strong>可检索的经历、重要性判断和高层认知</strong>。原始事件解决"发生过什么"，Reflection 解决"这些事件意味着什么"。</p>
+
+  <h3>第二：Planning 不是一次性生成 Todo List</h3>
+  <p>论文强调计划需要递归细化，并且必须允许环境打断后重新规划。这个设计后来影响了大量 Agent Workflow：<em>Plan 不应该是静态文档，而应该是可以被 Observation 和 Action 不断修正的状态</em>。</p>
+
+  <h3>第三：Multi-Agent 的价值来自交互，而不是数量</h3>
+  <p>25 个 Agent 并不是简单并行回答问题，而是在共享环境中相互观察、交谈、记忆和行动。一个人的行动改变环境，进而改变另一个人的 Observation，再改变另一个人的 Planning；涌现行为正是在这种闭环里出现的。</p>
+
+  <div class="callout blue">
+    <strong>我的理解：</strong>论文真正把"Agent"从一个会调用工具的 LLM，推进成了一个拥有持续状态 + 记忆 + 认知抽象 + 行为策略 + 环境反馈的长期运行实体。
+  </div>
+</section>
+
+<!-- ================= 06 ================= -->
+<section id="s6">
+  <div class="sec-num">SECTION 06</div>
+  <h2>局限与工程陷阱：别把"像人"误解成"可靠"</h2>
+
+  <p>论文的贡献非常大，但它同样坦诚地展示了问题。第一类错误来自 Memory Retrieval：如果没有找回关键经历，Agent 就可能做出不连贯的判断。第二类是 <em>"memory embellishment"</em>，即模型记得大方向，却在细节上额外添加不存在的事实。第三类是基础模型自身的语言风格，例如对话过度正式、过度礼貌和过度合作。</p>
+
+  <p>环境建模同样重要。论文发现，某些地点的社会规范如果没有明确写进世界状态，Agent 就可能做出违反常识的决定，例如商店已经关门却仍然进入，或在不合适的时段进入某个场所。</p>
+
+  <p>还有一个经常被忽略的问题：<strong>成本。</strong>论文指出，仅模拟 25 个 Agent 两天就消耗了<em>数千美元 Token 费用</em>，并耗费数天完成。因此这个架构适合复杂、长期、有高价值状态的任务，不适合简单问答。</p>
+
+  <div class="callout">
+    <strong>更现实的生产化版本：</strong>短期上下文 + 事件 Memory + 结构化 Profile + Reflection Summary + 可编辑 Plan + 环境状态机，再配合 TTL、缓存、批量推理和异步调度。不要把论文原型直接复制进生产环境。
+  </div>
+</section>
+
+<!-- ================= 07 ================= -->
+<section id="s7">
+  <div class="sec-num">SECTION 07</div>
+  <h2>开发者如何借鉴：把它迁移到今天的 Agent 系统</h2>
+
+  <p>如果今天开发一个长期运行的个人助手、销售 Agent、虚拟角色或 Multi-Agent Research 系统，可以把论文架构转换成下面这一套工程组件：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>论文概念</th><th>现代工程实现</th><th>核心问题</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Memory Stream</td><td>Event Store / Document DB / Vector DB</td><td class="qa-col">我过去经历了什么？</td></tr>
+        <tr><td>Retrieval</td><td>Hybrid Retrieval + Rerank + 时间衰减</td><td class="qa-col">现在应该记住什么？</td></tr>
+        <tr><td>Reflection</td><td>Summary / Profile / Knowledge Graph</td><td class="qa-col">过去这些经历说明什么？</td></tr>
+        <tr><td>Planning</td><td>Task Planner / State Machine / DAG</td><td class="qa-col">下一步做什么？</td></tr>
+        <tr><td>Observation</td><td>Event Bus / Tool Result / Environment State</td><td class="qa-col">环境发生了什么？</td></tr>
+        <tr><td>React</td><td>Re-plan / Interrupt / Recovery</td><td class="qa-col">原计划失效后怎么办？</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout blue">
+    <strong>最值得借鉴的一点：</strong>Memory、Planner、Environment 三者要形成闭环。很多 Agent 项目只做"LLM + Tool Calling"，缺少持久化状态，因此任务一旦变长就开始失忆；另一些项目把所有内容都塞进向量库，却没有 Reflection，于是记得很多，却不知道哪些事实应该上升成长期知识。
+  </div>
+</section>
+
+<!-- ================= 08 ================= -->
+<section id="s8">
+  <div class="sec-num">SECTION 08</div>
+  <h2>总结与展望：今天的 Memory Agent，仍然站在这篇论文的肩膀上</h2>
+
+  <p>Generative Agents 最重要的贡献，并不是构造了一个漂亮的 Smallville，而是证明了一种新的 Agent 架构范式：<strong>LLM 负责开放式认知，外部系统负责长期状态管理。</strong>当 Observation 被记录、Memory 被检索、Reflection 被抽象、Plan 被执行，Agent 才真正具备跨时间保持一致性的可能；当多个 Agent 共享环境并互相影响时，关系、信息传播和集体协调就可能自然出现。</p>
+
+  <p>从今天回看，这条路线已经延伸出大量 Memory Agent、AI NPC、数字人、社会模拟与长期个人助手的研究。未来更值得关注的不是"给 Agent 加更多记忆"，而是<em>记忆应该如何形成、如何遗忘、如何纠错，以及 Reflection 如何避免把错误经验固化成长期信念</em>。</p>
+
+  <p>换句话说，真正成熟的 Agent 不应该只是"能回答问题"，而应该能够解释：<strong>我为什么记得这件事、它从哪里来、它改变了我的什么判断、我下一步为什么要这么做。</strong></p>
+
+  <div class="paper-info">
+    <span class="title-en">Generative Agents: Interactive Simulacra of Human Behavior</span>
+    <strong>作者：</strong>Joon Sung Park, Joseph C. O'Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, Michael S. Bernstein<br>
+    <strong>会议：</strong>UIST 2023 · <a href="https://arxiv.org/abs/2304.03442" target="_blank">arXiv:2304.03442v2</a><br><br>
+    <small>※ 本文说明：技术架构、实验数据与论文结论基于论文公开版本；"开发者如何借鉴""我的理解"等部分属于工程化解读，不是论文原文表述。</small>
+  </div>
+</section>
+
+</main>
+
+</body>
+</html>

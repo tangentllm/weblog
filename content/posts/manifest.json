@@ -19,6 +19,26 @@
     "htmlFile": "./content/posts/agentic-reasoning-blog-v2.html"
   },
   {
+    "slug": "generative-agents",
+    "title": "Generative Agents：给每个 Agent 一套「记忆—反思—规划」系统",
+    "date": "2026-09-07",
+    "readTime": "20 分钟",
+    "category": "论文解读",
+    "tags": [
+      "Generative Agents",
+      "Memory",
+      "Reflection",
+      "Planning",
+      "Multi-Agent",
+      "UIST"
+    ],
+    "cover": "./content/assets/posts/covers/generative-agents.svg",
+    "excerpt": "解读 UIST 2023 经典论文 Generative Agents：Memory Stream、Reflection 与 Planning 如何让 Agent 长期一致，并在 Smallville 中涌现信息传播与集体协调。",
+    "file": "./content/posts/generative-agents.md",
+    "format": "html",
+    "htmlFile": "./content/posts/generative-agents-blog.html"
+  },
+  {
     "slug": "building-effective-agents",
     "title": "别再迷信复杂框架：从 Anthropic 的实践看 Agent 系统的六种简约模式",
     "date": "2026-09-03",
