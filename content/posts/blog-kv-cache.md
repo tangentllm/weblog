@@ -1,3 +1,14 @@
+---
+title: 深入理解 KV Cache：Transformer 自回归推理的核心优化
+slug: blog-kv-cache
+date: 2026-08-30
+readTime: 14 分钟
+category: 基础原理
+tags: Transformer, KV Cache, 推理优化, 自回归
+cover: ./content/assets/posts/covers/transformer.svg
+excerpt: 自回归生成为何每步重算历史 K/V？从朴素实现到手撕 KV Cache，讲清推理加速的核心机制与显存权衡。
+---
+
 # 深入理解 KV Cache：Transformer 自回归推理的核心优化
 
 如果你已经熟悉 Transformer 的 Self-Attention 结构，却不太清楚 LLM **推理**为什么比训练慢那么多、框架里常说的 KV Cache 究竟在缓存什么——这篇文章基于 [带kv cache的Transformer.ipynb](带kv%20cache的Transformer.ipynb) 中的手撕实现与性能对比，从动机、原理、实现到权衡，把这一推理优化的核心机制讲清楚。

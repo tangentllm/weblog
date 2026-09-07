@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="arBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a2e2c"/>
+      <stop offset="55%" stop-color="#2d6e6b"/>
+      <stop offset="100%" stop-color="#3d8a82"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#arBg)"/>
+  <g opacity="0.2" stroke="#dbe9e6" stroke-width="1.5" fill="none">
+    <circle cx="420" cy="220" r="48"/>
+    <circle cx="600" cy="180" r="36"/>
+    <circle cx="760" cy="240" r="42"/>
+    <circle cx="560" cy="320" r="56"/>
+    <path d="M460 240l110 -40"/>
+    <path d="M630 200l100 30"/>
+    <path d="M500 260l40 50"/>
+    <path d="M640 220l-40 70"/>
+    <path d="M720 270l-100 40"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle" fill="#f7f5f0">
+    <text x="600" y="430" font-size="36" font-weight="800">Agentic Reasoning</text>
+    <text x="600" y="478" font-size="20" fill="#dbe9e6" font-weight="500">Web Search · Mind-Map · Code Tool</text>
+  </g>
+</svg>

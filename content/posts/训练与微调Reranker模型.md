@@ -1,3 +1,14 @@
+---
+title: 从召回到精排：用 Sentence Transformers 训练你自己的 Reranker 模型
+slug: reranker-training-finetune
+date: 2026-08-28
+readTime: 22 分钟
+category: RAG 与检索
+tags: RAG, Reranker, Cross-Encoder, Sentence Transformers, 微调
+cover: ./content/assets/posts/covers/rag.svg
+excerpt: Bi-encoder 召回后如何用 Cross-Encoder 精排？从数据集、损失函数到评估器，系统讲解 Sentence Transformers 训练与微调 Reranker 的完整流程。
+---
+
 # 从召回到精排：用 Sentence Transformers 训练你自己的 Reranker 模型
 
 > 作者：编译整理自 Tom Aarsen（Hugging Face）的技术分享

@@ -1,3 +1,14 @@
+---
+title: 深入理解 GQA 与 RoPE：LLM 推理优化的两个关键组件
+slug: blog-gqa-rope
+date: 2026-09-01
+readTime: 18 分钟
+category: 基础原理
+tags: Transformer, GQA, RoPE, KV Cache, 推理优化
+cover: ./content/assets/posts/covers/attention.svg
+excerpt: GQA 压缩 KV Cache 显存，RoPE 编码 token 相对位置；从手撕实现讲清 LLaMA 系模型推理优化的两个核心组件。
+---
+
 # 深入理解 GQA 与 RoPE：LLM 推理优化的两个关键组件
 
 如果你已经熟悉 CNN 或 RNN，但对大语言模型（LLM）的内部结构还只是一知半解，那么 **Grouped Query Attention（GQA）** 和 **Rotary Position Embedding（RoPE）** 是两个非常值得搞清楚的模块。它们分别优化 Transformer 的两个正交维度：GQA 改的是注意力**头结构**，解决推理阶段的显存与 KV Cache 开销；RoPE 改的是**位置编码**，解决模型如何感知 token 顺序与相对距离。
