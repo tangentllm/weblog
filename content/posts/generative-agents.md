@@ -1,7 +1,7 @@
 ---
 title: Generative Agents：给每个 Agent 一套「记忆—反思—规划」系统
 slug: generative-agents
-date: 2026-09-07
+date: 2026-09-07T16:43:00+08:00
 readTime: 20 分钟
 category: 论文解读
 tags: Generative Agents, Memory, Reflection, Planning, Multi-Agent, UIST
