@@ -1258,7 +1258,7 @@ async function loadPostsFromManifest() {
         if (htmlResponse.ok) {
           const html = await htmlResponse.text();
           if (typeof extractHtmlArticleProse === 'function') {
-            post.content = extractHtmlArticleProse(html, post.title);
+            post.content = rewriteInlineAssetUrls(extractHtmlArticleProse(html, post.title));
           } else {
             post.content = '';
           }

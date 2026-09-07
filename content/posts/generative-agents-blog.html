@@ -280,9 +280,11 @@
   <p>论文的核心并不是一个新模型，而是一种围绕 LLM 搭建的 <strong>Agent Cognitive Loop</strong>。它把一个 Agent 的行为拆为三个关键模块：<strong>Memory & Retrieval、Reflection、Planning</strong>；同时把环境感知、行动执行和 Agent 间对话接入这条闭环。</p>
 
   <div class="figure">
-    <img src="https://t1.chatglm.cn/file/6a9e67bde7db4e2eabba0d8f.png?expired_at=1789198196&sign=ccdbb243b7d59a60984ba1a2705ed271&ext=png&x-oss-process=image/resize,w_1080/format,webp"
-         alt="Generative Agents 架构图：Question → LLM Models（Reasoning + Search / Code 工具调用）→ Mind Map 输出">
-    <div class="fig-title">图 · Generative Agents 的工作闭环（"问题—模型—工具/状态—结果"阅读方式）</div>
+    <img src="./content/assets/posts/diagrams/generative-agents-architecture.png"
+         alt="Generative Agents 架构全景：Smallville 论文概述、Memory Stream 检索闭环与涌现行为"
+         loading="lazy"
+         decoding="async">
+    <div class="fig-title">图 · Generative Agents 的工作闭环（感知—记忆—检索—反思—规划—行动）</div>
   </div>
 
   <h3>3.1 · Memory Stream：不是把全部历史塞进 Prompt</h3>
