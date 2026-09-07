@@ -14,6 +14,18 @@ const JOSH_FOOTER_MASCOT_OFFSETS = { hidden: -226, visible: -82 };
 const JOSH_FOOTER_MASCOT_SPRING = { tension: 160, friction: 32 };
 let joshFooterMascotCleanup = null;
 
+/** Fisher–Yates shuffle (copy). Used for per-load variety on home / related. */
+function joshShuffle(list) {
+  const items = Array.isArray(list) ? [...list] : [];
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = items[i];
+    items[i] = items[j];
+    items[j] = tmp;
+  }
+  return items;
+}
+
 function joshMascotMarkup() {
   return `<div class="josh-sky__mascot-spring">
     <div class="josh-sky__mascot-figure">
@@ -633,6 +645,7 @@ function joshRelatedPosts(entry, limit = 3) {
 
   const tags = Array.isArray(entry.tags) ? entry.tags : [];
   const category = String(entry.category || '').trim();
+  const candidateCap = Math.max(limit * 3, 8);
 
   const scored = posts
     .filter((item) => item.slug !== slug)
@@ -652,17 +665,15 @@ function joshRelatedPosts(entry, limit = 3) {
     ? scored.filter(({ score }) => score > 0)
     : scored;
 
-  const picked = [];
-  pool.forEach(({ item }) => {
-    if (picked.length >= limit) return;
-    picked.push(item);
-  });
+  const candidates = pool.slice(0, Math.min(candidateCap, pool.length)).map(({ item }) => item);
+  const picked = joshShuffle(candidates).slice(0, limit);
 
   if (picked.length < limit) {
+    const seen = new Set(picked.map((p) => p.slug));
     posts.forEach((item) => {
       if (picked.length >= limit) return;
-      if (item.slug === slug) return;
-      if (picked.some((p) => p.slug === item.slug)) return;
+      if (item.slug === slug || seen.has(item.slug)) return;
+      seen.add(item.slug);
       picked.push(item);
     });
   }

@@ -1,19 +1,7 @@
 /* Josh W. Comeau homepage — hero & home grid (shared shell in josh-site.js) */
 
 const JOSH_INITIAL_ARTICLE_COUNT = 12;
-
-const JOSH_POPULAR_SLUGS = [
-  'claude-code-best-practices',
-  'transformer-in-depth',
-  'attention-from-scratch',
-  'rag-hybrid-retrieval-strategy',
-  'mcp-kw-guide',
-  'embedding-finetune-domain-rag',
-  'rag-production-refactor',
-  'llm-sft-note',
-  'tokenization-guide',
-  'everything-claude-code-zh-guide',
-];
+const JOSH_POPULAR_COUNT = 10;
 
 const JOSH_CLOUD_PATH_500 =
   'M2467 198C2478.93 198 2508.5 148.5 2692.3 167C2855.77 183.454 2890 275.92 2940.45 271C2978.5 267.29 3025.5 66.1073 3208.04 55.5002C3364.5 46.408 3407.37 123 3419.5 123.5C3431.63 124 3448.89 83.0002 3564.32 83.0002C3728 83.0002 3767.67 198.501 3779.08 198C3790.5 197.5 3808 45.0002 4044.68 45.0002C4238.5 45.0002 4245.32 120.5 4256.5 116.5C4267.69 112.5 4277 13.5002 4417.9 13.5002C4567 13.5002 4590.74 115.5 4608.5 116.5C4626.26 117.5 4640.5 13.5007 4795 13.5004C4946 13.5002 4954.43 76.5003 4970.51 76.5003C4986.6 76.5003 4983 8.5 5077 8.5C5147.13 8.5 5148.62 62.7657 5148.14 74.3437C5148.08 75.8075 5148 77.2344 5148 78.6994V360V361.5C5148 383.592 5130.09 401.5 5108 401.5H9C-13.0914 401.5 -31 383.592 -31 361.5V133.5V76.0021V76.0002C-31 75.9604 -30.9925 -7.80104e-05 24 0C103.747 0.000113126 132.617 67.9717 143.069 117.186C148.413 142.347 172.927 161.481 197.99 155.7L478.5 91C598.5 64.5 646 110.5 659 110.5C672 110.5 714 31 856 33.5C998 36 996.5 76 1008.5 73.5C1020.5 71 1014.28 28.0329 1174.5 31C1309.5 33.5 1298.5 110.5 1327.5 110.5C1366.31 110.5 1378.25 109.457 1388 110.5C1406.69 112.5 1429.5 27 1615 27C1743.74 27 1771.09 161.183 1855.16 167C1930.28 172.198 1914.5 85 2032.05 90.0002C2108.93 93.2702 2132.33 148 2146.16 148C2160 148 2184 81.6655 2318.08 102.5C2440.5 121.524 2455.07 198 2467 198Z';
@@ -90,9 +78,9 @@ function joshAboutEndBandWaveMarkup() {
   </div>`;
 }
 
-function joshPopularMarkup(allPosts) {
-  const bySlug = new Map(allPosts.map((post) => [post.slug, post]));
-  const popular = JOSH_POPULAR_SLUGS.map((slug) => bySlug.get(slug)).filter(Boolean);
+function joshPopularMarkup(allPosts, excludeSlug = '') {
+  const pool = allPosts.filter((post) => post.slug !== excludeSlug);
+  const popular = joshShuffle(pool).slice(0, JOSH_POPULAR_COUNT);
   return popular.map((post) => `
     <li>
       <a class="josh-popular__link" href="${Routes.post(post.slug)}">
@@ -156,9 +144,13 @@ function buildJoshHomeHeroMarkup() {
 function buildJoshHomeHTML() {
   const homeHref = Routes.home();
   const sorted = [...posts].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const visible = sorted.slice(0, JOSH_INITIAL_ARTICLE_COUNT);
-  const hidden = sorted.slice(JOSH_INITIAL_ARTICLE_COUNT);
+  const newest = sorted[0] || null;
+  const rest = joshShuffle(sorted.slice(1));
+  const ordered = newest ? [newest, ...rest] : rest;
+  const visible = ordered.slice(0, JOSH_INITIAL_ARTICLE_COUNT);
+  const hidden = ordered.slice(JOSH_INITIAL_ARTICLE_COUNT);
   const catsWithPosts = joshCategoriesWithPosts();
+  const excludePopularSlug = newest ? newest.slug : '';
 
   return `<div class="josh-page">
     <div class="josh-home-shell">
@@ -191,7 +183,7 @@ function buildJoshHomeHTML() {
       <section class="josh-popular" aria-labelledby="josh-popular-heading">
         <h2 class="josh-section-label" id="josh-popular-heading">热门内容</h2>
         <ol class="josh-popular__list">
-          ${joshPopularMarkup(posts)}
+          ${joshPopularMarkup(posts, excludePopularSlug)}
         </ol>
       </section>
       </main>
