@@ -1,5 +1,26 @@
 [
   {
+    "slug": "enterprise-rag-01-why-need-rag",
+    "title": "企业级 RAG 架构设计与工程实践（一）：企业为什么需要 RAG？从 LLM 到企业知识系统",
+    "date": "2026-09-09",
+    "readTime": "20 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "为什么企业应用不能只靠 LLM？RAG 补上了哪一块？Demo 与企业级系统差在哪里。",
+    "file": "./content/posts/enterprise-rag-01-why-need-rag.md",
+    "format": "html",
+    "htmlFile": "./content/posts/企业为什么需要 RAG.html",
+    "subtitle": "从 LLM 到企业知识系统",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 1
+  },
+  {
     "slug": "memorybank",
     "title": "MemoryBank 深度拆解：给 LLM 装一颗会遗忘的大脑",
     "date": "2026-09-08T10:17:00+08:00",
