@@ -4650,13 +4650,6 @@ function renderJoshPost(app, slug) {
 
   const tocHtml = joshPostTocMarkup(headings, { heartSlug: slug });
 
-  const seriesHtml = post.series ? `
-    <div class="josh-series-banner">
-      <strong>系列文章：${post.series}</strong>
-      ${post.seriesOrder ? ` · 第 ${post.seriesOrder} 篇` : ''}
-    </div>
-  ` : '';
-
   const heroSubtitle = joshArticleSubtitle(post);
   const tailStatsHtml = joshPostTailStatsMarkup(slug, {
     updated: joshPostUpdatedLabel(post),
@@ -4670,7 +4663,6 @@ function renderJoshPost(app, slug) {
           <div class="josh-post-hero__sky-blocker" aria-hidden="true"></div>
           <div class="josh-post-hero__inner">
             <header class="josh-post-header">
-              ${seriesHtml}
               ${joshPostHeroTitleMarkup(post.title, heroSubtitle, { includeSubtitle: false })}
               <div class="josh-post-meta" role="contentinfo" aria-label="文章元信息">
                 <span>收录于</span>
