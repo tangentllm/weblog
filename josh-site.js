@@ -527,17 +527,58 @@ function joshNormalizeHeadingText(text) {
     .toLowerCase();
 }
 
+function joshHtmlArticleChromeSelector() {
+  return 'header, nav, footer, .masthead, .hero, .next-box';
+}
+
+function joshFindHtmlArticleRoot(doc) {
+  const wrap = doc.querySelector('.wrap');
+  if (wrap) return wrap;
+  const main = doc.querySelector('main');
+  if (main) return main;
+  const page = doc.querySelector('.page');
+  if (page) return page;
+
+  const containers = [...doc.querySelectorAll('.container')].filter(
+    (el) => !el.closest('.hero, .masthead, header'),
+  );
+  if (containers.length === 1) return containers[0];
+  if (containers.length > 1) {
+    return containers.reduce((best, el) => (
+      (el.textContent || '').length >= (best.textContent || '').length ? el : best
+    ));
+  }
+
+  return doc.querySelector('.container') || doc.body;
+}
+
 function extractHtmlArticleProse(html, title) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   doc.querySelectorAll('script, style, link[rel="stylesheet"]').forEach((el) => el.remove());
 
-  const container = doc.querySelector('.container, .wrap, .page, main') || doc.body;
-  container.querySelectorAll('header, nav, footer').forEach((el) => el.remove());
+  // Drop page chrome before choosing the root so `.container` inside `.hero` is not selected.
+  doc.body?.querySelectorAll(joshHtmlArticleChromeSelector()).forEach((el) => el.remove());
+
+  const container = joshFindHtmlArticleRoot(doc);
+  container.querySelectorAll(joshHtmlArticleChromeSelector()).forEach((el) => el.remove());
   container.querySelectorAll('.toc').forEach((el) => el.remove());
   container.querySelectorAll('.callout[style]').forEach((el) => el.removeAttribute('style'));
   container.querySelectorAll('pre[style], pre code[style]').forEach((el) => el.removeAttribute('style'));
   container.querySelectorAll('pre span[style]').forEach((el) => el.removeAttribute('style'));
+  // Standalone magazine drafts often force white text on dark cards; without those
+  // backgrounds the text vanishes inside Josh prose.
+  container.querySelectorAll('[style*="color"]').forEach((el) => {
+    const style = el.getAttribute('style') || '';
+    if (!/#fff\b|#ffffff\b|\bwhite\b|rgb\(\s*255\s*,\s*255\s*,\s*255/i.test(style)) return;
+    const cleaned = style
+      .split(';')
+      .map((part) => part.trim())
+      .filter((part) => part && !/^color\s*:/i.test(part))
+      .join('; ');
+    if (cleaned) el.setAttribute('style', cleaned);
+    else el.removeAttribute('style');
+  });
 
   return stripDuplicatePostH1(container.innerHTML.trim(), title);
 }
@@ -891,6 +932,13 @@ function joshUpgradeCalloutElement(el, variant, title, bodyHtml) {
 }
 
 function joshExtractCalloutTitle(root) {
+  const label = root.querySelector(':scope > .co-label, :scope > .callout-title');
+  if (label) {
+    const title = label.textContent.trim();
+    label.remove();
+    return { title, bodyHtml: root.innerHTML.trim() };
+  }
+
   const strong = root.querySelector(':scope > strong, :scope > p > strong, :scope > p > b, :scope > b');
   if (!strong) return { title: '', bodyHtml: root.innerHTML };
 
@@ -908,8 +956,11 @@ function joshExtractCalloutTitle(root) {
 function enhanceJoshProseCallouts(scope = document) {
   const proseRoots = scope.querySelectorAll('.josh-prose');
   proseRoots.forEach((prose) => {
-    prose.querySelectorAll('.callout:not([data-josh-enhanced])').forEach((el) => {
-      const variant = joshInferCalloutVariant('', el.className);
+    prose.querySelectorAll('.callout:not([data-josh-enhanced]), .warn-callout:not([data-josh-enhanced])').forEach((el) => {
+      const variant = joshInferCalloutVariant(
+        el.querySelector('.co-label, .callout-title, strong')?.textContent || '',
+        `${el.className} ${el.classList.contains('warn-callout') ? 'warn' : ''}`,
+      );
       const { title, bodyHtml } = joshExtractCalloutTitle(el);
       joshUpgradeCalloutElement(el, variant, title || '提示', bodyHtml);
     });

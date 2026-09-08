@@ -115,28 +115,14 @@ code{font-family:var(--mono);font-size:.88em;background:#eef0ec;border:1px solid
 
 <div class="wrap">
 
-<div class="masthead">
-  <span class="series">企业级 RAG 架构设计与工程实践 · 系列</span>
-  <span class="issue">EPISODE 01 / 认知建立篇</span>
-</div>
-
-<div class="hero">
-  <div class="kicker">WHY ENTERPRISE RAG — 从 LLM 到企业知识系统</div>
-  <h1>企业为什么需要 <em>RAG</em>？<br>从 LLM 到企业知识系统</h1>
-  <p class="subtitle">在谈架构图、向量数据库和 Reranker 之前，先把一个更根本的问题讲清楚：为什么企业应用不能只靠 LLM？RAG 到底补上了哪一块？以及，为什么一个周末就能跑通的 Demo，离企业级系统还差得非常远。</p>
-  <div class="meta">
-    <span>系列：<b>第 1 篇 / 认知建立</b></span>
-    <span>读者：<b>工程师 · 架构师 · 技术决策者</b></span>
-    <span>定位：<b>Why，而非 How</b></span>
-  </div>
-</div>
+<p class="article-dek">在谈架构图、向量数据库和 Reranker 之前，先把一个更根本的问题讲清楚：为什么企业应用不能只靠 LLM？RAG 到底补上了哪一块？以及，为什么一个周末就能跑通的 Demo，离企业级系统还差得非常远。</p>
 
 <div class="scenario">
   <div class="sc-tag">OPENING SCENARIO — 一个真实的工单</div>
   <div class="q">"RTC SDK 4.6.2 在 Android 14 上出现 <code>RTC-10027</code> 错误，应该怎么处理？"</div>
   <p>这是任何一家做实时音视频（RTC）业务的公司里，技术支持同学每天都会遇到的问题。假设你把这个问题原封不动丢给一个通用大模型，会发生什么？</p>
-  <p>它大概率会给出一段<strong style="color:#fff">语气自信、结构清晰、但完全错误的回答</strong>——因为 <code>RTC-10027</code> 是你们公司内部 SDK 的私有错误码，通用模型的训练数据里根本不存在这个字符串。它不知道 SDK 4.6.2 是什么版本，不知道 Android 14 上你们引擎的已知兼容性问题，更不知道上周 Support 团队刚刚沉淀下来的新排查方案。</p>
-  <p>它不是答错了，它是<strong style="color:#fff">在它根本不可能知道的事情上编造了一个答案</strong>。这篇文章的一切讨论，都从这个瞬间开始。</p>
+  <p>它大概率会给出一段<strong>语气自信、结构清晰、但完全错误的回答</strong>——因为 <code>RTC-10027</code> 是你们公司内部 SDK 的私有错误码，通用模型的训练数据里根本不存在这个字符串。它不知道 SDK 4.6.2 是什么版本，不知道 Android 14 上你们引擎的已知兼容性问题，更不知道上周 Support 团队刚刚沉淀下来的新排查方案。</p>
+  <p>它不是答错了，它是<strong>在它根本不可能知道的事情上编造了一个答案</strong>。这篇文章的一切讨论，都从这个瞬间开始。</p>
 </div>
 
 <section id="s1">
@@ -538,7 +524,7 @@ flowchart TD
     <div class="arr">→</div>
     <div class="node">模型（封闭记忆）</div>
     <div class="arr">→</div>
-    <div class="node" style="background:#7a3b3b">自信的错误答案</div>
+    <div class="node node--danger">自信的错误答案</div>
   </div>
   <div class="flow-caption">RTC-10027 在模型的世界里不存在 → 幻觉几乎必然发生</div>
 
@@ -571,18 +557,18 @@ flowchart LR
 
   <p>如果这篇文章只让你带走一个心智模型，请带走下面这个对比：</p>
 
-  <div class="card" style="border-left:4px solid #1a1f2e">
-    <div class="card-title" style="color:#1a1f2e">传统 LLM</div>
-    <div class="flow" style="margin:8px 0 0">
+  <div class="card">
+    <div class="card-title">传统 LLM</div>
+    <div class="flow flow--compact">
       <div class="node">模型</div>
       <div class="arr">→</div>
       <div class="node">回答</div>
     </div>
   </div>
 
-  <div class="card" style="border-left:4px solid #0f5f4f">
+  <div class="card card--accent">
     <div class="card-title">企业 RAG</div>
-    <div class="flow" style="margin:8px 0 0">
+    <div class="flow flow--compact">
       <div class="node">企业知识</div>
       <div class="arr">→</div>
       <div class="node">检索</div>
@@ -597,26 +583,18 @@ flowchart LR
     </div>
   </div>
 
-  <div class="lead-quote" style="border-left-color:#0f5f4f;background:#e6f2ef">
+  <div class="lead-quote">
     企业 RAG 的核心，不是"给 LLM 加一个向量数据库"，而是构建<strong>企业知识与模型之间的一条可靠信息通道</strong>——让正确的人在正确的时刻，基于可溯源的证据，获得可信的答案。
     <span class="q-src">—— 本系列的中心论点</span>
   </div>
 
   <p>围绕这条通道，有一整个工程世界要构建：文档如何解析与切分、索引如何设计与更新、查询如何理解与改写、检索如何混合与精排、上下文如何组装、答案如何评估与迭代，以及权限、多租户、可观测性、成本这些横切的系统能力。这些，就是这个系列要逐篇回答的问题。</p>
 
-  <div class="next-box">
-    <div>
-      <div class="nb-l">NEXT EPISODE</div>
-      <div class="nb-t">第 2 篇 · 企业知识的 ingestion 之路：文档解析、清洗与分块</div>
-    </div>
-    <a class="nb-btn" href="#s9">系列连载中 →</a>
+  <div class="callout">
+    <div class="co-label">NEXT EPISODE</div>
+    <p>第 2 篇 · 企业知识的 ingestion 之路：文档解析、清洗与分块（系列连载中）。</p>
   </div>
 </section>
-
-<footer>
-  <span>企业级 RAG 架构设计与工程实践 · EP.01</span>
-  <span>认知建立篇 · 完</span>
-</footer>
 
 </div>
 
