@@ -41,6 +41,13 @@
   </url>
 
   <url>
+    <loc>https://tangentllm.github.io/weblog/post/enterprise-rag-03-data-engineering/</loc>
+    <lastmod>2026-09-09T16:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
     <loc>https://tangentllm.github.io/weblog/post/enterprise-rag-02-architecture-overview/</loc>
     <lastmod>2026-09-09T14:00:00+08:00</lastmod>
     <changefreq>monthly</changefreq>
