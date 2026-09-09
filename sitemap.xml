@@ -7,40 +7,68 @@
 
   <url>
     <loc>https://tangentllm.github.io/weblog/</loc>
-    <lastmod>2026-09-09</lastmod>
+    <lastmod>2026-09-10T22:00:00+08:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
   <url>
     <loc>https://tangentllm.github.io/weblog/categories/</loc>
-    <lastmod>2026-09-09</lastmod>
+    <lastmod>2026-09-10T22:00:00+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
     <loc>https://tangentllm.github.io/weblog/tags/</loc>
-    <lastmod>2026-09-09</lastmod>
+    <lastmod>2026-09-10T22:00:00+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
     <loc>https://tangentllm.github.io/weblog/projects/</loc>
-    <lastmod>2026-09-09</lastmod>
+    <lastmod>2026-09-10T22:00:00+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
     <loc>https://tangentllm.github.io/weblog/about/</loc>
-    <lastmod>2026-09-09</lastmod>
+    <lastmod>2026-09-10T22:00:00+08:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
 
-    <url>
+  <url>
+    <loc>https://tangentllm.github.io/weblog/post/rag-eval-04-eval-studio-release-gate/</loc>
+    <lastmod>2026-09-10T22:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://tangentllm.github.io/weblog/post/rag-eval-03-regression-dataset/</loc>
+    <lastmod>2026-09-10T21:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://tangentllm.github.io/weblog/post/rag-eval-02-llm-as-judge/</loc>
+    <lastmod>2026-09-10T20:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://tangentllm.github.io/weblog/post/rag-eval-01-metrics-ragas/</loc>
+    <lastmod>2026-09-10T19:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
     <loc>https://tangentllm.github.io/weblog/post/enterprise-rag-15-enterprise-architecture/</loc>
     <lastmod>2026-09-10T18:00:00+08:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -103,7 +131,7 @@
     <priority>0.9</priority>
   </url>
 
-<url>
+  <url>
     <loc>https://tangentllm.github.io/weblog/post/enterprise-rag-06-hybrid-retrieval/</loc>
     <lastmod>2026-09-09T22:00:00+08:00</lastmod>
     <changefreq>monthly</changefreq>

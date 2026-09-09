@@ -1,5 +1,89 @@
 [
   {
+    "slug": "rag-eval-04-eval-studio-release-gate",
+    "title": "RAG Evaluation 工程（四）：Eval Studio：把 RAG Evaluation 接入 CI/CD，建立真正的上线质量门禁",
+    "date": "2026-09-10T22:00:00+08:00",
+    "readTime": "28 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "Evaluation",
+      "Eval Studio",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "把 Dataset、Evaluator、Baseline 对比与 Regression 检测装进 Eval Studio，用 Hard/Soft/Delta 三层门禁焊死在 CI/CD 流水线上。",
+    "file": "./content/posts/rag-eval-04-eval-studio-release-gate.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《Eval Studio：把 RAG Evaluation 接入 CICD，建立真正的上线质量门禁》.html",
+    "subtitle": "Eval Studio 与 Release Gate",
+    "series": "RAG Evaluation 工程",
+    "seriesOrder": 4
+  },
+  {
+    "slug": "rag-eval-03-regression-dataset",
+    "title": "RAG Evaluation 工程（三）：RAG Regression：如何建立一套真正有价值的 Evaluation Dataset？",
+    "date": "2026-09-10T21:00:00+08:00",
+    "readTime": "18 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "Evaluation",
+      "Regression Dataset",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "指标和 Judge 都就绪后，真正稀缺的是能让评测产生意义的 Dataset。从 Case 原子、来源分层到 Failure 回流闭环。",
+    "file": "./content/posts/rag-eval-03-regression-dataset.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《RAG Regression：如何建立一套真正有价值的 Evaluation Dataset？》.html",
+    "subtitle": "高质量评测数据集工程",
+    "series": "RAG Evaluation 工程",
+    "seriesOrder": 3
+  },
+  {
+    "slug": "rag-eval-02-llm-as-judge",
+    "title": "RAG Evaluation 工程（二）：LLM-as-Judge：让大模型给 RAG 打分，真的可靠吗？",
+    "date": "2026-09-10T20:00:00+08:00",
+    "readTime": "25 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "Evaluation",
+      "LLM-as-Judge",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "当评测依赖 LLM 做支撑判断时，Judge 的偏差与漂移会伪装成业务波动。讲清 Claim Extraction、Rubric、Structured Output 与元评测。",
+    "file": "./content/posts/rag-eval-02-llm-as-judge.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《RAG Evaluation 工程：从指标、Judge 到 Eval Studio 与生产质量门禁》.html",
+    "subtitle": "生产级 Faithfulness Judge 设计",
+    "series": "RAG Evaluation 工程",
+    "seriesOrder": 2
+  },
+  {
+    "slug": "rag-eval-01-metrics-ragas",
+    "title": "RAG Evaluation 工程（一）：从“检索到了”到“回答正确”，Ragas 到底在评估什么？",
+    "date": "2026-09-10T19:00:00+08:00",
+    "readTime": "18 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "Evaluation",
+      "RAG Evaluation",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Recall 高不等于回答正确。从检索评测到 Ragas 四指标，建立 Retrieval · Groundedness · Answer Quality 的分层评价坐标系。",
+    "file": "./content/posts/rag-eval-01-metrics-ragas.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《RAG Evaluation：从“检索到了”到“回答正确”，Ragas 到底在评估什么？》.html",
+    "subtitle": "Ragas 指标体系与三层质量模型",
+    "series": "RAG Evaluation 工程",
+    "seriesOrder": 1
+  },
+  {
     "slug": "enterprise-rag-15-enterprise-architecture",
     "title": "企业级 RAG 架构设计与工程实践（十五）：从 Naive RAG 到 Enterprise RAG：一套真正可以落地的生产架构",
     "date": "2026-09-10T18:00:00+08:00",

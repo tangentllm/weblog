@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Evaluation：从“检索到了”到“回答正确”，Ragas 到底在评估什么？ | RAG Evaluation 工程系列 · 01</title>
+<style>
+  :root{
+    --ink:#1f2933; --ink-soft:#52606d; --ink-mute:#7b8794;
+    --paper:#fdfcf9; --card:#ffffff; --line:#e4e0d6; --line-soft:#efece4;
+    --accent:#1e5f8c; --accent-soft:#eaf3f9;
+    --warn:#b45309; --warn-soft:#fdf3e3;
+    --ok:#1a7f5a; --ok-soft:#e9f6f0;
+    --bad:#b03a3a; --bad-soft:#fbecec;
+    --code-bg:#1c2430; --code-ink:#e6edf3;
+    --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","Helvetica Neue",sans-serif;
+    --mono:"SF Mono","JetBrains Mono","Fira Code",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:var(--serif);
+    font-size:17px; line-height:1.85;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:780px;margin:0 auto;padding:0 28px 120px;}
+
+  /* ---------- Masthead ---------- */
+  .masthead{padding:64px 0 8px;border-bottom:3px double var(--ink);}
+  .series-tag{
+    display:inline-block;font-family:var(--sans);font-size:12px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:18px;
+  }
+  .series-tag .no{color:var(--ink-mute);}
+  h1.title{
+    font-size:40px;line-height:1.32;font-weight:700;letter-spacing:-.01em;margin-bottom:18px;
+  }
+  .subtitle{
+    font-size:19px;color:var(--ink-soft);line-height:1.7;margin-bottom:32px;
+    border-left:3px solid var(--accent);padding-left:16px;
+  }
+  .byline{
+    display:flex;flex-wrap:wrap;gap:14px 28px;font-family:var(--sans);
+    font-size:13px;color:var(--ink-mute);padding:16px 0 22px;
+  }
+  .byline b{color:var(--ink-soft);font-weight:600;}
+
+  /* ---------- Abstract ---------- */
+  .abstract{
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:26px 30px;margin:34px 0 0;
+  }
+  .abstract h2{
+    font-family:var(--sans);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:12px;font-weight:700;
+  }
+  .abstract p{font-size:15.5px;color:var(--ink-soft);line-height:1.85;}
+  .abstract strong{color:var(--ink);}
+
+  /* ---------- TOC ---------- */
+  .toc{margin:36px 0 0;padding:22px 28px;background:transparent;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .toc h3{font-family:var(--sans);font-size:12px;letter-spacing:.2em;color:var(--ink-mute);text-transform:uppercase;margin-bottom:10px;}
+  .toc ol{list-style:none;counter-reset:toc;}
+  .toc li{counter-increment:toc;font-size:14.5px;padding:5px 0;}
+  .toc li::before{content:counter(toc,decimal-leading-zero) "  ";font-family:var(--mono);color:var(--accent);font-size:12px;margin-right:10px;}
+  .toc a{color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted transparent;}
+  .toc a:hover{color:var(--accent);border-bottom-color:var(--accent);}
+
+  /* ---------- Sections ---------- */
+  section{margin-top:96px;}
+  .kicker{
+    font-family:var(--sans);font-size:12px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--accent);font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:12px;
+  }
+  .kicker::after{content:"";flex:1;height:1px;background:var(--line);}
+  h2.sec{
+    font-size:30px;font-weight:700;line-height:1.35;margin-bottom:8px;letter-spacing:-.01em;
+  }
+  h3.sub{font-size:21px;font-weight:700;margin:48px 0 14px;color:var(--ink);}
+  h4.mini{font-family:var(--sans);font-size:14px;font-weight:700;color:var(--accent);margin:28px 0 8px;letter-spacing:.04em;}
+  p{margin:16px 0;}
+  p strong{font-weight:700;}
+  em{font-style:normal;background:linear-gradient(transparent 62%,#fff3c4 62%);padding:0 2px;}
+  code{
+    font-family:var(--mono);font-size:.87em;background:#f2f0ea;
+    padding:2px 6px;border-radius:4px;color:#24435c;
+  }
+
+  /* ---------- Callouts ---------- */
+  .callout{border-radius:8px;padding:20px 24px;margin:28px 0;font-size:15.5px;line-height:1.8;}
+  .callout .co-title{
+    font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.16em;
+    text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px;
+  }
+  .callout p{margin:6px 0;}
+  .callout.note{background:var(--accent-soft);border-left:4px solid var(--accent);}
+  .callout.note .co-title{color:var(--accent);}
+  .callout.warn{background:var(--warn-soft);border-left:4px solid var(--warn);}
+  .callout.warn .co-title{color:var(--warn);}
+  .callout.insight{background:var(--ok-soft);border-left:4px solid var(--ok);}
+  .callout.insight .co-title{color:var(--ok);}
+  .callout.danger{background:var(--bad-soft);border-left:4px solid var(--bad);}
+  .callout.danger .co-title{color:var(--bad);}
+
+  /* ---------- Formula card ---------- */
+  .formula{
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:22px 26px;margin:26px 0;text-align:center;
+  }
+  .formula .f-name{font-family:var(--sans);font-size:12px;letter-spacing:.18em;color:var(--ink-mute);text-transform:uppercase;margin-bottom:10px;}
+  .formula .f-body{font-family:var(--mono);font-size:16px;color:var(--ink);letter-spacing:.01em;}
+  .formula .f-note{font-size:13.5px;color:var(--ink-soft);margin-top:10px;line-height:1.7;}
+  .formula sub{font-size:.7em;}
+  .formula sup{font-size:.7em;}
+
+  /* ---------- Table ---------- */
+  .tbl-wrap{overflow-x:auto;margin:26px 0;}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--card);border-radius:8px;overflow:hidden;}
+  caption{
+    caption-side:top;text-align:left;font-family:var(--sans);font-size:12px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);padding-bottom:10px;
+  }
+  thead th{
+    background:#2b3a4a;color:#f2f5f8;font-family:var(--sans);font-weight:600;
+    font-size:13px;letter-spacing:.04em;padding:12px 14px;text-align:left;white-space:nowrap;
+  }
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--line-soft);color:var(--ink-soft);vertical-align:top;line-height:1.7;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:nth-child(even){background:#faf9f5;}
+  td.metric{font-weight:700;color:var(--ink);font-family:var(--sans);font-size:13.5px;}
+  td .layer-pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:10px;}
+  .pill-r{background:#eef3f8;color:#1e5f8c;}
+  .pill-g{background:#eaf6f0;color:#1a7f5a;}
+  .pill-a{background:#f6f0ea;color:#8a5a1e;}
+
+  /* ---------- Code ---------- */
+  pre{
+    background:var(--code-bg);color:var(--code-ink);border-radius:8px;
+    padding:20px 22px;overflow-x:auto;margin:24px 0;
+    font-family:var(--mono);font-size:13.5px;line-height:1.75;
+  }
+  pre code{background:none;color:inherit;padding:0;font-size:inherit;}
+  .cm{color:#7d8ca0;font-style:italic;}
+  .kw{color:#82aaff;}
+  .str{color:#c3e88d;}
+  .fn{color:#ffcb6b;}
+  .num{color:#f78c6c;}
+
+  /* ---------- Stat cards ---------- */
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:30px 0;}
+  .stat{
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:18px 18px 16px;position:relative;
+  }
+  .stat .s-label{font-family:var(--sans);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:6px;}
+  .stat .s-value{font-family:var(--sans);font-size:30px;font-weight:700;color:var(--ink);line-height:1.1;}
+  .stat .s-value small{font-size:14px;font-weight:600;color:var(--ink-mute);margin-left:2px;}
+  .stat .s-desc{font-size:12.5px;color:var(--ink-soft);margin-top:8px;line-height:1.55;}
+  .stat.good .s-value{color:var(--ok);}
+  .stat.bad .s-value{color:var(--bad);}
+  .stat.warn .s-value{color:var(--warn);}
+  .stat.blue .s-value{color:var(--accent);}
+
+  /* ---------- Figure ---------- */
+  figure{margin:34px 0;}
+  figcaption{
+    font-family:var(--sans);font-size:12.5px;color:var(--ink-mute);
+    text-align:center;margin-top:12px;line-height:1.6;
+  }
+  figcaption b{color:var(--ink-soft);}
+  .fig-frame{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px;}
+  svg{display:block;width:100%;height:auto;}
+
+  /* ---------- Divider ---------- */
+  .divider{
+    display:flex;align-items:center;gap:14px;margin:84px 0 0;
+    color:var(--ink-mute);font-family:var(--mono);font-size:13px;letter-spacing:.3em;
+  }
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line);}
+
+  /* ---------- Next article ---------- */
+  .next-up{
+    margin-top:96px;background:linear-gradient(135deg,#f4f8fb 0%,#fdfcf9 100%);
+    border:1px solid var(--line);border-radius:12px;padding:38px 40px;
+  }
+  .next-up .n-label{font-family:var(--sans);font-size:12px;letter-spacing:.22em;color:var(--accent);text-transform:uppercase;font-weight:700;margin-bottom:14px;}
+  .next-up h3{font-size:24px;font-weight:700;margin-bottom:12px;line-height:1.4;}
+  .next-up p{font-size:15.5px;color:var(--ink-soft);}
+  .next-up .q{
+    font-family:var(--serif);font-size:18px;color:var(--ink);
+    border-left:3px solid var(--accent);padding-left:16px;margin:20px 0;line-height:1.75;
+  }
+
+  /* ---------- Series recap ---------- */
+  .recap{margin-top:80px;border-top:1px solid var(--line);padding-top:34px;}
+  .recap h3{font-family:var(--sans);font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:14px;}
+  .recap-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .recap-box h4{font-family:var(--sans);font-size:14px;font-weight:700;margin-bottom:8px;}
+  .recap-box.done h4{color:var(--ok);}
+  .recap-box.open h4{color:var(--warn);}
+  .recap-box p{font-size:14.5px;color:var(--ink-soft);margin:4px 0;}
+
+  footer{
+    margin-top:110px;border-top:3px double var(--ink);padding-top:24px;
+    font-family:var(--sans);font-size:12.5px;color:var(--ink-mute);line-height:1.8;
+  }
+  footer .refs{margin-bottom:14px;}
+  footer .refs li{list-style:none;margin:3px 0;}
+  footer .refs code{font-size:11.5px;}
+
+  @media (max-width:640px){
+    h1.title{font-size:30px;}
+    h2.sec{font-size:24px;}
+    .recap-grid{grid-template-columns:1fr;}
+    .next-up{padding:26px 22px;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ============ MASTHEAD ============ -->
+  <header class="masthead">
+    <span class="series-tag">RAG Evaluation 工程 · 从指标、Judge 到 Eval Studio 与生产质量门禁 <span class="no">/ 01</span></span>
+    <h1 class="title">RAG Evaluation：从“检索到了”到“回答正确”，Ragas 到底在评估什么？</h1>
+    <p class="subtitle">一个 RAG 系统的评价，从来不是一个分数。它是一条从检索质量、接地性到答案质量的分层链路——而这条链路的起点，是承认 <strong>Recall 高不等于回答正确</strong>。</p>
+    <div class="byline">
+      <span><b>系列</b> RAG Evaluation 工程</span>
+      <span><b>篇目</b> 01 / 04</span>
+      <span><b>作者</b> LLM Application Architect</span>
+      <span><b>阅读时长</b> 约 18 min</span>
+    </div>
+  </header>
+
+  <!-- ============ ABSTRACT ============ -->
+  <aside class="abstract">
+    <h2>Abstract</h2>
+    <p>本篇是系列的第一篇，回答一个最基础也最常被回答错的问题：<strong>一个 RAG 系统到底应该如何评价？</strong> 我们从传统 Retrieval 指标出发，说明为什么 Hit Rate / MRR 这类指标在生成式系统里严重不足，再进入 Ragas 的指标体系，最终把火力集中在一个关键指标上——<strong>Faithfulness</strong>。本篇将用同一个企业知识库 + 客服场景的案例贯穿全文，并通过正反两个反例建立三层模型：<strong>Retrieval Quality、Groundedness、Answer Quality 是三个独立维度</strong>。文末会自然留下一个悬而未决的问题，引向下一篇的核心：LLM-as-Judge。</p>
+  </aside>
+
+  <!-- ============ TOC ============ -->
+  <nav class="toc">
+    <h3>Contents</h3>
+    <ol>
+      <li><a href="#why">为什么 RAG 需要 Evaluation，而不是“看起来对就行”</a></li>
+      <li><a href="#retrieval">Retrieval Evaluation：Hit Rate、MRR 与它们的盲区</a></li>
+      <li><a href="#gap">为什么 Recall 高 ≠ 回答正确</a></li>
+      <li><a href="#ragas">Ragas 指标体系总览</a></li>
+      <li><a href="#faithfulness">Faithfulness 深入：它衡量的是接住，而不是答对</a></li>
+      <li><a href="#triad">RAG 质量三层模型：Retrieval · Groundedness · Answer</a></li>
+      <li><a href="#case">完整案例：客服知识库下的端到端评测</a></li>
+      <li><a href="#pipeline">RAG Evaluation Pipeline 与最小可用代码</a></li>
+      <li><a href="#next">留给我们的问题：那个判断，是谁做出的？</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============ 1. WHY ============ -->
+  <section id="why">
+    <div class="kicker">Section 01 · Why</div>
+    <h2 class="sec">为什么 RAG 需要 Evaluation，而不是“看起来对就行”</h2>
+
+    <p>绝大多数 RAG 系统在 Demo 阶段都让人满意：换一个系统提示词、调一调 top_k、加一个 Reranker，看起来就“能用”。但只要把它推到真实的企业知识库 + 客服场景下，问题很快暴露——同一个问题今天回答对、明天回答错；改了 embedding 模型后，某类问题突然全部崩掉，而团队没有任何一种手段能在上线之前先发现。</p>
+
+    <p>这不是模型不够强的问题，而是<strong>缺一个工程化的反馈闭环</strong>。所谓 Evaluation，本质上要回答三个递进的问题：</p>
+
+    <div class="callout note">
+      <div class="co-title">Evaluation 的三问</div>
+      <p><strong>① 系统现在到底怎么样？</strong> —— 需要可量化的指标，而不是“感觉还行”。</p>
+      <p><strong>② 这次改动变好了还是变差了？</strong> —— 需要可比的实验，而不是发布后看用户投诉。</p>
+      <p><strong>③ 如果某天突然变差，能不能在它影响用户之前被发现？</strong> —— 需要可自动阻断的门禁，而不是事后复盘。</p>
+    </div>
+
+    <p>第一问是本篇的主题：我们要建立一套<strong>足以反映 RAG 真实质量的指标体系</strong>。后两问，是整个系列剩余三篇的任务——Regression Dataset、Eval Studio、Release Gate 与 CI/CD——它们都建立在第一问的指标之上。如果指标本身是错的、或不足以反映真实问题，后面的一切工程都会在一个有缺陷的地基上空转。</p>
+  </section>
+
+  <!-- ============ 2. RETRIEVAL EVAL ============ -->
+  <section id="retrieval">
+    <div class="kicker">Section 02 · Retrieval Eval</div>
+    <h2 class="sec">Retrieval Evaluation：Hit Rate、MRR 与它们的盲区</h2>
+
+    <p>RAG 的第一步是检索。对这一步的传统评测来自信息检索领域，最常用的两个指标是 <strong>Hit Rate</strong>（top-k 中是否至少命中一条相关文档）和 <strong>MRR</strong>（Mean Reciprocal Rank，第一条相关文档出现位置的倒数的均值）。它们非常便宜、确定、可离线批量跑，因此往往是大多数团队做 RAG 评测的起点。</p>
+
+    <div class="formula">
+      <div class="f-name">Mean Reciprocal Rank</div>
+      <div class="f-body">MRR = <sup>1</sup>&frasl;<sub>|Q|</sub> · &Sigma;<sub>i=1</sub><sup>|Q|</sup> &nbsp;<sup>1</sup>&frasl;<sub>rank<sub>i</sub></sub></div>
+      <div class="f-note">rank<sub>i</sub> 是第 i 个 Query 在 top-k 结果中第一条相关文档的位置；越靠前分越高。</div>
+    </div>
+
+    <p>这些指标<b>擅长</b>的事情很清楚：回答“检索器有没有把相关文档拉回来、拉得够不够靠前”。它们在调 embedding 模型、调 chunk 策略、调 Reranker 时是最直接的信号。</p>
+
+    <p>但它们有<b>三块明显的盲区</b>，而这恰恰是 RAG 区别于传统搜索的地方：</p>
+
+    <div class="callout warn">
+      <div class="co-title">Retrieval 指标解决不了的三件事</div>
+      <p><strong>1. 答案对不对，它看不见。</strong> Retrieval 指标评的是“文档是否相关”，而用户最终消费的是 LLM 写出的句子。文档相关、答案仍然可以幻觉。</p>
+      <p><strong>2. 生成器的退化，它发现不了。</strong> 即使你换掉 LLM、改坏 Prompt、把 temperature 调到 1.5，Retrieval 指标一动不动——它对生成侧的回归是盲的。</p>
+      <p><strong>3. “相关”和“够用”是两件事。</strong> 一篇文档提到“可以退款”，但用户问的是“14 天内还能不能退”。文档高度相关，却少了那个关键限定词——Retrieval 指标满分，回答依然错。</p>
+    </div>
+
+    <p>换句话说，Retrieval 指标只对 RAG 链路的<strong>前半段</strong>负责。一旦进入生成阶段，评价的视角必须换一个坐标系。</p>
+  </section>
+
+  <!-- ============ 3. THE GAP ============ -->
+  <section id="gap">
+    <div class="kicker">Section 03 · The Gap</div>
+    <h2 class="sec">为什么 Recall 高 ≠ 回答正确</h2>
+
+    <p>把盲区用一个具体例子钉死。还是企业知识库 + 客服场景：</p>
+
+    <div class="callout note">
+      <div class="co-title">Case · 退款政策</div>
+      <p><strong>Question：</strong>“我在 14 天内买的会员还能退款吗？”</p>
+      <p><strong>Retriever 拉回的 Context：</strong>“<em>会员服务支持退款，退款将原路退回至支付账户，处理周期约为 3–5 个工作日。</em>” —— Hit Rate ✓，MRR = 1.0，Retrieval 指标满分。</p>
+      <p><strong>Answer（LLM 生成）：</strong>“可以的，14 天内购买的会员随时可以全额退款，3–5 个工作日内到账。” —— 看起来流畅、自信、用户满意。</p>
+      <p><strong>事实：</strong>知识库里另一段明确写着“<em>年付会员在购买后 7 天内可全额退款，超过 7 天不予退款。</em>” 那条包含“14 天 / 7 天 / 例外”关键限定的 chunk，被 rank 3 之后截断，没进入 Context。</p>
+    </div>
+
+    <p>Retrieval 指标在这里给不出任何警报：top-1 文档确实“相关”（关键词全命中）。但从用户视角看，这是一次彻底的失败——客服给出了一个错误承诺，未来会变成工单甚至投诉。</p>
+
+    <p>失败点不止一个：</p>
+    <ul style="margin:16px 0 16px 24px;font-size:16px;color:var(--ink-soft);">
+      <li><strong>检索侧</strong>：没把那条最关键的 chunk 召回进 top-k → 这是一个“覆盖不足”问题。</li>
+      <li><strong>生成侧</strong>：LLM 在 Context 缺失关键限定的情况下，没有承认“我不确定”，而是补了一句自信的错误陈述 → 这是一个“幻觉”问题。</li>
+      <li><strong>评价侧</strong>：如果只用 Retrieval 指标，这两类失败都被完美掩盖。</li>
+    </ul>
+
+    <p>所以，一套合格的 RAG 评价体系必须至少覆盖两个独立层面：<strong>Retrieval Evaluation</strong> 与 <strong>Generation Evaluation</strong>。这正是本篇接下来要展开的分层模型。</p>
+
+    <!-- SVG: 分层评测模型 -->
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,PingFang SC,sans-serif">
+          <defs>
+            <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L9,3 L0,6 Z" fill="#52606d"/>
+            </marker>
+            <marker id="arrA" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L9,3 L0,6 Z" fill="#1e5f8c"/>
+            </marker>
+            <marker id="arrG" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L9,3 L0,6 Z" fill="#1a7f5a"/>
+            </marker>
+          </defs>
+
+          <!-- Question -->
+          <rect x="20" y="140" width="120" height="56" rx="8" fill="#fff" stroke="#e4e0d6"/>
+          <text x="80" y="164" text-anchor="middle" font-size="13" fill="#1f2933" font-weight="600">Question</text>
+          <text x="80" y="182" text-anchor="middle" font-size="11" fill="#7b8794">user_input</text>
+
+          <!-- Retriever box -->
+          <rect x="200" y="40" width="200" height="100" rx="10" fill="#f4f8fb" stroke="#1e5f8c" stroke-width="1.5"/>
+          <text x="300" y="68" text-anchor="middle" font-size="14" fill="#1e5f8c" font-weight="700">Retrieval Evaluation</text>
+          <text x="300" y="92" text-anchor="middle" font-size="11.5" fill="#52606d">Context Recall / Context Precision</text>
+          <text x="300" y="110" text-anchor="middle" font-size="11.5" fill="#52606d">Hit Rate · MRR (legacy)</text>
+          <text x="300" y="130" text-anchor="middle" font-size="10.5" fill="#7b8794" font-style="italic">评：是否把“够用的信息”拉回来</text>
+
+          <!-- Generator box -->
+          <rect x="200" y="200" width="200" height="100" rx="10" fill="#f0f7f3" stroke="#1a7f5a" stroke-width="1.5"/>
+          <text x="300" y="228" text-anchor="middle" font-size="14" fill="#1a7f5a" font-weight="700">Generation Evaluation</text>
+          <text x="300" y="252" text-anchor="middle" font-size="11.5" fill="#52606d">Faithfulness · Answer Relevancy</text>
+          <text x="300" y="270" text-anchor="middle" font-size="11.5" fill="#52606d">Factual Correctness</text>
+          <text x="300" y="290" text-anchor="middle" font-size="10.5" fill="#7b8794" font-style="italic">评：答得是否接地、是否切题、是否正确</text>
+
+          <!-- Arrows from Question -->
+          <path d="M140,158 C170,140 175,95 200,92" fill="none" stroke="#1e5f8c" stroke-width="1.4" marker-end="url(#arrA)"/>
+          <path d="M140,178 C170,200 175,248 200,252" fill="none" stroke="#1a7f5a" stroke-width="1.4" marker-end="url(#arrG)"/>
+
+          <!-- Final score box -->
+          <rect x="490" y="120" width="240" height="140" rx="10" fill="#fffdf5" stroke="#b45309" stroke-width="1.5"/>
+          <text x="610" y="150" text-anchor="middle" font-size="14" fill="#b45309" font-weight="700">一套合格的评测 = 双视角</text>
+          <text x="610" y="178" text-anchor="middle" font-size="12" fill="#52606d">只评 Retrieval → 看不见幻觉</text>
+          <text x="610" y="200" text-anchor="middle" font-size="12" fill="#52606d">只评 Generation → 找不到检索根因</text>
+          <text x="610" y="228" text-anchor="middle" font-size="12.5" fill="#1f2933" font-weight="600">两层必须同时点亮，</text>
+          <text x="610" y="246" text-anchor="middle" font-size="12.5" fill="#1f2933" font-weight="600">才能定位一次失败发生在哪一层</text>
+
+          <path d="M400,90 C440,90 455,140 490,150" fill="none" stroke="#52606d" stroke-width="1.2" marker-end="url(#arr)" stroke-dasharray="5 4"/>
+          <path d="M400,250 C440,250 455,215 490,205" fill="none" stroke="#52606d" stroke-width="1.2" marker-end="url(#arr)" stroke-dasharray="5 4"/>
+
+          <!-- Annotation -->
+          <text x="80" y="240" text-anchor="middle" font-size="10.5" fill="#7b8794" font-style="italic">同一个 Question</text>
+          <text x="80" y="256" text-anchor="middle" font-size="10.5" fill="#7b8794" font-style="italic">两个独立评分面</text>
+        </svg>
+      </div>
+      <figcaption><b>图 1 · RAG Evaluation 分层模型</b>：一个 Question 需要被两个独立视角同时评估——Retrieval 视角评 Context 是否够用，Generation 视角评 Answer 是否接地与切题。任一视角缺失，都会让某一类失败完全隐身。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ 4. RAGAS ============ -->
+  <section id="ragas">
+    <div class="kicker">Section 04 · Ragas</div>
+    <h2 class="sec">Ragas 指标体系总览</h2>
+
+    <p>把上面两个视角填满，就是 Ragas 的核心贡献：它把 RAG 评测拆成了四条互补的指标——<strong>Context Recall、Context Precision、Answer Relevancy、Faithfulness</strong>——分别对应“检索拉全了没 / 检索排序优不优 / 答得切不切题 / 答得接不接地”四个独立问题。它们都不是简单的字符串匹配，而是通过结构化的 LLM 判分（或 embedding 相似度）将“判断”收敛成一个分数，从而可以批量、可重复地跑在数据集上<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-0' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge' data-id='turn0search6'><span data-allow-html class='source-item-num' data-group-key='source-group-0' data-id='turn0search6' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge'><span class='source-item-num-name' data-allow-html>saulius.io</span><span data-allow-html class='source-item-num-count'>+1</span></span></span>。</p>
+
+    <p>理解 Ragas 的关键，不是背公式，而是<b>看清每条指标回答的是“哪一个失败模式”</b>。下表把四个指标与它们各自能捕获的失败、各自解决不了的问题并排放在一起——这张表会在整个系列里被反复引用：</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>表 1 · Ragas 核心指标一览（本系列通用术语表）</caption>
+        <thead>
+          <tr>
+            <th>指标</th><th>评测层次</th><th>回答的问题</th><th>计算机制</th><th>能否独立评出“正确”</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="metric">Context Recall</td>
+            <td><span class="layer-pill pill-r">Retrieval</span></td>
+            <td>参考答案里的关键信息，Context 是否覆盖到了？</td>
+            <td>把 Reference 拆成原子语句，逐条判“是否可归因到 Context”，取均值<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-5' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge' data-id='turn1fetch0'><span data-allow-html class='source-item-num' data-group-key='source-group-5' data-id='turn1fetch0' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge'><span class='source-item-num-name' data-allow-html>saulius.io</span><span data-allow-html class='source-item-num-count'></span></span></span></td>
+            <td>否，只评 Context 是否够用</td>
+          </tr>
+          <tr>
+            <td class="metric">Context Precision</td>
+            <td><span class="layer-pill pill-r">Retrieval</span></td>
+            <td>拉回来的 chunk 里，有多少真的对答题有用，且排得靠前？</td>
+            <td>逐 chunk 判“有用/没用”，按 Average Precision 聚合（排名靠前的有用项权重更高）<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-6' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge' data-id='turn1fetch0'><span data-allow-html class='source-item-num' data-group-key='source-group-6' data-id='turn1fetch0' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge'><span class='source-item-num-name' data-allow-html>saulius.io</span><span data-allow-html class='source-item-num-count'></span></span></span></td>
+            <td>否，对排序敏感</td>
+          </tr>
+          <tr>
+            <td class="metric">Answer Relevancy</td>
+            <td><span class="layer-pill pill-a">Answer</span></td>
+            <td>答案是否直接回应了用户的意图？有没有答非所问 / 冗余？</td>
+            <td>用 LLM 从 Answer 反向生成 N 个“它可能回应的问题”，与原 Question 做 embedding 余弦相似度取均值<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-7' data-url='https://docs&#46;ragas&#46;io/en/stable/concepts/metrics/available&#95;metrics/answer&#95;relevance' data-id='turn2search1'><span data-allow-html class='source-item-num' data-group-key='source-group-7' data-id='turn2search1' data-url='https://docs&#46;ragas&#46;io/en/stable/concepts/metrics/available&#95;metrics/answer&#95;relevance'><span class='source-item-num-name' data-allow-html>ragas.io</span><span data-allow-html class='source-item-num-count'></span></span></span></td>
+            <td>否，对事实错误无感</td>
+          </tr>
+          <tr>
+            <td class="metric">Faithfulness</td>
+            <td><span class="layer-pill pill-g">Groundedness</span></td>
+            <td>答案里的每一条陈述，是否都能被 Context 支撑？</td>
+            <td>把 Answer 拆成原子 Claim，逐条 NLI 判“能否由 Context 推出”，求支撑比例<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-1' data-url='https://docs&#46;ragas&#46;io/en/v0&#46;1&#46;21/concepts/metrics/faithfulness&#46;html' data-id='turn0search3'><span data-allow-html class='source-item-num' data-group-key='source-group-1' data-id='turn0search3' data-url='https://docs&#46;ragas&#46;io/en/v0&#46;1&#46;21/concepts/metrics/faithfulness&#46;html'><span class='source-item-num-name' data-allow-html>ragas.io</span><span data-allow-html class='source-item-num-count'>+1</span></span></span></td>
+            <td>否，只评接地性，不评对错</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>四条指标各自独立、互补，但<b>都不能单独回答“答案是否正确”</b>。要做到这件事，需要把指标两两组合、交叉判读——这正是接下来 Faithfulness 一节要展开的核心论点。</p>
+  </section>
+
+  <!-- ============ 5. FAITHFULNESS ============ -->
+  <section id="faithfulness">
+    <div class="kicker">Section 05 · Deep Dive</div>
+    <h2 class="sec">Faithfulness 深入：它衡量的是“接住”，而不是“答对”</h2>
+
+    <p>四个指标里，Faithfulness 在生产中最容易被误读、也最容易造成错误决策。它的定义极其朴素：</p>
+
+    <div class="callout insight">
+      <div class="co-title">Faithfulness 的本质定义</div>
+      <p><strong>一个 Answer 是 faithful 的，当且仅当它陈述的每一条 Claim，都能从 Context 中被推出。</strong></p>
+      <p>它是一个 <em>0 到 1</em> 的连续量：被支撑的 Claim 数 ÷ 总 Claim 数<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-8' data-url='https://docs&#46;ragas&#46;io/en/v0&#46;1&#46;21/concepts/metrics/faithfulness&#46;html' data-id='turn0search3'><span data-allow-html class='source-item-num' data-group-key='source-group-8' data-id='turn0search3' data-url='https://docs&#46;ragas&#46;io/en/v0&#46;1&#46;21/concepts/metrics/faithfulness&#46;html'><span class='source-item-num-name' data-allow-html>ragas.io</span><span data-allow-html class='source-item-num-count'></span></span></span>。任何一条超出 Context 的陈述——无论它是模型脑补的事实、错误的日期、还是一段“看起来很像会是真的”的政策细节——都会直接拉低分数。</p>
+    </div>
+
+    <div class="formula">
+      <div class="f-name">Faithfulness Score</div>
+      <div class="f-body">Faithfulness = | &Sigma; supported-claims | &frasl; | total-claims |</div>
+      <div class="f-note">两阶段计算：① 把 Answer 拆成原子化陈述（Claim Decomposition）；② 对每条陈述做 NLI 判断（Context 是否蕴含它），最后按支撑比例聚合<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-2' data-url='https://docs&#46;ragas&#46;io/en/v0&#46;1&#46;21/concepts/metrics/faithfulness&#46;html' data-id='turn0search3'><span data-allow-html class='source-item-num' data-group-key='source-group-2' data-id='turn0search3' data-url='https://docs&#46;ragas&#46;io/en/v0&#46;1&#46;21/concepts/metrics/faithfulness&#46;html'><span class='source-item-num-name' data-allow-html>ragas.io</span><span data-allow-html class='source-item-num-count'>+1</span></span></span>。</div>
+    </div>
+
+    <h3 class="sub">Faithfulness ≠ Correctness</h3>
+
+    <p>这是本篇最重要的一句话。Faithfulness 衡量的是 <strong>“Answer 是否忠实于 Context”</strong>，而 Correctness 衡量的是 <strong>“Answer 是否与真实世界一致”</strong>。这两件事在 RAG 里是<b>互相独立</b>的——因为 Context 本身可能就是错的，或者不完整。让我们用两个反例把这一点钉死。</p>
+
+    <h4 class="mini">反例 A · Context 正确，Answer 仍然幻觉</h4>
+
+    <div class="callout note">
+      <div class="co-title">Case A</div>
+      <p><strong>Question：</strong>“公司的年假政策是什么？”</p>
+      <p><strong>Context（检索正确，包含全部关键信息）：</strong>“<em>员工入职满一年享有 10 天年假；满五年 15 天；未休年假可顺延至次年 3 月 31 日。</em>”</p>
+      <p><strong>Answer（LLM 生成）：</strong>“<em>公司提供 10 天带薪年假， additionally 您还可以申请额外的带薪病假 15 天，且未休年假可无限期累积。</em>”</p>
+    </div>
+
+    <p>拆解 Answer 的 Claim：</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Claim</th><th>Context 是否支撑</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>“公司提供 10 天带薪年假”</td><td>✓ 支撑</td></tr>
+          <tr><td>2</td><td>“可申请额外带薪病假 15 天”</td><td>✗ 凭空出现，Context 未提及</td></tr>
+          <tr><td>3</td><td>“未休年假可无限期累积”</td><td>✗ 与 Context 中“顺延至 3 月 31 日”直接矛盾</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat blue"><div class="s-label">Faithfulness</div><div class="s-value">0.33<small>/1.00</small></div><div class="s-desc">3 条 Claim 只支撑 1 条，幻觉比例极高</div></div>
+      <div class="stat good"><div class="s-label">Context Quality</div><div class="s-value">Perfect</div><div class="s-desc">Context Recall 与 Precision 满分</div></div>
+      <div class="stat bad"><div class="s-label">Correctness</div><div class="s-value">Wrong</div><div class="s-desc">答案包含两条错误事实</div></div>
+    </div>
+
+    <p>结论：<strong>Context 完全正确，Answer 仍然可以严重幻觉</strong>。Faithfulness 在这里给了警报——它准确识别出了 2/3 的陈述是凭空出现的。这正是它的价值。</p>
+
+    <h4 class="mini">反例 B · Context 错误，Answer 忠实但同样错</h4>
+
+    <div class="callout danger">
+      <div class="co-title">Case B</div>
+      <p><strong>Question：</strong>“我们公司的报销上限是多少？”</p>
+      <p><strong>Context（检索到了一份过期的内部文档）：</strong>“<em>2021 年版员工手册：单次差旅报销上限 5000 元。</em>”（真实政策在 2024 年已改为 8000 元）</p>
+      <p><strong>Answer（LLM 生成）：</strong>“<em>公司规定单次差旅报销上限为 5000 元。</em>”</p>
+    </div>
+
+    <p>拆解 Answer 的 Claim：</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Claim</th><th>Context 是否支撑</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>“单次差旅报销上限为 5000 元”</td><td>✓ Context 明确写着 5000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat good"><div class="s-label">Faithfulness</div><div class="s-value">1.00<small>/1.00</small></div><div class="s-desc">Answer 完全忠实于 Context</div></div>
+      <div class="stat warn"><div class="s-label">Context Quality</div><div class="s-value">Stale</div><div class="s-desc">Context 本身是过期文档</div></div>
+      <div class="stat bad"><div class="s-label">Correctness</div><div class="s-value">Wrong</div><div class="s-desc">答案与现实政策不一致</div></div>
+    </div>
+
+    <p>结论：<strong>Context 错误，Answer 即使 100% 忠实，Faithfulness 仍然可以是满分，而 Correctness 依然为 0</strong>。Faithfulness 在这里<b>没有报警</b>——因为它的定义就决定了它只关心“是否接地”，不关心“接地的地方本身对不对”。</p>
+
+    <!-- SVG: 2x2 矩阵 -->
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,PingFang SC,sans-serif">
+          <!-- Axes -->
+          <line x1="380" y1="50" x2="380" y2="360" stroke="#52606d" stroke-width="1.6"/>
+          <line x1="60" y1="205" x2="700" y2="205" stroke="#52606d" stroke-width="1.6"/>
+          <text x="380" y="40" text-anchor="middle" font-size="12" fill="#1a7f5a" font-weight="700">Answer Faithful ↑</text>
+          <text x="380" y="378" text-anchor="middle" font-size="12" fill="#7b8794">Answer Faithful ↓</text>
+          <text x="70" y="200" text-anchor="start" font-size="12" fill="#1e5f8c" font-weight="700">← Context 错误/缺失</text>
+          <text x="690" y="200" text-anchor="end" font-size="12" fill="#1e5f8c" font-weight="700">Context 正确 →</text>
+
+          <!-- Q4 top-right: good -->
+          <rect x="395" y="60" width="290" height="130" rx="8" fill="#eaf6f0" stroke="#1a7f5a" stroke-width="1.2"/>
+          <text x="540" y="88" text-anchor="middle" font-size="14" fill="#1a7f5a" font-weight="700">✓ 理想状态</text>
+          <text x="540" y="112" text-anchor="middle" font-size="12" fill="#52606d">Context 正确 · Answer 忠实</text>
+          <text x="540" y="134" text-anchor="middle" font-size="12" fill="#52606d">= 通常也是 Correct</text>
+          <text x="540" y="160" text-anchor="middle" font-size="11" fill="#7b8794" font-style="italic">这是我们唯一想停留的象限</text>
+
+          <!-- Q1 top-left: case B -->
+          <rect x="75" y="60" width="290" height="130" rx="8" fill="#fdf3e3" stroke="#b45309" stroke-width="1.2"/>
+          <text x="220" y="88" text-anchor="middle" font-size="14" fill="#b45309" font-weight="700">⚠ Case B</text>
+          <text x="220" y="112" text-anchor="middle" font-size="12" fill="#52606d">Context 过期/错误 · Answer 忠实</text>
+          <text x="220" y="134" text-anchor="middle" font-size="12" fill="#52606d">Faithfulness 高 · Correctness 低</text>
+          <text x="220" y="160" text-anchor="middle" font-size="11" fill="#7b8794" font-style="italic">Faithfulness 静默，需要 Context 层指标兜底</text>
+
+          <!-- Q3 bottom-right: case A -->
+          <rect x="395" y="220" width="290" height="130" rx="8" fill="#fbecec" stroke="#b03a3a" stroke-width="1.2"/>
+          <text x="540" y="248" text-anchor="middle" font-size="14" fill="#b03a3a" font-weight="700">✗ Case A</text>
+          <text x="540" y="272" text-anchor="middle" font-size="12" fill="#52606d">Context 正确 · Answer 幻觉</text>
+          <text x="540" y="294" text-anchor="middle" font-size="12" fill="#52606d">Faithfulness 低 · Correctness 低</text>
+          <text x="540" y="320" text-anchor="middle" font-size="11" fill="#7b8794" font-style="italic">Faithfulness 是唯一的报警器</text>
+
+          <!-- Q2 bottom-left: worst -->
+          <rect x="75" y="220" width="290" height="130" rx="8" fill="#f5f1ea" stroke="#52606d" stroke-width="1.2"/>
+          <text x="220" y="248" text-anchor="middle" font-size="14" fill="#52606d" font-weight="700">✗✗ 最坏组合</text>
+          <text x="220" y="272" text-anchor="middle" font-size="12" fill="#52606d">Context 错 · Answer 又幻觉</text>
+          <text x="220" y="294" text-anchor="middle" font-size="12" fill="#52606d">两层同时失败</text>
+          <text x="220" y="320" text-anchor="middle" font-size="11" fill="#7b8794" font-style="italic">必须靠多层指标交叉定位</text>
+
+          <text x="380" y="400" text-anchor="middle" font-size="11.5" fill="#7b8794" font-style="italic">Faithfulness 只区分“上下 / 不区分左右”——所以它必须有 Context 指标 + Correctness 类指标配合才有意义</text>
+        </svg>
+      </div>
+      <figcaption><b>图 2 · Faithfulness ≠ Correctness 的二维平面</b>：横轴是 Context 质量，纵轴是 Answer 接地性。Faithfulness 只在纵轴上运动，而 Correctness 需要两个轴同时良好。这正解释了为什么反例 A 与反例 B 看起来完全相反，却都是生产事故。</figcaption>
+    </figure>
+
+    <h3 class="sub">工程上Faithfulness 不可替代的作用</h3>
+
+    <p>把两个反例并排看，会发现 Faithfulness 的真正价值不在于“评出好答案”，而在于<b>它把“幻觉”这个模糊概念变成了一个可量化、可回归、可阻断的工程信号</strong>。在没有 Faithfulness 之前，团队只能通过用户投诉发现幻觉；有了它之后，幻觉率变成了一条曲线，可以放在 CI 报告里、可以设阈值、可以在 Prompt 改坏时第一时间看到分值下滑——这件事，是后续 Release Gate 和 CI/CD 整套体系能够成立的前提。</p>
+
+    <div class="callout warn">
+      <div class="co-title">Faithfulness 解决不了的事</div>
+      <p><strong>1. 它评不出 Context 错误。</strong> 反例 B 中它给满分。Context 是否过期、是否覆盖了参考答案，要靠 Context Recall / Context Precision。</p>
+      <p><strong>2. 它评不出答案是否切题。</strong> 一段完全“基于 Context 编造出来”但答非所问的回答，Faithfulness 可以很高，需要 Answer Relevancy 补位。</p>
+      <p><strong>3. 它评不出“缺失了什么”。</strong> Faithfulness 是 Answer 视角的指标，Context 漏掉关键限定（如“仅年付会员适用”）它看不见。</p>
+    </div>
+  </section>
+
+  <!-- ============ 6. TRIAD ============ -->
+  <section id="triad">
+    <div class="kicker">Section 06 · Triad</div>
+    <h2 class="sec">RAG 质量三层模型：Retrieval · Groundedness · Answer</h2>
+
+    <p>把上面的分析收拢，就得到本篇最核心的认知框架：<strong>RAG 的质量不是一维的，而是由三层独立、叠加、互相牵制的维度组成的</strong>。任何一层的失败，都会以完全不同的方式呈现，因此也需要完全不同的指标去测量。</p>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,PingFang SC,sans-serif">
+          <defs>
+            <marker id="arr2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L9,3 L0,6 Z" fill="#52606d"/>
+            </marker>
+          </defs>
+
+          <!-- Triangle -->
+          <polygon points="380,60 160,300 600,300" fill="none" stroke="#e4e0d6" stroke-width="2"/>
+          <circle cx="380" cy="100" r="6" fill="#1a7f5a"/>
+          <circle cx="210" cy="270" r="6" fill="#1e5f8c"/>
+          <circle cx="550" cy="270" r="6" fill="#8a5a1e"/>
+
+          <!-- Vertex labels -->
+          <text x="380" y="48" text-anchor="middle" font-size="15" fill="#1a7f5a" font-weight="700">Groundedness 接地性</text>
+          <text x="380" y="72" text-anchor="middle" font-size="12" fill="#7b8794">Answer 是否忠实于 Context</text>
+          <text x="380" y="92" text-anchor="middle" font-size="12" fill="#52606d" font-weight="600">Faithfulness</text>
+
+          <text x="140" y="270" text-anchor="end" font-size="15" fill="#1e5f8c" font-weight="700">Retrieval Quality 检索质量</text>
+          <text x="140" y="292" text-anchor="end" font-size="12" fill="#7b8794">Context 是否拉全、是否排序合理</text>
+          <text x="140" y="312" text-anchor="end" font-size="12" fill="#52606d" font-weight="600">Context Recall · Context Precision</text>
+
+          <text x="620" y="270" text-anchor="start" font-size="15" fill="#8a5a1e" font-weight="700">Answer Quality 答案质量</text>
+          <text x="620" y="292" text-anchor="start" font-size="12" fill="#7b8794">是否切题、是否与 Reference 一致</text>
+          <text x="620" y="312" text-anchor="start" font-size="12" fill="#52606d" font-weight="600">Answer Relevancy · Factual Correctness</text>
+
+          <!-- Center -->
+          <text x="380" y="200" text-anchor="middle" font-size="13" fill="#1f2933" font-weight="700">RAG System Quality</text>
+          <text x="380" y="222" text-anchor="middle" font-size="11.5" fill="#7b8794">三个顶点相互独立，</text>
+          <text x="380" y="240" text-anchor="middle" font-size="11.5" fill="#7b8794">任一顶点弱化，整体体验都会塌</text>
+
+          <text x="380" y="375" text-anchor="middle" font-size="11.5" fill="#7b8794" font-style="italic">注：本系列沿用此术语体系，后续三篇会在其上叠加 Regression / Gate / Production 维度</text>
+        </svg>
+      </div>
+      <figcaption><b>图 3 · RAG 质量三层模型</b>：Retrieval、Groundedness、Answer Quality 是三个独立维度，分别由不同指标覆盖。任何单一指标都无法代表整体质量——这是 Ragas 四指标之所以要并列的根本原因。</figcaption>
+    </figure>
+
+    <div class="callout insight">
+      <div class="co-title">读法举例：三个顶点如何互相解释</div>
+      <p><strong>Faithfulness 低 + Context Recall 高</strong> → 问题在生成器（Prompt / LLM / temperature），先调生成侧。</p>
+      <p><strong>Faithfulness 高 + Answer Relevancy 低</strong> → LLM 很“老实”但答非所问，可能是 Query 理解或 Prompt 指令问题。</p>
+      <p><strong>Context Recall 低 + Faithfulness 高</strong> → 检索没拉全关键信息，LLM 只能基于不完整的 Context 老实回答 → 答案会缺关键限定，属于检索层失败。</p>
+      <p><strong>Context Precision 低 + Faithfulness 高</strong> → 召回的无关 chunk 太多，LLM 被噪声干扰，潜在长尾错误风险高。</p>
+    </div>
+
+    <p>这套读法在日常调试里非常实用：<strong>看到分数异常，先用三角定位法判断问题出在哪一层</strong>，再决定是去调 Embedding、调 Reranker、调 top_k，还是去改 Prompt、换 LLM。它把“RAG 调优”从一个猜测游戏，变成了一个有诊断路径的工程问题。</p>
+  </section>
+
+  <!-- ============ 7. CASE ============ -->
+  <section id="case">
+    <div class="kicker">Section 07 · Case Study</div>
+    <h2 class="sec">完整案例：客服知识库下的端到端评测</h2>
+
+    <p>为了让以上抽象讨论落到地面，我们用一个统一的企业知识库 + 客服场景做一次完整的端到端评测。本案例会在系列后续三篇中持续复用，请记住这套输入与评分——下一篇我们会基于同一组数据讨论“谁在判分”。</p>
+
+    <h3 class="sub">场景设定</h3>
+    <p>企业内部知识库包含员工手册、报销政策、IT 服务目录等约 2,400 篇文档；客服 RAG 服务接入 LLM + Vector Store + Reranker，对外提供员工自助问答。我们选 3 个有代表性的 Evaluation Case：</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>表 2 · 评测数据集片段（3 个 Evaluation Case）</caption>
+        <thead><tr><th>#</th><th>Question</th><th>Reference（人工标注的关键事实）</th><th>潜在失败模式</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="metric">C1</td>
+            <td>年假可以累积到明年吗？</td>
+            <td>未休年假可顺延至次年 3 月 31 日，过期清零</td>
+            <td>限定时间易被幻觉吞掉</td>
+          </tr>
+          <tr>
+            <td class="metric">C2</td>
+            <td>出差住宿报销上限是多少？</td>
+            <td>国内一线 800 元/晚，其他城市 500 元/晚</td>
+            <td>多条规则需在 Context 同时出现</td>
+          </tr>
+          <tr>
+            <td class="metric">C3</td>
+            <td>忘记密码怎么办？</td>
+            <td>通过企业门户自助重置，或联系 IT 服务台 8000</td>
+            <td>答案简短，Answer Relevancy 易虚高</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">评测结果</h3>
+
+    <div class="stat-row">
+      <div class="stat blue"><div class="s-label">Context Recall</div><div class="s-value">0.83</div><div class="s-desc">C2 中“一线/其他城市”二选一缺失</div></div>
+      <div class="stat blue"><div class="s-label">Context Precision</div><div class="s-value">0.78</div><div class="s-desc">C1 拉回了 3 条无关的 HR 公告</div></div>
+      <div class="stat warn"><div class="s-label">Answer Relevancy</div><div class="s-value">0.91</div><div class="s-desc">整体切题良好</div></div>
+      <div class="stat bad"><div class="s-label">Faithfulness</div><div class="s-value">0.71</div><div class="s-desc">C1 / C2 出现幻觉陈述</div></div>
+    </div>
+
+    <h3 class="sub">按 Case 拆解</h3>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>表 3 · 三个 Case 的指标明细与根因定位</caption>
+        <thead><tr><th>Case</th><th>Ctx Recall</th><th>Ctx Prec</th><th>Ans Rel</th><th>Faithful</th><th>三角定位法结论</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="metric">C1 年假</td><td>0.9</td><td>0.6</td><td>0.95</td><td>0.50</td>
+            <td>Context 拉到了但混入噪声，Answer 凭空补充“无限累积” → <strong>生成层幻觉</strong>，优先调 Prompt 与 LLM</td>
+          </tr>
+          <tr>
+            <td class="metric">C2 报销</td><td>0.5</td><td>0.85</td><td>0.88</td><td>0.90</td>
+            <td>Context 漏掉了“其他城市 500 元”那条 → <strong>检索覆盖不足</strong>，优先调 chunk 大小与 top_k / Reranker</td>
+          </tr>
+          <tr>
+            <td class="metric">C3 密码</td><td>1.0</td><td>1.0</td><td>0.92</td><td>1.00</td>
+            <td>全绿，可作 baseline；但 Answer Relevancy 未到 1，反向生成的问题与原问题有语义漂移，属正常波动</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout note">
+      <div class="co-title">读表的关键</div>
+      <p>整张表的真正信息量不在均值，而在<b>分布</b>——C2 的 Context Recall 0.5 是一颗肉眼可见的钉子。如果只看均值 0.83，这次发布看起来“可以接受”；但拆到 Case 级别，你会立刻知道哪里要修。本系列第三篇（Regression Dataset）会专门展开如何构建足以稳定捕获这类钉子的数据集，而不是靠运气撞上。</p>
+    </div>
+  </section>
+
+  <!-- ============ 8. PIPELINE ============ -->
+  <section id="pipeline">
+    <div class="kicker">Section 08 · Pipeline</div>
+    <h2 class="sec">RAG Evaluation Pipeline 与最小可用代码</h2>
+
+    <p>把前面的认知落成一个可重复执行的工程流程，就是 Evaluation Pipeline。它的形状不复杂，但每一步的输入输出约定，决定了后续三篇能否顺利搭建出回归与门禁体系。</p>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 780 200" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,PingFang SC,sans-serif">
+          <defs>
+            <marker id="arr3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L9,3 L0,6 Z" fill="#52606d"/>
+            </marker>
+          </defs>
+          <g font-size="12" fill="#1f2933">
+            <rect x="15" y="70" width="105" height="56" rx="8" fill="#fff" stroke="#e4e0d6"/>
+            <text x="67" y="94" text-anchor="middle" font-weight="600" font-size="12.5">Evaluation</text>
+            <text x="67" y="112" text-anchor="middle" font-weight="600" font-size="12.5">Dataset</text>
+            <text x="67" y="146" text-anchor="middle" font-size="10.5" fill="#7b8794">Q + Reference</text>
+
+            <rect x="150" y="70" width="105" height="56" rx="8" fill="#fff" stroke="#e4e0d6"/>
+            <text x="202" y="94" text-anchor="middle" font-weight="600" font-size="12.5">RAG System</text>
+            <text x="202" y="112" text-anchor="middle" font-weight="600" font-size="12.5">under test</text>
+            <text x="202" y="146" text-anchor="middle" font-size="10.5" fill="#7b8794">被测系统</text>
+
+            <rect x="285" y="70" width="105" height="56" rx="8" fill="#f4f8fb" stroke="#1e5f8c"/>
+            <text x="337" y="94" text-anchor="middle" font-weight="600" font-size="12.5">Captured</text>
+            <text x="337" y="112" text-anchor="middle" font-weight="600" font-size="12.5">Context</text>
+            <text x="337" y="146" text-anchor="middle" font-size="10.5" fill="#7b8794">必须捕获，不能事后重建</text>
+
+            <rect x="420" y="70" width="105" height="56" rx="8" fill="#fff" stroke="#e4e0d6"/>
+            <text x="472" y="94" text-anchor="middle" font-weight="600" font-size="12.5">Generated</text>
+            <text x="472" y="112" text-anchor="middle" font-weight="600" font-size="12.5">Answer</text>
+            <text x="472" y="146" text-anchor="middle" font-size="10.5" fill="#7b8794">LLM 输出</text>
+
+            <rect x="555" y="70" width="105" height="56" rx="8" fill="#f0f7f3" stroke="#1a7f5a"/>
+            <text x="607" y="94" text-anchor="middle" font-weight="600" font-size="12.5">Metric</text>
+            <text x="607" y="112" text-anchor="middle" font-weight="600" font-size="12.5">Scoring</text>
+            <text x="607" y="146" text-anchor="middle" font-size="10.5" fill="#7b8794">Ragas 四指标</text>
+
+            <rect x="690" y="70" width="75" height="56" rx="8" fill="#fffdf5" stroke="#b45309"/>
+            <text x="727" y="94" text-anchor="middle" font-weight="600" font-size="12.5">Score</text>
+            <text x="727" y="112" text-anchor="middle" font-weight="600" font-size="12.5">Report</text>
+            <text x="727" y="146" text-anchor="middle" font-size="10.5" fill="#7b8794">→ Release Gate</text>
+
+            <line x1="120" y1="98" x2="148" y2="98" stroke="#52606d" stroke-width="1.4" marker-end="url(#arr3)"/>
+            <line x1="255" y1="98" x2="283" y2="98" stroke="#52606d" stroke-width="1.4" marker-end="url(#arr3)"/>
+            <line x1="390" y1="98" x2="418" y2="98" stroke="#52606d" stroke-width="1.4" marker-end="url(#arr3)"/>
+            <line x1="525" y1="98" x2="553" y2="98" stroke="#52606d" stroke-width="1.4" marker-end="url(#arr3)"/>
+            <line x1="660" y1="98" x2="688" y2="98" stroke="#52606d" stroke-width="1.4" marker-end="url(#arr3)"/>
+          </g>
+          <text x="390" y="182" text-anchor="middle" font-size="11" fill="#7b8794" font-style="italic">一次 Evaluation Run 的最小闭环；后续三篇会在 Report 之后接 Regression / Gate / Production 环节</text>
+        </svg>
+      </div>
+      <figcaption><b>图 4 · RAG Evaluation Pipeline</b>：Dataset → RAG System → 捕获 Context 与 Answer → 打分 → 报告。注意“捕获 Context”是不可省略的一步——Faithfulness / Context 指标都必须基于运行时的真实 Context 计算，不能事后猜测。</figcaption>
+    </figure>
+
+    <h3 class="sub">最小可用代码</h3>
+
+    <p>下面这段 Python 代码用 Ragas 跑一个最小的评测，作为本系列后续所有实验的基线模板。它做的事很朴素：对每个 Evaluation Case，记录 Question、Context、Answer、Reference，然后让 Ragas 给出四条指标。</p>
+
+<pre><code><span class="cm"># pip install ragas datasets</span>
+<span class="kw">from</span> datasets <span class="kw">import</span> Dataset
+<span class="kw">from</span> ragas <span class="kw">import</span> evaluate
+<span class="kw">from</span> ragas.metrics <span class="kw">import</span> (
+    <span class="fn">context_recall</span>, <span class="fn">context_precision</span>,
+    <span class="fn">answer_relevancy</span>, <span class="fn">faithfulness</span>,
+)
+
+<span class="cm"># 1. Evaluation Dataset：来自被测 RAG 系统的一次 Evaluation Run</span>
+<span class="cm">#    注意：contexts 必须是运行时真实拉回的 chunk，不能事后重建</span>
+data = {
+    <span class="str">"question"</span>: [
+        <span class="str">"年假可以累积到明年吗？"</span>,
+        <span class="str">"出差住宿报销上限是多少？"</span>,
+        <span class="str">"忘记密码怎么办？"</span>,
+    ],
+    <span class="str">"answer"</span>: [
+        <span class="str">"可以累积，未休年假会顺延，且可无限期累积。"</span>,           <span class="cm"># 含幻觉</span>
+        <span class="str">"国内一线城市每晚 800 元，其他城市 500 元。"</span>,
+        <span class="str">"请通过企业门户自助重置，或联系 IT 服务台 8000。"</span>,
+    ],
+    <span class="str">"contexts"</span>: [
+        [<span class="str">"员工手册 v2024：未休年假可顺延至次年 3 月 31 日，过期清零。"</span>,
+         <span class="str">"HR 公告：本季度团建安排。"</span>],                          <span class="cm"># 含噪声 chunk</span>
+        [<span class="str">"报销政策：国内一线城市住宿上限 800 元/晚。"</span>],            <span class="cm"># 漏掉“其他城市”</span>
+        [<span class="str">"IT 服务：忘记密码可通过企业门户自助重置，或拨打 IT 服务台 8000。"</span>],
+    ],
+    <span class="str">"reference"</span>: [
+        <span class="str">"未休年假可顺延至次年 3 月 31 日，过期清零。"</span>,
+        <span class="str">"国内一线 800 元/晚，其他城市 500 元/晚。"</span>,
+        <span class="str">"通过企业门户自助重置，或联系 IT 服务台 8000。"</span>,
+    ],
+}
+ds = Dataset.from_dict(data)
+
+<span class="cm"># 2. 一次 Evaluation Run：得到可报告、可比较、可归档的分数</span>
+result = evaluate(
+    ds,
+    metrics=[context_recall, context_precision, answer_relevancy, faithfulness],
+)
+print(result)
+
+<span class="cm"># 3. 落库：分数写入 Eval Studio / CI 报告 —— 这是第三、四篇的起点</span>
+result.to_pandas().to_csv(<span class="str">"eval_run_2026-09-10.csv"</span>, index=<span class="kw">False</span>)</code></pre>
+
+    <p>值得提醒的两个工程细节：一是 <b>Faithfulness 必须基于真实运行的 Context</b>——把“理想 Context”事后塞进去会掩盖检索失败；二是 <b>单次分数本身意义有限</b>，它的真正价值出现在与上一次 Evaluation Run 的对比里——这件事，正是下一篇起要展开的核心。</p>
+  </section>
+
+  <!-- ============ 9. NEXT ============ -->
+  <section id="next">
+    <div class="kicker">Section 09 · What's Next</div>
+    <h2 class="sec">留给我们的问题：那个判断，是谁做出的？</h2>
+
+    <p>回到本篇开头那句朴素的定义——Faithfulness 的核心，是判断 “<strong>Answer 中的 Claim 是否被 Context 支撑</strong>”。把这句话展开，会立刻浮出一个此前我们一直默认、却从未追问的事实：</p>
+
+    <div class="callout danger">
+      <div class="co-title">一个被默认了很久的前提</div>
+      <p>Claim 的拆分、NLI 的判断、“是否被支撑”这个二元决定——<strong>都不是规则计算的，而是又一次调用了一个 LLM</strong>。换句话说，我们在用一个大模型去评另一个大模型<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-9' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge' data-id='turn0search6'><span data-allow-html class='source-item-num' data-group-key='source-group-9' data-id='turn0search6' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge'><span class='source-item-num-name' data-allow-html>saulius.io</span><span data-allow-html class='source-item-num-count'></span></span></span>。</p>
+    </div>
+
+    <p>这件事一旦被意识到，整套指标的地基就变得可疑起来：</p>
+
+    <p><em>如果一个 LLM 判断错了“这条 Claim 是否被 Context 支撑”，我们的 Faithfulness 分数就是错的——而所有依赖它的回归阈值、发布决策、Prompt 优化，都会跟着一起错。</em></p>
+
+    <p>更糟的是，这个“Judge LLM”会有它自己的系统性偏差：它可能对某类措辞宽容、对长 Context 失去注意力、对与自己风格相近的生成模型打分更高、对中文的细粒度否定词判断不稳。<strong>这些偏差不会以异常报错的形式出现，它们会安静地混在每一次评分里，伪装成“业务表现波动”。</strong></p>
+
+    <div class="next-up">
+      <div class="n-label">Next in the Series · 02 / 04</div>
+      <h3>《LLM-as-Judge：当你在用一个大模型评价另一个大模型》</h3>
+      <div class="q">上一篇我们把 Faithfulness 定义为“答案陈述是否能够被 Context 支撑”。但真正把它放进生产评测，你会立刻遇到一个更棘手的问题：<strong>“能够被支撑”这件事，究竟是由谁判断的？如果判官也是一个 LLM，它真的可靠吗？它会在哪些地方系统性地失手？我们又该如何在它的不可靠之上，构建出可以放心用的评测？</strong></div>
+      <p>下一篇会正面回答这些问题：Judge 的 Prompt 设计与输出约束、Self-Consistency 与多数投票、Position Bias / Verbosity Bias / Self-Preference 三大经典偏差、如何用少量人工标注对齐 Judge、以及在生产中如何用便宜模型 + 严格 schema 让 Judge 既便宜又稳定。读完之后，回头再看本篇那张指标表，你会发现每一条指标背后都站着一个值得审视的“判官”。</p>
+    </div>
+  </section>
+
+  <!-- ============ RECAP ============ -->
+  <aside class="recap">
+    <h3>Series Trail · 系列进度</h3>
+    <div class="recap-grid">
+      <div class="recap-box done">
+        <h4>✓ 本篇解决的问题</h4>
+        <p>回答了“一个 RAG 系统到底应该如何评价”：建立了 Retrieval Evaluation 与 Generation Evaluation 的双层视角；引入 Ragas 四指标（Context Recall / Context Precision / Answer Relevancy / Faithfulness）；通过正反两个 Case 把 <strong>Faithfulness ≠ Correctness</strong> 钉死；最终给出 Retrieval · Groundedness · Answer Quality 的三层质量模型，作为整个系列的诊断坐标系。</p>
+      </div>
+      <div class="recap-box open">
+        <h4>✗ 仍然存在的问题</h4>
+        <p>所有指标最终都依赖一个“判断”——Claim 是否被 Context 支撑、Reference 是否被 Context 覆盖、Answer 是否切题。<strong>这些判断的执行者本身就是一个 LLM。</strong> 它的可靠性、偏差、漂移与对齐方式，决定了整套指标体系的地基是否可靠。这是下一篇要正面回答的问题。</p>
+      </div>
+    </div>
+  </aside>
+
+  <footer>
+    <ul class="refs">
+      <li>【1】Ragas Docs · <code>Faithfulness</code> — claims decomposition + NLI verification<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-3' data-url='https://docs&#46;ragas&#46;io/en/stable/concepts/metrics/available&#95;metrics/faithfulness' data-id='turn0search1'><span data-allow-html class='source-item-num' data-group-key='source-group-3' data-id='turn0search1' data-url='https://docs&#46;ragas&#46;io/en/stable/concepts/metrics/available&#95;metrics/faithfulness'><span class='source-item-num-name' data-allow-html>ragas.io</span><span data-allow-html class='source-item-num-count'>+1</span></span></span></li>
+      <li>【2】Ragas Docs · <code>Answer Relevancy</code> — reverse question generation + cosine similarity<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-10' data-url='https://docs&#46;ragas&#46;io/en/stable/concepts/metrics/available&#95;metrics/answer&#95;relevance' data-id='turn2search1'><span data-allow-html class='source-item-num' data-group-key='source-group-10' data-id='turn2search1' data-url='https://docs&#46;ragas&#46;io/en/stable/concepts/metrics/available&#95;metrics/answer&#95;relevance'><span class='source-item-num-name' data-allow-html>ragas.io</span><span data-allow-html class='source-item-num-count'></span></span></span></li>
+      <li>【3】Saulius · <em>Ragas Metrics Explained: What Context Precision/Recall, Faithfulness, and Factual Correctness Actually Compute</em><span data-allow-html class='source-item source-aggregated' data-group-key='source-group-11' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge' data-id='turn1fetch0'><span data-allow-html class='source-item-num' data-group-key='source-group-11' data-id='turn1fetch0' data-url='https://saulius&#46;io/blog/ragas&#45;rag&#45;evaluation&#45;metrics&#45;llm&#45;judge'><span class='source-item-num-name' data-allow-html>saulius.io</span><span data-allow-html class='source-item-num-count'></span></span></span></li>
+      <li>【4】Ragas Docs · <code>Factual Correctness</code> — NLI vs Reference, Fβ aggregation<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-12' data-url='https://docs&#46;ragas&#46;io/en/stable/concepts/metrics/available&#95;metrics/factual&#95;correctness' data-id='turn0search8'><span data-allow-html class='source-item-num' data-group-key='source-group-12' data-id='turn0search8' data-url='https://docs&#46;ragas&#46;io/en/stable/concepts/metrics/available&#95;metrics/factual&#95;correctness'><span class='source-item-num-name' data-allow-html>ragas.io</span><span data-allow-html class='source-item-num-count'></span></span></span></li>
+      <li>【5】Vectara Blog · <em>Evaluating RAG with RAGAs</em> — RAG quality metrics framework<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-4' data-url='https://www&#46;vectara&#46;com/blog/evaluating&#45;rag' data-id='turn2search5'><span data-allow-html class='source-item-num' data-group-key='source-group-4' data-id='turn2search5' data-url='https://www&#46;vectara&#46;com/blog/evaluating&#45;rag'><span class='source-item-num-name' data-allow-html>vectara.com</span><span data-allow-html class='source-item-num-count'></span></span></span></li>
+    </ul>
+    <p>RAG Evaluation 工程系列 · 01 / 04 · 下一篇：<em>《LLM-as-Judge：当你在用一个大模型评价另一个大模型》</em></p>
+  </footer>
+
+</div>
+</body>
+</html>

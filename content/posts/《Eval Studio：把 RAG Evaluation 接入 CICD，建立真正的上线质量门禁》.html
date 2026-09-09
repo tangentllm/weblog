@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eval Studio：把 RAG Evaluation 接入 CI/CD，建立真正的上线质量门禁 · RAG Evaluation 工程系列（四）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF7;
+  --ink:#1B1B1B;
+  --ink-soft:#4A4A46;
+  --ink-faint:#8A8A84;
+  --accent:#2B4C7E;        /* 学术深蓝 */
+  --accent-soft:#E8EEF6;
+  --fail:#B03A2E;          /* 学术红 */
+  --fail-soft:#F9ECEA;
+  --warn:#B07D2B;          /* 琥珀 */
+  --warn-soft:#F8F1E3;
+  --pass:#2E6E4E;          /* 学术绿 */
+  --pass-soft:#E9F2ED;
+  --rule:#D8D5CE;
+  --card:#FFFFFF;
+  --serif:'Noto Serif SC',serif;
+  --sans:'Noto Sans SC',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-weight:400;
+  line-height:1.85;
+  font-size:16.5px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:820px;margin:0 auto;padding:0 28px;}
+
+/* ---------- 顶部刊头 ---------- */
+.masthead{
+  border-bottom:3px double var(--ink);
+  padding:56px 0 0 0;
+  margin-bottom:0;
+}
+.kicker{
+  font-family:var(--mono);
+  font-size:12px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:18px;
+}
+.kicker .sep{color:var(--ink-faint);margin:0 10px;}
+h1.title{
+  font-family:var(--serif);
+  font-weight:900;
+  font-size:clamp(30px,5vw,46px);
+  line-height:1.28;
+  letter-spacing:.01em;
+  margin-bottom:22px;
+}
+h1.title .em{color:var(--accent);}
+.subtitle{
+  font-family:var(--serif);
+  font-size:18px;
+  color:var(--ink-soft);
+  line-height:1.9;
+  max-width:640px;
+  margin-bottom:34px;
+}
+.byline{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 26px;
+  padding:16px 0 20px;
+  border-top:1px solid var(--rule);
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--ink-faint);
+  letter-spacing:.06em;
+}
+.byline b{color:var(--ink-soft);font-weight:500;}
+.series-index{
+  background:var(--card);
+  border:1px solid var(--rule);
+  border-left:3px solid var(--accent);
+  padding:20px 26px;
+  margin:34px 0 0;
+}
+.series-index h4{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:12px;
+}
+.series-index ol{
+  list-style:none;
+  font-size:14px;
+  color:var(--ink-soft);
+}
+.series-index li{
+  padding:5px 0;
+  display:flex;
+  gap:12px;
+  align-items:baseline;
+}
+.series-index .no{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--ink-faint);
+  min-width:26px;
+}
+.series-index li.current{color:var(--ink);font-weight:500;}
+.series-index li.current .no{color:var(--accent);font-weight:700;}
+.series-index li.current::after{
+  content:"· 本篇";
+  font-size:11px;
+  color:var(--accent);
+  font-family:var(--mono);
+  margin-left:6px;
+}
+
+/* ---------- 摘要 ---------- */
+.abstract{
+  margin:52px 0 0;
+  padding:28px 30px;
+  background:var(--accent-soft);
+  border:1px solid #CBD8E8;
+  position:relative;
+}
+.abstract::before{
+  content:"ABSTRACT";
+  position:absolute;
+  top:-9px;left:24px;
+  background:var(--accent);
+  color:#fff;
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.25em;
+  padding:2px 12px;
+}
+.abstract p{font-size:15px;color:var(--ink-soft);line-height:2;}
+.abstract b{color:var(--accent);}
+
+/* ---------- 正文 ---------- */
+main{padding-bottom:40px;}
+section.chapter{margin-top:88px;}
+.ch-no{
+  font-family:var(--mono);
+  font-size:13px;
+  color:var(--accent);
+  letter-spacing:.18em;
+  margin-bottom:8px;
+}
+.ch-no::before{
+  content:"§ ";
+  color:var(--ink-faint);
+}
+h2{
+  font-family:var(--serif);
+  font-weight:700;
+  font-size:clamp(24px,3.4vw,32px);
+  line-height:1.4;
+  margin-bottom:8px;
+  padding-bottom:16px;
+  border-bottom:1px solid var(--ink);
+}
+h3{
+  font-family:var(--serif);
+  font-weight:700;
+  font-size:20px;
+  margin:48px 0 14px;
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+}
+h3 .h3-no{
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--accent);
+  font-weight:500;
+}
+p{margin:0 0 20px;color:var(--ink-soft);}
+p strong, li strong{color:var(--ink);font-weight:700;}
+p code, li code, td code{
+  font-family:var(--mono);
+  font-size:.85em;
+  background:#EFEDE7;
+  border:1px solid var(--rule);
+  padding:1px 6px;
+  border-radius:3px;
+  color:var(--ink);
+  white-space:nowrap;
+}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid #B9C8DC;}
+hr.thin{border:none;border-top:1px solid var(--rule);margin:40px 0;}
+
+/* 首字下沉 */
+.lead::first-letter{
+  font-family:var(--serif);
+  font-weight:900;
+  font-size:3.1em;
+  float:left;
+  line-height:.95;
+  padding:4px 10px 0 0;
+  color:var(--accent);
+}
+
+/* ---------- 图表 ---------- */
+figure{margin:40px 0;}
+figure svg{width:100%;height:auto;display:block;background:var(--card);border:1px solid var(--rule);}
+figcaption{
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--ink-faint);
+  margin-top:12px;
+  padding-top:10px;
+  border-top:1px dashed var(--rule);
+  letter-spacing:.04em;
+  line-height:1.8;
+}
+figcaption b{color:var(--ink-soft);font-weight:500;}
+.fig-caption-no{color:var(--accent);font-weight:700;}
+
+/* ---------- Callout ---------- */
+.callout{
+  border:1px solid var(--rule);
+  border-left:4px solid var(--accent);
+  background:var(--card);
+  padding:20px 24px;
+  margin:32px 0;
+  font-size:15px;
+}
+.callout .co-label{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--accent);
+  font-weight:700;
+  display:block;
+  margin-bottom:8px;
+}
+.callout p{margin:0;font-size:15px;}
+.callout p + p{margin-top:10px;}
+.callout.warn{border-left-color:var(--warn);}
+.callout.warn .co-label{color:var(--warn);}
+.callout.fail{border-left-color:var(--fail);background:var(--fail-soft);border-color:#E5C7C3;}
+.callout.fail .co-label{color:var(--fail);}
+.callout.pass{border-left-color:var(--pass);background:var(--pass-soft);border-color:#C5DBD0;}
+.callout.pass .co-label{color:var(--pass);}
+
+/* ---------- 技术注释 ---------- */
+.tnote{
+  margin:28px 0;
+  padding:18px 22px;
+  background:#F3F1EC;
+  border:1px solid var(--rule);
+  font-size:14px;
+  color:var(--ink-soft);
+}
+.tnote .tn-label{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.22em;
+  color:var(--ink-faint);
+  display:block;
+  margin-bottom:6px;
+}
+.tnote code{background:#fff;}
+
+/* ---------- 卡片网格 ---------- */
+.grid{
+  display:grid;
+  gap:16px;
+  margin:32px 0;
+}
+.grid.cols-2{grid-template-columns:repeat(2,1fr);}
+.grid.cols-3{grid-template-columns:repeat(3,1fr);}
+.grid.cols-4{grid-template-columns:repeat(4,1fr);}
+@media(max-width:680px){
+  .grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr;}
+}
+.stat-card{
+  background:var(--card);
+  border:1px solid var(--rule);
+  padding:18px 20px 16px;
+  position:relative;
+}
+.stat-card::before{
+  content:"";
+  position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--accent);
+}
+.stat-card.up::before{background:var(--pass);}
+.stat-card.down::before{background:var(--fail);}
+.stat-card.flat::before{background:var(--warn);}
+.stat-card .sc-label{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  margin-bottom:8px;
+}
+.stat-card .sc-value{
+  font-family:var(--serif);
+  font-weight:900;
+  font-size:26px;
+  color:var(--ink);
+  line-height:1.1;
+}
+.stat-card .sc-delta{
+  font-family:var(--mono);
+  font-size:12px;
+  margin-top:6px;
+}
+.stat-card.up .sc-delta{color:var(--pass);}
+.stat-card.down .sc-delta{color:var(--fail);}
+.stat-card.flat .sc-delta{color:var(--warn);}
+
+/* 组件卡片 */
+.comp-card{
+  background:var(--card);
+  border:1px solid var(--rule);
+  border-top:3px solid var(--accent);
+  padding:20px 22px;
+}
+.comp-card h5{
+  font-family:var(--mono);
+  font-size:13px;
+  letter-spacing:.06em;
+  color:var(--ink);
+  margin-bottom:8px;
+}
+.comp-card p{font-size:13.5px;margin:0;color:var(--ink-soft);line-height:1.8;}
+.comp-card .cc-tag{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--accent);
+  letter-spacing:.14em;
+  display:block;
+  margin-bottom:8px;
+  text-transform:uppercase;
+}
+
+/* ---------- 表格 ---------- */
+.tbl-wrap{overflow-x:auto;margin:32px 0;}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+  background:var(--card);
+  border:1px solid var(--rule);
+}
+thead th{
+  background:var(--ink);
+  color:#F4F2ED;
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  font-weight:500;
+  padding:12px 16px;
+  text-align:left;
+  white-space:nowrap;
+}
+tbody td{
+  padding:12px 16px;
+  border-top:1px solid #ECEAE4;
+  color:var(--ink-soft);
+  vertical-align:top;
+}
+tbody tr:nth-child(even){background:#F7F5F0;}
+tbody td:first-child{font-weight:500;color:var(--ink);}
+.mono{font-family:var(--mono);font-size:12.5px;}
+td .pill{
+  display:inline-block;
+  font-family:var(--mono);
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.08em;
+  padding:2px 9px;
+  border-radius:2px;
+}
+.pill.pass{background:var(--pass-soft);color:var(--pass);border:1px solid #BFD7CA;}
+.pill.fail{background:var(--fail-soft);color:var(--fail);border:1px solid #E0BCB7;}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border:1px solid #E0CDA4;}
+.pill.neutral{background:#EFEDE7;color:var(--ink-faint);border:1px solid var(--rule);}
+.delta-up{color:var(--pass);font-family:var(--mono);font-weight:700;font-size:12.5px;}
+.delta-down{color:var(--fail);font-family:var(--mono);font-weight:700;font-size:12.5px;}
+.delta-flat{color:var(--warn);font-family:var(--mono);font-weight:700;font-size:12.5px;}
+
+/* ---------- 代码块 ---------- */
+pre{
+  background:#14181F;
+  color:#D9DEE7;
+  border-radius:4px;
+  padding:22px 24px;
+  overflow-x:auto;
+  font-family:var(--mono);
+  font-size:13px;
+  line-height:1.75;
+  margin:28px 0;
+  border:1px solid #2A303B;
+}
+pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit;white-space:pre;}
+.code-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:#1E242E;
+  border:1px solid #2A303B;
+  border-bottom:none;
+  border-radius:4px 4px 0 0;
+  padding:9px 18px;
+  margin:28px 0 0;
+  font-family:var(--mono);
+  font-size:11.5px;
+  color:#8B93A3;
+  letter-spacing:.08em;
+}
+.code-head + pre{margin-top:0;border-radius:0 0 4px 4px;}
+.code-head .lang{color:var(--accent);font-weight:700;}
+.tok-k{color:#7FA8E0;}
+.tok-s{color:#A3C99A;}
+.tok-c{color:#6B7484;font-style:italic;}
+.tok-f{color:#E0B36A;}
+.tok-n{color:#D68F8F;}
+
+/* ---------- 流程条 ---------- */
+.pipeline{
+  display:flex;
+  flex-wrap:wrap;
+  gap:0;
+  margin:36px 0;
+  font-family:var(--mono);
+  font-size:12px;
+}
+.pipeline .step{
+  flex:1 1 0;
+  min-width:96px;
+  background:var(--card);
+  border:1px solid var(--rule);
+  border-right:none;
+  padding:14px 10px 12px;
+  text-align:center;
+  position:relative;
+  color:var(--ink-soft);
+}
+.pipeline .step:last-child{border-right:1px solid var(--rule);}
+.pipeline .step::after{
+  content:"▸";
+  position:absolute;
+  right:-7px;
+  top:50%;
+  transform:translateY(-50%);
+  color:var(--accent);
+  z-index:2;
+  font-size:13px;
+}
+.pipeline .step:last-child::after{display:none;}
+.pipeline .step .p-no{
+  display:block;
+  font-size:9.5px;
+  letter-spacing:.18em;
+  color:var(--ink-faint);
+  margin-bottom:5px;
+}
+.pipeline .step.hot{
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+}
+.pipeline .step.hot .p-no{color:#B9C8DC;}
+.pipeline .step.blocked{
+  background:var(--fail);
+  color:#fff;
+  border-color:var(--fail);
+}
+.pipeline .step.blocked .p-no{color:#EBC4BF;}
+@media(max-width:680px){
+  .pipeline{flex-direction:column;}
+  .pipeline .step{border-right:1px solid var(--rule);border-bottom:none;}
+  .pipeline .step:last-child{border-bottom:1px solid var(--rule);}
+  .pipeline .step::after{content:"▾";right:auto;left:50%;top:auto;bottom:-9px;transform:translateX(-50%);}
+}
+
+/* ---------- 案例时间线 ---------- */
+.timeline{margin:36px 0;border-left:2px solid var(--accent);padding-left:26px;}
+.timeline .tl-item{margin-bottom:26px;position:relative;}
+.timeline .tl-item::before{
+  content:"";
+  position:absolute;
+  left:-32px;top:8px;
+  width:10px;height:10px;
+  background:var(--paper);
+  border:2px solid var(--accent);
+  border-radius:50%;
+}
+.timeline .tl-item h5{
+  font-family:var(--mono);
+  font-size:12px;
+  letter-spacing:.1em;
+  color:var(--accent);
+  margin-bottom:4px;
+}
+.timeline .tl-item p{font-size:14.5px;margin:0;}
+
+/* ---------- 引用块 ---------- */
+blockquote.pull{
+  margin:48px 0;
+  padding:8px 0 8px 30px;
+  border-left:3px solid var(--accent);
+  font-family:var(--serif);
+  font-size:20px;
+  line-height:1.9;
+  color:var(--ink);
+  font-weight:600;
+}
+blockquote.pull .src{
+  display:block;
+  margin-top:14px;
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:400;
+  color:var(--ink-faint);
+  letter-spacing:.1em;
+}
+
+/* ---------- 结尾闭环 ---------- */
+.loop-final{
+  margin:52px 0;
+  padding:36px 34px;
+  background:var(--ink);
+  color:#EDEAE3;
+  text-align:center;
+}
+.loop-final .lf-kicker{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.3em;
+  color:#8FA6C6;
+  margin-bottom:20px;
+}
+.loop-final .lf-chain{
+  font-family:var(--mono);
+  font-size:clamp(11px,2.2vw,14px);
+  line-height:2.4;
+  color:#D5DAE2;
+  letter-spacing:.04em;
+}
+.loop-final .lf-chain .arr{color:#5A7899;margin:0 8px;}
+.loop-final .lf-chain .core{color:#8FB4E8;font-weight:700;}
+.loop-final .lf-quote{
+  font-family:var(--serif);
+  font-size:clamp(17px,2.6vw,21px);
+  line-height:2;
+  margin-top:28px;
+  padding-top:26px;
+  border-top:1px solid #3A414D;
+  font-weight:600;
+  color:#F4F2ED;
+}
+
+/* ---------- 承上启下 ---------- */
+.handoff{
+  margin:60px 0 0;
+  border:1px solid var(--rule);
+  background:var(--card);
+}
+.handoff .h-block{padding:24px 28px;}
+.handoff .h-block + .h-block{border-top:1px solid var(--rule);}
+.handoff .h-tag{
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  display:block;
+  margin-bottom:8px;
+  font-weight:700;
+}
+.handoff .h-review .h-tag{color:var(--pass);}
+.handoff .h-open .h-tag{color:var(--ink-faint);}
+.handoff .h-next .h-tag{color:var(--accent);}
+.handoff p{margin:0;font-size:15px;}
+.handoff .h-next{background:var(--accent-soft);}
+.handoff .h-next p{color:var(--ink);}
+
+footer.colophon{
+  margin-top:80px;
+  padding:32px 0 64px;
+  border-top:3px double var(--ink);
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--ink-faint);
+  display:flex;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:10px;
+  letter-spacing:.06em;
+}
+footer.colophon b{color:var(--ink-soft);font-weight:500;}
+
+/* 目录导航 */
+.toc-inline{
+  columns:2;
+  column-gap:40px;
+  margin:44px 0 0;
+  font-size:14px;
+}
+@media(max-width:600px){.toc-inline{columns:1;}}
+.toc-inline a{
+  display:flex;
+  gap:12px;
+  padding:7px 0;
+  border-bottom:none;
+  color:var(--ink-soft);
+  break-inside:avoid;
+}
+.toc-inline a:hover{color:var(--accent);}
+.toc-inline .t-no{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--accent);
+  min-width:34px;
+  padding-top:2px;
+}
+.toc-title{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.25em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  margin-top:48px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--rule);
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<!-- ================= 刊头 ================= -->
+<header class="masthead">
+  <div class="kicker">RAG Evaluation Engineering <span class="sep">·</span> 系列 · 之四</div>
+  <h1 class="title">Eval Studio：把 RAG Evaluation 接入 <span class="em">CI/CD</span>，建立真正的上线质量门禁</h1>
+  <p class="subtitle">当一个 Evaluation 分数只能躺在报表里时，它什么也保护不了。本篇是系列的终章：我们将把 Dataset、Evaluator、Baseline 对比与 Regression 检测装进一个 Eval Studio，并用 Release Gate 把它焊死在 CI/CD 流水线上——让一次有风险的版本升级，在到达生产环境之前被自动拦截。</p>
+  <div class="byline">
+    <span><b>系列</b> RAG Evaluation 工程</span>
+    <span><b>篇目</b> 04 / 04 · 终章</span>
+    <span><b>场景</b> 企业知识库 · 客服问答</span>
+    <span><b>阅读</b> ≈ 28 min</span>
+  </div>
+
+  <div class="series-index">
+    <h4>Series Map · 全系列脉络</h4>
+    <ol>
+      <li><span class="no">01</span><span>RAG Evaluation 的第一性原理——为什么要评，评什么</span></li>
+      <li><span class="no">02</span><span>Faithfulness 与 LLM-as-Judge——当判定权交给另一个模型</span></li>
+      <li><span class="no">03</span><span>Regression Dataset——拿什么评，才能评得可比</span></li>
+      <li class="current"><span class="no">04</span><span>Eval Studio 与 Release Gate——如何持续回归、自动阻断、进入生产</span></li>
+    </ol>
+  </div>
+
+  <div class="abstract">
+    <p>前三篇我们依次回答了「为什么要评」「用什么指标评」「拿什么数据评」。但只要 Evaluation 仍然是一个<b>手动触发、人工解读、事后汇报</b>的流程，它就永远追不上变更的速度。本篇把散落的能力组装成完整的 Eval Studio——Dataset Manager、Evaluator Engine、Experiment Manager、Regression Engine、Score Store、Dashboard 与 Release Gate 七个组件，并给出 Hard Gate / Soft Gate / Regression Delta 三层门禁设计，以及一条完整的 CI/CD 流水线。最终用一个真实案例收束全系列：<b>Embedding v2 + Reranker v2 + LLM v2 的组合升级让 Recall 上升 8 个点，却让 Faithfulness 跌破门禁——Release Gate 返回 FAIL，部署被阻断。</b>这正是 Evaluation 存在的意义。</p>
+  </div>
+
+  <div class="toc-title">Contents · 本篇导览</div>
+  <nav class="toc-inline">
+    <a href="#c1"><span class="t-no">01</span><span>从「评过一次」到「随时可评」：Eval Studio 架构</span></a>
+    <a href="#c2"><span class="t-no">02</span><span>Evaluation Run：Baseline vs Current 的七维对比</span></a>
+    <a href="#c3"><span class="t-no">03</span><span>Release Gate：Hard、Soft 与 Regression Delta 三层门禁</span></a>
+    <a href="#c4"><span class="t-no">04</span><span>接入 CI/CD：让门禁长在流水线上</span></a>
+    <a href="#c5"><span class="t-no">05</span><span>完整案例：一次被拦截的三组件联合升级</span></a>
+    <a href="#c6"><span class="t-no">06</span><span>终章收束：从 Demo 到生产系统的闭环</span></a>
+  </nav>
+</header>
+
+<!-- ================= 正文 ================= -->
+<main>
+
+<!-- ============ 引言 ============ -->
+<section class="chapter" style="margin-top:72px;">
+  <p class="lead">上一篇的结尾，我们留下了一个悬而未决的问题：<strong>Regression Dataset 让每次评测变得可比了，但「可比」本身并不会自动发生</strong>。数据集躺在仓库里，Evaluator 是一段脚本，分数输出在一个 JSON 文件中——除非有人记得在每次发版前手动跑一遍、人肉对比两份报告、再凭良心判断「这次的 Faithfulness 跌幅好像还行」，否则整套评测体系的价值约等于零。</p>
+  <p>而现实是，RAG 系统的变更频率远比想象中高。换一个 Embedding 模型、调整 Chunk 策略、修改 Prompt 模板、升级 LLM 版本、调整 Reranker 阈值——每一次变更都可能让上周还健康的数据悄悄劣化。靠人工记得去评，等于靠运气保证质量。</p>
+  <p>所以本篇要回答的是整个系列最工程化、也最关键的一问：<strong>如何让 Evaluation 不再依赖人的自觉，而是像单元测试一样，成为每一次代码变更都必须通过的关卡？</strong>答案是一套系统（Eval Studio）加一条规则（Release Gate），再加一条把它们串起来的流水线（CI/CD）。</p>
+
+  <div class="callout">
+    <span class="co-label">本篇在全系列中的位置</span>
+    <p>第 1 篇建立了「检索评 Recall / Precision，生成评 Faithfulness / Relevancy」的指标框架；第 2 篇解决了「谁来判断」——LLM-as-Judge 及其偏差校准；第 3 篇解决了「拿什么评才可比」——Regression Dataset 与冻结原则。本篇解决最后一环：<strong>「评」这个动作如何嵌进软件交付流程，并在必要时说「不」。</strong></p>
+  </div>
+</section>
+
+<!-- ============ 01 Eval Studio Architecture ============ -->
+<section class="chapter" id="c1">
+  <div class="ch-no">Chapter 01</div>
+  <h2>从「评过一次」到「随时可评」：Eval Studio 架构</h2>
+
+  <p>先定义清楚这个词。<strong>Eval Studio 不是一款特定产品</strong>（虽然 LangSmith、Ragas 的配套平台、各家 MLOps 平台都有类似模块），而是一种架构形态：把评测所需的所有能力——数据、执行、存储、对比、决策——收拢到一个有明确边界的系统里，让「跑一次评测」从「工程师半天的手工活」变成「一条命令 / 一次 API 调用」。</p>
+
+  <p>一个可以支撑生产门禁的 Eval Studio，至少需要七个组件：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 560" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2B4C7E"/>
+        </marker>
+        <marker id="arrInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#1B1B1B"/>
+        </marker>
+      </defs>
+      <style>
+        .bx{fill:#FFFFFF;stroke:#1B1B1B;stroke-width:1.4;}
+        .bx-core{fill:#2B4C7E;}
+        .bx-gate{fill:#B03A2E;}
+        .bx-store{fill:#F3F1EC;}
+        .bx-t{font-size:14px;font-weight:700;fill:#1B1B1B;}
+        .bx-t-w{fill:#FFFFFF;}
+        .bx-s{font-size:10.5px;fill:#4A4A46;}
+        .bx-s-w{fill:#CBD8E8;}
+        .tag{font-size:9px;letter-spacing:2px;fill:#8A8A84;}
+        .flow{stroke:#2B4C7E;stroke-width:1.6;fill:none;marker-end:url(#arr);}
+        .flow-ink{stroke:#1B1B1B;stroke-width:1.2;fill:none;stroke-dasharray:5 4;marker-end:url(#arrInk);}
+      </style>
+
+      <!-- 触发源 -->
+      <rect class="bx" x="20" y="30" width="180" height="64" rx="3"/>
+      <text class="tag" x="36" y="50">TRIGGER</text>
+      <text class="bx-t" x="36" y="72" font-size="13">Git Commit / MR</text>
+      <text class="bx-s" x="36" y="86">CI Pipeline 触发评测</text>
+
+      <line class="flow" x1="200" y1="62" x2="252" y2="62"/>
+
+      <!-- 核心三件套 -->
+      <rect class="bx-core" x="256" y="22" width="200" height="80" rx="3"/>
+      <text class="tag" x="272" y="42" fill="#8FA6C6">CORE · 01</text>
+      <text class="bx-t bx-t-w" x="272" y="66" font-size="14">Dataset Manager</text>
+      <text class="bx-s bx-s-w" x="272" y="84" font-size="10.5">版本化 Regression Dataset</text>
+      <text class="bx-s bx-s-w" x="272" y="96" font-size="10.5">加载 / 快照 / 分层抽样</text>
+
+      <rect class="bx-core" x="256" y="130" width="200" height="80" rx="3"/>
+      <text class="tag" x="272" y="150" fill="#8FA6C6">CORE · 02</text>
+      <text class="bx-t bx-t-w" x="272" y="174" font-size="14">Evaluator Engine</text>
+      <text class="bx-s bx-s-w" x="272" y="192" font-size="10.5">Retrieval 指标 + Judge 指标</text>
+      <text class="bx-s bx-s-w" x="272" y="204" font-size="10.5">并发执行 / Judge 校准</text>
+
+      <rect class="bx-core" x="256" y="238" width="200" height="80" rx="3"/>
+      <text class="tag" x="272" y="258" fill="#8FA6C6">CORE · 03</text>
+      <text class="bx-t bx-t-w" x="272" y="282" font-size="14">Experiment Manager</text>
+      <text class="bx-s bx-s-w" x="272" y="300" font-size="10.5">一次变更 = 一个 Experiment</text>
+      <text class="bx-s bx-s-w" x="272" y="312" font-size="10.5">管理多个 Evaluation Run</text>
+
+      <!-- 存储与回归 -->
+      <rect class="bx-store" x="520" y="22" width="180" height="80" rx="3"/>
+      <text class="tag" x="536" y="42">STORE</text>
+      <text class="bx-t" x="536" y="66" font-size="14">Score Store</text>
+      <text class="bx-s" x="536" y="84">每次 Run 的全量分数</text>
+      <text class="bx-s" x="536" y="96">Case 级明细 + 元数据</text>
+
+      <rect class="bx-gate" x="520" y="130" width="180" height="80" rx="3"/>
+      <text class="tag" x="536" y="150" fill="#EBC4BF">DECISION</text>
+      <text class="bx-t bx-t-w" x="536" y="174" font-size="14">Release Gate</text>
+      <text class="bx-s bx-s-w" x="536" y="192">Hard / Soft / Delta 三层判定</text>
+      <text class="bx-s bx-s-w" x="536" y="204">输出 PASS / WARN / FAIL</text>
+
+      <rect class="bx" x="520" y="238" width="180" height="80" rx="3"/>
+      <text class="tag" x="536" y="258">ANALYSIS</text>
+      <text class="bx-t" x="536" y="282" font-size="14">Regression Engine</text>
+      <text class="bx-s" x="536" y="300">Baseline 对比 / 波动带</text>
+      <text class="bx-s" x="536" y="312">劣化 Case 归因定位</text>
+
+      <rect class="bx" x="520" y="346" width="180" height="80" rx="3"/>
+      <text class="tag" x="536" y="366">VIEW</text>
+      <text class="bx-t" x="536" y="390" font-size="14">Dashboard</text>
+      <text class="bx-s" x="536" y="408">Run 历史 / 趋势曲线</text>
+      <text class="bx-s" x="536" y="420">Gate 结论与归因报告</text>
+
+      <!-- 内部数据流 -->
+      <line class="flow" x1="356" y1="102" x2="356" y2="126"/>
+      <line class="flow" x1="356" y1="210" x2="356" y2="234"/>
+      <line class="flow" x1="456" y1="62" x2="516" y2="62"/>
+      <line class="flow" x1="456" y1="278" x2="516" y2="278"/>
+      <line class="flow" x1="610" y1="102" x2="610" y2="126"/>
+      <line class="flow-ink" x1="610" y1="238" x2="610" y2="214"/>
+
+      <!-- 外部 -->
+      <rect class="bx" x="20" y="130" width="180" height="64" rx="3"/>
+      <text class="tag" x="36" y="150">SYSTEM UNDER TEST</text>
+      <text class="bx-t" x="36" y="172" font-size="13">RAG Pipeline vN</text>
+      <text class="bx-s" x="36" y="186">Retriever · Reranker · LLM</text>
+      <line class="flow-ink" x1="200" y1="170" x2="252" y2="170"/>
+
+      <!-- CI/CD -->
+      <rect class="bx" x="20" y="238" width="180" height="64" rx="3"/>
+      <text class="tag" x="36" y="258">PIPELINE</text>
+      <text class="bx-t" x="36" y="280" font-size="13">CI/CD Runner</text>
+      <text class="bx-s" x="36" y="294">执行 Run 并等待 Gate 结论</text>
+      <line class="flow-ink" x1="200" y1="278" x2="252" y2="278"/>
+
+      <!-- 底部主流程 -->
+      <line class="flow" x1="356" y1="318" x2="356" y2="440"/>
+      <line class="flow" x1="456" y1="440" x2="712" y2="440" transform="translate(-140,0)"/>
+
+      <rect class="bx" x="216" y="410" width="200" height="60" rx="3"/>
+      <text class="bx-t" x="232" y="436" font-size="13">Baseline Comparison</text>
+      <text class="bx-s" x="232" y="454">当前 Run vs 基线 Run</text>
+
+      <rect class="bx-gate" x="476" y="410" width="200" height="60" rx="3"/>
+      <text class="bx-t bx-t-w" x="492" y="436" font-size="13">Deploy / Block</text>
+      <text class="bx-s bx-s-w" x="492" y="454">PASS → 部署 · FAIL → 阻断</text>
+
+      <line class="flow" x1="416" y1="440" x2="472" y2="440"/>
+      <line class="flow-ink" x1="700" y1="230" x2="700" y2="470"/>
+      <line class="flow-ink" x1="700" y1="470" x2="680" y2="470"/>
+
+      <text class="tag" x="40" y="530">图注：实线为评测数据主流程，虚线为控制流。Release Gate 是唯一拥有「否决权」的组件。</text>
+    </svg>
+    <figcaption><span class="fig-caption-no">图 1.</span> <b>Eval Studio 七组件架构。</b>Dataset Manager 与 Evaluator Engine 负责「把评测跑出来」，Score Store 与 Regression Engine 负责「把结果存下来、比出来」，Experiment Manager 负责组织语义，Release Gate 负责做出决策，Dashboard 负责让人看得懂。</figcaption>
+  </figure>
+
+  <h3><span class="h3-no">1.1</span>七个组件各自的职责边界</h3>
+
+  <div class="grid cols-2">
+    <div class="comp-card">
+      <span class="cc-tag">Core · Data</span>
+      <h5>Dataset Manager</h5>
+      <p>管理第 3 篇建立的 Regression Dataset：版本化（Dataset 本身也要有 Git 式版本）、按需加载、支持 Critical / Standard / Long-tail 三层子集的分层抽样，并在 CI 中默认使用 frozen snapshot——保证两次 Run 之间唯一变化的是被测系统。</p>
+    </div>
+    <div class="comp-card">
+      <span class="cc-tag">Core · Execution</span>
+      <h5>Evaluator Engine</h5>
+      <p>执行层。向上接收 Dataset + 待测 Pipeline，向下输出逐 Case 的指标明细。内部封装两类计算：确定性指标（Context Recall 等基于匹配的计算）与 Judge 类指标（Faithfulness、Relevancy，走第 2 篇校准过的 LLM-as-Judge），并做并发控制与重试。</p>
+    </div>
+    <div class="comp-card">
+      <span class="cc-tag">Core · Organization</span>
+      <h5>Experiment Manager</h5>
+      <p>组织语义层。一个 Experiment 对应「一次有意图的变更」（如 embedding-v2-upgrade），下面挂多个 Evaluation Run（不同配置、不同 Dataset 版本）。没有这一层，Score Store 里堆积的只是无意义的分数垃圾。</p>
+    </div>
+    <div class="comp-card">
+      <span class="cc-tag">Persistence</span>
+      <h5>Score Store</h5>
+      <p>持久层。存储每次 Run 的聚合分数、逐 Case 明细、Judge 的原始推理输出（用于事后审计 Judge 是否判错）以及完整元数据：代码 commit、模型版本、Dataset 版本、Prompt 版本。回归分析的可信度完全取决于这里存的元数据是否完整。</p>
+    </div>
+    <div class="comp-card">
+      <span class="cc-tag">Analysis</span>
+      <h5>Regression Engine</h5>
+      <p>对比引擎。从 Score Store 取出 Baseline Run 与 Current Run，做逐指标 Delta 计算与统计显著性校验（第 3 篇的波动带在此生效），并把劣化下沉到 Case 级定位：到底是哪 12 个 Case 的 Faithfulness 崩了？它们的共同特征是什么？</p>
+    </div>
+    <div class="comp-card">
+      <span class="cc-tag">Decision</span>
+      <h5>Release Gate</h5>
+      <p>决策层，也是全系统唯一拥有「否决权」的组件。输入是 Regression Engine 的对比报告与一组门禁规则，输出是一个明确的三值结论：PASS / WARN / FAIL。它的设计是本篇 03 节的核心。</p>
+    </div>
+    <div class="comp-card" style="grid-column:1/-1;">
+      <span class="cc-tag">Observability</span>
+      <h5>Dashboard</h5>
+      <p>Dashboard 不做任何决策——它只负责让人类理解决策为什么发生：Run 历史趋势、指标时序曲线、每次 Gate 结论的完整证据链（哪些指标触发、哪些 Case 劣化、Judge 的判定理由）。生产环境中 90% 的「为什么被 Gate 拦了」的疑问，都应该由 Dashboard 自助解答，而不是去问当值的算法工程师。</p>
+    </div>
+  </div>
+
+  <div class="tnote">
+    <span class="tn-label">Technical Note · 为什么不直接用现有平台？</span>
+    如果你用 LangSmith、Arize 或 Ragas 的配套工具，它们覆盖了上述大部分组件。但请务必确认一件事：<strong>该平台是否能以 CLI / API 形式输出一个可供 CI 判定的结构化 Gate 结论</strong>（如 exit code 或 JSON verdict）。很多评测平台擅长「展示分数」，却在「返回否决信号」这一步能力薄弱——而后者恰恰是本篇的主角。自建 Eval Studio 的最小可行版本，往往就是一段 200 行的 Python 加一张 Postgres 表。
+  </div>
+</section>
+
+<!-- ============ 02 Evaluation Run ============ -->
+<section class="chapter" id="c2">
+  <div class="ch-no">Chapter 02</div>
+  <h2>Evaluation Run：Baseline vs Current 的七维对比</h2>
+
+  <p>有了架构，接下来是核心动作：<strong>Evaluation Run</strong>。一次 Run 的本质是——用同一份冻结的 Regression Dataset，分别穿过 Baseline 版本与 Current 版本的 RAG Pipeline，然后把两组分数并排放在一起。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2B4C7E"/>
+        </marker>
+      </defs>
+      <style>
+        .b{fill:#fff;stroke:#1B1B1B;stroke-width:1.3;}
+        .bl{fill:#F3F1EC;}
+        .cu{fill:#E8EEF6;}
+        .t{font-size:13px;font-weight:700;fill:#1B1B1B;}
+        .s{font-size:10px;fill:#4A4A46;}
+        .tag2{font-size:9px;letter-spacing:2px;fill:#8A8A84;}
+        .f2{stroke:#2B4C7E;stroke-width:1.5;fill:none;marker-end:url(#arr2);}
+      </style>
+
+      <!-- Dataset -->
+      <rect class="b bl" x="20" y="90" width="150" height="110" rx="3"/>
+      <text class="tag2" x="36" y="112">FROZEN</text>
+      <text class="t" x="36" y="134">Regression</text>
+      <text class="t" x="36" y="150">Dataset v1.7</text>
+      <text class="s" x="36" y="172">320 Q · 三层结构</text>
+      <text class="s" x="36" y="186">同一份数据</text>
+
+      <!-- 分叉 -->
+      <line class="f2" x1="170" y1="145" x2="212" y2="90"/>
+      <line class="f2" x1="170" y1="145" x2="212" y2="215"/>
+
+      <!-- Baseline 分支 -->
+      <rect class="b bl" x="216" y="52" width="170" height="76" rx="3"/>
+      <text class="tag2" x="232" y="72">BASELINE</text>
+      <text class="t" x="232" y="92" font-size="12.5">RAG Pipeline v1.4.2</text>
+      <text class="s" x="232" y="108">prod 当前线上版本</text>
+      <line class="f2" x1="386" y1="90" x2="428" y2="120"/>
+
+      <!-- Current 分支 -->
+      <rect class="b cu" x="216" y="177" width="170" height="76" rx="3"/>
+      <text class="tag2" x="232" y="197" fill="#2B4C7E">CANDIDATE</text>
+      <text class="t" x="232" y="217" font-size="12.5">RAG Pipeline v1.5.0-rc</text>
+      <text class="s" x="232" y="233">本次待发布版本</text>
+      <line class="f2" x1="386" y1="215" x2="428" y2="170"/>
+
+      <!-- Run -->
+      <rect class="b" x="432" y="80" width="170" height="140" rx="3"/>
+      <text class="tag2" x="448" y="102">EVALUATION RUN</text>
+      <text class="t" x="448" y="126" font-size="12.5">Evaluator Engine</text>
+      <text class="s" x="448" y="146">Recall / Precision</text>
+      <text class="s" x="448" y="161">Faithfulness / Relevancy</text>
+      <text class="s" x="448" y="176">Correctness</text>
+      <text class="s" x="448" y="191">Latency / Cost</text>
+      <text class="s" x="448" y="210" fill="#2B4C7E">→ 逐 Case 明细落库</text>
+
+      <line class="f2" x1="602" y1="150" x2="644" y2="150"/>
+
+      <!-- 对比 -->
+      <rect class="b" x="648" y="90" width="190" height="120" rx="3" style="stroke:#2B4C7E;stroke-width:2;"/>
+      <text class="tag2" x="664" y="112" fill="#2B4C7E">OUTPUT</text>
+      <text class="t" x="664" y="136" font-size="12.5">Run Report (JSON)</text>
+      <text class="s" x="664" y="158">聚合分数 × 7 指标</text>
+      <text class="s" x="664" y="173">逐 Case 明细 × 2 版本</text>
+      <text class="s" x="664" y="188">Delta + 显著性 + 劣化 Case 清单</text>
+      <text class="s" x="664" y="203">完整元数据</text>
+    </svg>
+    <figcaption><span class="fig-caption-no">图 2.</span> <b>一次 Evaluation Run 的执行路径。</b>关键在于「同源分叉」：两版 Pipeline 消费的是完全相同的 Dataset 快照，任何差异都可归因于系统本身的变化。</figcaption>
+  </figure>
+
+  <h3><span class="h3-no">2.1</span>七个指标，三种性质</h3>
+  <p>Run 报告中的七个指标并非平级。按其来源与稳定性，它们分成三类，这直接决定了后面门禁规则如何为它们设置不同的容忍度：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>指标</th><th>类别</th><th>计算来源</th><th>跨 Run 稳定性</th><th>门禁中的角色</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Context Recall</td><td>Retrieval · 确定性</td>
+          <td class="mono">Reference vs Retrieved Context</td>
+          <td><span class="pill pass">高</span></td>
+          <td>Soft Gate + Delta</td>
+        </tr>
+        <tr>
+          <td>Context Precision</td><td>Retrieval · 确定性</td>
+          <td class="mono">Context 排序质量</td>
+          <td><span class="pill pass">高</span></td>
+          <td>Soft Gate + Delta</td>
+        </tr>
+        <tr>
+          <td>Faithfulness</td><td>Generation · Judge</td>
+          <td class="mono">LLM-as-Judge（已校准）</td>
+          <td><span class="pill warn">中</span></td>
+          <td>Soft Gate + Delta（重点盯防）</td>
+        </tr>
+        <tr>
+          <td>Answer Relevancy</td><td>Generation · Judge</td>
+          <td class="mono">LLM-as-Judge（已校准）</td>
+          <td><span class="pill warn">中</span></td>
+          <td>Soft Gate + Delta</td>
+        </tr>
+        <tr>
+          <td>Correctness</td><td>Generation · Judge</td>
+          <td class="mono">Answer vs Reference</td>
+          <td><span class="pill warn">中</span></td>
+          <td>Soft Gate + Delta</td>
+        </tr>
+        <tr>
+          <td>Latency (P95)</td><td>系统 · 确定性</td>
+          <td class="mono">端到端耗时</td>
+          <td><span class="pill pass">高</span></td>
+          <td>Soft Gate（比例阈值）</td>
+        </tr>
+        <tr>
+          <td>Cost / Query</td><td>系统 · 确定性</td>
+          <td class="mono">Token 用量 × 单价</td>
+          <td><span class="pill pass">高</span></td>
+          <td>Soft Gate（预算上限）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="co-label">为什么 Judge 类指标「稳定性中等」也要进门禁</span>
+    <p>第 2 篇讲过，LLM-as-Judge 存在波动与偏差，即使经过校准，同一份答案两次评测的 Faithfulness 也可能相差 ±0.02。这正是第 3 篇引入<strong>波动带（Noise Band）</strong>的原因：门禁对 Judge 类指标设置的 Delta 阈值，必须大于 Judge 自身的噪声幅度，否则 Gate 会频繁误报（flaky gate）——而一个经常误报的门禁，很快就会被团队以「再跑一遍就好了」的心态绕过，形同虚设。</p>
+  </div>
+
+  <h3><span class="h3-no">2.2</span>Run 的代码形态</h3>
+  <p>把上面的流程翻译成代码。以下是一个最小但结构完整的 Run 定义，基于 Ragas 执行指标计算（第 1、2 篇的体系），外面包一层 Eval Studio 的组织结构：</p>
+
+  <div class="code-head"><span>eval_studio/run.py</span><span class="lang">Python</span></div>
+<pre><code><span class="tok-k">from</span> dataclasses <span class="tok-k">import</span> dataclass, field
+<span class="tok-k">from</span> datetime <span class="tok-k">import</span> datetime, timezone
+
+<span class="tok-c"># ---------- 结构定义 ----------</span>
+
+<span class="tok-k">@dataclass</span>
+<span class="tok-k">class</span> <span class="tok-f">RunMetadata</span>:
+    <span class="tok-s">"""每次 Run 必须携带的完整指纹——回归分析的生命线"""</span>
+    commit_sha: str
+    pipeline_version: str          <span class="tok-c"># e.g. "1.5.0-rc1"</span>
+    embedding_model: str           <span class="tok-c"># e.g. "bge-m3-v2"</span>
+    reranker_model: str
+    llm_model: str
+    prompt_version: str
+    dataset_version: str           <span class="tok-c"># frozen snapshot, e.g. "kb-reg-v1.7"</span>
+    judge_model: str               <span class="tok-c"># Judge 固定为 "gpt-4o-2024-11-20"，跨 Run 不可变</span>
+    triggered_by: str              <span class="tok-c"># "ci" | "manual" | "nightly"</span>
+
+<span class="tok-k">class</span> <span class="tok-f">EvaluationRun</span>:
+    <span class="tok-k">def</span> <span class="tok-f">__init__</span>(self, meta: RunMetadata, experiment_id: str):
+        self.meta = meta
+        self.experiment_id = experiment_id
+        self.run_id = <span class="tok-s">f"run-</span><span class="tok-n">{datetime.now(timezone.utc):%Y%m%d-%H%M%S}</span><span class="tok-s">-</span><span class="tok-n">{meta.commit_sha[:7]}</span><span class="tok-s">"</span>
+        self.case_results: list[dict] = []
+
+    <span class="tok-k">def</span> <span class="tok-f">execute</span>(self, dataset, rag_pipeline) -> dict:
+        <span class="tok-s">"""跑完整流程：检索 → 生成 → 打分，返回聚合报告"""</span>
+        aggregate = {}
+        <span class="tok-k">for</span> batch <span class="tok-k">in</span> dataset.batches(size=<span class="tok-n">16</span>):          <span class="tok-c"># 并发批量执行</span>
+            contexts, answers, latencies = rag_pipeline.invoke_batch(batch)
+            <span class="tok-c"># 确定性指标：本地计算，零成本、零波动</span>
+            retrieval_scores = score_retrieval(batch, contexts)
+            <span class="tok-c"># Judge 指标：走第 2 篇校准过的 Judge，带缓存去重</span>
+            judge_scores = self.judge.score_batch(
+                questions=batch.questions,
+                contexts=contexts,
+                answers=answers,
+                references=batch.references,
+            )
+            <span class="tok-k">for</span> i, case <span class="tok-k">in</span> <span class="tok-f">enumerate</span>(batch):
+                self.case_results.append({
+                    <span class="tok-s">"case_id"</span>: case.id,
+                    <span class="tok-s">"tier"</span>: case.tier,                 <span class="tok-c"># critical | standard | longtail</span>
+                    <span class="tok-s">"context_recall"</span>: retrieval_scores[i][<span class="tok-s">"recall"</span>],
+                    <span class="tok-s">"context_precision"</span>: retrieval_scores[i][<span class="tok-s">"precision"</span>],
+                    <span class="tok-s">"faithfulness"</span>: judge_scores[i][<span class="tok-s">"faithfulness"</span>],
+                    <span class="tok-s">"relevancy"</span>: judge_scores[i][<span class="tok-s">"relevancy"</span>],
+                    <span class="tok-s">"correctness"</span>: judge_scores[i][<span class="tok-s">"correctness"</span>],
+                    <span class="tok-s">"latency_ms"</span>: latencies[i],
+                    <span class="tok-s">"judge_rationale"</span>: judge_scores[i].get(<span class="tok-s">"rationale"</span>),
+                })
+        aggregate = self._aggregate()
+        score_store.save(self.run_id, aggregate, self.case_results, self.meta)
+        <span class="tok-k">return</span> aggregate
+
+    <span class="tok-k">def</span> <span class="tok-f">_aggregate</span>(self) -> dict:
+        <span class="tok-s">"""整体均值 + Critical 层单独聚合——门禁两层都要看"""</span>
+        report = {<span class="tok-s">"run_id"</span>: self.run_id, <span class="tok-s">"meta"</span>: self.meta.__dict__}
+        <span class="tok-k">for</span> tier <span class="tok-k">in</span> (<span class="tok-s">"all"</span>, <span class="tok-s">"critical"</span>):
+            rows = [r <span class="tok-k">for</span> r <span class="tok-k">in</span> self.case_results
+                    <span class="tok-k">if</span> tier == <span class="tok-s">"all"</span> <span class="tok-k">or</span> r[<span class="tok-s">"tier"</span>] == <span class="tok-s">"critical"</span>]
+            report[tier] = {
+                m: mean([r[m] <span class="tok-k">for</span> r <span class="tok-k">in</span> rows])
+                <span class="tok-k">for</span> m <span class="tok-k">in</span> (<span class="tok-s">"context_recall"</span>, <span class="tok-s">"context_precision"</span>,
+                          <span class="tok-s">"faithfulness"</span>, <span class="tok-s">"relevancy"</span>, <span class="tok-s">"correctness"</span>)
+            }
+            report[tier][<span class="tok-s">"latency_p95_ms"</span>] = percentile(
+                [r[<span class="tok-s">"latency_ms"</span>] <span class="tok-k">for</span> r <span class="tok-k">in</span> rows], <span class="tok-n">95</span>)
+        report[<span class="tok-s">"cost_per_query_usd"</span>] = self.total_cost / <span class="tok-f">len</span>(self.case_results)
+        <span class="tok-k">return</span> report</code></pre>
+
+  <div class="tnote">
+    <span class="tn-label">Technical Note · Critical 层为什么单独聚合</span>
+    整体均值会稀释信号。假设 320 个 Case 里有 15 个 Critical Case（涉及退款政策、合同条款等高风险问题），其中 4 个在新版本下 Faithfulness 归零——整体均值可能只从 0.91 微跌到 0.88，看起来「在波动范围内」，但对那 4 个 Case 背后的真实用户来说，这是会出现幻觉答案的事故。<strong>分层聚合让「整体还行」无法掩盖「局部致命」。</strong>
+  </div>
+</section>
+
+<!-- ============ 03 Release Gate ============ -->
+<section class="chapter" id="c3">
+  <div class="ch-no">Chapter 03</div>
+  <h2>Release Gate：Hard、Soft 与 Regression Delta 三层门禁</h2>
+
+  <p>有了 Run 报告，剩下的问题是：<strong>谁有权根据这份报告说「可以上线」或「不许上线」？</strong>在成熟团队里，这个权力不属于任何人，属于一套事先声明的规则——Release Gate。</p>
+
+  <p>Gate 的设计有一条核心原则：<strong>规则必须先于 Run 存在</strong>。门禁阈值写进代码仓库、经过 Code Review、随版本演进——而不是看完结果之后再「商量」一个标准。后者不是门禁，是仪式。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 480" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2B4C7E"/>
+        </marker>
+        <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#B03A2E"/>
+        </marker>
+        <marker id="arrG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2E6E4E"/>
+        </marker>
+      </defs>
+      <style>
+        .g{fill:#fff;stroke:#1B1B1B;stroke-width:1.3;}
+        .t3{font-size:13px;font-weight:700;fill:#1B1B1B;}
+        .s3{font-size:10px;fill:#4A4A46;}
+        .tag3{font-size:9px;letter-spacing:2px;fill:#8A8A84;}
+        .f3{stroke:#2B4C7E;stroke-width:1.5;fill:none;marker-end:url(#arr3);}
+        .fR{stroke:#B03A2E;stroke-width:1.5;fill:none;marker-end:url(#arrR);}
+        .fG{stroke:#2E6E4E;stroke-width:1.5;fill:none;marker-end:url(#arrG);}
+      </style>
+
+      <!-- Input -->
+      <rect class="g" x="20" y="185" width="150" height="90" rx="3"/>
+      <text class="tag3" x="36" y="207">INPUT</text>
+      <text class="t3" x="36" y="229" font-size="12.5">Run Report</text>
+      <text class="s3" x="36" y="247">Baseline vs Current</text>
+      <text class="s3" x="36" y="261">Delta × 7 指标</text>
+
+      <line class="f3" x1="170" y1="230" x2="216" y2="230"/>
+
+      <!-- Hard Gate -->
+      <rect class="g" x="220" y="30" width="230" height="110" rx="3" style="stroke:#B03A2E;stroke-width:1.8;"/>
+      <text class="tag3" x="236" y="52" fill="#B03A2E">LAYER 1 · HARD GATE · 一票否决</text>
+      <text class="t3" x="236" y="76" font-size="12.5">Critical Tier Failures = 0</text>
+      <text class="t3" x="236" y="96" font-size="12.5">High-risk Error Cases = 0</text>
+      <text class="s3" x="236" y="118">任何一条违反 → 直接 FAIL，无豁免</text>
+
+      <!-- Soft Gate -->
+      <rect class="g" x="220" y="175" width="230" height="110" rx="3" style="stroke:#B07D2B;stroke-width:1.8;"/>
+      <text class="tag3" x="236" y="197" fill="#B07D2B">LAYER 2 · SOFT GATE · 绝对水位</text>
+      <text class="t3" x="236" y="221" font-size="12.5">Faithfulness ≥ 0.85</text>
+      <text class="t3" x="236" y="241" font-size="12.5">Relevancy ≥ 0.80 · Latency P95 ≤ 3.0s</text>
+      <text class="t3" x="236" y="261" font-size="12.5">Cost ≤ $0.005 / query</text>
+
+      <!-- Delta Gate -->
+      <rect class="g" x="220" y="320" width="230" height="110" rx="3" style="stroke:#2B4C7E;stroke-width:1.8;"/>
+      <text class="tag3" x="236" y="342" fill="#2B4C7E">LAYER 3 · REGRESSION DELTA · 相对退化</text>
+      <text class="t3" x="236" y="366" font-size="12.5">Δ Faithfulness ≥ −0.03</text>
+      <text class="t3" x="236" y="386" font-size="12.5">Δ Recall ≥ −0.02 · Δ Cost ≤ +20%</text>
+      <text class="s3" x="236" y="408">超出波动带 → WARN / FAIL</text>
+
+      <line class="f3" x1="170" y1="230" x2="216" y2="100"/>
+      <line class="f3" x1="170" y1="230" x2="216" y2="360"/>
+
+      <!-- 判定 -->
+      <line class="f3" x1="450" y1="85" x2="530" y2="185"/>
+      <line class="f3" x1="450" y1="230" x2="530" y2="225"/>
+      <line class="f3" x1="450" y1="375" x2="530" y2="265"/>
+
+      <rect class="g" x="534" y="175" width="150" height="110" rx="3" style="fill:#F3F1EC;"/>
+      <text class="tag3" x="550" y="197">VERDICT</text>
+      <text class="t3" x="550" y="221" font-size="12.5">三层全部评估</text>
+      <text class="s3" x="550" y="241">Hard FAIL → FAIL</text>
+      <text class="s3" x="550" y="255">Soft/Delta 违规 → WARN*</text>
+      <text class="s3" x="550" y="269">全通过 → PASS</text>
+
+      <!-- 输出 -->
+      <line class="fG" x1="684" y1="205" x2="740" y2="140"/>
+      <rect class="g" x="744" y="98" width="96" height="52" rx="3" style="fill:#E9F2ED;stroke:#2E6E4E;stroke-width:1.8;"/>
+      <text class="t3" x="762" y="128" font-size="13" fill="#2E6E4E">DEPLOY</text>
+
+      <line class="fR" x1="684" y1="255" x2="740" y2="330"/>
+      <rect class="g" x="744" y="318" width="96" height="52" rx="3" style="fill:#F9ECEA;stroke:#B03A2E;stroke-width:1.8;"/>
+      <text class="t3" x="768" y="348" font-size="13" fill="#B03A2E">BLOCK</text>
+
+      <text class="tag3" x="40" y="466">* WARN 的处置策略见 3.4 节：可由 Tech Lead 显式 override，但 override 记录永久留痕。</text>
+    </svg>
+    <figcaption><span class="fig-caption-no">图 3.</span> <b>Release Gate 三层判定结构。</b>Hard Gate 管「能不能容忍」，Soft Gate 管「绝对水位够不够」，Regression Delta 管「相比上一版是否退步」。三层从不同角度逼近同一个问题：这个版本安全吗？</figcaption>
+  </figure>
+
+  <h3><span class="h3-no">3.1</span>Hard Gate：不可协商的红线</h3>
+  <p>Hard Gate 的规则必须满足两个条件：<strong>数量极少，且语义清晰到无需解释</strong>。我们的企业知识库场景中只有两条：</p>
+
+  <div class="grid cols-2">
+    <div class="comp-card" style="border-top-color:var(--fail);">
+      <span class="cc-tag" style="color:var(--fail);">Rule H-1</span>
+      <h5>Critical Tier Failures = 0</h5>
+      <p>Critical 层（15 个高风险 Case：退款规则、赔付条款、法律义务类问题）中，任何一例出现 Faithfulness ≤ 0.5 或 Correctness = 0，即 FAIL。<strong>不允许用「整体均值还很高」来稀释。</strong></p>
+    </div>
+    <div class="comp-card" style="border-top-color:var(--fail);">
+      <span class="cc-tag" style="color:var(--fail);">Rule H-2</span>
+      <h5>High-risk Error = 0</h5>
+      <p>全量 Case 中，若某答案包含 Judge 标记的「高风险错误类型」（编造政策条款、给出错误金额、混淆适用范围），无论出现在哪一层，即 FAIL。这类错误一旦上线，代价不是评分下降，是客诉与合规风险。</p>
+    </div>
+  </div>
+
+  <div class="callout fail">
+    <span class="co-label">Anti-Pattern · 「均值门禁」</span>
+    <p>最常见的门禁错误是只看整体均值：「Faithfulness 平均 0.87 &gt; 0.85，通过」。均值对局部灾难完全免疫。Hard Gate 存在的意义，就是给「局部灾难」一个不管均值多好看都能一票否决的通道。<strong>原则：评估分布时，永远同时看均值和最差 Case（或 P5 分位）。</strong></p>
+  </div>
+
+  <h3><span class="h3-no">3.2</span>Soft Gate：允许波动的绝对水位</h3>
+  <p>Soft Gate 回答的是：「当前版本的绝对质量，是否仍然处于我们承诺给业务方的水平之上？」它的阈值是产品级的质量承诺（SLA 的评测版），允许一定波动，但设有底线。典型的规则表：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>指标</th><th>阈值</th><th>违反结果</th><th>设置依据</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Faithfulness</td><td class="mono">≥ 0.85</td><td><span class="pill fail">FAIL</span></td><td>客服场景对「不说错话」的硬承诺</td></tr>
+        <tr><td>Answer Relevancy</td><td class="mono">≥ 0.80</td><td><span class="pill fail">FAIL</span></td><td>答非所问直接影响会话解决率</td></tr>
+        <tr><td>Context Recall</td><td class="mono">≥ 0.78</td><td><span class="pill warn">WARN</span></td><td>有 Reranker 兜底，允许略低</td></tr>
+        <tr><td>Latency P95</td><td class="mono">≤ 3.0 s</td><td><span class="pill warn">WARN</span></td><td>产品侧承诺的响应体验上限</td></tr>
+        <tr><td>Cost / Query</td><td class="mono">≤ $0.005</td><td><span class="pill warn">WARN</span></td><td>按月预算反推的单次成本上限</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>注意阈值后面跟着的是<strong>产品决策而非技术决策</strong>。0.85 的 Faithfulness 意味着「每 20 句话最多容错 3 句」——这个数字应该由业务方与算法团队共同签认，然后固化在仓库的 <code>gate.yaml</code> 里，而不是某次上线前临时拍板。</p>
+
+  <h3><span class="h3-no">3.3</span>Regression Delta：门禁的灵魂</h3>
+  <p>前两层都在回答「当前是否达标」，但生产中最危险的场景往往不是「绝对分数低」，而是<strong>「绝对分数还行，但相比上一版明显退化了」</strong>。设想 Faithfulness 从 0.91 降到 0.86——它仍然高于 0.85 的 Soft Gate 底线，但 5 个点的跌幅意味着这次变更大概率引入了系统性问题，而问题还在趋势的起点。</p>
+
+  <blockquote class="pull">
+    绝对水位告诉你系统「现在站在哪里」，Regression Delta 告诉你系统「正在往哪个方向走」。门禁必须同时盯住两者——因为所有的事故，都是从「方向」开始出问题的。
+  </blockquote>
+
+  <p>Delta 规则的设置有两个技术要点：</p>
+  <p><strong>第一，阈值必须大于噪声。</strong>第 3 篇为每层 Dataset 实测过 Judge 的波动带（例如 Faithfulness 的 σ ≈ 0.012），那么 Delta 阈值取 −0.03（约 2.5σ）就意味着误报率被控制在可接受范围。跳过波动带测量、直接拍一个 Δ ≥ −0.05，得到的 Gate 要么太松要么太吵。</p>
+  <p><strong>第二，允许「有意识的技术换血」。</strong>升级 LLM 时 Cost 可能上升 40%，如果这是为了换取 Correctness 提升 6 个点的<strong>已评审决策</strong>，门禁不应机械阻断。所以 Delta 规则支持<strong>带豁免声明的例外</strong>：</p>
+
+  <div class="code-head"><span>gate.yaml · 门禁规则即代码</span><span class="lang">YAML</span></div>
+<pre><code><span class="tok-c"># Release Gate 配置：与代码一同 Review、一同版本化</span>
+<span class="tok-k">version</span>: <span class="tok-n">3</span>
+<span class="tok-k">baseline</span>:
+  <span class="tok-k">strategy</span>: <span class="tok-s">last_released</span>        <span class="tok-c"># last_released | golden | commit_sha</span>
+
+<span class="tok-k">hard_gate</span>:
+  <span class="tok-k">critical_tier_failures</span>: <span class="tok-s">max</span> <span class="tok-n">0</span>
+  <span class="tok-k">high_risk_error_cases</span>: <span class="tok-s">max</span> <span class="tok-n">0</span>
+
+<span class="tok-k">soft_gate</span>:                          <span class="tok-c"># 绝对水位</span>
+  <span class="tok-k">faithfulness</span>:      { <span class="tok-k">min</span>: <span class="tok-n">0.85</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">fail</span> }
+  <span class="tok-k">relevancy</span>:         { <span class="tok-k">min</span>: <span class="tok-n">0.80</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">fail</span> }
+  <span class="tok-k">context_recall</span>:    { <span class="tok-k">min</span>: <span class="tok-n">0.78</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">warn</span> }
+  <span class="tok-k">latency_p95_ms</span>:    { <span class="tok-k">max</span>: <span class="tok-n">3000</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">warn</span> }
+  <span class="tok-k">cost_per_query_usd</span>: { <span class="tok-k">max</span>: <span class="tok-n">0.005</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">warn</span> }
+
+<span class="tok-k">regression_delta</span>:                   <span class="tok-c"># 相对退化，阈值均大于实测噪声带</span>
+  <span class="tok-k">faithfulness</span>:      { <span class="tok-k">min_delta</span>: <span class="tok-n">-0.03</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">fail</span> }
+  <span class="tok-k">relevancy</span>:         { <span class="tok-k">min_delta</span>: <span class="tok-n">-0.03</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">fail</span> }
+  <span class="tok-k">context_recall</span>:    { <span class="tok-k">min_delta</span>: <span class="tok-n">-0.02</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">warn</span> }
+  <span class="tok-k">correctness</span>:       { <span class="tok-k">min_delta</span>: <span class="tok-n">-0.03</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">fail</span> }
+  <span class="tok-k">latency_p95_ratio</span>: { <span class="tok-k">max_ratio</span>: <span class="tok-n">1.30</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">warn</span> }
+  <span class="tok-k">cost_ratio</span>:        { <span class="tok-k">max_ratio</span>: <span class="tok-n">1.20</span>, <span class="tok-k">on_violation</span>: <span class="tok-s">warn</span> }
+
+<span class="tok-k">overrides</span>:                          <span class="tok-c"># 带声明的豁免，永久留痕</span>
+  - <span class="tok-k">rule</span>: <span class="tok-s">regression_delta.cost_ratio</span>
+    <span class="tok-k">max_ratio</span>: <span class="tok-n">1.50</span>
+    <span class="tok-k">reason</span>: <span class="tok-s">"LLM v2 升级：接受成本上升换取 Correctness +6pt，预算已审批（FIN-2481）"</span>
+    <span class="tok-k">approved_by</span>: <span class="tok-s">"tech-lead@corp"</span>
+    <span class="tok-k">expires</span>: <span class="tok-s">"2026-10-31"</span>          <span class="tok-c"># 豁免必须有过期时间</span></code></pre>
+
+  <h3><span class="h3-no">3.4</span>PASS / WARN / FAIL 的处置策略</h3>
+  <p>Gate 输出三值结论，每个值对应一条明确的、事先声明的处置路径：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>结论</th><th>含义</th><th>流水线动作</th><th>人类动作</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill pass">PASS</span></td>
+          <td>三层全部通过</td>
+          <td>自动继续，进入部署</td>
+          <td>无需介入</td>
+        </tr>
+        <tr>
+          <td><span class="pill warn">WARN</span></td>
+          <td>Soft/Delta 有 WARN 级违规，无 FAIL</td>
+          <td>流水线暂停，等待决策</td>
+          <td>Tech Lead 查看 Dashboard 归因，显式 approve 或 reject（留痕）</td>
+        </tr>
+        <tr>
+          <td><span class="pill fail">FAIL</span></td>
+          <td>Hard Gate 违规，或 FAIL 级 Soft/Delta 违规</td>
+          <td>流水线终止，禁止部署</td>
+          <td>回滚或修复后重新发起；解除 FAIL 只能修改门禁规则（需 Review）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="co-label">Gate 的社会工程学：为什么 override 必须麻烦一点</span>
+    <p>WARN 级的人工 override 是门禁设计中最微妙的环节。规则是：<strong>override 必须显式声明、写明理由、留下批准人与过期时间，并在 Dashboard 上永久可见。</strong>这些摩擦不是缺陷，是特性——它保证每一次绕过门禁的决定都是深思熟虑的、可追责的，而不是深夜上线前顺手敲的 <code>--force</code>。一个可以被随意绕过的门禁，比没有门禁更危险，因为它制造了「我们有质量流程」的错觉。</p>
+  </div>
+</section>
+
+<!-- ============ 04 CI/CD ============ -->
+<section class="chapter" id="c4">
+  <div class="ch-no">Chapter 04</div>
+  <h2>接入 CI/CD：让门禁长在流水线上</h2>
+
+  <p>Eval Studio 和 Gate 规则都就绪了，最后一步是把它们接入流水线。目标形态是：<strong>RAG 评测成为与单元测试、集成测试平级的一个 Stage——测试不过，代码不上线，评测不过，模型不上线，同一套逻辑，同一条流水线。</strong></p>
+
+  <figure>
+    <svg viewBox="0 0 860 190" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace">
+      <defs>
+        <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8A8A84"/>
+        </marker>
+      </defs>
+      <style>
+        .st{fill:#fff;stroke:#1B1B1B;stroke-width:1.2;}
+        .st4{fill:#F3F1EC;}
+        .gate4{fill:#B03A2E;}
+        .dep{fill:#2E6E4E;}
+        .t4{font-size:11.5px;font-weight:700;}
+        .s4{font-size:8.5px;}
+        .f4{stroke:#8A8A84;stroke-width:1.3;fill:none;marker-end:url(#arr4);}
+      </style>
+      <g>
+        <rect class="st st4" x="14" y="55" width="96" height="72" rx="3"/>
+        <text class="t4" x="26" y="82" fill="#1B1B1B">Git Commit</text>
+        <text class="s4" x="26" y="100" fill="#8A8A84">代码 / Prompt /</text>
+        <text class="s4" x="26" y="113" fill="#8A8A84">模型配置变更</text>
+
+        <line class="f4" x1="110" y1="91" x2="130" y2="91"/>
+
+        <rect class="st" x="134" y="55" width="96" height="72" rx="3"/>
+        <text class="t4" x="146" y="82" fill="#1B1B1B">Unit Test</text>
+        <text class="s4" x="146" y="100" fill="#8A8A84">逻辑正确性</text>
+        <text class="s4" x="146" y="113" fill="#8A8A84">秒级</text>
+
+        <line class="f4" x1="230" y1="91" x2="250" y2="91"/>
+
+        <rect class="st" x="254" y="55" width="100" height="72" rx="3"/>
+        <text class="t4" x="266" y="82" fill="#1B1B1B">Integration</text>
+        <text class="t4" x="266" y="96" fill="#1B1B1B" font-size="11.5">Test</text>
+        <text class="s4" x="266" y="113" fill="#8A8A84">链路连通 · 分钟级</text>
+
+        <line class="f4" x1="354" y1="91" x2="374" y2="91"/>
+
+        <rect class="st" x="378" y="55" width="108" height="72" rx="3" style="stroke:#2B4C7E;stroke-width:1.6;"/>
+        <text class="t4" x="390" y="78" fill="#2B4C7E">RAG Regression</text>
+        <text class="s4" x="390" y="94" fill="#8A8A84">Recall / Precision</text>
+        <text class="s4" x="390" y="107" fill="#8A8A84">确定性指标</text>
+        <text class="s4" x="390" y="119" fill="#8A8A84">≈ 3 min</text>
+
+        <line class="f4" x1="486" y1="91" x2="506" y2="91"/>
+
+        <rect class="st" x="510" y="55" width="108" height="72" rx="3" style="stroke:#2B4C7E;stroke-width:1.6;"/>
+        <text class="t4" x="522" y="78" fill="#2B4C7E">LLM Evaluation</text>
+        <text class="s4" x="522" y="94" fill="#8A8A84">Judge 类指标</text>
+        <text class="s4" x="522" y="107" fill="#8A8A84">分层抽样</text>
+        <text class="s4" x="522" y="119" fill="#8A8A84">≈ 8 min</text>
+
+        <line class="f4" x1="618" y1="91" x2="638" y2="91"/>
+
+        <rect class="st gate4" x="642" y="55" width="96" height="72" rx="3"/>
+        <text class="t4" x="654" y="82" fill="#fff">Release</text>
+        <text class="t4" x="654" y="96" fill="#fff">Gate</text>
+        <text class="s4" x="654" y="113" fill="#EBC4BF">PASS/WARN/FAIL</text>
+
+        <line class="f4" x1="738" y1="80" x2="758" y2="80"/>
+
+        <rect class="st dep" x="762" y="46" width="86" height="40" rx="3"/>
+        <text class="t4" x="778" y="70" fill="#fff" font-size="11">Deploy</text>
+
+        <line class="f4" x1="738" y1="104" x2="758" y2="140"/>
+
+        <rect class="st" x="762" y="122" width="86" height="40" rx="3"/>
+        <text class="t4" x="778" y="146" fill="#B03A2E" font-size="11">Block</text>
+      </g>
+      <text x="14" y="176" font-size="9.5" fill="#8A8A84" letter-spacing="1.5">蓝色描边为本篇新增 Stage；三个评测 Stage 失败任一，后续 Stage 均不执行。</text>
+    </svg>
+    <figcaption><span class="fig-caption-no">图 4.</span> <b>完整的 CI/CD 流水线。</b>RAG Regression 与 LLM Evaluation 被拆成两个 Stage：前者快且确定，可以每次 commit 都跑；后者慢且有 Judge 成本，跑在合并前与夜间全量。</figcaption>
+  </figure>
+
+  <h3><span class="h3-no">4.1</span>两条评测轨道：快轨与全量轨</h3>
+  <p>一个现实问题：Regression Dataset 有 320 个 Case，Judge 类指标跑一轮约 8 分钟、消耗真实 LLM 费用。如果每个 commit 都全量跑，工程师的反馈循环和预算都受不了。生产环境的标准做法是<strong>双轨制</strong>：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>轨道</th><th>触发时机</th><th>数据范围</th><th>耗时 / 成本</th><th>Gate 权限</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>快轨 Quick Check</strong></td>
+          <td>每次 push / PR</td>
+          <td>Critical 15 例 + 随机抽样 45 例</td>
+          <td>≈ 3 min · ≈ $0.4</td>
+          <td>Hard Gate only</td>
+        </tr>
+        <tr>
+          <td><strong>全量轨 Full Regression</strong></td>
+          <td>合并至 main / 发版候选 / 每夜</td>
+          <td>全量 320 例 + 长尾子集</td>
+          <td>≈ 12 min · ≈ $2.8</td>
+          <td>完整三层 Gate</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>快轨的 Gate 只保留 Hard 规则（Critical 层零容忍）——它追求的是「高风险错误绝不了进主干」；全量轨才执行完整的 Soft Gate 与 Delta 判定，作为发布的最终裁决。夜间全量轨还承担一个额外职责：捕捉由<strong>外部世界变化</strong>引起的回归——知识库文档更新、上游 API 行为漂移、模型服务方的隐性版本切换，这些变化没有经过你的 Git，却同样会让线上质量悄悄滑坡。</p>
+
+  <h3><span class="h3-no">4.2</span>流水线定义</h3>
+
+  <div class="code-head"><span>.github/workflows/rag-eval.yml</span><span class="lang">YAML</span></div>
+<pre><code><span class="tok-k">name</span>: <span class="tok-s">rag-eval-gate</span>
+
+<span class="tok-k">on</span>:
+  <span class="tok-k">pull_request</span>:                    <span class="tok-c"># 快轨：PR 阶段跑 Critical 抽样</span>
+    <span class="tok-k">paths</span>: [<span class="tok-s">'rag/**'</span>, <span class="tok-s">'prompts/**'</span>, <span class="tok-s">'configs/models.yaml'</span>]
+  <span class="tok-k">push</span>:
+    <span class="tok-k">branches</span>: [<span class="tok-s">main</span>]               <span class="tok-c"># 全量轨：合并后完整回归</span>
+
+<span class="tok-k">jobs</span>:
+  <span class="tok-k">unit-and-integration</span>:
+    <span class="tok-k">runs-on</span>: <span class="tok-s">ubuntu-latest</span>
+    <span class="tok-k">steps</span>:
+      - <span class="tok-k">uses</span>: <span class="tok-s">actions/checkout@v4</span>
+      - <span class="tok-k">run</span>: <span class="tok-s">make test                # Unit + Integration，评测的前置条件</span></code></pre>
+<pre><code>
+  <span class="tok-k">rag-regression</span>:                   <span class="tok-c"># ── Stage 1：确定性检索指标 ──</span>
+    <span class="tok-k">needs</span>: <span class="tok-s">unit-and-integration</span>
+    <span class="tok-k">runs-on</span>: <span class="tok-s">ubuntu-latest</span>
+    <span class="tok-k">steps</span>:
+      - <span class="tok-k">uses</span>: <span class="tok-s">actions/checkout@v4</span>
+      - <span class="tok-k">name</span>: <span class="tok-s">Run retrieval regression</span>
+        <span class="tok-k">run</span>: <span class="tok-s">|</span>
+<span class="tok-s">          python -m eval_studio.cli run \</span>
+<span class="tok-s">            --dataset kb-reg-v1.7@frozen \</span>
+<span class="tok-s">            --suite retrieval \</span>
+<span class="tok-s">            --tier ${{ github.event_name == 'pull_request' && 'critical+sample' || 'full' }}</span>
+      - <span class="tok-k">name</span>: <span class="tok-s">Upload run artifacts</span>
+        <span class="tok-k">uses</span>: <span class="tok-s">actions/upload-artifact@v4</span>
+        <span class="tok-k">with</span>: { <span class="tok-k">name</span>: <span class="tok-s">retrieval-run</span>, <span class="tok-k">path</span>: <span class="tok-s">runs/</span> }
+
+  <span class="tok-k">llm-evaluation</span>:                   <span class="tok-c"># ── Stage 2：Judge 类指标 ──</span>
+    <span class="tok-k">needs</span>: [<span class="tok-s">rag-regression</span>]
+    <span class="tok-k">runs-on</span>: <span class="tok-s">ubuntu-latest</span>
+    <span class="tok-k">steps</span>:
+      - <span class="tok-k">uses</span>: <span class="tok-s">actions/checkout@v4</span>
+      - <span class="tok-k">name</span>: <span class="tok-s">Run generation evaluation (Ragas + Judge)</span>
+        <span class="tok-k">env</span>:
+          <span class="tok-k">JUDGE_MODEL</span>: <span class="tok-s">gpt-4o-2024-11-20   # 固定 Judge 版本，跨 Run 可比</span>
+        <span class="tok-k">run</span>: <span class="tok-s">|</span>
+<span class="tok-s">          python -m eval_studio.cli run \</span>
+<span class="tok-s">            --dataset kb-reg-v1.7@frozen \</span>
+<span class="tok-s">            --suite generation \</span>
+<span class="tok-s">            --experiment auto/pr-${{ github.event.number }}</span>
+
+  <span class="tok-k">release-gate</span>:                    <span class="tok-c"># ── Stage 3：门禁裁决 ──</span>
+    <span class="tok-k">needs</span>: [<span class="tok-s">llm-evaluation</span>]
+    <span class="tok-k">runs-on</span>: <span class="tok-s">ubuntu-latest</span>
+    <span class="tok-k">steps</span>:
+      - <span class="tok-k">uses</span>: <span class="tok-s">actions/checkout@v4</span>
+      - <span class="tok-k">name</span>: <span class="tok-s">Evaluate release gate</span>
+        <span class="tok-k">run</span>: <span class="tok-s">|</span>
+<span class="tok-s">          python -m eval_studio.cli gate \</span>
+<span class="tok-s">            --config gate.yaml \</span>
+<span class="tok-s">            --baseline last_released \</span>
+<span class="tok-s">            --fail-exit-code        # FAIL → 非零退出码 → 流水线终止</span>
+      - <span class="tok-k">name</span>: <span class="tok-s">Comment verdict on PR</span>
+        <span class="tok-k">if</span>: <span class="tok-s">always()</span>
+        <span class="tok-k">run</span>: <span class="tok-s">python -m eval_studio.cli report --format pr-comment</span>
+
+  <span class="tok-k">deploy</span>:
+    <span class="tok-k">needs</span>: [<span class="tok-s">release-gate</span>]           <span class="tok-c"># Gate FAIL 时，本 Job 永远不会执行</span>
+    <span class="tok-k">runs-on</span>: <span class="tok-s">ubuntu-latest</span>
+    <span class="tok-k">environment</span>: <span class="tok-s">production          # 额外一层环境保护审批</span>
+    <span class="tok-k">steps</span>:
+      - <span class="tok-k">run</span>: <span class="tok-s">make deploy</span></code></pre>
+
+  <p>门禁裁决的核心实现在 <code>gate</code> 子命令中。它读取对比报告，执行三层规则，并以<strong>进程退出码</strong>作为与 CI 的契约：</p>
+
+  <div class="code-head"><span>eval_studio/gate.py</span><span class="lang">Python</span></div>
+<pre><code><span class="tok-k">import</span> sys, yaml
+
+EXIT_PASS, EXIT_WARN, EXIT_FAIL = <span class="tok-n">0</span>, <span class="tok-n">2</span>, <span class="tok-n">1</span>
+
+<span class="tok-k">def</span> <span class="tok-f">evaluate_gate</span>(report: dict, baseline: dict, config: dict) -> int:
+    verdict, violations = <span class="tok-s">"PASS"</span>, []
+
+    <span class="tok-c"># ── Layer 1: Hard Gate ── 一票否决</span>
+    <span class="tok-k">if</span> report[<span class="tok-s">"critical"</span>][<span class="tok-s">"critical_failures"</span>] &gt; config[<span class="tok-s">"hard_gate"</span>][<span class="tok-s">"critical_tier_failures"</span>]:
+        violations.append((<span class="tok-s">"HARD"</span>, <span class="tok-s">"critical_tier_failures"</span>, <span class="tok-s">"FAIL"</span>))
+        verdict = <span class="tok-s">"FAIL"</span>
+    <span class="tok-k">if</span> report[<span class="tok-s">"high_risk_error_cases"</span>] &gt; <span class="tok-n">0</span>:
+        violations.append((<span class="tok-s">"HARD"</span>, <span class="tok-s">"high_risk_error_cases"</span>, <span class="tok-s">"FAIL"</span>))
+        verdict = <span class="tok-s">"FAIL"</span>
+
+    <span class="tok-c"># ── Layer 2: Soft Gate ── 绝对水位</span>
+    <span class="tok-k">for</span> metric, rule <span class="tok-k">in</span> config[<span class="tok-s">"soft_gate"</span>].items():
+        value = report[<span class="tok-s">"all"</span>][metric]
+        <span class="tok-k">if</span> <span class="tok-s">"min"</span> <span class="tok-k">in</span> rule <span class="tok-k">and</span> value &lt; rule[<span class="tok-s">"min"</span>]:
+            violations.append((<span class="tok-s">"SOFT"</span>, metric, rule[<span class="tok-s">"on_violation"</span>]))
+        <span class="tok-k">if</span> <span class="tok-s">"max"</span> <span class="tok-k">in</span> rule <span class="tok-k">and</span> value &gt; rule[<span class="tok-s">"max"</span>]:
+            violations.append((<span class="tok-s">"SOFT"</span>, metric, rule[<span class="tok-s">"on_violation"</span>]))
+
+    <span class="tok-c"># ── Layer 3: Regression Delta ── 相对退化（扣除豁免项）</span>
+    <span class="tok-k">for</span> metric, rule <span class="tok-k">in</span> config[<span class="tok-s">"regression_delta"</span>].items():
+        <span class="tok-k">if</span> is_overridden(metric, config[<span class="tok-s">"overrides"</span>]):
+            <span class="tok-k">continue</span>                       <span class="tok-c"># 带声明的豁免，留痕后放行</span>
+        delta = report[<span class="tok-s">"all"</span>][metric] - baseline[<span class="tok-s">"all"</span>][metric]
+        <span class="tok-k">if</span> <span class="tok-s">"min_delta"</span> <span class="tok-k">in</span> rule <span class="tok-k">and</span> delta &lt; rule[<span class="tok-s">"min_delta"</span>]:
+            violations.append((<span class="tok-s">"DELTA"</span>, metric, rule[<span class="tok-s">"on_violation"</span>],
+                               <span class="tok-s">f"delta=</span><span class="tok-n">{delta:+.3f}</span><span class="tok-s">"</span>))
+
+    <span class="tok-c"># ── 汇总裁决 ──</span>
+    <span class="tok-k">if</span> <span class="tok-f">any</span>(v[<span class="tok-n">2</span>] == <span class="tok-s">"FAIL"</span> <span class="tok-k">for</span> v <span class="tok-k">in</span> violations):
+        verdict = <span class="tok-s">"FAIL"</span>
+    <span class="tok-k">elif</span> <span class="tok-f">any</span>(v[<span class="tok-n">2</span>] == <span class="tok-s">"WARN"</span> <span class="tok-k">for</span> v <span class="tok-k">in</span> violations):
+        verdict = <span class="tok-s">"WARN"</span>
+
+    emit_verdict(verdict, violations)      <span class="tok-c"># 写回 Score Store + PR Comment</span>
+    <span class="tok-k">return</span> {<span class="tok-s">"PASS"</span>: EXIT_PASS, <span class="tok-s">"WARN"</span>: EXIT_WARN, <span class="tok-s">"FAIL"</span>: EXIT_FAIL}[verdict]
+
+<span class="tok-k">if</span> __name__ == <span class="tok-s">"__main__"</span>:
+    <span class="tok-k">with</span> <span class="tok-f">open</span>(<span class="tok-s">"gate.yaml"</span>) <span class="tok-k">as</span> f:
+        config = yaml.safe_load(f)
+    sys.exit(evaluate_gate(current_report, baseline_report, config))</code></pre>
+
+  <div class="callout">
+    <span class="co-label">Design Decision · Gate 为什么是独立 Stage 而不是评测脚本的一部分</span>
+    <p>把「算分」和「裁决」拆开，是一次刻意的设计。<strong>算分可以被任何人跑、跑多少次都行</strong>——它是探索性的，服务于调试；<strong>裁决只能由声明过的规则做出</strong>——它是规范性的，服务于发布。混在一起会导致两种腐败：要么为了让实验跑通而顺手放宽阈值，要么为了门禁好看而对分数做手脚。分离之后，Experiment 可以随意折腾，Gate 永远冷酷。</p>
+  </div>
+</section>
+
+<!-- ============ 05 案例 ============ -->
+<section class="chapter" id="c5">
+  <div class="ch-no">Chapter 05</div>
+  <h2>完整案例：一次被拦截的三组件联合升级</h2>
+
+  <p>理论说完了，来看这套体系在真实世界里最典型的胜利。场景是我们的企业知识库客服系统，团队发起了一个看起来非常合理的 Experiment：<strong>「Accuracy Boost」三组件联合升级</strong>。</p>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <h5>WEEK 1 · 动机</h5>
+      <p>近一个月的线上反馈显示，约 18% 的客诉源于「检索不到相关文档」。团队决定同时升级三个组件：Embedding 模型 v1 → v2（预期 Context Recall +6pt）、Reranker v1 → v2（预期 Context Precision +4pt）、LLM v1 → v2（预期 Correctness +3pt）。三者叠加，理论上是一次纯收益升级。</p>
+    </div>
+    <div class="tl-item">
+      <h5>WEEK 2 · Experiment 建立</h5>
+      <p>在 Eval Studio 中创建 Experiment <code style="font-size:.85em;">exp-015-accuracy-boost</code>，声明三个组件变更，Baseline 指向线上版本 v1.4.2 对应的 golden Run。Dataset 使用冻结的 <code style="font-size:.85em;">kb-reg-v1.7</code>，Judge 保持 <code style="font-size:.85em;">gpt-4o-2024-11-20</code> 不变。</p>
+    </div>
+    <div class="tl-item">
+      <h5>WEEK 2 · Evaluation Run 执行</h5>
+      <p>Candidate 版本 v1.5.0-rc1 在 CI 全量轨上完成 320 Case 评测，报告自动送入 Regression Engine，与 Baseline 逐指标对比。</p>
+    </div>
+    <div class="tl-item">
+      <h5>WEEK 2 · Release Gate 裁决</h5>
+      <p>结果出人意料：<strong>检索指标全线上涨，生成质量却塌了。</strong>Gate 输出 FAIL，部署被阻断。下面是完整的裁决过程。</p>
+    </div>
+  </div>
+
+  <h3><span class="h3-no">5.1</span>七维对比报告</h3>
+
+  <div class="grid cols-4">
+    <div class="stat-card up">
+      <div class="sc-label">Context Recall</div>
+      <div class="sc-value">0.90</div>
+      <div class="sc-delta">▲ +0.08 · 达预期 ✓</div>
+    </div>
+    <div class="stat-card up">
+      <div class="sc-label">Context Precision</div>
+      <div class="sc-value">0.83</div>
+      <div class="sc-delta">▲ +0.04 · 达预期 ✓</div>
+    </div>
+    <div class="stat-card down">
+      <div class="sc-label">Faithfulness</div>
+      <div class="sc-value">0.78</div>
+      <div class="sc-delta">▼ −0.13 · FAIL ✗</div>
+    </div>
+    <div class="stat-card down">
+      <div class="sc-label">Correctness</div>
+      <div class="sc-value">0.81</div>
+      <div class="sc-delta">▼ −0.02 · WARN</div>
+    </div>
+  </div>
+  <div class="grid cols-4">
+    <div class="stat-card flat">
+      <div class="sc-label">Answer Relevancy</div>
+      <div class="sc-value">0.84</div>
+      <div class="sc-delta">▼ −0.02 · PASS（带内）</div>
+    </div>
+    <div class="stat-card flat">
+      <div class="sc-label">Latency P95</div>
+      <div class="sc-value">3.6s</div>
+      <div class="sc-delta">▲ +50% · WARN</div>
+    </div>
+    <div class="stat-card flat">
+      <div class="sc-label">Cost / Query</div>
+      <div class="sc-value">$0.0058</div>
+      <div class="sc-delta">▲ +87% · WARN（已豁免*）</div>
+    </div>
+    <div class="stat-card down">
+      <div class="sc-label">Release Gate</div>
+      <div class="sc-value" style="color:var(--fail);">FAIL</div>
+      <div class="sc-delta">2 FAIL · 2 WARN</div>
+    </div>
+  </div>
+  <p style="font-size:13px;color:var(--ink-faint);margin-top:-14px;">* Cost 上升在 Experiment 声明中已有豁免（FIN-2481，上限 +100%），故不触发违规。</p>
+
+  <h3><span class="h3-no">5.2</span>可视化对比：这次升级到底发生了什么</h3>
+
+  <figure>
+    <svg viewBox="0 0 860 380" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace">
+      <style>
+        .ax{stroke:#D8D5CE;stroke-width:1;}
+        .lb{font-size:11px;fill:#4A4A46;}
+        .v1{fill:#8A8A84;}
+        .v2{fill:#2B4C7E;}
+        .bar-t{font-size:11px;font-weight:700;}
+        .gr{stroke:#B03A2E;stroke-width:1.4;stroke-dasharray:6 4;}
+        .gr-t{font-size:9.5px;fill:#B03A2E;}
+      </style>
+
+      <!-- 坐标区 -->
+      <g transform="translate(70,30)">
+        <!-- 100% 线 -->
+        <line class="ax" x1="0" y1="0" x2="740" y2="0"/>
+        <!-- 6 组柱状 -->
+        <!-- 组宽 110，柱宽 40，间隙 8 -->
+
+        <!-- Recall: 0.82 → 0.90 (scale: 1.0 = 240px) -->
+        <g transform="translate(15,0)">
+          <rect class="v1" x="0" y="43.2" width="40" height="196.8"/>
+          <rect class="v2" x="48" y="24" width="40" height="216"/>
+          <text class="bar-t v1" x="8" y="38" fill="#8A8A84">0.82</text>
+          <text class="bar-t" x="56" y="19" fill="#2B4C7E">0.90</text>
+          <text class="lb" x="20" y="270">Recall</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#2E6E4E">▲</text>
+        </g>
+
+        <!-- Precision: 0.79 → 0.83 -->
+        <g transform="translate(135,0)">
+          <rect class="v1" x="0" y="50.4" width="40" height="189.6"/>
+          <rect class="v2" x="48" y="40.8" width="40" height="199.2"/>
+          <text class="bar-t v1" x="8" y="45" fill="#8A8A84">0.79</text>
+          <text class="bar-t" x="56" y="35" fill="#2B4C7E">0.83</text>
+          <text class="lb" x="10" y="270">Precision</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#2E6E4E">▲</text>
+        </g>
+
+        <!-- Faithfulness: 0.91 → 0.78 -->
+        <g transform="translate(255,0)">
+          <rect class="v1" x="0" y="21.6" width="40" height="218.4"/>
+          <rect class="v2" x="48" y="52.8" width="40" height="187.2"/>
+          <text class="bar-t v1" x="8" y="16" fill="#8A8A84">0.91</text>
+          <text class="bar-t" x="56" y="47" fill="#B03A2E">0.78</text>
+          <text class="lb" x="8" y="270">Faithfulness</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#B03A2E">▼</text>
+        </g>
+
+        <!-- Relevancy: 0.86 → 0.84 -->
+        <g transform="translate(375,0)">
+          <rect class="v1" x="0" y="33.6" width="40" height="206.4"/>
+          <rect class="v2" x="48" y="38.4" width="40" height="201.6"/>
+          <text class="bar-t v1" x="8" y="28" fill="#8A8A84">0.86</text>
+          <text class="bar-t" x="56" y="33" fill="#B07D2B">0.84</text>
+          <text class="lb" x="6" y="270">Relevancy</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#B07D2B">▼</text>
+        </g>
+
+        <!-- Correctness: 0.83 → 0.81 -->
+        <g transform="translate(495,0)">
+          <rect class="v1" x="0" y="40.8" width="40" height="199.2"/>
+          <rect class="v2" x="48" y="45.6" width="40" height="194.4"/>
+          <text class="bar-t v1" x="8" y="35" fill="#8A8A84">0.83</text>
+          <text class="bar-t" x="56" y="40" fill="#B07D2B">0.81</text>
+          <text class="lb" x="8" y="270">Correctness</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#B07D2B">▼</text>
+        </g>
+
+        <!-- Latency (归一化到 5s) -->
+        <g transform="translate(615,0)">
+          <rect class="v1" x="0" y="124.8" width="40" height="115.2"/>
+          <rect class="v2" x="48" y="67.2" width="40" height="172.8"/>
+          <text class="bar-t v1" x="2" y="119" fill="#8A8A84">2.4s</text>
+          <text class="bar-t" x="52" y="62" fill="#B07D2B">3.6s</text>
+          <text class="lb" x="10" y="270">Latency P95</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#B07D2B">▲</text>
+        </g>
+
+        <!-- Faithfulness 阈值线 0.85 -->
+        <line class="gr" x1="255" y1="36" x2="385" y2="36"/>
+        <text class="gr-t" x="240" y="32" text-anchor="end">Soft Gate 0.85</text>
+
+        <!-- legend -->
+        <rect class="v1" x="0" y="320" width="14" height="14"/>
+        <text class="lb" x="22" y="331">Baseline v1.4.2（线上）</text>
+        <rect class="v2" x="220" y="320" width="14" height="14"/>
+        <text class="lb" x="242" y="331">Candidate v1.5.0-rc1</text>
+        <text class="lb" x="440" y="331" fill="#8A8A84">Latency 按 5s 满刻度归一化显示</text>
+      </g>
+    </svg>
+    <figcaption><span class="fig-caption-no">图 5.</span> <b>exp-015-accuracy-boost 的七维对比。</b>灰色为 Baseline，蓝色为 Candidate。检索侧（左侧两组）如预期上涨，生成侧 Faithfulness 跌破 0.85 的 Soft Gate 底线——一次「检索升级」以「生成劣化」收场。</figcaption>
+  </figure>
+
+  <h3><span class="h3-no">5.3</span>逐层裁决：Gate 是怎么一步步走到 FAIL 的</h3>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>门禁层</th><th>规则</th><th>实测</th><th>判定</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Hard · H-1</td><td class="mono">Critical Failures ≤ 0</td><td class="mono">0 / 15</td>
+          <td><span class="pill pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>Hard · H-2</td><td class="mono">High-risk Errors ≤ 0</td><td class="mono">0</td>
+          <td><span class="pill pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>Soft</td><td class="mono">Faithfulness ≥ 0.85</td><td class="mono">0.78</td>
+          <td><span class="pill fail">FAIL</span></td>
+        </tr>
+        <tr>
+          <td>Soft</td><td class="mono">Relevancy ≥ 0.80</td><td class="mono">0.84</td>
+          <td><span class="pill pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>Soft</td><td class="mono">Latency P95 ≤ 3000ms</td><td class="mono">3600ms</td>
+          <td><span class="pill warn">WARN</span></td>
+        </tr>
+        <tr>
+          <td>Delta</td><td class="mono">Δ Faithfulness ≥ −0.03</td><td class="mono"><span class="delta-down">−0.130</span></td>
+          <td><span class="pill fail">FAIL</span></td>
+        </tr>
+        <tr>
+          <td>Delta</td><td class="mono">Δ Recall ≥ −0.02</td><td class="mono"><span class="delta-up">+0.080</span></td>
+          <td><span class="pill pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>Delta</td><td class="mono">Δ Cost ≤ +20%</td><td class="mono"><span class="delta-flat">+87% · 豁免</span></td>
+          <td><span class="pill neutral">OVERRIDDEN</span></td>
+        </tr>
+        <tr>
+          <td><strong>最终裁决</strong></td><td colspan="2">2 × FAIL → 一票否决</td>
+          <td><span class="pill fail">FAIL · BLOCKED</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3><span class="h3-no">5.4</span>归因：Regression Engine 找到的真正原因</h3>
+  <p>Gate 说「不」只是第一步，Dashboard 上的 Case 级归因回答「为什么」。Regression Engine 对比两版 Run 的逐 Case 明细，锁定 Faithfulness 劣化最严重的 21 个 Case，发现它们呈现一个清晰的模式：</p>
+
+  <div class="callout fail">
+    <span class="co-label">Case Study · 归因结论：检索变好了，生成反而更危险</span>
+    <p><strong>劣化 Case 的共同特征：多文档、跨条款类问题。</strong>Embedding v2 的召回能力更强，对这类问题平均召回 6.2 条 Context（v1 为 3.8 条）；但其中多条 Context 来自<strong>不同版本的政策文档</strong>（知识库中退款规则存在 2024 / 2025 两个版本，未被正确去重）。LLM v2 比 v1 更「忠实于上下文」——于是它把新旧两版规则的矛盾一并向用户复述，产出了一批<strong>每个 Claim 都有 Context 支撑、但相互冲突</strong>的答案。</p>
+    <p>注意这个反直觉的链条：Faithfulness 下降<strong>不是</strong>因为模型开始编造（Claim 级支撑率并未崩塌），而是因为 Context 本身被污染了，而更强的 LLM 忠实地暴露了这种污染。Context Precision 只涨了 0.04，掩盖了新召回内容中的版本冲突——确定性指标没有语义层面的冲突检测能力。</p>
+  </div>
+
+  <p>这个归因直接指出了修复路径（且完全不需要回退任何组件）：<strong>在知识库侧补充文档版本去重与时效性过滤，并在 Reranker 后增加冲突检测规则</strong>。一周后 v1.5.0-rc2 通过全量 Gate：Faithfulness 回到 0.90，Recall 保留 0.89 的收益，Latency 通过 Reranker 批处理优化降到 2.9s。三组件升级的原始意图，最终以更好的形态安全落地。</p>
+
+  <blockquote class="pull">
+    Evaluation 的价值从来不是证明「系统越来越好」——恰恰相反，它最有价值的时刻，是在所有人都以为系统越来越好时，指出哪里正在变坏。优化一个指标的同时破坏另外几个，是 RAG 工程的常态而非例外；门禁的存在，就是让这种破坏在到达用户之前被看见。
+    <span class="src">—— 全系列的核心论点，也是这个案例想留下的一切</span>
+  </blockquote>
+</section>
+
+<!-- ============ 06 终章收束 ============ -->
+<section class="chapter" id="c6">
+  <div class="ch-no">Chapter 06 · Finale</div>
+  <h2>终章收束：从 Demo 到生产系统的闭环</h2>
+
+  <p>四篇走到这里，我们可以把整条链路重新串起来了。</p>
+
+  <p><strong>第 1 篇</strong>回答了「为什么要评、评什么」：RAG 的质量是检索质量与生成质量的乘积，Recall / Precision 与 Faithfulness / Relevancy 各管一半，缺一不可。<strong>第 2 篇</strong>回答了「怎么评」：当 Faithfulness 需要语义级判断时，LLM-as-Judge 是唯一可行的规模化方案，但它自带偏差，必须经过校准与审计才能被信任。<strong>第 3 篇</strong>回答了「拿什么评」：一个版本化、分层的 Regression Dataset 是可比性的前提，没有冻结的数据集，一切分数都是噪音。<strong>而本篇</strong>回答了最后一问：「评」这个动作如何嵌入工程流程，并在必要时拥有否决权。</p>
+
+  <p>现在，评测不再是一次性的验收动作，而是一个持续运转的飞轮：</p>
+
+  <div class="loop-final">
+    <div class="lf-kicker">THE EVALUATION FLYWHEEL · 质量工程闭环</div>
+    <div class="lf-chain">
+      <span class="core">Data</span><span class="arr">→</span>Eval<span class="arr">→</span>Regression<span class="arr">→</span>Optimize<span class="arr">→</span><span class="core">Release</span><br>
+      <span class="arr">↑</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arr">↓</span><br>
+      <span class="core">Eval</span><span class="arr">←</span>Feedback<span class="arr">←</span>Monitor<span class="arr">←</span>Production
+    </div>
+    <div class="lf-quote">「当 Evaluation 能够进入 CI/CD 并真正阻止有风险的版本上线时，<br>RAG 才真正从一个『模型 Demo』变成一个可以持续演进的生产系统。」</div>
+  </div>
+
+  <p>这个闭环里有两个箭头值得单独说明，它们都不在本篇的流水线图里，却决定了飞轮能不能转起来：</p>
+  <p><strong>Monitor → Feedback。</strong>上线不是终点。生产环境的线上流量（用户追问、负反馈、会话放弃）持续暴露 Regression Dataset 覆盖不到的真实失败模式。第 3 篇说过，Dataset 必须定期纳入「线上挖掘的新 Case」——这些 Case 从哪来？从监控和反馈来。<strong>生产环境是 Dataset 的矿场。</strong></p>
+  <p><strong>Feedback → Eval。</strong>每一条被确认的线上 bad case，都应该变成 Dataset 里的一条新 Evaluation Case，并在下一次 Gate 中拥有拦截同类问题的能力。久而久之，门禁规则库就是这个系统全部历史事故的<strong>免疫记忆</strong>——系统被打败过一次的地方，不会再被打败第二次。</p>
+
+  <h3><span class="h3-no">6.1</span>全系列术语与能力总账</h3>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>能力</th><th>核心机制</th><th>出自</th><th>一句话检验标准</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>可测量</td><td>Retrieval / Generation 双侧指标体系</td><td class="mono">系列 01</td><td>任何一次变更，都能量化它影响了什么</td></tr>
+        <tr><td>可信任</td><td>LLM-as-Judge + 偏差校准与审计</td><td class="mono">系列 02</td><td>Judge 的判定，人抽检后认账</td></tr>
+        <tr><td>可比较</td><td>版本化分层 Regression Dataset</td><td class="mono">系列 03</td><td>两次分数的差异，只归因于系统变更</td></tr>
+        <tr><td>可回归</td><td>Evaluation Run + Baseline Delta</td><td class="mono">系列 04</td><td>每个版本都知道自己比上一版好还是坏</td></tr>
+        <tr><td>可阻断</td><td>Hard / Soft / Delta 三层 Release Gate</td><td class="mono">系列 04</td><td>有风险的版本，到不了生产环境</td></tr>
+        <tr><td>可持续</td><td>CI/CD 双轨评测 + 线上反馈回流</td><td class="mono">系列 04</td><td>质量体系随系统一起演进，不靠人的自觉</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3><span class="h3-no">6.2</span>写给准备动手的你：一个务实的落地顺序</h3>
+  <p>最后，给想把这套体系搬回自己团队的读者一个经过验证的实施顺序。不要试图一次性建成七组件的 Eval Studio——那会在第一周就死于工程量。真正的路径是渐进的：</p>
+  <p><strong>第一步（第 1 周）</strong>：选定 30–50 个真实 Case（含 10 个高风险），接上 Ragas 跑出第一批 Faithfulness / Recall 分数。此时你要的不是一个平台，是一个<strong>基线认知</strong>：你的系统现在到底几分。<strong>第二步（第 2–3 周）</strong>：把 Dataset 冻结版本化，写一个 20 行的对比脚本，每次变更手动跑一遍、看 Delta。这一步几乎零成本，却能立刻捕捉到 80% 的劣化。<strong>第三步（第 4–6 周）</strong>：把手动跑变成 CI 里的一个 Job，加上 Hard Gate 与 FAIL 退出码。至此，门禁已经生效。<strong>第四步（之后）</strong>：再逐步补全 Dashboard、波动带校准、双轨制、反馈回流——每一步都建立在已被团队信任的前一步之上。</p>
+
+  <div class="callout pass">
+    <span class="co-label">系列结语</span>
+    <p>回到四篇之前提出的那个判断：RAG Evaluation 的终点不是「得到一个分数」。分数只是语言，体系才是目的——一套能够<strong>持续发现问题、验证优化、阻断劣化、控制生产质量</strong>的工程体系。真正成熟的 RAG，不只是回答能力强，而是具备<strong>可测量、可回归、可比较、可阻断、可持续优化</strong>的质量工程体系。愿你的下一次上线，是 Gate 亲自放行的。</p>
+  </div>
+
+  <!-- 承上启下（系列终章形式） -->
+  <div class="handoff">
+    <div class="h-block h-review">
+      <span class="h-tag">✓ 本篇解决了什么</span>
+      <p>Evaluation 从手动流程变成工程体系：七组件 Eval Studio 让「随时可评」成立；Baseline 对比让每次 Run 可判读；Hard / Soft / Delta 三层 Release Gate 让「质量标准」成为先于结果存在的规则；CI/CD 双轨制让门禁在每次变更时自动执行——并用一次被成功拦截的三组件升级，证明了整套体系的价值。</p>
+    </div>
+    <div class="h-block h-open">
+      <span class="h-tag">… 依然开放的问题</span>
+      <p>本篇的案例已经触碰到了它的边界：当 Faithfulness 下降源于「多个 Claim 各自成立、彼此矛盾」时，现有的 Claim 级指标无法语义化地描述这种失败模式。多轮对话评测、Context 时效性验证、以及 Judge 本身的持续再校准，都是这套体系下一步值得深入的方向——但那将是新的系列了。</p>
+    </div>
+    <div class="h-block h-next">
+      <span class="h-tag">→ 系列到此收束</span>
+      <p>四篇构成一条完整的链：为什么要评 → 评什么 → 怎么评 → 拿什么评 → 如何持续回归 → 如何自动阻断 → 如何进入生产。链条的终点不是某个工具，而是一种能力——让你的 RAG 系统敢于持续演进，因为你知道，任何一次退步，都会在成为事故之前，先被自己的体系看见。感谢读完全系列。</p>
+    </div>
+  </div>
+
+</main>
+
+<footer class="colophon">
+  <span><b>RAG Evaluation 工程</b> · 系列第 04 / 04 篇 · 终章</span>
+  <span>场景：企业知识库 · 客服问答 &nbsp;|&nbsp; 全系列术语与示例保持连续</span>
+</footer>
+
+</div>
+</body>
+</html>

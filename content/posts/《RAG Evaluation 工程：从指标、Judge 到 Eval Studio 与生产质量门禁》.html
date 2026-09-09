@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM-as-Judge：让大模型给 RAG 打分，真的可靠吗？ · RAG Evaluation 工程系列 Vol.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   RAG Evaluation 系列 · 统一视觉系统 Vol.2
+   ============================================================ */
+:root {
+  --ink:        #1B2A3A;
+  --ink-soft:   #44576B;
+  --ink-faint:  #7A8A9A;
+  --paper:      #FAF8F4;
+  --paper-deep: #F2EEE6;
+  --line:       #E3DDD2;
+  --accent:     #B4531E;
+  --accent-soft:#F5E3D7;
+  --primary:    #16405B;
+  --primary-soft:#DCE8F0;
+  --good:       #2E7D52;
+  --bad:        #B03A2E;
+  --code-bg:    #18222E;
+  --code-ink:   #D8E1EA;
+  --serif: "Noto Serif SC", "Songti SC", serif;
+  --sans:  "Noto Sans SC", "PingFang SC", sans-serif;
+  --mono:  "JetBrains Mono", "SF Mono", monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.95;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 860px; margin: 0 auto; padding: 0 32px; }
+.wrap-wide { max-width: 1000px; margin: 0 auto; padding: 0 32px; }
+
+/* ---------- 顶部刊头 ---------- */
+.masthead {
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  position: sticky; top:0; z-index: 50;
+}
+.masthead-inner {
+  max-width: 1160px; margin:0 auto; padding: 14px 32px;
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-family: var(--sans);
+}
+.masthead .brand { font-weight:700; font-size:14px; letter-spacing:.12em; color:var(--primary); }
+.masthead .brand em { font-style:normal; color:var(--accent); }
+.masthead .series-no { font-size:12px; letter-spacing:.2em; color:var(--ink-faint); }
+
+/* ---------- Hero ---------- */
+.hero { padding: 88px 0 64px; border-bottom: 1px solid var(--line); position: relative; overflow:hidden; }
+.hero::after {
+  content:""; position:absolute; right:-140px; top:-140px;
+  width:460px; height:460px; border-radius:50%;
+  background: radial-gradient(circle, var(--primary-soft) 0%, transparent 70%);
+  opacity:.55; pointer-events:none;
+}
+.hero .kicker {
+  font-family: var(--sans); font-size: 13px; font-weight: 700;
+  letter-spacing: .28em; color: var(--accent); text-transform: uppercase;
+  margin-bottom: 22px;
+}
+.hero h1 {
+  font-size: clamp(34px, 5.2vw, 52px);
+  font-weight: 900; line-height: 1.28; letter-spacing: .01em;
+  color: var(--ink); max-width: 720px;
+}
+.hero h1 .hl { color: var(--accent); }
+.hero .deck {
+  margin-top: 28px; font-family: var(--sans); font-size: 16.5px;
+  color: var(--ink-soft); line-height: 1.9; max-width: 620px; font-weight: 300;
+}
+.hero-meta {
+  margin-top: 44px; display:flex; gap: 28px; flex-wrap:wrap;
+  font-family: var(--sans); font-size: 12.5px; color: var(--ink-faint);
+  letter-spacing: .08em;
+}
+.hero-meta span { display:flex; align-items:center; gap:8px; }
+.hero-meta i { width:5px; height:5px; border-radius:50%; background:var(--accent); display:inline-block; }
+
+/* ---------- 章节小标 ---------- */
+.sec {
+  padding: 72px 0 12px;
+}
+.sec-no {
+  font-family: var(--mono); font-size: 13px; color: var(--accent);
+  letter-spacing:.15em; margin-bottom: 10px; display:flex; align-items:center; gap:14px;
+}
+.sec-no::after { content:""; height:1px; width:64px; background: var(--accent); opacity:.4; }
+.sec h2 {
+  font-size: clamp(26px, 3.4vw, 34px); font-weight: 900; line-height: 1.4;
+  color: var(--primary); margin-bottom: 8px;
+}
+.sec h3 {
+  font-size: 21px; font-weight: 700; color: var(--ink);
+  margin: 52px 0 16px; padding-left: 14px;
+  border-left: 4px solid var(--accent);
+  line-height:1.5;
+}
+.sec h4 {
+  font-family: var(--sans); font-size: 15.5px; font-weight: 700;
+  color: var(--primary); margin: 32px 0 10px; letter-spacing:.02em;
+}
+p { margin: 0 0 20px; color: var(--ink); }
+p.lead { font-size: 18.5px; color: var(--ink-soft); line-height: 2.05; }
+strong { color: var(--primary); font-weight: 700; }
+em.term { font-style: normal; color: var(--accent); font-weight: 600; }
+a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+
+/* ---------- 术语胶囊 ---------- */
+code.inline {
+  font-family: var(--mono); font-size: .84em;
+  background: var(--paper-deep); border: 1px solid var(--line);
+  padding: 2px 7px; border-radius: 5px; color: var(--primary);
+}
+
+/* ---------- Callout ---------- */
+.callout {
+  margin: 34px 0; padding: 24px 26px 22px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 10px 10px 0;
+}
+.callout.accent { border-left-color: var(--accent); }
+.callout .co-label {
+  font-family: var(--sans); font-size: 11.5px; font-weight: 700;
+  letter-spacing: .22em; color: var(--primary); text-transform: uppercase;
+  margin-bottom: 10px; display:flex; align-items:center; gap:8px;
+}
+.callout.accent .co-label { color: var(--accent); }
+.callout p { margin-bottom: 10px; font-size: 16px; }
+.callout p:last-child { margin-bottom: 0; }
+.callout .co-quote {
+  font-size: 19px; font-weight: 700; color: var(--primary); line-height: 1.8;
+}
+
+/* ---------- Technical Note ---------- */
+.tnote {
+  margin: 34px 0; padding: 22px 26px;
+  background: linear-gradient(135deg, #FBF6EE 0%, #F4EBDD 100%);
+  border: 1px dashed #C9B694; border-radius: 10px;
+}
+.tnote .tn-label {
+  font-family: var(--mono); font-size: 11.5px; font-weight: 700;
+  color: #8A6A2F; letter-spacing: .2em; margin-bottom: 10px;
+}
+.tnote p { font-size: 15.5px; color: #5C4E33; margin-bottom: 8px; font-family: var(--sans); font-weight: 400; line-height: 1.85; }
+.tnote p:last-child { margin-bottom:0; }
+
+/* ---------- 代码块 ---------- */
+.codecard {
+  margin: 30px 0; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 12px 32px -14px rgba(23,34,46,.35);
+  border: 1px solid #24313F;
+}
+.codecard .cc-bar {
+  display:flex; align-items:center; gap:8px;
+  background: #212D3B; padding: 11px 18px;
+  font-family: var(--mono); font-size: 12px; color:#8FA3B8;
+}
+.cc-bar .dot { width:10px; height:10px; border-radius:50%; }
+.cc-bar .dot.r{background:#E0655B;} .cc-bar .dot.y{background:#E3B455;} .cc-bar .dot.g{background:#5FA97C;}
+.cc-bar .cc-name { margin-left: 10px; letter-spacing:.05em; }
+.codecard pre {
+  background: var(--code-bg); color: var(--code-ink);
+  padding: 22px 24px; overflow-x: auto;
+  font-family: var(--mono); font-size: 13.5px; line-height: 1.85;
+}
+.codecard .cm { color:#5E7387; font-style:italic; }
+.codecard .kw { color:#E3B455; }
+.codecard .st { color:#9CC98A; }
+.codecard .fn { color:#7EB3D8; }
+.codecard .nu { color:#D89A7E; }
+.codecard .pr { color:#C79BD4; }
+
+/* ---------- 表格 ---------- */
+.tbl {
+  width:100%; margin: 30px 0; border-collapse: collapse;
+  font-family: var(--sans); font-size: 14.5px;
+  border: 1px solid var(--line); border-radius: 10px; overflow:hidden;
+}
+.tbl caption {
+  caption-side: top; text-align: left; padding-bottom: 12px;
+  font-family: var(--mono); font-size: 12px; letter-spacing: .12em;
+  color: var(--ink-faint); text-transform: uppercase;
+}
+.tbl thead th {
+  background: var(--primary); color: #fff; font-weight: 600;
+  padding: 13px 18px; text-align:left; letter-spacing:.04em; font-size: 13.5px;
+}
+.tbl tbody td { padding: 13px 18px; border-top: 1px solid var(--line); vertical-align: top; color: var(--ink-soft); }
+.tbl tbody tr:nth-child(even) { background: #F5F1E9; }
+.tbl td b { color: var(--ink); }
+.tbl .score-chip {
+  display:inline-block; font-family:var(--mono); font-size:12px; font-weight:700;
+  padding:2px 10px; border-radius:20px;
+}
+.score-chip.s0 { background:#F6DEDB; color:#9A3428; }
+.score-chip.s1 { background:#F3E4D3; color:#9A5B22; }
+.score-chip.s2 { background:#E8ECD8; color:#5A6B2F; }
+.score-chip.s3 { background:#D9EBDF; color:#23684A; }
+
+/* ---------- 统计卡片 ---------- */
+.stats-row {
+  display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+  gap: 18px; margin: 36px 0;
+}
+.stat-card {
+  background:#fff; border:1px solid var(--line); border-radius: 12px;
+  padding: 22px 22px 18px; position:relative; overflow:hidden;
+  box-shadow: 0 4px 18px -12px rgba(22,64,91,.25);
+}
+.stat-card::before {
+  content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background: var(--accent);
+}
+.stat-card.alt::before { background: var(--primary); }
+.stat-card .sc-num { font-family: var(--mono); font-size: 32px; font-weight:700; color: var(--primary); line-height:1.15; }
+.stat-card .sc-num .unit { font-size:16px; color: var(--ink-faint); font-weight:400; }
+.stat-card .sc-label { font-family:var(--sans); font-size: 13px; color: var(--ink-soft); margin-top:8px; line-height:1.6; }
+.stat-card .sc-sub { font-family:var(--mono); font-size:11px; color:var(--accent); margin-top:6px; letter-spacing:.06em; }
+
+/* ---------- 图表容器 ---------- */
+.fig {
+  margin: 40px 0; background:#fff; border:1px solid var(--line);
+  border-radius: 14px; padding: 28px 20px 18px;
+  box-shadow: 0 8px 28px -18px rgba(22,64,91,.3);
+}
+.fig figcaption {
+  text-align:center; font-family: var(--sans); font-size: 13px;
+  color: var(--ink-faint); margin-top: 14px; letter-spacing: .04em;
+}
+.fig figcaption b { color: var(--primary); font-weight: 700; }
+.fig svg { display:block; max-width:100%; height:auto; margin:0 auto; }
+
+/* ---------- Case Study ---------- */
+.case {
+  margin: 42px 0; border: 1px solid var(--line); border-radius: 14px; overflow:hidden;
+  background: #fff;
+}
+.case .case-head {
+  background: var(--primary); color:#fff; padding: 18px 26px;
+  display:flex; align-items:center; gap:14px;
+}
+.case .case-head .cs-tag {
+  font-family: var(--mono); font-size: 11px; letter-spacing:.18em;
+  background: rgba(255,255,255,.16); padding: 4px 12px; border-radius: 20px;
+}
+.case .case-head h4 { margin:0; color:#fff; font-family: var(--serif); font-size: 18px; font-weight:700; }
+.case .case-body { padding: 26px 28px 24px; }
+.case .case-body p { font-size: 15.5px; }
+
+/* QA 样本展示 */
+.qa-block {
+  background: var(--paper-deep); border:1px solid var(--line); border-radius: 10px;
+  padding: 20px 24px; margin: 18px 0; font-family: var(--sans); font-size: 14.5px;
+  line-height: 1.85;
+}
+.qa-block .qa-row { display:flex; gap:12px; margin-bottom:10px; }
+.qa-block .qa-row:last-child { margin-bottom:0; }
+.qa-block .qa-key {
+  flex-shrink:0; width:88px; font-family:var(--mono); font-size:11.5px; font-weight:700;
+  color: var(--primary); letter-spacing:.08em; padding-top:3px;
+}
+.qa-block .qa-val { color: var(--ink-soft); }
+.qa-block .qa-val .claim {
+  display:block; padding: 3px 0; border-bottom: 1px dashed var(--line);
+}
+.qa-block .qa-val .claim:last-child { border-bottom:none; }
+.claim sup { font-family:var(--mono); font-size:10.5px; color:var(--accent); }
+
+/* 判分对比卡 */
+.verdict-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:20px 0; }
+@media (max-width:640px){ .verdict-grid{grid-template-columns:1fr;} }
+.verdict {
+  border-radius: 12px; padding: 18px 20px; font-family: var(--sans); font-size: 14px;
+  border: 1px solid var(--line);
+}
+.verdict.pass { background:#EEF6F0; border-color:#BFDCCB; }
+.verdict.fail { background:#FBEFED; border-color:#E4C2BD; }
+.verdict .v-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.verdict .v-title { font-weight:700; font-size:13.5px; }
+.verdict.pass .v-title { color:var(--good); }
+.verdict.fail .v-title { color:var(--bad); }
+.verdict .v-score { font-family:var(--mono); font-weight:700; font-size:18px; }
+.verdict.pass .v-score { color:var(--good); }
+.verdict.fail .v-score { color:var(--bad); }
+.verdict p { font-size: 13px; color: var(--ink-soft); margin:0; line-height:1.75; font-family:var(--sans); }
+
+/* ---------- 引用块 ---------- */
+blockquote.pull {
+  margin: 44px 0; padding: 6px 0 6px 30px;
+  border-left: 3px solid var(--accent);
+  font-size: 21px; line-height: 1.85; font-weight: 600; color: var(--primary);
+}
+blockquote.pull .attr {
+  display:block; margin-top: 14px; font-family: var(--sans); font-weight: 400;
+  font-size: 13px; color: var(--ink-faint); letter-spacing:.08em;
+}
+
+/* ---------- 上下篇导航 ---------- */
+.next-up {
+  margin: 60px 0 0; border: 1px solid var(--line); border-radius: 14px;
+  background: linear-gradient(160deg, #fff 0%, var(--paper-deep) 130%);
+  padding: 34px 38px;
+}
+.next-up .nu-label {
+  font-family: var(--sans); font-size: 12px; letter-spacing:.24em; color:var(--accent);
+  font-weight:700; margin-bottom: 14px;
+}
+.next-up h3 { font-size: 24px; color: var(--primary); margin: 0 0 12px; border:none; padding:0; }
+.next-up p { font-size: 15.5px; color: var(--ink-soft); margin-bottom:0; }
+
+/* ---------- 回顾区 ---------- */
+.recap-grid {
+  display:grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr));
+  gap: 18px; margin: 34px 0;
+}
+.recap-item {
+  background:#fff; border:1px solid var(--line); border-radius: 10px; padding: 20px 22px;
+}
+.recap-item .ri-tag {
+  font-family:var(--mono); font-size:11px; letter-spacing:.16em; color:var(--accent);
+  margin-bottom:10px; text-transform:uppercase;
+}
+.recap-item h5 { font-family:var(--sans); font-size:15px; color:var(--primary); margin-bottom:8px; }
+.recap-item p { font-family:var(--sans); font-size:13.5px; color:var(--ink-soft); margin:0; line-height:1.8; }
+
+/* ---------- 页脚 ---------- */
+footer {
+  margin-top: 90px; border-top: 1px solid var(--line);
+  padding: 44px 0 60px; background: var(--paper-deep);
+}
+footer .f-inner { max-width:860px; margin:0 auto; padding:0 32px; }
+footer .f-series { font-family:var(--mono); font-size:12px; letter-spacing:.18em; color:var(--ink-faint); margin-bottom:16px; }
+footer .f-toc { display:flex; flex-wrap:wrap; gap:10px 26px; font-family:var(--sans); font-size:13.5px; }
+footer .f-toc span { color: var(--ink-soft); }
+footer .f-toc b { color: var(--accent); font-weight:700; }
+footer .f-copy { margin-top: 26px; font-family:var(--sans); font-size:12px; color:var(--ink-faint); letter-spacing:.06em; }
+
+.hr-soft { border:none; border-top:1px solid var(--line); margin: 56px 0; }
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .wrap, .wrap-wide { padding: 0 20px; }
+  .hero { padding: 56px 0 44px; }
+  .case .case-body { padding: 20px 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 刊头 ============ -->
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="brand">RAG EVALUATION <em>工程手记</em></div>
+    <div class="series-no">VOL. 02 / 04</div>
+  </div>
+</div>
+
+<!-- ============ Hero ============ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">RAG Evaluation Engineering · Vol.2</div>
+    <h1>LLM-as-Judge：<br>让大模型给 RAG 打分，<span class="hl">真的可靠吗？</span></h1>
+    <p class="deck">
+      上一篇我们把 Faithfulness 定义为「答案中的每一条陈述，都能被检索到的 Context 所支撑」。
+      但当评测本身需要理解自然语言时，一个更根本的问题浮现了：<b>谁来执行这个「支撑」判断？</b>
+      本篇深入生产级 Judge 的完整设计——从 Claim Extraction 到 Rubric，从 Structured Output 到偏差治理。
+    </p>
+    <div class="hero-meta">
+      <span><i></i>LLM-as-Judge</span>
+      <span><i></i>Faithfulness Judge</span>
+      <span><i></i>Judge Bias</span>
+      <span><i></i>Cross-model Evaluation</span>
+      <span><i></i>约 25 min 阅读</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ 引子 ============ -->
+<section class="sec">
+  <div class="sec-no">00 / PROLOGUE</div>
+  <h2>一个无法用 if-else 写出的判断</h2>
+  <p class="lead">
+    系列第一篇的结尾，我们留下了一个悬而未决的问题。现在，是时候正面回答它了。
+  </p>
+  <p>
+    回顾一下我们的场景：<b>企业知识库 + 客服 RAG 系统</b>。用户问「年假未休完可以折现吗？」，
+    系统检索到 HR 制度文档，生成了一段答案。上一篇我们确立了 Faithfulness 的定义——
+    答案中的每一条 <em class="term">Claim</em>（陈述），都必须能被 <em class="term">Context</em>（检索到的证据）支撑。
+    这个指标是 RAG 生成质量的基石，因为它直接对应生产环境中最致命的故障模式：<b>幻觉</b>。
+  </p>
+  <p>
+    但定义是优美的，执行是残酷的。「这条陈述能否被这段证据支撑」——这个判断本质上是
+    <b>一次语义推理</b>，而不是一次字符串匹配。它没有正则可以写，没有规则可以穷举。
+    当你试图用传统 NLP 指标去填补这个空位时，问题会立刻暴露出来。
+  </p>
+
+  <div class="callout accent">
+    <div class="co-label">◆ 本篇要回答的四个问题</div>
+    <p>
+      ① 为什么 BLEU、ROUGE、Embedding 相似度在 Faithfulness 评测上全部失效？<br>
+      ② 一个生产级 Faithfulness Judge 应该长什么样——Prompt、Rubric、Schema、代码？<br>
+      ③ Judge 会以哪些方式<b>系统性地撒谎</b>？Position Bias、Self Preference、Judge Drift 如何治理？<br>
+      ④ 当 Judge 本身也是一个模型，我们如何评测这个「评测者」？
+    </p>
+  </div>
+</section>
+
+<!-- ============ 01 传统指标失效 ============ -->
+<section class="sec">
+  <div class="sec-no">01 / WHY</div>
+  <h2>为什么传统规则评测不够</h2>
+
+  <h3>三种经典方案的连续失败</h3>
+  <p>
+    在 LLM-as-Judge 出现之前，业界对生成质量的自动评测基本依赖三类方案。我们把它们逐一放到
+    客服场景的一个真实 Case 上检验：
+  </p>
+
+  <div class="qa-block">
+    <div class="qa-row"><div class="qa-key">Question</div><div class="qa-val">未休完的年假可以折算成工资吗？</div></div>
+    <div class="qa-row"><div class="qa-key">Context</div><div class="qa-val">《员工假期管理制度》第 7 条：当年未休法定年假，经员工申请并经部门审批，可按日工资的 200% 折算，折算申请须于次年 3 月 31 日前提交。</div></div>
+    <div class="qa-row"><div class="qa-key">Answer</div><div class="qa-val">可以。未休完的年假可按日工资的 200% 折算为现金，但需在次年 3 月 31 日前提交申请并获部门审批。<sup>[可被支撑]</sup></div></div>
+  </div>
+  <p>
+    这是一条完美的回答。现在看系统的输出——以及三种指标分别给出什么分数：
+  </p>
+
+  <table class="tbl">
+    <caption>TABLE 01 · 三类传统评测方案在 Faithfulness 场景下的失效分析</caption>
+    <thead>
+      <tr><th style="width:18%">方案</th><th style="width:34%">原理</th><th>在 Faithfulness 上失败的原因</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>n-gram 重叠</b><br><span style="font-size:12px;color:var(--ink-faint)">BLEU / ROUGE</span></td>
+        <td>统计 Answer 与 Reference 的词面重叠率</td>
+        <td>衡量的是「和参考答案像不像」，不是「有没有依据」。一个完全忠实但彻底改写的答案，ROUGE 可能低于 0.3；而一条把 Context 中两个不相关句子拼接出的幻觉，重叠率反而可能很高。<b>它评的是文风，不是事实。</b></td>
+      </tr>
+      <tr>
+        <td><b>Embedding 相似度</b></td>
+        <td>Answer 与 Context 向量余弦距离</td>
+        <td>语义相似 ≠ 语义支撑。「年假可以折现」和「年假不可以折现」的余弦相似度通常超过 0.9——向量空间对否定词、条件限定、数值边界几乎不敏感，而这些恰恰是幻觉的高发区。</td>
+      </tr>
+      <tr>
+        <td><b>关键词 / 规则匹配</b></td>
+        <td>校验 Answer 中数值、日期是否出现在 Context</td>
+        <td>只能覆盖「字面抄写型」错误，无法处理同义改写（「200%」→「双倍」）、跨句推理（Context 分两处陈述条件）和实体共指（「该制度」→「假期管理制度」）。规则越多，维护成本越接近重写一个 NLU 系统。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    三种方案失败在同一个点上：<b>它们都把「支撑关系」降维成了某种表面统计量</b>。
+    而「支撑」本质上是一次推理——需要理解陈述的含义、证据的含义，以及二者之间的逻辑关系。
+    恰好，这正是一个足够强的 LLM 每天在做的事情。
+  </p>
+
+  <blockquote class="pull">
+    如果被评测的能力本身就是「语言理解」，那么评测器也必须具备语言理解。
+    这就是 LLM-as-Judge 诞生的唯一根本理由——它不是赶时髦，而是问题的结构决定的。
+    <span class="attr">—— 本系列的立场声明，贯穿后续三篇</span>
+  </blockquote>
+
+  <h3>但请先泼一盆冷水</h3>
+  <p>
+    「让 GPT 来打分」听起来像是一条捷径：一行 Prompt，一个分数，结束。大量团队正是这样起步的，
+    也是这样在生产中翻车的。一个未加约束的 Judge Prompt 会表现出惊人的不稳定性：
+    同一条 Evaluation Case，今天打 0.8，明天打 0.6；换一个模型打 0.9；把 Evidence 挪个位置，分数掉 0.2。
+  </p>
+  <p>
+    <strong>Judge 不是一行 Prompt，而是一条完整的、需要被工程化约束的 Pipeline。</strong>
+    下面我们逐层搭建它。
+  </p>
+</section>
+
+<!-- ============ 02 Judge Pipeline ============ -->
+<section class="sec">
+  <div class="sec-no">02 / ARCHITECTURE</div>
+  <h2>Judge Pipeline：把「打分」拆成五段流水线</h2>
+
+  <p class="lead">
+    生产级 Judge 的第一原则：<b>不要让一个 LLM 调用同时完成所有事</b>。
+    一次性把 Question、Context、Answer 全塞进去然后要求输出 Faithfulness 分数，
+    意味着模型在单次前向中要同时完成阅读理解、逻辑比对、评分校准三件事——每一件都会被另外两件干扰。
+  </p>
+
+  <p>
+    我们采用的架构是把 Judge 拆成五段：先把 Answer 打散成独立的 Claim，
+    再对每条 Claim 独立验证，然后聚合分数，最后通过结构化输出保证可解析性。
+    整条流水线如下：
+  </p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 920 330" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#B4531E"/>
+        </marker>
+        <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#16405B"/>
+        </marker>
+      </defs>
+      <!-- 输入层 -->
+      <text x="30" y="34" font-size="11" fill="#7A8A9A" letter-spacing="2">INPUT · 一次 Evaluation Case 的四个字段</text>
+      <g font-size="13" fill="#16405B" font-weight="600">
+        <rect x="30" y="48" width="98" height="34" rx="17" fill="#fff" stroke="#E3DDD2"/><text x="79" y="70" text-anchor="middle">Question</text>
+        <rect x="140" y="48" width="88" height="34" rx="17" fill="#fff" stroke="#E3DDD2"/><text x="184" y="70" text-anchor="middle">Context</text>
+        <rect x="240" y="48" width="84" height="34" rx="17" fill="#fff" stroke="#E3DDD2"/><text x="282" y="70" text-anchor="middle">Answer</text>
+        <rect x="336" y="48" width="98" height="34" rx="17" fill="#fff" stroke="#E3DDD2"/><text x="385" y="70" text-anchor="middle">Reference</text>
+      </g>
+      <text x="30" y="66" font-size="14"> </text>
+      <!-- 汇聚箭头 -->
+      <path d="M120,92 L120,118 L440,118 L440,148" fill="none" stroke="#16405B" stroke-width="1.5" marker-end="url(#arrB)"/>
+      <path d="M184,92 L184,110 L440,110 L440,148" fill="none" stroke="#16405B" stroke-width="1.5"/>
+      <path d="M282,92 L282,102 L440,102 L440,148" fill="none" stroke="#16405B" stroke-width="1.5" marker-end="url(#arrB)"/>
+      <path d="M385,92 L440,148" fill="none" stroke="#16405B" stroke-width="1.5"/>
+      <!-- 阶段1 提取 -->
+      <rect x="330" y="150" width="220" height="56" rx="10" fill="#F5E3D7" stroke="#B4531E" stroke-width="1.5"/>
+      <text x="440" y="174" text-anchor="middle" font-size="14" font-weight="700" fill="#8A3A10">① Claim Extraction</text>
+      <text x="440" y="194" text-anchor="middle" font-size="11.5" fill="#8A3A10">Answer → 原子化陈述列表</text>
+      <!-- 阶段2 逐条验证 -->
+      <path d="M440,206 L440,236" fill="none" stroke="#B4531E" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="300" y="240" width="280" height="60" rx="10" fill="#DCE8F0" stroke="#16405B" stroke-width="1.5"/>
+      <text x="440" y="264" text-anchor="middle" font-size="14" font-weight="700" fill="#16405B">② Per-Claim Verification</text>
+      <text x="440" y="285" text-anchor="middle" font-size="11.5" fill="#3A5A74">每条 Claim × Context 独立判定 supported / unsupported</text>
+      <!-- 右侧：Rubric 输入 -->
+      <rect x="660" y="150" width="220" height="56" rx="10" fill="#fff" stroke="#C9B694" stroke-dasharray="5 4"/>
+      <text x="770" y="174" text-anchor="middle" font-size="13.5" font-weight="700" fill="#8A6A2F">Scoring Rubric</text>
+      <text x="770" y="194" text-anchor="middle" font-size="11.5" fill="#8A6A2F">评分标准 + 判例，跨版本冻结</text>
+      <path d="M660,178 L582,178" fill="none" stroke="#C9B694" stroke-width="1.5" marker-end="url(#arrB)" stroke-dasharray="5 4"/>
+      <path d="M770,206 L770,270 L582,270" fill="none" stroke="#C9B694" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrB)"/>
+      <!-- 阶段3 聚合 -->
+      <path d="M580,270 L640,270" fill="none" stroke="none"/>
+      <!-- 底部阶段 -->
+      <g>
+        <rect x="90" y="150" width="200" height="56" rx="10" fill="#F5E3D7" stroke="#B4531E" stroke-width="1.5"/>
+        <text x="190" y="174" text-anchor="middle" font-size="14" font-weight="700" fill="#8A3A10">③ Score Aggregation</text>
+        <text x="190" y="194" text-anchor="middle" font-size="11.5" fill="#8A3A10">Claim 级 → Case 级分数</text>
+      </g>
+      <path d="M300,270 L190,270 L190,206" fill="none" stroke="#B4531E" stroke-width="1.5" marker-end="url(#arr)"/>
+      <path d="M300,262 L296,258" fill="none" stroke="none"/>
+      <!-- 阶段4 结构化输出 -->
+      <path d="M190,150 L190,132 L440,132 L440,148" fill="none" stroke="#16405B" stroke-width="1.5" transform="translate(0,0)"/>
+      <!-- 输出卡 -->
+      <g>
+        <rect x="620" y="240" width="280" height="76" rx="10" fill="#18222E"/>
+        <text x="648" y="266" font-size="12.5" font-weight="700" fill="#E3B455" font-family="'JetBrains Mono',monospace">④ Structured Output</text>
+        <text x="648" y="290" font-size="12" fill="#D8E1EA" font-family="'JetBrains Mono',monospace">{ score, verdicts[], evidence, reason }</text>
+        <text x="648" y="306" font-size="10.5" fill="#5E7387" font-family="'JetBrains Mono',monospace">JSON Schema 强约束 · 可直接入库</text>
+      </g>
+      <path d="M580,270 L618,270" fill="none" stroke="#16405B" stroke-width="1.5" marker-end="url(#arrB)"/>
+      <!-- ⑤ 元层 -->
+      <rect x="90" y="240" width="180" height="76" rx="10" fill="#fff" stroke="#B03A2E" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="180" y="268" text-anchor="middle" font-size="13" font-weight="700" fill="#B03A2E">⑤ Judge Meta-Eval</text>
+      <text x="180" y="290" text-anchor="middle" font-size="11" fill="#B03A2E">Judge 本身也要被评测</text>
+      <text x="180" y="306" text-anchor="middle" font-size="10" fill="#B03A2E">（第 04 节展开）</text>
+      <path d="M270,270 L298,270" fill="none" stroke="#B03A2E" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr)" transform="translate(0,0)"/>
+    </svg>
+    <figcaption><b>FIG 01</b> · 生产级 Faithfulness Judge 的五段式 Pipeline。核心思想：提取、验证、聚合三步分离，Rubric 作为冻结的外部标准注入，输出经由 Schema 硬约束，元评测层持续监控 Judge 自身。</figcaption>
+  </figure>
+
+  <div class="callout">
+    <div class="co-label">◆ 为什么必须先做 Claim Extraction</div>
+    <p>
+      直接问「这个答案 Faithful 吗」，模型会给出一个<b>整体印象分</b>——心理学上称为 halo effect：
+      一条答案里 9 句有据可查、1 句幻觉，整体评分会飘到 0.85 以上，幻觉被平均掉了。
+    </p>
+    <p>
+      而 Claim 级评测把粒度压到最细：<b>9 条 supported + 1 条 unsupported = Faithfulness 0.9</b>，
+      那条幻觉不但拉低了分数，还附带了自己的 <code class="inline">evidence</code> 定位和 <code class="inline">reason</code>——
+      这就是分数从「一个数字」变成「一份诊断报告」的关键。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 03 Claim Extraction ============ -->
+<section class="sec">
+  <div class="sec-no">03 / STEP-BY-STEP</div>
+  <h2>Claim Extraction：先把答案拆成可判定的原子</h2>
+
+  <h3>什么是一条合格的 Claim</h3>
+  <p>
+    Claim Extraction 看似简单，实际是整条 Pipeline 中<b>最影响最终质量的一步</b>。
+    一条合格的 Claim 必须满足三个性质：
+  </p>
+  <p>
+    <strong>① 原子性</strong>——一条 Claim 只包含一个可独立判定真伪的断言。
+    「年假可按 200% 折算且需在 3 月 31 日前申请」必须拆成两条，否则任何一条不成立都会让整条 Claim 无法判定。<br>
+    <strong>② 自包含性</strong>——脱离原文也能读懂。需要把代词还原：「它需要审批」→「年假折算需要部门审批」。<br>
+    <strong>③ 可判定性</strong>——不含主观修饰。「这个政策很人性化」不是 Claim，它无法被 Context 支撑或反驳，应在提取阶段剥离。
+  </p>
+
+  <div class="qa-block">
+    <div class="qa-row">
+      <div class="qa-key">Answer</div>
+      <div class="qa-val">可以折现。未休完的年假能按日工资 200% 折算成现金，不过你需要在次年 3 月 31 日前提交申请，而且要获得部门审批才行。这套流程其实挺人性化的。</div>
+    </div>
+    <div class="qa-row">
+      <div class="qa-key">Claims ↓</div>
+      <div class="qa-val">
+        <span class="claim">C1 · 未休完的年假可以折算为现金</span>
+        <span class="claim">C2 · 折算比例为日工资的 200%</span>
+        <span class="claim">C3 · 折算申请须于次年 3 月 31 日前提交</span>
+        <span class="claim">C4 · 折算需要获得部门审批</span>
+      </div>
+    </div>
+    <div class="qa-row">
+      <div class="qa-key">Stripped</div>
+      <div class="qa-val" style="color:var(--ink-faint)">「这套流程其实挺人性化的」——主观评价，不可判定，提取阶段直接丢弃，不计入分母。</div>
+    </div>
+  </div>
+
+  <h3>提取 Prompt 的两个关键约束</h3>
+  <p>
+    Claim Extraction 本身也是一次 LLM 调用（用一个便宜的小模型即可）。它的 Prompt 需要两条硬约束：
+    <b>忠实复述</b>（只允许同义改写，禁止合并、推断、补充）和<b>数量上限</b>（防止单条长答案被拆出
+    几十条碎片 Claim 导致验证成本爆炸——我们生产环境设置上限 12 条，超出则按语义合并）。
+  </p>
+
+  <div class="codecard">
+    <div class="cc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="cc-name">judge/claim_extraction.py — 原子化提取（节选）</span>
+    </div>
+    <pre><code><span class="cm"># 提取阶段的系统 Prompt 核心约束（完整 Judge Prompt 见第 04 节）</span>
+
+CLAIM_EXTRACTION_PROMPT = <span class="st">"""
+你是一个严谨的文本分析器。将下面的 Answer 拆解为原子化的陈述（Claim）列表。
+
+规则：
+1. 每条 Claim 只能包含【一个】可独立判定真伪的事实断言
+2. Claim 必须自包含：还原所有代词与省略的主语
+3. 只允许忠实复述，禁止合并、推断、补充原文没有的信息
+4. 剥离主观评价、语气词、礼貌用语——它们不是 Claim
+5. 最多输出 12 条；若超出，将语义相近的陈述合并
+6. 若 Answer 中没有任何可判定的事实断言，返回空列表
+
+输出 JSON：{"claims": [{"id": "C1", "text": "..."}, ...]}
+"""</span>
+
+<span class="kw">def</span> <span class="fn">extract_claims</span>(answer: <span class="pr">str</span>) -> <span class="pr">list</span>[Claim]:
+    resp = llm.call(
+        model=<span class="st">"small-fast-cheap"</span>,          <span class="cm"># 提取用小模型即可</span>
+        messages=[{<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: CLAIM_EXTRACTION_PROMPT},
+                  {<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: answer}],
+        response_format=<span class="st">"json"</span>,            <span class="cm"># Schema 校验见第 05 节</span>
+    )
+    <span class="kw">return</span> [Claim(**c) <span class="kw">for</span> c <span class="kw">in</span> resp[<span class="st">"claims"</span>]]</code></pre>
+  </div>
+
+  <div class="tnote">
+    <div class="tn-label">⚠ TECHNICAL NOTE · 提取偏差会向下游传导</div>
+    <p>
+      Claim Extraction 的召回率直接决定了 Faithfulness 分数的可信度：
+      如果提取器漏掉了一条幻觉陈述，下游验证再精确，这条幻觉也会<b>永远拿不到扣分</b>。
+      我们在灰度期人工核对了 200 条 Answer 的提取结果，将提取召回作为独立指标监控——
+      这是「Judge 本身也要被评测」的第一处落点（详见第 07 节）。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 04 Rubric & Judge ============ -->
+<section class="sec">
+  <div class="sec-no">04 / DESIGN</div>
+  <h2>Rubric 与 Faithfulness Judge 的完整设计</h2>
+
+  <h3>先定标准，再写 Prompt</h3>
+  <p>
+    很多团队的 Judge Prompt 里只有一句「请评估答案是否忠实于上下文，0 到 1 打分」。
+    这相当于把<b>评分标准的设计权</b>完全交给了模型——每次调用，模型都在用一套略微不同的内心标尺打分。
+    生产级 Judge 的做法是：<b>Rubric 先行，Prompt 只是 Rubric 的载体</b>。
+  </p>
+
+  <p>
+    我们的 Faithfulness 采用 0–3 的整数档位而非 0–1 连续分数。原因很直接：
+    连续分数制造了虚假的精度——模型根本无法区分 0.73 和 0.78 的语义差别，只会输出噪声；
+    而粗粒度档位让每一次打分都必须落在有明确定义的语义区间内，稳定性显著更高。
+    Claim 级 Rubric 如下：
+  </p>
+
+  <table class="tbl">
+    <caption>TABLE 02 · Per-Claim Verification Rubric（0–3 档，冻结于 v1，修订需走版本流程）</caption>
+    <thead>
+      <tr><th style="width:9%">档位</th><th style="width:22%">语义定义</th><th style="width:38%">判定标准</th><th>客服场景判例</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="score-chip s3">3</span></td>
+        <td><b>完全支撑</b><br>Fully Supported</td>
+        <td>Context 中存在明确陈述，与 Claim 语义等价（允许同义改写、数值等价换算）</td>
+        <td>Claim「折算比例为日工资的 200%」↔ Context「按日工资的 200% 折算」</td>
+      </tr>
+      <tr>
+        <td><span class="score-chip s2">2</span></td>
+        <td><b>部分支撑</b><br>Partially Supported</td>
+        <td>需要跨句拼接、简单推理才能支撑，或 Claim 遗漏了 Context 中的关键限定条件</td>
+        <td>Claim「任何人都可以申请折现」——Context 说「经员工申请并经部门审批」，Claim 丢掉了审批限定</td>
+      </tr>
+      <tr>
+        <td><span class="score-chip s1">1</span></td>
+        <td><b>无法判定</b><br>Not Verifiable</td>
+        <td>Context 完全没有相关信息，但也无法断定 Claim 为假（可能来自其他知识源）</td>
+        <td>Claim「折算需缴纳个人所得税」——Context 未提及，不得直接判 0</td>
+      </tr>
+      <tr>
+        <td><span class="score-chip s0">0</span></td>
+        <td><b>矛盾 / 幻觉</b><br>Contradicted</td>
+        <td>Context 中存在与 Claim 直接冲突的陈述</td>
+        <td>Claim「公司规定年假不可折现」——与 Context 第 7 条直接矛盾，典型幻觉</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout accent">
+    <div class="co-label">◆ Rubric 设计中最容易踩的坑：1 档的存在理由</div>
+    <p>
+      如果只有「支撑 / 不支撑」两档，Judge 在 Context 没提、但 Claim 可能来自模型参数知识时会被迫二选一，
+      结果大量噪声。引入「无法判定」档后，我们将这类情况与真幻觉分离——
+      <b>「Not Verifiable」按 0.5 折算计入分数，而「Contradicted」计 0</b>。
+      这个区分在生产复盘时至关重要：前者提示检索覆盖缺口，后者才是生成幻觉。
+    </p>
+  </div>
+
+  <h3>完整的 Judge Prompt</h3>
+  <p>
+    下面是验证阶段的完整 Prompt。注意四个设计决策：<b>角色锁定</b>（审计员而非助手，抑制「帮忙」倾向）、
+    <b>Context 优先原则</b>（明确禁止用参数知识补证）、<b>引用强制</b>（每个 verdict 必须给出 Context 原文切片）、
+    <b>先推理后结论</b>（CoT 结构，reason 字段置于 verdict 之前生成）。
+  </p>
+
+  <div class="codecard">
+    <div class="cc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="cc-name">judge/prompts.py — Faithfulness Verifier Prompt v3.2（生产冻结版）</span>
+    </div>
+    <pre><code>FAITHFULNESS_JUDGE_PROMPT = <span class="st">"""
+# 角色
+你是一名严格的审计员（Auditor），任务是逐条核验陈述（Claim）是否能够被
+给定的证据（Context）支撑。你不是客服，不是助手——你没有义务让答案"看起来更好"。
+
+# 输入
+- Context：系统检索到的证据文本（唯一合法的判定依据）
+- Claims：待核验的陈述列表
+
+# 判定原则（按优先级排序）
+P1. 只依据 Context 判定。你自己的知识、常识、其他资料一律不可作为支撑或反驳的依据。
+P2. 同义改写、数值等价换算视为支撑；增加 Context 中不存在的限定条件视为降档。
+P3. Claim 与 Context 无关时，判为 "not_verifiable"（1 分），不要猜测地判为矛盾。
+P4. 每个 verdict 必须引用 Context 中的原文切片作为 evidence；
+    若为 not_verifiable / contradicted，evidence 引用相关（或应存在而缺失）的原文位置。
+P5. 拿不准时，向下取档——你的职责是发现风险，不是给出宽容。
+
+# 评分档位
+3 = fully_supported    Context 有明确陈述与 Claim 语义等价
+2 = partially_supported 需跨句推理支撑，或 Claim 遗漏关键限定条件
+1 = not_verifiable     Context 未涉及，无法证实亦无法证伪
+0 = contradicted       Context 中存在与 Claim 直接冲突的陈述
+
+# 输出
+对每条 Claim 依次输出：先写 reason（含 evidence 引用），再给出 verdict。
+严格按 response_schema 输出 JSON，不输出任何其他文本。
+"""</span></code></pre>
+  </div>
+
+  <div class="tnote">
+    <div class="tn-label">⚙ TECHNICAL NOTE · Prompt 的版本治理</div>
+    <p>
+     注意文件头中的 <b>v3.2（生产冻结版）</b>。Judge Prompt 必须像代码一样走版本管理：
+     每次修改 Prompt，等同于更换了一把尺子——新旧尺子量出来的分数<b>不可直接对比</b>。
+     我们要求任何 Prompt 变更都必须附带一次 Judge 回归：在固定的 Calibration Set（见第 07 节）上重跑，
+     确认与人工标注的一致率没有显著退化才能合入。这一点在下一篇的 Regression Dataset 中会形成完整闭环。
+    </p>
+  </div>
+
+  <h3>Structured Output：用 Schema 把自由文本焊死</h3>
+  <p>
+    Judge 的输出必须直接写入评测数据库、驱动 Release Gate 判断——这意味着它<b>必须可机器解析</b>。
+    我们使用 JSON Schema 硬约束 + 解析失败自动重试：
+  </p>
+
+  <div class="codecard">
+    <div class="cc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="cc-name">judge/schema.py — Judge 输出契约</span>
+    </div>
+    <pre><code>JUDGE_OUTPUT_SCHEMA = {
+    <span class="st">"type"</span>: <span class="st">"object"</span>,
+    <span class="st">"required"</span>: [<span class="st">"case_id"</span>, <span class="st">"faithfulness"</span>, <span class="st">"claim_verdicts"</span>],
+    <span class="st">"properties"</span>: {
+        <span class="st">"case_id"</span>:   { <span class="st">"type"</span>: <span class="st">"string"</span> },
+        <span class="st">"faithfulness"</span>: {                       <span class="cm"># Case 级聚合分数</span>
+            <span class="st">"type"</span>: <span class="st">"number"</span>,
+            <span class="st">"minimum"</span>: <span class="nu">0</span>, <span class="st">"maximum"</span>: <span class="nu">1</span>
+        },
+        <span class="st">"claim_verdicts"</span>: {
+            <span class="st">"type"</span>: <span class="st">"array"</span>,
+            <span class="st">"items"</span>: {
+                <span class="st">"type"</span>: <span class="st">"object"</span>,
+                <span class="st">"required"</span>: [<span class="st">"claim_id"</span>, <span class="st">"verdict"</span>, <span class="st">"evidence"</span>, <span class="st">"reason"</span>],
+                <span class="st">"properties"</span>: {
+                    <span class="st">"claim_id"</span>: { <span class="st">"type"</span>: <span class="st">"string"</span> },
+                    <span class="st">"verdict"</span>: {
+                        <span class="st">"enum"</span>: [<span class="st">"fully_supported"</span>, <span class="st">"partially_supported"</span>,
+                                 <span class="st">"not_verifiable"</span>, <span class="st">"contradicted"</span>]
+                    },
+                    <span class="st">"evidence"</span>: { <span class="st">"type"</span>: <span class="st">"string"</span> },  <span class="cm"># Context 原文切片，强制非空</span>
+                    <span class="st">"reason"</span>:   { <span class="st">"type"</span>: <span class="st">"string"</span> }
+                }
+            }
+        }
+    }
+}
+
+<span class="cm"># 聚合规则（在代码中执行，不交给 LLM）：</span>
+<span class="cm">#   fully_supported=1.0, partially=0.7, not_verifiable=0.5, contradicted=0.0</span>
+<span class="cm">#   faithfulness = mean(claim 权重) —— 加权计算，绝不依赖模型自行汇总</span></code></pre>
+  </div>
+
+  <div class="callout">
+    <div class="co-label">◆ 设计决策：分数由代码算，不由模型算</div>
+    <p>
+      注意 Schema 注释里的最后一行：<b>聚合在代码中执行</b>。
+      让 Judge 自己汇总 Claim 分数等于引入一次额外的算术出错机会和不稳定来源。
+      LLM 只负责它擅长的语义判定，<b>所有确定性的计算都收回工程层</b>——这是 LLM 系统设计的一条通用法则，
+      在下一篇的 Regression Engine 中会反复出现。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 05 Judge 运行示例 ============ -->
+<section class="sec">
+  <div class="sec-no">05 / WALKTHROUGH</div>
+  <h2>一次完整的 Judge Run</h2>
+
+  <p>
+    把第 03 节的四条 Claim 送入 Verifier，Judge 返回的结构化结果如下。
+    注意 C3——一个精心设计的「陷阱样本」：答案说「次年 3 月 31 日前提交申请」，
+    Context 原文完全一致，但 Claim 漏掉了「经部门审批」这个前置条件吗？没有——审批被拆到了 C4。
+    这正是原子化提取带来的精确归因能力：
+  </p>
+
+  <div class="codecard">
+    <div class="cc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="cc-name">runs/2026-09-08/case_0142_judge_output.json — 实际 Judge 结果</span>
+    </div>
+    <pre><code>{
+  <span class="pr">"case_id"</span>: <span class="st">"cs_kb_0142"</span>,
+  <span class="pr">"faithfulness"</span>: <span class="nu">0.925</span>,
+  <span class="pr">"claim_verdicts"</span>: [
+    {
+      <span class="pr">"claim_id"</span>: <span class="st">"C1"</span>,
+      <span class="pr">"verdict"</span>: <span class="st">"fully_supported"</span>,
+      <span class="pr">"evidence"</span>: <span class="st">"当年未休法定年假，经员工申请并经部门审批，可按日工资的200%折算"</span>,
+      <span class="pr">"reason"</span>: <span class="st">"Context 明确陈述未休年假可折算，与 Claim 语义等价。"</span>
+    },
+    {
+      <span class="pr">"claim_id"</span>: <span class="st">"C2"</span>,
+      <span class="pr">"verdict"</span>: <span class="st">"fully_supported"</span>,
+      <span class="pr">"evidence"</span>: <span class="st">"可按日工资的200%折算"</span>,
+      <span class="pr">"reason"</span>: <span class="st">"折算比例直接对应 Context 原文。"</span>
+    },
+    {
+      <span class="pr">"claim_id"</span>: <span class="st">"C3"</span>,
+      <span class="pr">"verdict"</span>: <span class="st">"fully_supported"</span>,
+      <span class="pr">"evidence"</span>: <span class="st">"折算申请须于次年3月31日前提交"</span>,
+      <span class="pr">"reason"</span>: <span class="st">"截止日期与 Context 完全一致。"</span>
+    },
+    {
+      <span class="pr">"claim_id"</span>: <span class="st">"C4"</span>,
+      <span class="pr">"verdict"</span>: <span class="st">"partially_supported"</span>,
+      <span class="pr">"evidence"</span>: <span class="st">"经员工申请并经部门审批，可按日工资的200%折算"</span>,
+      <span class="pr">"reason"</span>: <span class="st">"Context 表明审批是折算的前置条件之一，但 Claim 将 '须于3月31日前提交'</span>
+<span class="st">                与审批并列表述为并列条件，遗漏了二者之间的从属关系，需跨句推理补全，降档处理。"</span>
+    }
+  ]
+}
+<span class="cm">// 聚合：(1.0 + 1.0 + 1.0 + 0.7) / 4 = 0.925，由代码层计算</span></code></pre>
+  </div>
+
+  <div class="verdict-grid">
+    <div class="verdict pass">
+      <div class="v-head"><span class="v-title">✓ 传统指标视角</span><span class="v-score">0.87</span></div>
+      <p>ROUGE-L = 0.87，表面看「高分通过」。但如果这是一个 Release Gate，一条真实的限定条件遗漏就被平均掉了，没有任何归因信息告诉工程师该改哪里。</p>
+    </div>
+    <div class="verdict fail">
+      <div class="v-head"><span class="v-title">✗ Judge 视角</span><span class="v-score">0.925 <span style="font-size:11px">+ 定位</span></span></div>
+      <p>Faithfulness 0.925 看似更高，但附带了一份精确的诊断：C4 partially_supported + 完整 reason。工程师直接知道是「条件从属关系」被压平了——这是可行动的信号。</p>
+    </div>
+  </div>
+
+  <p>
+    这个对比揭示了 Judge 的真正价值：<b>不是分数更准，而是分数之外携带了 Evidence 与 Reason——
+    评测结果从「验收章」变成了「病历」</b>。第四篇的 Eval Studio 之所以能做 diff 视图与根因分析，
+    正是因为 Judge 在今天埋下了结构化的种子。
+  </p>
+</section>
+
+<!-- ============ 06 Judge Bias ============ -->
+<section class="sec">
+  <div class="sec-no">06 / BIAS</div>
+  <h2>Judge 会系统性地撒谎：三类偏差与治理</h2>
+
+  <p class="lead">
+    到这里为止，我们搭建了一个看起来相当严谨的 Judge。但如果你因此相信它输出的每一个数字，
+    你会在某天早晨发现：同一套 RAG 系统、同一份 Evaluation Dataset，仅仅因为更换了底层模型，
+    Faithfulness 分数发生了 0.15 的「提升」——而业务侧完全感受不到任何变化。
+    这是 Judge 在骗你。以下是三种最常见的骗术。
+  </p>
+
+  <h3>偏差一：Position Bias —— 位置决定命运</h3>
+  <p>
+    LLM 对输入序列中信息位置存在系统性偏好。在成对比较任务中（A 答案 vs B 答案哪个更好），
+    大量研究复现了一个稳定现象：<b>排在前面（或紧邻指令）的选项更容易被偏好</b>。
+    在我们的 Faithfulness 场景中，它以更隐蔽的形式出现——当 Context 很长时，
+    出现在 Context <b>开头和结尾</b>的陈述更容易被判为支撑（中间信息被弱化，即 lost-in-the-middle 的评测版）。
+  </p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 920 300" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#16405B"/>
+        </marker>
+      </defs>
+      <text x="460" y="28" text-anchor="middle" font-size="13" fill="#7A8A9A" letter-spacing="3">同一个 Judge · 同一条 Claim · 同一个 Context —— 仅交换两个候选 Answer 的顺序</text>
+      <!-- 左：原始顺序 -->
+      <g>
+        <rect x="60" y="55" width="380" height="190" rx="12" fill="#fff" stroke="#E3DDD2"/>
+        <text x="250" y="86" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">顺序 A：Answer-1 在前</text>
+        <rect x="90" y="104" width="320" height="44" rx="8" fill="#DCE8F0" stroke="#16405B" stroke-width="1.2"/>
+        <text x="250" y="131" text-anchor="middle" font-size="13" fill="#16405B" font-weight="600">Answer-1（真值：Faithful）</text>
+        <rect x="90" y="160" width="320" height="44" rx="8" fill="#F2EEE6" stroke="#E3DDD2"/>
+        <text x="250" y="187" text-anchor="middle" font-size="13" fill="#7A8A9A">Answer-2（真值：含幻觉）</text>
+        <text x="250" y="232" text-anchor="middle" font-size="15" font-weight="700" fill="#2E7D52" font-family="'JetBrains Mono',monospace">Judge 选择 → Answer-1 ✓ 正确</text>
+      </g>
+      <!-- 中间交换符 -->
+      <circle cx="460" cy="150" r="22" fill="#F5E3D7" stroke="#B4531E" stroke-width="1.5"/>
+      <text x="460" y="156" text-anchor="middle" font-size="16" fill="#B4531E" font-weight="700">⇄</text>
+      <!-- 右：交换后 -->
+      <g>
+        <rect x="480" y="55" width="380" height="190" rx="12" fill="#fff" stroke="#E3DDD2"/>
+        <text x="670" y="86" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">顺序 B：Answer-2 在前</text>
+        <rect x="510" y="104" width="320" height="44" rx="8" fill="#F2EEE6" stroke="#E3DDD2"/>
+        <text x="670" y="131" text-anchor="middle" font-size="13" fill="#7A8A9A">Answer-2（真值：含幻觉）</text>
+        <rect x="510" y="160" width="320" height="44" rx="8" fill="#DCE8F0" stroke="#16405B" stroke-width="1.2"/>
+        <text x="670" y="187" text-anchor="middle" font-size="13" fill="#16405B" font-weight="600">Answer-1（真值：Faithful）</text>
+        <text x="670" y="232" text-anchor="middle" font-size="15" font-weight="700" fill="#B03A2E" font-family="'JetBrains Mono',monospace">Judge 选择 → Answer-2 ✗ 翻转</text>
+      </g>
+      <path d="M440,150 L478,150" fill="none" stroke="#B4531E" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr2)"/>
+      <!-- 底注 -->
+      <text x="460" y="282" text-anchor="middle" font-size="12.5" fill="#B4531E">结论：Judge 的部分「判断力」其实是对位置的敏感度。不消除它，成对评测的结论不可信。</text>
+    </svg>
+    <figcaption><b>FIG 02</b> · Position Bias 的经典复现实验。我们在客服场景 300 条成对样本上实测：单次调用的一致率仅 78%，与简单交换顺序的期望值高度吻合。</figcaption>
+  </figure>
+
+  <p><strong>治理方案：Swap Pair + 位置去敏聚合。</strong></p>
+  <p>
+    标准做法是让 Judge 对<b>两种顺序各判一次</b>：只有两次结论一致才采纳；
+    结论翻转（如上图的 A 选 Answer-1、B 选 Answer-2）则记为 <code class="inline">inconclusive</code>，
+    按平局处理或升级人工。代价是成本翻倍，因此我们只对<b>进入回归对比的两个版本之间</b>的 Case 使用成对评测，
+    绝对分数仍走单侧打分——成本的刀要花在刀刃上。
+  </p>
+
+  <h3>偏差二：Self Preference —— 裁判偏爱自己的笔迹</h3>
+  <p>
+    当 Judge 模型与被评测的生成模型来自同一个家族时，Judge 会系统性地给自己家族的输出打高分。
+    这不是阴谋，是分布匹配：同一预训练谱系的模型对「什么是好答案」的内在偏好高度一致。
+    在我们的实测中（细节见下方统计卡），这个偏差足以让「我们切换到 Judge 同族模型后质量大幅提升」
+    这种结论变成彻底的幻觉。
+  </p>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="sc-num">+0.09<span class="unit"> Faithfulness</span></div>
+      <div class="sc-label">生成模型与 Judge 同族时，平均分数虚高幅度（客服场景 500 Case 实测）</div>
+      <div class="sc-sub">SELF-PREF Δ</div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-num">22<span class="unit">%</span></div>
+      <div class="sc-label">Position Bias 导致的成对结论翻转率（未做 Swap Pair 时）</div>
+      <div class="sc-sub">FLIP RATE</div>
+    </div>
+    <div class="stat-card alt">
+      <div class="sc-num">2<span class="unit"> 次以上</span></div>
+      <div class="sc-label">同版本数据集重复评测时，分数标准差超过阈值的频次 —— Judge Drift 的直接证据</div>
+      <div class="sc-sub">DRIFT ALERT / MONTH</div>
+    </div>
+    <div class="stat-card alt">
+      <div class="sc-num">91<span class="unit">%</span></div>
+      <div class="sc-label">引入 Cross-model + Calibration Set 后，Judge 与人工标注的一致率（Kappa = 0.84）</div>
+      <div class="sc-sub">HUMAN AGREEMENT</div>
+    </div>
+  </div>
+
+  <p>
+    <strong>治理方案：Judge 与 Generator 的谱系隔离。</strong>
+    规则很简单：<b>Judge 的模型家族必须与当前被评测的生成模型不同</b>，并且——这是关键——
+    <b>这个组合关系要记录进每一次 Evaluation Run 的元数据</b>。
+    因为当你切换生成模型时，可能需要同步切换 Judge，而换 Judge 就换了尺子（见偏差三），
+    两次 Run 的分数便失去可比性。这个依赖链必须在元数据里显式可见，而不是埋在配置文件里。
+  </p>
+
+  <h3>偏差三：Judge Drift —— 尺子本身在变形</h3>
+  <p>
+    即使 Prompt 冻结、模型版本锁定，Judge 的打分分布仍可能漂移：推理基础设施变更、
+    温度采样的随机性、上游模型的静默更新（对于 API 形式的 Judge 你并不真正拥有它）。
+    Drift 最大的危害不是分数绝对值变化，而是<b>悄悄破坏了 Run 之间的可比性</b>——
+    而可比性正是下一篇 Regression Dataset 和第四篇 Release Gate 的全部基础。
+  </p>
+
+  <p><strong>治理方案：Calibration Set 作为「标准砝码」。</strong></p>
+  <p>
+    维护一个 50–100 条、人工标注定稿的 Calibration Set（其中刻意混入各档位的难例，
+    包括 not_verifiable 与 contradicted 的边界样本）。每次生产评测前，Judge 先跑一遍 Calibration Set：
+  </p>
+
+  <ul style="margin: 0 0 20px 24px; color: var(--ink);">
+    <li style="margin-bottom:10px"><b>与人工标注的一致率 ≥ 阈值</b>（我们设 85%）→ 本次 Run 的分数可用；</li>
+    <li style="margin-bottom:10px"><b>低于阈值</b> → 分数标记为 <code class="inline">uncalibrated</code>，禁止进入趋势对比，触发告警；</li>
+    <li>连续两次漂移 → 回溯定位：是 Prompt、模型版本还是采样参数的问题。</li>
+  </ul>
+
+  <div class="callout accent">
+    <div class="co-label">◆ 一句话总结三类偏差的治理矩阵</div>
+    <p>
+      Position Bias → <b>Swap Pair</b>（成对场景）；Self Preference → <b>谱系隔离 + 元数据记录</b>（全场景）；
+      Judge Drift → <b>Calibration Set 门前校验</b>（每次 Run）。
+      三者共同指向同一个原则：<b>不要信任 Judge 的任何一次输出，只信任被校验过的输出</b>。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 07 Cross-model ============ -->
+<section class="sec">
+  <div class="sec-no">07 / META-EVAL</div>
+  <h2>Cross-model Evaluation：评测者也需要被评测</h2>
+
+  <p class="lead">
+    本篇最重要的一个观点，值得用一整节来展开：
+  </p>
+
+  <blockquote class="pull">
+    Judge 本身也是一个需要被 Evaluation 的系统。
+    它有输入、输出、失效模式和回归风险——所以它必须被纳入与被评测系统完全相同的质量工程框架。
+    <span class="attr">—— 如果只记住本篇的一句话，记住这句</span>
+  </blockquote>
+
+  <p>
+    「用什么来评测 Judge？」——黄金标准是人工标注。但人不能标注所有数据，所以工程上的解法是
+    <b>Cross-model Evaluation</b>：用多个不同家族的模型作为 Judge，对同一批样本独立打分，
+    再用一个小的金标人工集合（Calibration Set）锚定。
+  </p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 920 340" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#16405B"/>
+        </marker>
+        <marker id="arr3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#B4531E"/>
+        </marker>
+      </defs>
+      <!-- 被评数据 -->
+      <rect x="40" y="120" width="180" height="96" rx="12" fill="#F5E3D7" stroke="#B4531E" stroke-width="1.5"/>
+      <text x="130" y="152" text-anchor="middle" font-size="14" font-weight="700" fill="#8A3A10">同一批样本</text>
+      <text x="130" y="174" text-anchor="middle" font-size="11.5" fill="#8A3A10">Calibration Set</text>
+      <text x="130" y="193" text-anchor="middle" font-size="11.5" fill="#8A3A10">（人工金标 50–100 条）</text>
+      <!-- 三个 Judge -->
+      <g>
+        <rect x="330" y="36" width="220" height="52" rx="10" fill="#DCE8F0" stroke="#16405B" stroke-width="1.3"/>
+        <text x="440" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">Judge A · 模型家族 α</text>
+        <text x="440" y="77" text-anchor="middle" font-size="11" fill="#3A5A74">当前生产 Judge</text>
+        <rect x="330" y="142" width="220" height="52" rx="10" fill="#fff" stroke="#16405B" stroke-width="1.3"/>
+        <text x="440" y="164" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">Judge B · 模型家族 β</text>
+        <text x="440" y="183" text-anchor="middle" font-size="11" fill="#3A5A74">影子 Judge · 每周比对</text>
+        <rect x="330" y="248" width="220" height="52" rx="10" fill="#fff" stroke="#16405B" stroke-width="1.3"/>
+        <text x="440" y="270" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">Judge C · 模型家族 γ</text>
+        <text x="440" y="289" text-anchor="middle" font-size="11" fill="#3A5A74">候补 · 家族谱系隔离校验</text>
+      </g>
+      <path d="M220,150 L260,150 L260,62 L328,62" fill="none" stroke="#B4531E" stroke-width="1.5" marker-end="url(#arr3a)"/>
+      <path d="M220,150 L260,150 L260,168 L328,168" fill="none" stroke="#B4531E" stroke-width="1.5" marker-end="url(#arr3a)"/>
+      <path d="M220,150 L260,150 L260,274 L328,274" fill="none" stroke="#B4531E" stroke-width="1.5" marker-end="url(#arr3a)"/>
+      <!-- 一致性仲裁 -->
+      <rect x="640" y="118" width="240" height="100" rx="12" fill="#18222E"/>
+      <text x="760" y="150" text-anchor="middle" font-size="13.5" font-weight="700" fill="#E3B455">一致性仲裁层</text>
+      <text x="760" y="176" text-anchor="middle" font-size="11.5" fill="#D8E1EA" font-family="'JetBrains Mono',monospace">agreement / κ / per-class F1</text>
+      <text x="760" y="198" text-anchor="middle" font-size="11" fill="#5E7387" font-family="'JetBrains Mono',monospace">分歧样本 → 人工复核队列</text>
+      <path d="M550,62 L700,62 L700,116" fill="none" stroke="#16405B" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <path d="M550,168 L700,168" fill="none" stroke="#16405B" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <path d="M550,274 L700,274 L700,220" fill="none" stroke="#16405B" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <text x="460" y="330" text-anchor="middle" font-size="12.5" fill="#7A8A9A">多 Judge 交叉 + 人工金标锚定：当 Judge A 与金标一致率跌破阈值，B 已有连续两周的平行数据可以无缝接管。</text>
+    </svg>
+    <figcaption><b>FIG 03</b> · Cross-model Evaluation 拓扑。影子 Judge 的价值不是日常投票，而是提供「备份尺子」的持续热更新——当主 Judge 漂移或需要换模型家族时，切换成本趋近于零。</figcaption>
+  </figure>
+
+  <div class="codecard">
+    <div class="cc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="cc-name">judge/meta_eval.py — Judge 的每日自检（伪代码）</span>
+    </div>
+    <pre><code><span class="kw">def</span> <span class="fn">daily_judge_healthcheck</span>(calibration_set, judge_pipeline):
+    <span class="cm"># 1. Judge 跑金标集</span>
+    preds = judge_pipeline.run(calibration_set, seed=<span class="nu">42</span>)
+
+    <span class="cm"># 2. 与人工标注对齐（Judge 也是被评测系统：用同一套指标语言）</span>
+    report = {
+        <span class="st">"accuracy"</span>:   accuracy(preds, calibration_set.gold),   <span class="cm"># 总体一致率</span>
+        <span class="st">"kappa"</span>:      cohen_kappa(preds, calibration_set.gold),<span class="cm"># 去除随机一致</span>
+        <span class="st">"recall_c0"</span>:  per_class_recall(preds, gold, cls=<span class="st">"contradicted"</span>),
+                       <span class="cm"># ↑ 最关键的指标：幻觉抓取召回率，漏抓幻觉代价最高</span>
+        <span class="st">"drift"</span>:      psi(preds.distribution, baseline.distribution),
+    }
+
+    <span class="cm"># 3. 门禁：不合格则当日所有 Evaluation Run 打上 uncalibrated 标记</span>
+    <span class="kw">if</span> report[<span class="st">"kappa"</span>] &lt; <span class="nu">0.75</span> <span class="kw">or</span> report[<span class="st">"recall_c0"</span>] &lt; <span class="nu">0.85</span>:
+        mark_all_runs_uncalibrated(date=today)
+        alert(<span class="st">"judge-degraded"</span>, report)
+    <span class="kw">return</span> report</code></pre>
+  </div>
+
+  <div class="tnote">
+    <div class="tn-label">⚙ TECHNICAL NOTE · 递归的尽头</div>
+    <p>
+      细心的读者会问：评测 Judge 的指标（kappa、recall）由代码计算，这没问题；
+      但 Calibration Set 的<b>人工金标</b>本身也有标注者间不一致的问题。答案是：递归必须在人工层终止——
+      我们通过双人独立标注 + 仲裁解决金标质量，并接受金标是「高置信近似」而非绝对真理。
+      工程上重要的是<b>知道误差停在哪一层</b>，而不是追求无穷递归的纯净。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 08 结语 ============ -->
+<section class="sec">
+  <div class="sec-no">08 / EPILOGUE</div>
+  <h2>尺子造好了，然后呢？</h2>
+
+  <h3 style="margin-top:36px">回顾本篇解决的问题</h3>
+  <div class="recap-grid">
+    <div class="recap-item">
+      <div class="ri-tag">Solved ①</div>
+      <h5>评测器的资格问题</h5>
+      <p>证明了 n-gram、Embedding、规则匹配在 Faithfulness 上的结构性失效——评测语言理解必须使用语言理解。</p>
+    </div>
+    <div class="recap-item">
+      <div class="ri-tag">Solved ②</div>
+      <h5>生产级 Judge 的完整形态</h5>
+      <p>五段式 Pipeline：Claim Extraction → Per-Claim Verification → 代码层聚合 → Schema 硬约束输出，Rubric 冻结于版本。</p>
+    </div>
+    <div class="recap-item">
+      <div class="ri-tag">Solved ③</div>
+      <h5>三类偏差的系统治理</h5>
+      <p>Position Bias 用 Swap Pair，Self Preference 用谱系隔离，Judge Drift 用 Calibration Set 门前校验。</p>
+    </div>
+    <div class="recap-item">
+      <div class="ri-tag">Solved ④</div>
+      <h5>元评测闭环</h5>
+      <p>Judge 纳入与被评测系统相同的质量框架：每日健康检查、Kappa 门禁、影子 Judge 热备。</p>
+    </div>
+  </div>
+
+  <h3>但仍然存在一个关键问题</h3>
+  <p>
+    现在，我们拥有了一把经过校准、偏差受控、输出结构化的精密尺子。
+    整套 Judge Pipeline 随时可以对任意一条 <code class="inline">Evaluation Case</code> 给出
+    分数 + 证据 + 归因。一切看起来已经完备。
+  </p>
+  <p>
+    直到你意识到一个问题：<b>这把尺子，该去量什么？</b>
+  </p>
+  <p>
+    假设团队明天要上线新的 Reranker，需要跑一次回归评测。最自然的做法是：
+    大家花一个下午，凭经验凑 100 个「比较典型的问题」，跑一遍，分数不错，上线。
+    两周后，客服后台的真实 question 流里出现了「孕期能用年假折算抵扣社保基数吗」这样的
+    长尾复合问题——RAG 答得一无是处，而昨天的评测报告上写着 <b>Faithfulness 0.94，全绿</b>。
+  </p>
+  <p>
+    问题不出在 Judge——Judge 对这条 Case 如果真的去评，一定会抓出问题。
+    问题在于<b>这条 Case 根本不在那 100 个问题里</b>。随机或拍脑袋准备的评测集，
+    测的是「我们想象中的用户」，不是生产中的用户：它没有覆盖真实问题的分布，
+    没有权衡难度分层，没有难例与边界样本，更没有随业务演进持续更新。
+  </p>
+
+  <div class="callout accent">
+    <div class="co-label">◆ 遗留问题</div>
+    <p class="co-quote">
+      一把完美的尺子，量错了布料，得到的仍然是一个错误的结论。<br>
+      拿哪些问题来测试，才能让评测分数真正代表生产质量？
+    </p>
+  </div>
+
+  <p>
+    这正是评测工程中承上启下的核心构件：<em class="term">Regression Dataset</em>——
+    它如何从真实流量中采样？如何分层、如何加权、如何纳入bad case？如何与版本管理绑定，
+    让每一次 Evaluation Run 之间真正可比？这些问题，我们下一篇见。
+  </p>
+
+  <div class="next-up">
+    <div class="nu-label">NEXT · VOL.03</div>
+    <h3>Regression Dataset：随机准备 100 个问题，为什么救不了你的 RAG</h3>
+    <p>
+      从真实流量构建 Evaluation Dataset 的完整方法论：流量采样与分布对齐、难度分层、
+      难例挖掘、金标（Reference）的生产方式、数据集版本化——以及为什么「数据集即代码」
+      是 Regression 能成立的前提。
+    </p>
+  </div>
+</section>
+
+</main>
+
+<!-- ============ 页脚 ============ -->
+<footer>
+  <div class="f-inner">
+    <div class="f-series">RAG EVALUATION 工程 · 从指标、Judge 到 Eval Studio 与生产质量门禁</div>
+    <div class="f-toc">
+      <span><b>Vol.1</b> RAG Evaluation：为什么「看起来能答对」远远不够</span>
+      <span><b>Vol.2</b> LLM-as-Judge：真的可靠吗？ ← 本篇</span>
+      <span><b>Vol.3</b> Regression Dataset：拿什么来评</span>
+      <span><b>Vol.4</b> Eval Studio 与 Release Gate</span>
+    </div>
+    <div class="f-copy">同一把尺子 · 同一批数据 · 同一条从 CI 到生产的质量链 © 2026</div>
+  </div>
+</footer>
+
+</body>
+</html>
