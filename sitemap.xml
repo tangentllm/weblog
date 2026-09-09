@@ -41,6 +41,13 @@
   </url>
 
   <url>
+    <loc>https://tangentllm.github.io/weblog/post/enterprise-rag-05-embedding-vector-db/</loc>
+    <lastmod>2026-09-09T20:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
     <loc>https://tangentllm.github.io/weblog/post/enterprise-rag-04-chunking/</loc>
     <lastmod>2026-09-09T18:00:00+08:00</lastmod>
     <changefreq>monthly</changefreq>

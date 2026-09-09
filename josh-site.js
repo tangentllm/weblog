@@ -538,6 +538,8 @@ function joshFindHtmlArticleRoot(doc) {
   if (main) return main;
   const page = doc.querySelector('.page');
   if (page) return page;
+  const paper = doc.querySelector('.paper');
+  if (paper) return paper;
 
   const containers = [...doc.querySelectorAll('.container')].filter(
     (el) => !el.closest('.hero, .masthead, header'),

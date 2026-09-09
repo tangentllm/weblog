@@ -1,5 +1,26 @@
 [
   {
+    "slug": "enterprise-rag-05-embedding-vector-db",
+    "title": "企业级 RAG 架构设计与工程实践（五）：Embedding 与 Vector Database：企业 RAG 的检索基础",
+    "date": "2026-09-09T20:00:00+08:00",
+    "readTime": "20 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "从“关键词搜不到”出发，讲清 Embedding 与向量数据库如何构成企业 RAG 的检索基础，以及选型与工程权衡。",
+    "file": "./content/posts/enterprise-rag-05-embedding-vector-db.md",
+    "format": "html",
+    "htmlFile": "./content/posts/Embedding 与 Vector Database：企业 RAG 的检索基础.html",
+    "subtitle": "企业 RAG 的检索基础",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 5
+  },
+  {
     "slug": "enterprise-rag-04-chunking",
     "title": "企业级 RAG 架构设计与工程实践（四）：Chunking 决定 RAG 上限？企业知识切分策略深度解析",
     "date": "2026-09-09T18:00:00+08:00",
