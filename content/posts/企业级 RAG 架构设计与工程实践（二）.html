@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>企业级 RAG 到底怎么设计？一张架构图讲清完整技术链路 | 企业级 RAG 架构设计与工程实践 · 02</title>
+<style>
+  :root {
+    --ink: #1a1d23;
+    --ink-soft: #3d434e;
+    --ink-mute: #6b7280;
+    --paper: #fcfbf7;
+    --card: #ffffff;
+    --accent: #0f4c81;
+    --accent-soft: #e8f0f7;
+    --accent-line: #c9dcee;
+    --warm: #b45309;
+    --warm-soft: #fef6e7;
+    --danger: #9f1239;
+    --danger-soft: #fdf2f5;
+    --ok: #166534;
+    --ok-soft: #eff7ef;
+    --line: #e6e2d8;
+    --code-bg: #1e2229;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+    font-size: 17px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 860px; margin: 0 auto; padding: 0 24px 120px; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 72px 0 40px;
+    border-bottom: 3px double var(--line);
+    margin-bottom: 48px;
+  }
+  .hero .kicker {
+    font-size: 13px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-family: "Noto Serif SC", "Songti SC", serif;
+    font-size: clamp(30px, 5vw, 44px);
+    font-weight: 900; line-height: 1.35; letter-spacing: .01em;
+    margin-bottom: 22px;
+  }
+  .hero .deck {
+    font-family: "Noto Serif SC", serif;
+    font-size: 18px; color: var(--ink-soft); max-width: 640px;
+    border-left: 3px solid var(--accent); padding-left: 18px;
+  }
+  .hero .meta {
+    display: flex; flex-wrap: wrap; gap: 20px;
+    margin-top: 28px; font-size: 13.5px; color: var(--ink-mute);
+  }
+  .hero .meta span b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- TOC ---------- */
+  nav.toc {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px 30px; margin-bottom: 64px;
+  }
+  nav.toc h2 { font-size: 13px; letter-spacing: .18em; color: var(--ink-mute); margin-bottom: 14px; font-weight: 700; }
+  nav.toc ol { list-style: none; columns: 2; column-gap: 40px; }
+  nav.toc li { font-size: 14.5px; padding: 4px 0; break-inside: avoid; }
+  nav.toc li a { color: var(--ink-soft); text-decoration: none; }
+  nav.toc li a:hover { color: var(--accent); }
+  nav.toc li a::before { content: "§ "; color: var(--accent); font-weight: 700; }
+  @media (max-width: 640px) { nav.toc ol { columns: 1; } }
+
+  /* ---------- Headings ---------- */
+  section.chapter { margin-bottom: 88px; }
+  .ch-no {
+    font-family: Georgia, serif; font-size: 15px; color: var(--accent);
+    letter-spacing: .15em; font-weight: 700; margin-bottom: 6px;
+  }
+  h2.ch-title {
+    font-family: "Noto Serif SC", serif;
+    font-size: clamp(24px, 3.4vw, 31px); font-weight: 900; line-height: 1.4;
+    margin-bottom: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--line);
+  }
+  h3 {
+    font-family: "Noto Serif SC", serif;
+    font-size: 20px; font-weight: 700; margin: 40px 0 14px; color: var(--ink);
+  }
+  h3::before { content: "▍"; color: var(--accent); margin-right: 6px; font-size: 17px; }
+  p { margin-bottom: 18px; color: var(--ink-soft); }
+  p strong, li strong { color: var(--ink); }
+  em.term { font-style: normal; color: var(--accent); font-weight: 600; }
+
+  /* ---------- Pull quote / callouts ---------- */
+  .pull {
+    font-family: "Noto Serif SC", serif;
+    font-size: 21px; line-height: 1.7; color: var(--ink);
+    border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink);
+    padding: 26px 8px; margin: 40px 0; text-align: center; font-weight: 700;
+  }
+  .pull small { display: block; font-size: 13px; color: var(--ink-mute); font-weight: 400; margin-top: 8px; letter-spacing: .1em; }
+  .note {
+    background: var(--accent-soft); border-left: 4px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 18px 22px; margin: 28px 0; font-size: 15.5px; color: var(--ink-soft);
+  }
+  .note b { color: var(--accent); }
+  .warn {
+    background: var(--warm-soft); border-left: 4px solid var(--warm);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 18px 22px; margin: 28px 0; font-size: 15.5px; color: var(--ink-soft);
+  }
+  .warn b { color: var(--warm); }
+
+  /* ---------- Lists ---------- */
+  ul.grid-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin: 20px 0 28px; }
+  ul.grid-list li {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 14px; font-size: 14.5px; color: var(--ink-soft);
+  }
+  ul.grid-list li::before { content: "▸ "; color: var(--accent); font-weight: 700; }
+
+  /* ---------- Code / pipeline blocks ---------- */
+  pre.pipe {
+    background: var(--code-bg); color: #dce3ec; border-radius: var(--radius);
+    padding: 22px 26px; overflow-x: auto; margin: 26px 0;
+    font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    font-size: 13.5px; line-height: 1.9;
+  }
+  pre.pipe .c { color: #7d8899; }
+  pre.pipe .hl { color: #7fb8f0; font-weight: 700; }
+  pre.pipe .arrow { color: #e0a458; }
+  code.inline {
+    background: #eef1f5; border: 1px solid var(--line); border-radius: 4px;
+    padding: 1px 7px; font-size: 13.5px;
+    font-family: "JetBrains Mono", Consolas, monospace; color: var(--accent);
+  }
+
+  /* ---------- Diagram frame ---------- */
+  .fig {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 28px 20px 14px; margin: 34px 0;
+  }
+  .fig .fig-cap {
+    font-size: 13px; color: var(--ink-mute); text-align: center;
+    padding-top: 14px; border-top: 1px dashed var(--line); margin-top: 18px;
+  }
+  .fig .fig-cap b { color: var(--ink); }
+  .svgwrap svg { width: 100%; height: auto; display: block; }
+  .svgwrap text { font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
+
+  /* ---------- Stat cards ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 30px 0; }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-top: 3px solid var(--accent);
+    border-radius: var(--radius); padding: 18px 20px;
+  }
+  .stat .num { font-family: Georgia, serif; font-size: 30px; font-weight: 700; color: var(--accent); line-height: 1.2; }
+  .stat .lbl { font-size: 13px; color: var(--ink-mute); margin-top: 4px; line-height: 1.5; }
+
+  /* ---------- Tables ---------- */
+  table.tbl {
+    width: 100%; border-collapse: collapse; margin: 30px 0; font-size: 14.5px;
+    background: var(--card); border-radius: var(--radius); overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  table.tbl th {
+    background: var(--accent); color: #fff; text-align: left;
+    padding: 12px 16px; font-weight: 600; font-size: 13.5px; letter-spacing: .04em;
+  }
+  table.tbl td { padding: 13px 16px; border-bottom: 1px solid var(--line); color: var(--ink-soft); vertical-align: top; }
+  table.tbl tr:last-child td { border-bottom: none; }
+  table.tbl tr:nth-child(even) td { background: #faf9f5; }
+  table.tbl td b { color: var(--ink); }
+
+  /* ---------- Step trace ---------- */
+  ol.trace { list-style: none; counter-reset: step; margin: 26px 0; }
+  ol.trace li {
+    counter-increment: step; position: relative;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 18px 14px 62px; margin-bottom: 10px; font-size: 15px; color: var(--ink-soft);
+  }
+  ol.trace li::before {
+    content: counter(step, decimal-leading-zero);
+    position: absolute; left: 16px; top: 14px;
+    font-family: Georgia, serif; font-size: 17px; font-weight: 700; color: var(--accent);
+  }
+  ol.trace li b { color: var(--ink); display: inline; margin-right: 6px; }
+  ol.trace li .out { display: block; margin-top: 6px; font-size: 13.5px; color: var(--ink-mute); }
+  ol.trace li .out::before { content: "→ 输出："; color: var(--accent); font-weight: 600; }
+
+  /* ---------- Comparison cards ---------- */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 30px 0; }
+  @media (max-width: 680px) { .duo { grid-template-columns: 1fr; } }
+  .duo .card-h {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 22px 24px;
+  }
+  .duo .card-h h4 { font-family: "Noto Serif SC", serif; font-size: 17px; margin-bottom: 10px; }
+  .duo .card-h h4.tag { display: inline-block; background: var(--accent-soft); color: var(--accent); font-family: inherit; padding: 3px 12px; border-radius: 20px; font-size: 13px; margin-bottom: 12px; }
+  .duo .card-h ul { padding-left: 18px; font-size: 14.5px; color: var(--ink-soft); }
+  .duo .card-h li { margin-bottom: 6px; }
+  .stage-mvp { border-top: 3px solid #86a98f; }
+  .stage-prod { border-top: 3px solid var(--accent); }
+  .stage-ent { border-top: 3px solid var(--warm); }
+
+  /* ---------- Flow strip (html diagram) ---------- */
+  .flowstrip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 26px 0; justify-content: center; }
+  .flowstrip .node {
+    background: var(--card); border: 1px solid var(--accent-line); color: var(--accent);
+    border-radius: 6px; padding: 7px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap;
+  }
+  .flowstrip .node.dark { background: var(--accent); color: #fff; }
+  .flowstrip .arr { color: var(--ink-mute); font-weight: 700; }
+
+  /* ---------- Footer ---------- */
+  footer.end {
+    border-top: 3px double var(--line); padding-top: 36px; margin-top: 20px;
+    font-size: 14px; color: var(--ink-mute); text-align: center;
+  }
+  footer.end .next { margin-top: 14px; font-size: 15px; color: var(--ink-soft); }
+  .formula {
+    background: var(--code-bg); color: #e8eef6; border-radius: var(--radius);
+    padding: 26px 20px; margin: 30px 0; text-align: center;
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 14.5px; line-height: 2.1;
+  }
+  .formula .op { color: #e0a458; font-weight: 700; }
+  .formula .k { color: #7fb8f0; }
+</style>
+</head>
+<body>
+
+<!-- 全局 SVG 共享定义：箭头 marker 与节点阴影 filter，供三张图引用 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ab" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#5b7fa6"/>
+    </marker>
+    <marker id="aa" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#b4762e"/>
+    </marker>
+    <marker id="ag" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#6b7280"/>
+    </marker>
+    <filter id="ns" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="1.2" stdDeviation="1.4" flood-color="#1a2b3c" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="page">
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="kicker">Enterprise RAG Architecture · 系列第 2 篇 · 架构总览</div>
+  <h1>企业级 RAG 到底怎么设计？<br>一张架构图讲清完整技术链路</h1>
+  <p class="deck">上一篇我们回答了「为什么企业需要 RAG」。这一篇回答一个更工程化的问题：一个真正的企业级 RAG 系统到底长什么样？本文不深入任何单一技术，而是建立一张完整的架构认知地图——为后续的数据工程、Chunking、Hybrid Retrieval、Reranker、Evaluation 等章节建立统一上下文。</p>
+  <div class="meta">
+    <span><b>系列</b> 企业级 RAG 架构设计与工程实践</span>
+    <span><b>篇目</b> 02 / Architecture Overview</span>
+    <span><b>读者</b> 架构师 · 平台工程 · AI 应用团队</span>
+  </div>
+</header>
+
+<!-- ============ TOC ============ -->
+<nav class="toc">
+  <h2>CONTENTS · 目录</h2>
+  <ol>
+    <li><a href="#s1">为什么 Demo 会变成复杂系统</a></li>
+    <li><a href="#s2">一张完整的企业级 RAG 架构图</a></li>
+    <li><a href="#s3">两条主链路：入库与查询</a></li>
+    <li><a href="#s4">Data Layer：数据层</a></li>
+    <li><a href="#s5">Document Processing：文档处理层</a></li>
+    <li><a href="#s6">Index Layer：索引层</a></li>
+    <li><a href="#s7">Query Layer：查询理解层</a></li>
+    <li><a href="#s8">Retrieval Layer：混合检索层</a></li>
+    <li><a href="#s9">Reranking Layer：重排层</a></li>
+    <li><a href="#s10">Context Engineering 层</a></li>
+    <li><a href="#s11">Generation Layer：生成层</a></li>
+    <li><a href="#s12">Security &amp; Permission 层</a></li>
+    <li><a href="#s13">Infrastructure Layer</a></li>
+    <li><a href="#s14">一次完整请求的全链路追踪</a></li>
+    <li><a href="#s15">为什么必须分层</a></li>
+    <li><a href="#s16">哪些组件不是必须的</a></li>
+    <li><a href="#s17">架构演进路线</a></li>
+    <li><a href="#s18">最终总结</a></li>
+  </ol>
+</nav>
+
+<!-- ============ 01 ============ -->
+<section class="chapter" id="s1">
+  <div class="ch-no">SECTION 01</div>
+  <h2 class="ch-title">为什么一个「几十行代码」的 RAG Demo，进企业就变成复杂系统？</h2>
+
+  <p>几乎所有团队的 RAG 之路都是这样开始的：几百份文档，一个 Embedding 模型，一个开源向量库，一段 System Prompt。五十行代码，问答效果看起来还不错，团队开始兴奋地向业务方演示。</p>
+
+  <p>然后它被接入了真实的企业场景——<em class="term">企业内部知识库问答</em>。第一个真实用户提出了一个真实问题，系统开始接受真实的检验。这时你会发现，这个系统实际上需要<b>同时</b>回答以下问题：</p>
+
+  <ul class="grid-list">
+    <li>用户是谁？</li>
+    <li>用户属于哪个租户？</li>
+    <li>用户有没有权限看这份文档？</li>
+    <li>企业知识在哪里？分散在多少个系统？</li>
+    <li>扫描版 PDF 怎么解析？</li>
+    <li>这个问题应该检索哪些内容？</li>
+    <li>关键词匹配和语义理解如何同时工作？</li>
+    <li>召回的 50 个片段里哪些真正相关？</li>
+    <li>上下文超长怎么办？</li>
+    <li>如何避免模型胡编？</li>
+    <li>答案如何返回引用出处？</li>
+    <li>系统出了问题如何定位？</li>
+    <li>延迟和成本如何控制？</li>
+  </ul>
+
+  <div class="pull">
+    这 13 个问题里，没有一个和「模型调用」有关。<br>
+    <small>它们全部属于检索系统工程、数据工程、安全与可观测性</small>
+  </div>
+
+  <p>所以结论在写第一行架构代码之前就已经确定了：</p>
+
+  <div class="note"><b>企业 RAG 本质上已经不是一个「模型调用」，而是一套完整的信息检索与生成系统。</b> LLM 只是这套系统最末端的「渲染引擎」，系统的上限恰恰由它之前的所有环节决定。</div>
+
+  <p>Demo 的几十行代码只覆盖了这张架构图里最中间的一条快乐路径（Happy Path）。企业级的全部工程量，都在这条路径的上下两侧。</p>
+</section>
+
+<!-- ============ 02 ============ -->
+<section class="chapter" id="s2">
+  <div class="ch-no">SECTION 02</div>
+  <h2 class="ch-title">一张完整架构图：离线入库 + 在线查询 + 企业基础设施</h2>
+
+  <p>先看全景，再逐层拆解。这张图是整个系列的「主地图」，后续每一篇文章都会落回这张图上的某一块。</p>
+
+  <figure class="fig">
+    <div class="svgwrap">
+    <svg viewBox="0 0 1040 1240" role="img" aria-label="企业级 RAG 完整架构总览图">
+      <!-- ===== 图例 ===== -->
+      <g font-size="11">
+        <rect x="300" y="36" width="16" height="12" rx="3" fill="#f4f6fa" stroke="#8fa8c4"/>
+        <text x="322" y="46" fill="#33465e">离线入库链路</text>
+        <rect x="418" y="36" width="16" height="12" rx="3" fill="#fdf8ef" stroke="#c8a45e"/>
+        <text x="440" y="46" fill="#33465e">在线查询链路</text>
+        <rect x="536" y="36" width="16" height="12" rx="3" fill="#f2f7f2" stroke="#7fa87f"/>
+        <text x="558" y="46" fill="#33465e">横切基础设施</text>
+        <line x1="654" y1="42" x2="694" y2="42" stroke="#6b7280" stroke-width="1.6" stroke-dasharray="5 4"/>
+        <text x="700" y="46" fill="#33465e">交叉引用 / 数据流</text>
+      </g>
+
+      <!-- ===== OFFLINE ZONE ===== -->
+      <rect x="20" y="78" width="284" height="930" rx="14" fill="#f4f6fa" stroke="#8fa8c4" stroke-width="1.5"/>
+      <text x="162" y="106" text-anchor="middle" font-size="14" font-weight="700" fill="#33465e" letter-spacing="1">OFFLINE PIPELINE</text>
+      <text x="162" y="124" text-anchor="middle" font-size="11" fill="#6b7280">知识入库链路 · 异步 / 小时级</text>
+      <text transform="rotate(-90 36 450)" x="36" y="450" text-anchor="middle" font-size="10" fill="#5b7fa6" letter-spacing="3">数据工程</text>
+
+      <!-- 离线节点 -->
+      <g font-size="12.5" font-weight="700" fill="#33465e">
+        <g filter="url(#ns)">
+          <rect x="48" y="138" width="228" height="40" rx="8" fill="#fff" stroke="#8fa8c4"/>
+          <rect x="48" y="196" width="228" height="40" rx="8" fill="#fff" stroke="#8fa8c4"/>
+          <rect x="48" y="254" width="228" height="40" rx="8" fill="#fff" stroke="#8fa8c4"/>
+          <rect x="48" y="312" width="228" height="40" rx="8" fill="#fff" stroke="#8fa8c4"/>
+          <rect x="48" y="370" width="228" height="40" rx="8" fill="#fff" stroke="#8fa8c4"/>
+          <rect x="48" y="428" width="228" height="40" rx="8" fill="#fff" stroke="#8fa8c4"/>
+          <rect x="48" y="486" width="228" height="40" rx="8" fill="#fff" stroke="#8fa8c4"/>
+          <rect x="48" y="544" width="228" height="40" rx="8" fill="#fff" stroke="#8fa8c4"/>
+        </g>
+        <text x="162" y="155" text-anchor="middle">Data Sources</text>
+        <text x="162" y="213" text-anchor="middle">Data Ingestion</text>
+        <text x="162" y="271" text-anchor="middle">Document Parsing</text>
+        <text x="162" y="329" text-anchor="middle">Cleaning &amp; Normalization</text>
+        <text x="162" y="387" text-anchor="middle">Chunking</text>
+        <text x="162" y="445" text-anchor="middle">Metadata Extraction</text>
+        <text x="162" y="503" text-anchor="middle">Embedding</text>
+        <text x="162" y="561" text-anchor="middle">Index Build</text>
+      </g>
+      <g font-size="10" fill="#6b7280">
+        <text x="162" y="170" text-anchor="middle">文档 · Wiki · DB · API</text>
+        <text x="162" y="228" text-anchor="middle">采集 · 增量同步 · 调度</text>
+        <text x="162" y="286" text-anchor="middle">解析 · OCR · 版面分析</text>
+        <text x="162" y="344" text-anchor="middle">清洗 · 去重 · 归一化</text>
+        <text x="162" y="402" text-anchor="middle">语义分块 · 重叠控制</text>
+        <text x="162" y="460" text-anchor="middle">部门 · 密级 · 版本 · 时间</text>
+        <text x="162" y="518" text-anchor="middle">向量化</text>
+        <text x="162" y="576" text-anchor="middle">索引构建（可全量重建）</text>
+      </g>
+
+      <!-- 离线箭头 -->
+      <g stroke="#5b7fa6" stroke-width="1.6" fill="none">
+        <line x1="162" y1="178" x2="162" y2="194" marker-end="url(#ab)"/>
+        <line x1="162" y1="236" x2="162" y2="252" marker-end="url(#ab)"/>
+        <line x1="162" y1="294" x2="162" y2="310" marker-end="url(#ab)"/>
+        <line x1="162" y1="352" x2="162" y2="368" marker-end="url(#ab)"/>
+        <line x1="162" y1="410" x2="162" y2="426" marker-end="url(#ab)"/>
+        <line x1="162" y1="468" x2="162" y2="484" marker-end="url(#ab)"/>
+        <line x1="162" y1="526" x2="162" y2="542" marker-end="url(#ab)"/>
+        <path d="M162 584 C162 598 126 606 122 616" marker-end="url(#ab)"/>
+        <path d="M162 584 C162 598 198 606 202 616" marker-end="url(#ab)"/>
+      </g>
+
+      <!-- 存储：圆柱 -->
+      <g>
+        <path d="M67 632 v36 a95 14 0 0 0 190 0 v-36" fill="#fff" stroke="#8fa8c4" stroke-width="1.5"/>
+        <ellipse cx="162" cy="632" rx="95" ry="14" fill="#e8f0f7" stroke="#8fa8c4" stroke-width="1.5"/>
+        <text x="162" y="662" text-anchor="middle" font-size="12.5" font-weight="700" fill="#33465e">Vector DB</text>
+        <text x="162" y="677" text-anchor="middle" font-size="10" fill="#6b7280">语义向量索引</text>
+
+        <path d="M67 712 v36 a95 14 0 0 0 190 0 v-36" fill="#fff" stroke="#8fa8c4" stroke-width="1.5"/>
+        <ellipse cx="162" cy="712" rx="95" ry="14" fill="#e8f0f7" stroke="#8fa8c4" stroke-width="1.5"/>
+        <text x="162" y="742" text-anchor="middle" font-size="12.5" font-weight="700" fill="#33465e">Elasticsearch</text>
+        <text x="162" y="757" text-anchor="middle" font-size="10" fill="#6b7280">倒排 · 关键词索引</text>
+      </g>
+
+      <!-- 离线区提示卡 -->
+      <rect x="48" y="880" width="228" height="78" rx="8" fill="#fff" stroke="#8fa8c4" stroke-dasharray="5 4"/>
+      <text x="162" y="908" text-anchor="middle" font-size="12" font-weight="700" fill="#33465e">索引 = 两条链路唯一耦合点</text>
+      <text x="162" y="926" text-anchor="middle" font-size="10.5" fill="#6b7280">写入走离线 · 查询走在线</text>
+      <text x="162" y="942" text-anchor="middle" font-size="10.5" fill="#6b7280">策略变更可全量重建、可回滚</text>
+
+      <!-- ===== ONLINE ZONE ===== -->
+      <rect x="330" y="78" width="690" height="930" rx="14" fill="#fdf8ef" stroke="#c8a45e" stroke-width="1.5"/>
+      <text x="675" y="106" text-anchor="middle" font-size="14" font-weight="700" fill="#7a5a1e" letter-spacing="1">ONLINE QUERY PIPELINE</text>
+      <text x="675" y="124" text-anchor="middle" font-size="11" fill="#6b7280">在线查询链路 · 同步 / 秒级预算</text>
+
+      <!-- 阶段标签 -->
+      <g font-size="10" fill="#b08a4a" letter-spacing="3" text-anchor="middle">
+        <text transform="rotate(-90 352 215)" x="352" y="215">接入层</text>
+        <text transform="rotate(-90 352 355)" x="352" y="355">查询理解</text>
+        <text transform="rotate(-90 352 495)" x="352" y="495">检索与排序</text>
+        <text transform="rotate(-90 352 691)" x="352" y="691">上下文构建</text>
+        <text transform="rotate(-90 352 859)" x="352" y="859">生成与溯源</text>
+      </g>
+
+      <!-- 在线节点 -->
+      <g filter="url(#ns)">
+        <rect x="368" y="140" width="220" height="38" rx="19" fill="#f8ecd7" stroke="#c8a45e"/>
+        <rect x="368" y="196" width="220" height="38" rx="8" fill="#fff" stroke="#d8b877"/>
+        <rect x="368" y="252" width="220" height="38" rx="8" fill="#fff" stroke="#d8b877"/>
+        <rect x="368" y="308" width="220" height="38" rx="8" fill="#fff" stroke="#d8b877"/>
+        <rect x="368" y="364" width="220" height="38" rx="8" fill="#fff" stroke="#d8b877"/>
+        <rect x="368" y="420" width="220" height="38" rx="8" fill="#0f4c81"/>
+        <rect x="368" y="476" width="220" height="38" rx="8" fill="#3f6fa3"/>
+        <rect x="368" y="532" width="220" height="38" rx="8" fill="#d97706"/>
+        <rect x="368" y="588" width="220" height="38" rx="8" fill="#b45309"/>
+        <rect x="368" y="644" width="220" height="38" rx="8" fill="#fff" stroke="#d8b877"/>
+        <rect x="368" y="700" width="220" height="38" rx="8" fill="#fff" stroke="#d8b877"/>
+        <rect x="368" y="756" width="220" height="38" rx="8" fill="#fff" stroke="#d8b877"/>
+        <rect x="368" y="812" width="220" height="38" rx="8" fill="#9f1239"/>
+        <rect x="368" y="868" width="220" height="38" rx="8" fill="#fff" stroke="#d8b877"/>
+        <rect x="368" y="924" width="220" height="38" rx="8" fill="#166534"/>
+      </g>
+      <g font-size="12.5" font-weight="700" text-anchor="middle">
+        <text x="478" y="163" fill="#7a5a1e">User · 用户提问</text>
+        <text x="478" y="219" fill="#33465e">API Gateway</text>
+        <text x="478" y="275" fill="#33465e">Authentication / Tenant</text>
+        <text x="478" y="331" fill="#33465e">Query Understanding</text>
+        <text x="478" y="387" fill="#33465e">Query Rewrite / Expansion</text>
+        <text x="478" y="443" fill="#ffffff">Hybrid Retrieval</text>
+        <text x="478" y="499" fill="#ffffff">Fusion / RRF</text>
+        <text x="478" y="555" fill="#ffffff">Top-K 候选集</text>
+        <text x="478" y="611" fill="#ffffff">Reranker 精排</text>
+        <text x="478" y="667" fill="#33465e">Context Engineering</text>
+        <text x="478" y="723" fill="#33465e">Prompt Builder</text>
+        <text x="478" y="779" fill="#33465e">LLM Gateway</text>
+        <text x="478" y="835" fill="#ffffff">LLM</text>
+        <text x="478" y="891" fill="#33465e">Citation / Grounding</text>
+        <text x="478" y="947" fill="#ffffff">Answer</text>
+      </g>
+      <g font-size="10" text-anchor="middle" fill="#8a7a5c">
+        <text x="478" y="282">身份认证 · 租户识别</text>
+        <text x="478" y="338">意图理解 · 结构化信号抽取</text>
+        <text x="478" y="394">指代消解 · 同义扩展</text>
+        <text x="478" y="450" fill="#dbe7f3">Dense + BM25 混合检索</text>
+        <text x="478" y="506" fill="#e2ecf6">多路结果融合</text>
+        <text x="478" y="562" fill="#fdecd3">高召回 · 权限过滤已下推</text>
+        <text x="478" y="618" fill="#fbe6cf">交叉编码 · High Precision</text>
+        <text x="478" y="674">去重 · 相关性过滤 · 压缩 · Token 预算</text>
+        <text x="478" y="730">证据包 + 指令模板组装</text>
+        <text x="478" y="786">统一模型入口 · 降级与成本核算</text>
+        <text x="478" y="842" fill="#f6dbe2">Grounded Generation · 有据生成</text>
+        <text x="478" y="898">引用标注 · 来源溯源</text>
+        <text x="478" y="954" fill="#dcefdd">带引用的可信答案</text>
+      </g>
+
+      <!-- 在线链路箭头 -->
+      <g stroke="#b4762e" stroke-width="1.6" fill="none">
+        <line x1="478" y1="178" x2="478" y2="194" marker-end="url(#aa)"/>
+        <line x1="478" y1="234" x2="478" y2="250" marker-end="url(#aa)"/>
+        <line x1="478" y1="290" x2="478" y2="306" marker-end="url(#aa)"/>
+        <line x1="478" y1="346" x2="478" y2="362" marker-end="url(#aa)"/>
+        <line x1="478" y1="402" x2="478" y2="418" marker-end="url(#aa)"/>
+        <line x1="478" y1="458" x2="478" y2="474" marker-end="url(#aa)"/>
+        <line x1="478" y1="514" x2="478" y2="530" marker-end="url(#aa)"/>
+        <line x1="478" y1="570" x2="478" y2="586" marker-end="url(#aa)"/>
+        <line x1="478" y1="626" x2="478" y2="642" marker-end="url(#aa)"/>
+        <line x1="478" y1="682" x2="478" y2="698" marker-end="url(#aa)"/>
+        <line x1="478" y1="738" x2="478" y2="754" marker-end="url(#aa)"/>
+        <line x1="478" y1="794" x2="478" y2="810" marker-end="url(#aa)"/>
+        <line x1="478" y1="850" x2="478" y2="866" marker-end="url(#aa)"/>
+        <line x1="478" y1="906" x2="478" y2="922" marker-end="url(#aa)"/>
+      </g>
+
+      <!-- 存储到检索的虚线数据流 -->
+      <g stroke="#6b7280" stroke-width="1.5" fill="none" stroke-dasharray="5 4">
+        <path d="M257 650 C320 640 330 480 364 446" marker-end="url(#ag)"/>
+        <path d="M257 726 C322 716 338 540 364 504" marker-end="url(#ag)"/>
+      </g>
+      <g font-size="10.5" fill="#6b7280" style="paint-order:stroke" stroke="#fdf8ef" stroke-width="4">
+        <text x="312" y="556" text-anchor="middle">向量召回</text>
+        <text x="318" y="624" text-anchor="middle">倒排召回</text>
+      </g>
+
+      <!-- 右侧注解卡 A：权限 -->
+      <rect x="636" y="396" width="344" height="76" rx="10" fill="#f2f7f2" stroke="#7fa87f" stroke-dasharray="5 4"/>
+      <text x="808" y="420" text-anchor="middle" font-size="12.5" font-weight="700" fill="#3d5c3d">① Permission Service · 权限下推</text>
+      <text x="808" y="440" text-anchor="middle" font-size="10.5" fill="#55705a">RBAC / ABAC 判定编译为 Metadata 过滤条件</text>
+      <text x="808" y="458" text-anchor="middle" font-size="10.5" fill="#55705a">无权文档在候选集中即不存在（检索时下推）</text>
+      <path d="M636 434 L594 439" stroke="#6b7280" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+
+      <!-- 右侧注解卡 B：模型网关 -->
+      <rect x="636" y="744" width="344" height="64" rx="10" fill="#fff" stroke="#c8a45e" stroke-dasharray="5 4"/>
+      <text x="808" y="768" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7a5a1e">Model Gateway · 统一模型入口</text>
+      <text x="808" y="788" text-anchor="middle" font-size="10.5" fill="#8a7a5c">LLM / Embedding / Reranker：路由 · 降级 · 配额 · A/B</text>
+      <path d="M636 776 L594 775" stroke="#6b7280" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+
+      <!-- 右侧注解卡 C：评测 -->
+      <rect x="636" y="876" width="344" height="56" rx="10" fill="#f2f7f2" stroke="#7fa87f" stroke-dasharray="5 4"/>
+      <text x="808" y="898" text-anchor="middle" font-size="12.5" font-weight="700" fill="#3d5c3d">④ Evaluation Platform · 评测闭环</text>
+      <text x="808" y="916" text-anchor="middle" font-size="10.5" fill="#55705a">离线评测 → 回归基线 → 线上反馈回流</text>
+      <path d="M636 906 C612 912 600 928 594 938" stroke="#6b7280" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+
+      <!-- ===== INFRA ZONE ===== -->
+      <rect x="20" y="1040" width="1000" height="170" rx="14" fill="#f2f7f2" stroke="#7fa87f" stroke-width="1.5"/>
+      <text x="40" y="1064" font-size="13.5" font-weight="700" fill="#3d5c3d" letter-spacing="1">ENTERPRISE INFRASTRUCTURE</text>
+      <text x="278" y="1064" font-size="11.5" fill="#6b8a6b">企业基础设施 · 横切所有层</text>
+
+      <g filter="url(#ns)">
+        <rect x="39" y="1082" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="201" y="1082" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="363" y="1082" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="525" y="1082" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="687" y="1082" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="849" y="1082" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="39" y="1126" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="201" y="1126" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="363" y="1126" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="525" y="1126" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="687" y="1126" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+        <rect x="849" y="1126" width="152" height="34" rx="7" fill="#fff" stroke="#7fa87f"/>
+      </g>
+      <g font-size="11" text-anchor="middle" fill="#3d5c3d" font-weight="600">
+        <text x="115" y="1103">Permission Service</text>
+        <text x="277" y="1103">Cache · 多层缓存</text>
+        <text x="439" y="1103">Object Storage</text>
+        <text x="601" y="1103">Metadata DB</text>
+        <text x="763" y="1103">Model Gateway</text>
+        <text x="925" y="1103">Config Center</text>
+        <text x="115" y="1147">Evaluation Platform</text>
+        <text x="277" y="1147">Logging</text>
+        <text x="439" y="1147">Tracing</text>
+        <text x="601" y="1147">Metrics</text>
+        <text x="763" y="1147">Data Governance</text>
+        <text x="925" y="1147">Security Audit</text>
+      </g>
+
+      <!-- 编号徽标：交叉引用 -->
+      <g font-size="10" font-weight="700" text-anchor="middle" fill="#fff">
+        <circle cx="51" cy="1082" r="9" fill="#b45309" stroke="#fff" stroke-width="1.5"/><text x="51" y="1085.5">1</text>
+        <circle cx="537" cy="1082" r="9" fill="#b45309" stroke="#fff" stroke-width="1.5"/><text x="537" y="1085.5">2</text>
+        <circle cx="375" cy="1082" r="9" fill="#b45309" stroke="#fff" stroke-width="1.5"/><text x="375" y="1085.5">3</text>
+        <circle cx="51" cy="1126" r="9" fill="#b45309" stroke="#fff" stroke-width="1.5"/><text x="51" y="1129.5">4</text>
+        <circle cx="276" cy="274" r="9" fill="#b45309" stroke="#fff" stroke-width="1.5"/><text x="276" y="277.5">3</text>
+        <circle cx="276" cy="448" r="9" fill="#b45309" stroke="#fff" stroke-width="1.5"/><text x="276" y="451.5">2</text>
+        <circle cx="968" cy="396" r="9" fill="#b45309" stroke="#fff" stroke-width="1.5"/><text x="968" y="399.5">1</text>
+        <circle cx="968" cy="876" r="9" fill="#b45309" stroke="#fff" stroke-width="1.5"/><text x="968" y="879.5">4</text>
+      </g>
+
+      <!-- 长距离交叉引用连线（沿两区之间走廊走线） -->
+      <g stroke="#6b7280" stroke-width="1.3" fill="none" stroke-dasharray="4 4" opacity="0.85">
+        <path d="M276 448 L310 448 L310 1020 L601 1020 L601 1078" marker-end="url(#ag)"/>
+        <path d="M276 274 L326 274 L326 1032 L460 1032 L460 1078" marker-end="url(#ag)"/>
+      </g>
+    </svg>
+    </div>
+    <figcaption class="fig-cap"><b>图 1 · 企业级 RAG 完整架构总览</b> — 蓝区为离线入库链路，黄区为在线查询链路，绿区为横切基础设施。编号徽标 ①②③④ 为跨区交叉引用：① 权限判定 → 检索下推；② 元数据 → Metadata DB；③ 原始文档 → 对象存储；④ 评测闭环 → 在线链路。Logging / Tracing / Metrics 作为可观测性基座作用于全部环节。两条链路只在 <b>Vector DB / Elasticsearch</b> 处汇合，其余完全解耦。</figcaption>
+  </figure>
+
+  <p>看这张图时，请记住三个关键观察：</p>
+
+  <p><strong>第一，离线和在线是两条完全不同的数据流。</strong> 入库链路跑在异步任务队列上，可以慢，可以重跑，追求的是吞吐与质量；查询链路跑在同步请求上，预算通常只有秒级，追求的是延迟与准确。把它们揉在一起设计，是很多 RAG 系统后来推倒重来的根源。</p>
+
+  <p><strong>第二，权限是检索的前置条件，不是后置过滤器。</strong> 图中编号 ① 的连线指向 Hybrid Retrieval 而不是 Answer——这条连线位置错了，系统就会出现数据泄露。</p>
+
+  <p><strong>第三，基础设施是横切的，不是纵列的。</strong> 缓存、观测、评测、配置中心不属于任何一层，它们贯穿每一条链路。这也是「能跑的 RAG」与「能运维的 RAG」之间的分界线。</p>
+</section>
+
+<!-- ============ 03 ============ -->
+<section class="chapter" id="s3">
+  <div class="ch-no">SECTION 03</div>
+  <h2 class="ch-title">把系统拆成两条主链路</h2>
+
+  <h3>链路一：Knowledge Ingestion Pipeline（知识入库）</h3>
+  <p>它回答的问题是：<em class="term">企业知识如何进入 RAG 系统</em>。</p>
+
+<pre class="pipe"><span class="hl">数据源</span> <span class="arrow">↓</span> 数据采集 <span class="arrow">↓</span> 解析 <span class="arrow">↓</span> 清洗 <span class="arrow">↓</span> <span class="hl">Chunking</span> <span class="arrow">↓</span> Metadata <span class="arrow">↓</span> <span class="hl">Embedding</span> <span class="arrow">↓</span> Index</pre>
+
+  <table class="tbl">
+    <tr><th style="width:22%">环节</th><th>核心职责</th><th style="width:34%">做错的后果</th></tr>
+    <tr><td><b>数据采集</b></td><td>连接 Confluence、SharePoint、Git、数据库等异构源；处理增量同步、版本变更、删除传播</td><td>知识陈旧，用户拿到过期答案而不自知</td></tr>
+    <tr><td><b>解析</b></td><td>把 PDF / Word / PPT 转为结构化文本；OCR 兜底扫描件与图片</td><td>表格、双栏、页眉页脚内容碎片化，检索命中也无法阅读</td></tr>
+    <tr><td><b>清洗</b></td><td>去噪、去重、归一化编码与格式</td><td>脏数据污染索引，垃圾片段反复被召回</td></tr>
+    <tr><td><b>Chunking</b></td><td>按语义与结构切分，控制块大小与重叠</td><td>语义被切断，召回的片段「半句无关、半句有理」</td></tr>
+    <tr><td><b>Metadata</b></td><td>抽取部门、密级、版本、时间、来源、权限标签</td><td>无法做权限过滤、时效过滤与溯源引用</td></tr>
+    <tr><td><b>Embedding &amp; Index</b></td><td>向量化并写入向量库与搜索引擎</td><td>检索阶段无从谈起</td></tr>
+  </table>
+
+  <h3>链路二：Online Query Pipeline（在线查询）</h3>
+  <p>它回答的问题是：<em class="term">用户问题如何最终变成答案</em>。</p>
+
+<pre class="pipe"><span class="hl">User Query</span> <span class="arrow">↓</span> Authentication <span class="arrow">↓</span> Permission <span class="arrow">↓</span> Query Understanding
+<span class="arrow">↓</span> Query Rewrite <span class="arrow">↓</span> Retrieval <span class="arrow">↓</span> Fusion <span class="arrow">↓</span> Rerank
+<span class="arrow">↓</span> Context Construction <span class="arrow">↓</span> <span class="hl">LLM</span> <span class="arrow">↓</span> Answer</pre>
+
+  <h3>为什么两条链路必须分开设计？</h3>
+  <p>因为它们的<b>时间预算、失败语义和优化目标完全不同</b>：</p>
+
+  <div class="duo">
+    <div class="card-h">
+      <h4 class="tag">Offline</h4>
+      <ul>
+        <li><b>时间预算：</b>分钟到小时级，异步执行</li>
+        <li><b>失败语义：</b>可重试、可回滚、可重跑全量</li>
+        <li><b>优化目标：</b>吞吐量与数据质量</li>
+        <li><b>演进频率：</b>Chunking 策略月级迭代</li>
+        <li><b>成本特征：</b>批量计算成本，一次投入摊薄到所有查询</li>
+      </ul>
+    </div>
+    <div class="card-h">
+      <h4 class="tag">Online</h4>
+      <ul>
+        <li><b>时间预算：</b>亚秒到秒级，同步阻塞</li>
+        <li><b>失败语义：</b>快速失败 + 降级，不能挂死用户</li>
+        <li><b>优化目标：</b>P99 延迟与答案准确率</li>
+        <li><b>演进频率：</b>Query 理解策略周级迭代</li>
+        <li><b>成本特征：</b>每次查询都产生 Token 与检索成本</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note"><b>工程权衡：</b>两条链路唯一的耦合点是索引本身。一旦你允许在线链路直接修改索引（例如「查询时动态入库」），你就同时破坏了两条链路的所有假设——延迟不可控、索引质量不可审计、权限校验路径断裂。坚持「写入走离线、查询走在线」，是这张架构图最重要的纪律。</div>
+</section>
+
+<!-- ============ 04 ============ -->
+<section class="chapter" id="s4">
+  <div class="ch-no">SECTION 04</div>
+  <h2 class="ch-title">Data Layer：企业知识从来不是「天然可用」的</h2>
+
+  <p>企业知识的真实形态是这样的：</p>
+
+  <ul class="grid-list">
+    <li>PDF（含扫描件）</li>
+    <li>Word / PPT / Excel</li>
+    <li>Markdown / HTML</li>
+    <li>Wiki（Confluence 等）</li>
+    <li>数据库 / API</li>
+    <li>图片（需 OCR）</li>
+    <li>视频字幕</li>
+  </ul>
+
+  <div class="pull">
+    为什么这些知识不能直接丢进 Vector DB？<br>
+    <small>因为 Vector DB 消费的是「干净的、带元数据的、语义完整的文本块」——而企业里几乎没有一样知识天然处于这个状态</small>
+  </div>
+
+  <p>一份典型的企业合同 PDF：扫描 + 盖章 + 手写批注 + 跨页表格。直接嵌入的结果是一堆语义破碎、互相污染的向量。所以数据层必须先回答一个存储职责划分的问题：</p>
+
+  <table class="tbl">
+    <tr><th style="width:22%">存储组件</th><th style="width:36%">职责边界</th><th>存什么</th></tr>
+    <tr><td><b>Object Storage</b></td><td>原始事实的最终归属地</td><td>原始 PDF/Word/图片二进制，永不修改，只增版本</td></tr>
+    <tr><td><b>Metadata DB</b></td><td>知识的「户口系统」</td><td>文档 ID、来源、版本、部门、密级、Chunk 与原文的偏移映射</td></tr>
+    <tr><td><b>Search Index</b></td><td>关键词与结构化检索</td><td>倒排索引、字段索引、过滤条件</td></tr>
+    <tr><td><b>Vector DB</b></td><td>语义检索</td><td>Chunk 向量 + 关联的元数据过滤字段</td></tr>
+  </table>
+
+  <div class="warn"><b>常见架构错误：</b>把 Vector DB 当成「知识的唯一存放地」。一旦 Embedding 模型升级、Chunking 策略调整，你需要全量重建索引——此时如果原始文档只存在于向量库里，你就回不去了。<b>原始文件永远留在 Object Storage，向量只是它的派生物，随时可丢弃、可重建。</b></div>
+</section>
+
+<!-- ============ 05 ============ -->
+<section class="chapter" id="s5">
+  <div class="ch-no">SECTION 05</div>
+  <h2 class="ch-title">Document Processing Layer：被低估的核心基础设施</h2>
+
+  <div class="flowstrip">
+    <span class="node">Document</span><span class="arr">→</span>
+    <span class="node">Parser</span><span class="arr">→</span>
+    <span class="node">OCR</span><span class="arr">→</span>
+    <span class="node">Layout Analysis</span><span class="arr">→</span>
+    <span class="node">Cleaning</span><span class="arr">→</span>
+    <span class="node">Structure Reconstruction</span><span class="arr">→</span>
+    <span class="node">Chunking</span><span class="arr">→</span>
+    <span class="node dark">Metadata</span>
+  </div>
+
+  <p>很多团队把文档解析当成「简单的数据预处理」，安排初级工程师用周末写完。六个月后他们会发现：检索效果差的根因调查里，<b>60% 的问题最终追溯到解析环节</b>——表格被拆散、双栏 PDF 串行、页眉被当作正文嵌入。</p>
+
+  <div class="pull">
+    文档解析是 RAG 的核心基础设施，而不是数据预处理。<br>
+    <small>检索层的所有下游组件，消费的都是解析层的输出——垃圾进，垃圾出，且下游无法自救</small>
+  </div>
+
+  <p>为什么它是「基础设施」？三个判断标准：</p>
+
+  <p><strong>1. 错误会被放大而非被吸收。</strong> Reranker 可以过滤掉不相关的片段，但无法修复一个被切碎的表格；LLM 可以忽略无关上下文，但无法还原丢失的行列关系。解析错误是<b>单向不可逆</b>地进入系统的。</p>
+
+  <p><strong>2. 它决定了 Chunking 的天花板。</strong> 好的切分依赖好的结构（标题层级、段落边界、表格完整性），而结构恰恰是解析层重建出来的。这也是为什么我们把 Structure Reconstruction 放在 Chunking 之前——<b>先恢复文档逻辑结构，再谈怎么切</b>。具体算法留待后续章节展开。</p>
+
+  <p><strong>3. 它有独立的 SLA 和演进节奏。</strong> 新文档类型（比如内部 CAD 图纸说明）需要扩展解析器；OCR 引擎需要独立升级和评测。这种组件值得独立的团队归属、独立的监控面板。</p>
+</section>
+
+<!-- ============ 06 ============ -->
+<section class="chapter" id="s6">
+  <div class="ch-no">SECTION 06</div>
+  <h2 class="ch-title">Index Layer：企业为什么通常不只有一个索引</h2>
+
+  <p>「把数据全丢进 Vector DB 就结束了」——这是 Demo 思维的典型残留。企业检索的真实查询形态决定了你需要<b>至少三类索引并存</b>：</p>
+
+  <table class="tbl">
+    <tr><th style="width:20%">索引类型</th><th style="width:28%">承载组件</th><th style="width:26%">擅长的问题</th><th>典型场景</th></tr>
+    <tr><td><b>Vector Index</b></td><td>向量数据库（Milvus / Qdrant / pgvector 等）</td><td>语义相似：「怎么处理部署后服务不可用的问题」</td><td>换一种说法也能找到答案</td></tr>
+    <tr><td><b>Keyword Index</b></td><td>Elasticsearch / OpenSearch</td><td>精确匹配：错误码 <code class="inline">RTC-10027</code>、型号 <code class="inline">SDK 4.6.2</code>、法规编号</td><td>用户搜的是一个「标识符」，语义相似反而帮倒忙</td></tr>
+    <tr><td><b>Metadata Index</b></td><td>Metadata Store（关系库 / 文档字段）</td><td>结构化过滤：部门 = 支付、密级 ≤ 内部、生效日期 ≥ 2025</td><td>权限、时效、范围控制的第一道闸门</td></tr>
+  </table>
+
+  <p>注意三者的关系不是并列竞争，而是<b>分工协作</b>：Metadata Index 通常作为前置过滤器叠加在另外两类索引的查询上（关于 Metadata Filtering 与检索的关系，见 §12）；Vector 与 Keyword 并行服务同一个查询，在检索层融合。</p>
+
+  <div class="note"><b>如果去掉 Keyword Index 会怎样？</b> 你的系统会在「错误码查询」这类最高频、最高价值的企业场景上整体失效——语义模型无法保证 <code class="inline">RTC-10027</code> 的向量与文档中同一错误码的向量足够接近，但 BM25 可以 100% 命中。反过来，去掉 Vector Index，系统会退回到 2015 年的关键词搜索，无法处理任何「换了说法」的问题。<b>企业两种问题都存在，所以两个索引都必须在。</b></div>
+</section>
+
+<!-- ============ 07 ============ -->
+<section class="chapter" id="s7">
+  <div class="ch-no">SECTION 07</div>
+  <h2 class="ch-title">Query Layer：检索之前发生了什么</h2>
+
+  <div class="flowstrip">
+    <span class="node dark">Query</span><span class="arr">→</span>
+    <span class="node">Intent Understanding</span><span class="arr">→</span>
+    <span class="node">Rewrite</span><span class="arr">→</span>
+    <span class="node">Expansion</span><span class="arr">→</span>
+    <span class="node">Filter Construction</span><span class="arr">→</span>
+    <span class="node dark">Retrieval</span>
+  </div>
+
+  <p>用户输入的 Query 和「适合检索的 Query」之间，通常隔着一道鸿沟。真实用户的提问往往是：口语化的、有错别字的、带上下文指代的（「<b>那这个呢？</b>」）、或混合了多种意图的。直接拿原始 Query 去检索，等于把最脏的数据喂给了最敏感的环节。</p>
+
+  <table class="tbl">
+    <tr><th style="width:24%">环节</th><th>它解决的问题</th><th style="width:30%">如果去掉会怎样</th></tr>
+    <tr><td><b>Intent Understanding</b></td><td>判断用户要什么：是知识问答、闲聊、还是检索型查询？知识库能答吗？</td><td>「帮我写周报」也触发检索，浪费一次全链路成本</td></tr>
+    <tr><td><b>Rewrite</b></td><td>消解指代、补全上下文、纠正拼写，产出独立完整的检索查询</td><td>多轮对话中「那第二种方案呢」检索不到任何东西</td></tr>
+    <tr><td><b>Expansion</b></td><td>扩展同义表述，提高召回覆盖面</td><td>术语体系不一致（用户说「退款」，文档写「撤单」）时漏召回</td></tr>
+    <tr><td><b>Filter Construction</b></td><td>从 Query 中抽出时间、产品、版本等结构化条件，转为 Metadata 过滤</td><td>「2024 年之后的政策」检索到 2019 年的文档，答案直接错误</td></tr>
+  </table>
+
+  <p>本篇只建立架构位置认知：Query Layer 是<b>检索质量的第零道工序</b>，它不产出答案，只产出「更好的查询」。具体算法与实现策略在后续 Query Understanding 专章展开。</p>
+</section>
+
+<!-- ============ 08 ============ -->
+<section class="chapter" id="s8">
+  <div class="ch-no">SECTION 08</div>
+  <h2 class="ch-title">Retrieval Layer：为什么企业必须 Hybrid Retrieval</h2>
+
+  <p>这是整个系统的心脏。先回答那个绕不开的问题：<em class="term">为什么不直接用纯 Vector Search？</em></p>
+
+  <p>因为两种检索模式的失败模式恰好<b>互补</b>：</p>
+
+  <div class="duo">
+    <div class="card-h stage-prod">
+      <h4 class="tag">Dense Retrieval · 语义通道</h4>
+      <ul>
+        <li>✅ 擅长：同义改写、跨语言、模糊描述</li>
+        <li>✅ 「服务挂了怎么办」→ 匹配「部署故障排查」</li>
+        <li>❌ 弱项：精确标识符——错误码、零件号、法条编号可能被「平滑」掉</li>
+        <li>❌ 弱项：新词、专有名词、未登录术语的向量质量差</li>
+      </ul>
+    </div>
+    <div class="card-h stage-prod">
+      <h4 class="tag">Sparse Retrieval · 关键词通道</h4>
+      <ul>
+        <li>✅ 擅长：精确匹配——<code class="inline">RTC-10027</code>、<code class="inline">SDK 4.6.2</code></li>
+        <li>✅ 擅长：术语型查询、缩写、型号规格</li>
+        <li>❌ 弱项：换一种说法就完全失配</li>
+        <li>❌ 弱项：无法理解「不稳定 ≈ 挂了 ≈ crash」</li>
+      </ul>
+    </div>
+  </div>
+
+  <figure class="fig">
+    <div class="svgwrap">
+    <svg viewBox="0 0 900 500" role="img" aria-label="Hybrid Retrieval 混合检索架构图">
+      <!-- Query -->
+      <rect x="370" y="24" width="160" height="42" rx="21" fill="#0f4c81" filter="url(#ns)"/>
+      <text x="450" y="50" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">User Query · 用户问题</text>
+      <line x1="450" y1="66" x2="450" y2="88" stroke="#b4762e" stroke-width="1.6" marker-end="url(#aa)"/>
+
+      <!-- 分流 -->
+      <g stroke="#b4762e" stroke-width="1.6" fill="none">
+        <path d="M450 90 C450 118 340 112 248 146" marker-end="url(#aa)"/>
+        <path d="M450 90 C450 118 560 112 652 146" marker-end="url(#aa)"/>
+      </g>
+
+      <!-- 双通道泳道 -->
+      <rect x="60" y="112" width="340" height="210" rx="12" fill="#eef3f9" stroke="#c9dcee"/>
+      <rect x="500" y="112" width="340" height="210" rx="12" fill="#fdf6e8" stroke="#e4cf9e"/>
+      <text x="230" y="138" text-anchor="middle" font-size="12" font-weight="700" fill="#33465e" letter-spacing="1">DENSE · 语义通道</text>
+      <text x="670" y="138" text-anchor="middle" font-size="12" font-weight="700" fill="#7a5a1e" letter-spacing="1">SPARSE · 关键词通道</text>
+
+      <!-- Dense -->
+      <rect x="110" y="152" width="240" height="44" rx="8" fill="#fff" stroke="#8fa8c4" filter="url(#ns)"/>
+      <text x="230" y="169" text-anchor="middle" font-size="12.5" font-weight="700" fill="#33465e">Dense Retrieval</text>
+      <text x="230" y="186" text-anchor="middle" font-size="10" fill="#6b7280">双塔编码 · 毫秒级全库近邻扫描</text>
+      <line x1="230" y1="196" x2="230" y2="216" stroke="#5b7fa6" stroke-width="1.6" marker-end="url(#ab)"/>
+      <path d="M150 232 v36 a80 12 0 0 0 160 0 v-36" fill="#fff" stroke="#8fa8c4" stroke-width="1.5"/>
+      <ellipse cx="230" cy="232" rx="80" ry="12" fill="#e8f0f7" stroke="#8fa8c4" stroke-width="1.5"/>
+      <text x="230" y="260" text-anchor="middle" font-size="12" font-weight="700" fill="#33465e">Vector DB</text>
+      <text x="230" y="274" text-anchor="middle" font-size="10" fill="#6b7280">语义向量索引</text>
+      <text x="230" y="306" text-anchor="middle" font-size="10.5" fill="#6b7280">语义相似 · 换一种说法也能命中</text>
+
+      <!-- Sparse -->
+      <rect x="550" y="152" width="240" height="44" rx="8" fill="#fff" stroke="#d9b06a" filter="url(#ns)"/>
+      <text x="670" y="169" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7a5a1e">Sparse Retrieval · BM25</text>
+      <text x="670" y="186" text-anchor="middle" font-size="10" fill="#8a7a5c">倒排精确匹配 · 毫秒级</text>
+      <line x1="670" y1="196" x2="670" y2="216" stroke="#b4762e" stroke-width="1.6" marker-end="url(#aa)"/>
+      <path d="M590 232 v36 a80 12 0 0 0 160 0 v-36" fill="#fff" stroke="#d9b06a" stroke-width="1.5"/>
+      <ellipse cx="670" cy="232" rx="80" ry="12" fill="#fdf3e3" stroke="#d9b06a" stroke-width="1.5"/>
+      <text x="670" y="260" text-anchor="middle" font-size="12" font-weight="700" fill="#7a5a1e">Elasticsearch</text>
+      <text x="670" y="274" text-anchor="middle" font-size="10" fill="#8a7a5c">倒排 · 关键词索引</text>
+      <text x="670" y="306" text-anchor="middle" font-size="10.5" fill="#8a7a5c">错误码 · 型号 · 术语 100% 命中</text>
+
+      <!-- 汇流 -->
+      <g stroke="#6b7280" stroke-width="1.6" fill="none">
+        <path d="M230 282 C230 316 310 322 348 336" marker-end="url(#ag)"/>
+        <path d="M670 282 C670 316 590 322 552 336" marker-end="url(#ag)"/>
+      </g>
+      <rect x="330" y="330" width="240" height="48" rx="8" fill="#0f4c81" filter="url(#ns)"/>
+      <text x="450" y="350" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Fusion / RRF 融合</text>
+      <text x="450" y="366" text-anchor="middle" font-size="10.5" fill="#dbe7f3">统一两套不可直接比较的打分体系</text>
+      <line x1="450" y1="378" x2="450" y2="398" stroke="#b4762e" stroke-width="1.6" marker-end="url(#aa)"/>
+
+      <!-- Top-K -->
+      <rect x="330" y="402" width="240" height="42" rx="8" fill="#b45309" filter="url(#ns)"/>
+      <text x="450" y="428" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Top-K 候选集 · 高召回</text>
+      <line x1="450" y1="444" x2="450" y2="464" stroke="#b4762e" stroke-width="1.6" marker-end="url(#aa)"/>
+      <text x="450" y="486" text-anchor="middle" font-size="11.5" fill="#6b7280">→ 进入 Reranker 精排（§09）</text>
+
+      <!-- Permission 卡 -->
+      <rect x="24" y="396" width="250" height="64" rx="8" fill="#f2f7f2" stroke="#7fa87f" stroke-dasharray="5 4"/>
+      <text x="149" y="420" text-anchor="middle" font-size="12" font-weight="700" fill="#3d5c3d">① Permission Service</text>
+      <text x="149" y="438" text-anchor="middle" font-size="10.5" fill="#55705a">RBAC / ABAC → Metadata 过滤下推</text>
+      <text x="149" y="452" text-anchor="middle" font-size="10.5" fill="#55705a">无权文档不进入候选集</text>
+      <path d="M276 426 L326 424" stroke="#6b7280" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+      <circle cx="36" cy="396" r="9" fill="#b45309" stroke="#fff" stroke-width="1.5"/>
+      <text x="36" y="399.5" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">1</text>
+    </svg>
+    </div>
+    <figcaption class="fig-cap"><b>图 2 · Hybrid Retrieval 架构</b> — 双通道并行召回：语义通道覆盖「换说法」的查询，关键词通道覆盖精确标识符；RRF 融合后输出高召回候选集，权限过滤在检索入口下推执行（编号 ① 与图 1 对应）。</figcaption>
+  </figure>
+
+  <p>两个通道不是「谁更好」的关系，而是<b>覆盖不同的失败面</b>。企业查询既包含「怎么解决线上服务抖动」（语义主导）也包含「RTC-10027 是什么」（精确主导），任何单通道架构都会在另一半查询上系统性失败。</p>
+
+  <div class="note"><b>架构要点：</b>融合（Fusion / RRF）的本质是把两套<b>不可直接比较的打分体系</b>（余弦相似度 vs BM25 分值）统一成一个排序，取长补短。RRF 为什么用排名倒数而不是原始分、各通道权重如何调——这些数学细节留给后续 Hybrid Retrieval 专章，本文只需记住它在架构图上的位置：<b>融合发生在召回之后、精排之前</b>。</div>
+</section>
+
+<!-- ============ 09 ============ -->
+<section class="chapter" id="s9">
+  <div class="ch-no">SECTION 09</div>
+  <h2 class="ch-title">Reranking Layer：从「找得全」到「排得准」</h2>
+
+  <div class="flowstrip">
+    <span class="node">High Recall<br/><small>召回优先</small></span><span class="arr">→</span>
+    <span class="node">Candidate Retrieval<br/><small>Top 50~100</small></span><span class="arr">→</span>
+    <span class="node dark">Reranker<br/><small>交叉精排</small></span><span class="arr">→</span>
+    <span class="node" style="border-color:#b45309;color:#b45309">High Precision<br/><small>Top 5~10</small></span>
+  </div>
+
+  <p>一个常见质疑：「Hybrid Retrieval 不是已经打分排序了吗，为什么还要 Reranker？」答案藏在检索系统的第一性原理里：</p>
+
+  <div class="pull">
+    Retrieval 负责「尽可能找全」，Reranker 负责「尽可能排准」。<br>
+    <small>这是一个刻意的分工——用便宜的模型扩大搜索面，用昂贵的模型做最终裁决</small>
+  </div>
+
+  <p>原因在于两类模型的<b>计算模式差异</b>：</p>
+
+  <p><strong>召回模型是「双塔」架构</strong>：Query 和文档分别独立编码成向量，离线算好文档向量，在线只算 Query 向量然后做近邻搜索——所以它能毫秒级扫描百万级文档，但 Query 和文档<b>从未真正交互</b>，精度天然受限。</p>
+
+  <p><strong>重排模型是「交叉编码」</strong>：把 Query 和每个候选文档拼在一起送进模型深度交互，精度显著更高——但代价是每个候选都要一次完整前向计算，只能负担几十个候选。</p>
+
+  <p>所以架构上的解法是<b>漏斗</b>：双塔负责从 10 万文档里捞出 50 个「大概相关」，Reranker 负责从 50 个里挑出 5 个「真正相关」。这不是过度设计，而是精度与成本的必然分工。</p>
+
+  <div class="warn"><b>如果去掉 Reranker 会怎样？</b> 上下文里会混入大量「弱相关」片段。LLM 面对五段半相关材料时，注意力被稀释，错误引用率和幻觉率同步上升——而且这类问题在上线前很难发现，因为 Demo 阶段的测试问题往往「检索得太容易」了。</div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section class="chapter" id="s10">
+  <div class="ch-no">SECTION 10</div>
+  <h2 class="ch-title">Context Engineering Layer：检索对了 ≠ 生成对了</h2>
+
+  <div class="flowstrip">
+    <span class="node">Retrieved Docs</span><span class="arr">→</span>
+    <span class="node">Deduplication</span><span class="arr">→</span>
+    <span class="node">Relevance Filtering</span><span class="arr">→</span>
+    <span class="node">Compression</span><span class="arr">→</span>
+    <span class="node">Context Selection</span><span class="arr">→</span>
+    <span class="node">Token Budget</span><span class="arr">→</span>
+    <span class="node dark">Prompt</span>
+  </div>
+
+  <p>Reranker 输出的 Top-K 依然<b>不能直接塞给 LLM</b>。在「检索结果」和「Prompt」之间，存在一个经常被省略、但省略必出事的工程层：</p>
+
+  <table class="tbl">
+    <tr><th style="width:24%">处理步骤</th><th>它防御的真实问题</th></tr>
+    <tr><td><b>Deduplication</b></td><td>同一文档的多个 Chunk 同时命中，重复内容白白消耗 Token，还放大单一来源的偏见</td></tr>
+    <tr><td><b>Relevance Filtering</b></td><td>Rerank 分数低于阈值的候选直接丢弃——「宁缺毋滥」，弱相关上下文比没有上下文更容易诱发幻觉</td></tr>
+    <tr><td><b>Compression</b></td><td>长文档只保留与 Query 相关的段落/句子，砍掉背景噪音</td></tr>
+    <tr><td><b>Context Selection</b></td><td>多样性选择，避免 Top-K 全部来自同一篇文档</td></tr>
+    <tr><td><b>Token Budget</b></td><td>为系统提示、检索上下文、对话历史、回答空间分配预算，防止上下文溢出或答案被挤压</td></tr>
+  </table>
+
+  <div class="stats">
+    <div class="stat"><div class="num">Lost in<br>the Middle</div><div class="lbl">长上下文中间位置的信息，LLM 的利用率显著低于两端——塞得越多≠用得越好</div></div>
+    <div class="stat"><div class="num">∝ Context</div><div class="lbl">长上下文成本随 Token 数线性甚至超线性增长，直接打在每次请求的账单上</div></div>
+    <div class="stat"><div class="num">P99 Latency</div><div class="lbl">输入 Token 数是推理延迟的一阶因素，上下文失控等于延迟失控</div></div>
+  </div>
+
+  <div class="warn"><b>本层存在的根本理由：</b>Retrieval 正确，不意味着 Generation 正确。检索层交付的是「排序后的候选」，生成层需要的是「结构化、去噪、预算内的证据包」——这是两种完全不同的产品。把前者直接交给后者，等于让 LLM 自己做它并不擅长的信息工程。</div>
+</section>
+
+<!-- ============ 11 ============ -->
+<section class="chapter" id="s11">
+  <div class="ch-no">SECTION 11</div>
+  <h2 class="ch-title">Generation Layer：LLM 在企业 RAG 中到底负责什么</h2>
+
+  <div class="flowstrip">
+    <span class="node">Context</span><span class="arr">+</span>
+    <span class="node">Prompt</span><span class="arr">→</span>
+    <span class="node dark">LLM</span><span class="arr">→</span>
+    <span class="node">Grounded Answer</span><span class="arr">→</span>
+    <span class="node">Citation</span>
+  </div>
+
+  <p>走到这一层，很多人以为终于到了「主角」。但在企业 RAG 的架构里，LLM 的职责被严格限定为一件事：<em class="term">在给定证据内做推理与表达</em>。它不是知识源——知识源是检索层交付的 Context。</p>
+
+  <table class="tbl">
+    <tr><th style="width:24%">能力</th><th>含义</th></tr>
+    <tr><td><b>Grounded Generation</b></td><td>答案中的每个事实性断言都应能追溯到上下文中的证据，禁止模型动用「记忆」补充企业知识</td></tr>
+    <tr><td><b>Citation / Source Attribution</b></td><td>输出引用标注，指向原文档与位置——这是企业用户建立信任的最低门槛，也是审计的硬性要求</td></tr>
+    <tr><td><b>Answerability 判断</b></td><td>评估「检索到的上下文是否足以回答问题」，不足以回答时触发拒答而非强行作答</td></tr>
+    <tr><td><b>Abstention（拒答）</b></td><td>主动说「知识库中没有找到相关依据」，并给出替代建议</td></tr>
+    <tr><td><b>Hallucination 抑制</b></td><td>通过 Prompt 约束 + 引用校验 + 评测回归三道手段，把幻觉率压到业务可接受线以下</td></tr>
+  </table>
+
+  <h3>企业 RAG 为什么必须有「拒答能力」？</h3>
+
+  <p>C 端产品里，一个自信但错误的答案可能只是个小尴尬；企业场景里，它可能是<b>一次错误的安全操作、一份错误的法律依据、一次错误的报销审批</b>。对银行、医疗、法务场景而言：</p>
+
+  <div class="note"><b>一次诚实的「我不知道」，其业务价值远高于十次流畅的胡编。</b> 拒答不是能力缺陷，而是企业级系统与玩具系统之间的分水岭——它意味着系统知道自己「知识边界在哪里」，并且敢于承认。而拒答能力的前提，是上游 Relevance Filtering 与 Answerability 判断已经为它准备好「证据不足」的信号。<b>拒答是整个链路协作的产物，不是 Prompt 里的一句「不知道就说不知道」。</b></div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section class="chapter" id="s12">
+  <div class="ch-no">SECTION 12</div>
+  <h2 class="ch-title">Security &amp; Permission Layer：企业级与 Demo 的真正分界线</h2>
+
+  <div class="flowstrip">
+    <span class="node">User</span><span class="arr">→</span>
+    <span class="node">Identity</span><span class="arr">→</span>
+    <span class="node">Tenant</span><span class="arr">→</span>
+    <span class="node">Role</span><span class="arr">→</span>
+    <span class="node">Permission</span><span class="arr">→</span>
+    <span class="node dark">Metadata Filter</span><span class="arr">→</span>
+    <span class="node dark">Retrieval</span>
+  </div>
+
+  <p>这一节请务必记住图上那个箭头的位置：</p>
+
+  <div class="pull">
+    权限控制必须进入 Retrieval，而不是等答案生成之后再过滤。<br>
+    <small>事后过滤防不住的，恰恰是最危险的两条泄露路径</small>
+  </div>
+
+  <p>为什么「生成后再过滤」是错误的架构？两条致命路径：</p>
+
+  <p><strong>路径一：无权文档没有进入生成，但影响了检索排序。</strong> 无权文档参与召回会挤占有权文档的名额（结果错误），其标题或摘要还可能在调试日志、中间态展示中泄露（数据泄露）。</p>
+
+  <p><strong>路径二：无权文档进入了上下文并污染了答案。</strong> 模型可能综合了无权文档的信息却没有直接引用它——事后过滤引用根本挡不住这种「间接泄露」。</p>
+
+  <p>正确做法是把权限转换成<b>检索时下推的元数据过滤条件</b>，让无权文档从一开始就不进入候选集。</p>
+
+  <table class="tbl">
+    <tr><th style="width:22%">机制</th><th>在企业 RAG 中的角色</th></tr>
+    <tr><td><b>RBAC</b></td><td>基于角色授权：「HR 角色」可查薪酬制度库。实现简单，适合粗粒度场景</td></tr>
+    <tr><td><b>ABAC</b></td><td>基于属性动态判断：「文档密级 ≤ 用户 clearance 且 部门 ∈ 用户可见部门」。灵活，覆盖细粒度企业需求</td></tr>
+    <tr><td><b>Multi-Tenant</b></td><td>租户级隔离，是 SaaS 化 RAG 平台的前提：数据、索引、配置三层都要隔离</td></tr>
+    <tr><td><b>Metadata Filtering</b></td><td>权限模型的「执行器」——把 RBAC/ABAC 判定结果编译成检索过滤条件，在向量库与 ES 查询中同时生效</td></tr>
+    <tr><td><b>Tenant Isolation</b></td><td>物理隔离（独立索引）或逻辑隔离（租户字段强制过滤），需要在索引设计期决定，事后改造成本极高</td></tr>
+  </table>
+
+  <div class="warn"><b>架构纪律：</b>权限过滤条件必须同时下推到 Vector DB 查询和 BM25 查询——两个通道漏掉任何一个，Hybrid Retrieval 就变成了「权限旁路」。具体的权限模型设计、过滤性能优化、缓存与权限一致性问题，后续安全专篇单独展开。</div>
+</section>
+
+<!-- ============ 13 ============ -->
+<section class="chapter" id="s13">
+  <div class="ch-no">SECTION 13</div>
+  <h2 class="ch-title">Infrastructure Layer：让系统可运维、可迭代、可信任</h2>
+
+  <h3>Cache：延迟与成本的杠杆</h3>
+  <table class="tbl">
+    <tr><th style="width:26%">缓存类型</th><th>命中场景</th><th style="width:30%">收益</th></tr>
+    <tr><td><b>Embedding Cache</b></td><td>相同/相似 Query 不重复调用 Embedding API</td><td>降低首环节延迟与 API 成本</td></tr>
+    <tr><td><b>Retrieval Cache</b></td><td>相同 Query 直接复用检索结果</td><td>跳过整个检索链路</td></tr>
+    <tr><td><b>Semantic Cache</b></td><td>语义等价的问题（「怎么退款」≈「退款流程是什么」）直接复用答案</td><td>高频 FAQ 场景成本大幅下降，但需警惕误命中</td></tr>
+    <tr><td><b>Response Cache</b></td><td>完全相同请求复用完整响应</td><td>兜底热点，需与权限、时效联动失效</td></tr>
+  </table>
+
+  <div class="note"><b>缓存的企业级陷阱：</b>Semantic Cache 的 key 是「语义」，而权限是「身份」——A 用户缓存的答案直接回给 B 用户，可能构成越权泄露。<b>任何缓存的 key 都必须包含权限上下文</b>，这是 Demo 架构绝不会想到、企业架构必须面对的问题。</div>
+
+  <h3>Model Gateway：模型的统一入口</h3>
+  <p>统一管理 LLM、Embedding、Reranker 三类模型的调用：路由与降级、限流与配额、成本核算、A/B 分流、密钥管理。它的存在意味着——<b>换模型不改业务代码</b>。在企业里，Embedding 模型的更换是必然事件（模型在进步），没有 Gateway 的团队每次换模型都要全链路发版。</p>
+
+  <h3>Observability：看得见，才谈得上治理</h3>
+  <p>每次请求至少记录：<code class="inline">Query（原文 + 改写后）</code>、<code class="inline">每路检索的召回与分数</code>、<code class="inline">Rerank 后排序</code>、<code class="inline">最终 Context</code>、<code class="inline">Token 消耗</code>、<code class="inline">各环节 Latency</code>、<code class="inline">错误与降级事件</code>。RAG 系统的故障排查是典型的「跨七层链路追凶」，没有 Trace 等于蒙眼修车。</p>
+
+  <h3>Evaluation：质量是回归出来的，不是测出来的</h3>
+
+<pre class="pipe"><span class="hl">Offline Evaluation</span> <span class="arrow">↓</span> Regression（回归基线） <span class="arrow">↓</span> <span class="hl">Online Evaluation</span> <span class="arrow">↓</span> Feedback（用户反馈回流） <span class="arrow">↺</span> 回到离线</pre>
+
+  <p>评测闭环把「改 Chunking 策略」「换 Embedding 模型」「调 Rerank 阈值」从赌博变成工程：每次变更跑离线回归，确认指标不倒退再灰度上线，用线上反馈验证离线结论。<b>没有评测体系的 RAG 团队，最终都会陷入「每次优化这里、那里就悄悄变差」的循环。</b></p>
+
+  <div class="pull">
+    企业级 RAG 必须可观测、可评估、可回归。<br>
+    <small>这三者共同构成「敢持续迭代」的前提</small>
+  </div>
+</section>
+
+<!-- ============ 14 ============ -->
+<section class="chapter" id="s14">
+  <div class="ch-no">SECTION 14</div>
+  <h2 class="ch-title">一次完整请求到底发生了什么？</h2>
+
+  <p>架构图看再多遍，不如跟着一个真实请求走一遍。设定场景：一家做 RTC SDK 的公司，内部知识库包含 SDK 文档、FAQ、故障案例库，RAG 系统面向内部技术支持团队。</p>
+
+  <div class="note" style="font-family:'Noto Serif SC',serif; font-size:17px; background:var(--warm-soft); border-left-color:var(--warm)">
+    <b style="color:var(--warm)">用户提问：</b>「RTC SDK 4.6.2 在 Android 14 上出现 RTC-10027 错误怎么办？」
+  </div>
+
+  <ol class="trace">
+    <li><b>Authentication</b><span class="out">验证 Token，确认这是支持团队员工「小张」的合法请求</span></li>
+    <li><b>Tenant Identification</b><span class="out">解析出租户 = 内部技术支持域，路由到对应索引与配置</span></li>
+    <li><b>Permission Check</b><span class="out">RBAC 判定：小张拥有「SDK 文档（全部）+ 故障案例库（普通级）」权限，不含薪酬类知识域；权限被编译为 Metadata 过滤条件，随请求下推</span></li>
+    <li><b>Query Understanding</b><span class="out">意图 = 技术故障排查；抽取结构化信号：产品 = RTC SDK，版本 = 4.6.2，平台 = Android 14，错误码 = RTC-10027</span></li>
+    <li><b>Query Rewrite</b><span class="out">改写为独立完整的查询：「RTC SDK 4.6.2 Android 14 RTC-10027 错误原因与解决方案」，并生成同义扩展（如 crash / 异常 / 中断）</span></li>
+    <li><b>Dense Retrieval</b><span class="out">向量通道召回 40 条语义相关候选：故障排查指南、Android 14 兼容性说明、类似案例</span></li>
+    <li><b>BM25 Retrieval</b><span class="out">关键词通道精确命中所有包含 <code class="inline">RTC-10027</code> 的已知 issue 条目——这正是语义通道容易漏掉的</span></li>
+    <li><b>Fusion（RRF）</b><span class="out">两路结果按排名倒数融合，得到约 60 条去重候选</span></li>
+    <li><b>Top-K</b><span class="out">保留前 30 名，同时执行权限过滤下推——无权文档在这一步之前已不存在于候选集中</span></li>
+    <li><b>Rerank</b><span class="out">交叉编码器对 30 条逐一精排，同时版本匹配度（4.6.2）与平台匹配度（Android 14）获得高权重，最终保留 Top 6</span></li>
+    <li><b>Context Construction</b><span class="out">去重后按「已知问题条目 → 根因分析 → 解决方案」组织证据包，控制在 4K Token 预算内，并为每段标注来源文档与章节</span></li>
+    <li><b>LLM Generation</b><span class="out">模型基于证据生成回答：错误原因（Android 14 前台服务限制 + 旧版 SDK 未适配）、分步解决方案、规避建议；判定证据充分，无需拒答</span></li>
+    <li><b>Citation</b><span class="out">每个结论性断言挂接引用：〔FAQ-2231 §3〕〔Release Notes 4.6.x〕〔Case #5821〕，用户可一键跳转原文</span></li>
+    <li><b>Logging / Trace</b><span class="out">全链路 Trace 入库：原始与改写 Query、两路召回分数、精排分数、最终 Context、Token 消耗、各环节耗时——这次请求进入评测数据集，未来每次系统变更都要在这个案例上不倒退</span></li>
+  </ol>
+
+  <div class="stats">
+    <div class="stat"><div class="num">14 步</div><div class="lbl">一次「简单提问」穿过的最小组件链</div></div>
+    <div class="stat"><div class="num">2 通道</div><div class="lbl">检索阶段并行的召回路径</div></div>
+    <div class="stat"><div class="num">3 次过滤</div><div class="lbl">权限过滤、相关性过滤、去重压缩</div></div>
+    <div class="stat"><div class="num">1 条 Trace</div><div class="lbl">全部环节可回溯、可评测、可回归</div></div>
+  </div>
+
+  <p>这就是为什么「几十行代码的 Demo」与「企业级系统」之间隔着一整个工程学科。用户看到的是一秒钟的等待，系统里是 14 个组件的精确协作——<b>而其中任何一个环节掉链子，用户看到的都会是一个「看起来自信但错了」的答案。</b></p>
+</section>
+
+<!-- ============ 15 ============ -->
+<section class="chapter" id="s15">
+  <div class="ch-no">SECTION 15</div>
+  <h2 class="ch-title">为什么企业 RAG 必须分层？</h2>
+
+  <p>从软件架构的经典视角看，分层从来不是目的，<b>隔离变化</b>才是。RAG 系统各层的变化速率差异极大——这是分层的根本依据：</p>
+
+  <table class="tbl">
+    <tr><th style="width:20%">层</th><th style="width:32%">核心职责</th><th style="width:22%">典型组件</th><th>如果去掉这一层</th></tr>
+    <tr><td><b>Data Layer</b></td><td>知识的采集、存储与治理</td><td>Object Storage · Metadata DB · 连接器</td><td>知识不可追溯、不可重建，模型升级即灾难</td></tr>
+    <tr><td><b>Retrieval Layer</b></td><td>高召回地找到候选</td><td>Vector DB · ES · Fusion</td><td>漏召回，语义与关键词二选一必然偏废</td></tr>
+    <tr><td><b>Ranking Layer</b></td><td>高精度地排序筛选</td><td>Reranker</td><td>噪音上下文拉高幻觉率与成本</td></tr>
+    <tr><td><b>Context Layer</b></td><td>构建预算内的证据包</td><td>去重 · 压缩 · Token Budget</td><td>延迟与成本失控，Lost in the Middle 发作</td></tr>
+    <tr><td><b>Generation Layer</b></td><td>有据生成与引用溯源</td><td>LLM · Citation · 拒答</td><td>答案不可信、不可审计、不敢上线</td></tr>
+    <tr><td><b>Security Layer</b></td><td>权限与租户隔离</td><td>RBAC/ABAC · Metadata Filter</td><td>数据越权泄露，企业直接一票否决</td></tr>
+    <tr><td><b>Infrastructure Layer</b></td><td>缓存 / 网关 / 观测 / 配置</td><td>Cache · Model Gateway · Tracing</td><td>成本与延迟失控，故障无法定位</td></tr>
+    <tr><td><b>Evaluation Layer</b></td><td>质量回归与反馈闭环</td><td>离线评测 · 线上反馈</td><td>每次迭代都是赌博，优化互相打架</td></tr>
+  </table>
+
+  <p>分层带来的七项工程价值，本质上都来自同一件事——<b>把耦合的复杂度拆成可独立处理的问题</b>：</p>
+
+  <ul class="grid-list">
+    <li><b>独立优化：</b>Chunking 调整不必动检索代码</li>
+    <li><b>独立扩展：</b>检索层 QPS 高就单独扩检索集群</li>
+    <li><b>独立替换模型：</b>换 Embedding / Reranker / LLM 互不影响</li>
+    <li><b>降低耦合：</b>新人的改动被限制在单层内爆炸半径</li>
+    <li><b>方便监控：</b>每层有独立指标与告警</li>
+    <li><b>方便 A/B Test：</b>单层灰度，效果归因清晰</li>
+    <li><b>方便问题定位：</b>答案错了，逐层 Trace 找到元凶</li>
+  </ul>
+
+  <div class="note"><b>反例即证明：</b>见过太多「一体化 RAG 服务」——解析、检索、生成、Prompt 全在一个函数里。它的第一次成功很容易，第一次重大变更（比如换 Embedding 模型）就会发现：无法评估影响面、无法灰度、无法回滚、无法归因。分层的意义在系统演进到第二个月之后才开始真正显现。</div>
+</section>
+
+<!-- ============ 16 ============ -->
+<section class="chapter" id="s16">
+  <div class="ch-no">SECTION 16</div>
+  <h2 class="ch-title">哪些组件不是必须的？——警惕架构过剩</h2>
+
+  <p>读完前面的架构图，最危险的误读是：<em class="term">企业 RAG = 图上所有东西一次性全上。</em> 恰恰相反。<b>架构复杂度应该由业务问题驱动，而不是由技术名词驱动。</b>正确的路径是分级演进：</p>
+
+  <div class="duo">
+    <div class="card-h stage-mvp">
+      <h4 class="tag">MVP · 先证明价值</h4>
+<pre class="pipe" style="margin:10px 0; font-size:12.5px">Parser → Chunk → Embedding
+→ Vector DB → LLM</pre>
+      <ul>
+        <li>目标：两周内让业务方看到可能性</li>
+        <li>只选最高价值的文档集（几百篇，非扫描件）</li>
+        <li>不接权限（数据本身可全员可见）</li>
+        <li>不建评测（靠人工抽检验证）</li>
+        <li>明确告诉业务方：这是验证品，不是产品</li>
+      </ul>
+    </div>
+    <div class="card-h stage-prod">
+      <h4 class="tag">Production · 真实用户上线</h4>
+<pre class="pipe" style="margin:10px 0; font-size:12.5px">+ Hybrid Retrieval
++ Reranker
++ Permission
++ Cache
++ Observability
++ Evaluation</pre>
+      <ul>
+        <li>触发条件：真实用户 + 真实权限 + 真实文档规模</li>
+        <li>Hybrid 解决精确标识符查询失效</li>
+        <li>权限进入检索，这是上线的<b>硬门槛</b></li>
+        <li>观测 + 评测让迭代不再靠感觉</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card-h stage-ent" style="margin-top:16px; border:1px solid var(--line); border-top:3px solid var(--warm); border-radius:var(--radius); padding:22px 24px;">
+    <h4 class="tag" style="display:inline-block;background:var(--warm-soft);color:var(--warm);padding:3px 12px;border-radius:20px;font-family:'Noto Serif SC',serif;font-size:13px;margin-bottom:12px;">Complex Enterprise · 问题驱动再引入</h4>
+    <p style="margin-bottom:10px">以下组件只有在<b>对应的业务问题真实出现</b>时才值得引入：</p>
+    <table class="tbl" style="margin:10px 0 0">
+      <tr><th style="width:26%">组件</th><th>它解决什么真实问题</th></tr>
+      <tr><td><b>Query Planning</b></td><td>复杂问题需要拆解为多个子查询时（多跳推理类问题占比显著时才值得）</td></tr>
+      <tr><td><b>Adaptive Retrieval</b></td><td>简单问题不需要检索、复杂问题需要多轮检索——当「一律检索」造成明显成本/延迟浪费时</td></tr>
+      <tr><td><b>Agentic RAG</b></td><td>问题需要「检索 → 思考 → 再检索」的循环决策时</td></tr>
+      <tr><td><b>Multi-Agent</b></td><td>跨域协作（如同时查工单系统 + 文档库 + 监控数据）时</td></tr>
+      <tr><td><b>Knowledge Graph</b></td><td>多跳关系查询密集（「A 部门负责的产品的负责人向谁汇报」）时</td></tr>
+    </table>
+  </div>
+
+  <div class="warn"><b>一个诚实的判断标准：</b>如果你无法说出「引入组件 X 是为了解决我们系统的哪个已观测到的问题」，就不要引入它。每一个组件都是真实的运维负担、延迟成本和故障面。技术选型的成熟，不是「都用上了」，而是<b>「知道为什么不用」</b>。</div>
+</section>
+
+<!-- ============ 17 ============ -->
+<section class="chapter" id="s17">
+  <div class="ch-no">SECTION 17</div>
+  <h2 class="ch-title">架构演进：从 Naive RAG 到 Agentic RAG</h2>
+
+  <figure class="fig">
+    <div class="svgwrap">
+    <svg viewBox="0 0 1040 220" role="img" aria-label="RAG 架构演进路线图">
+      <g stroke="#6b7280" stroke-width="1.6" fill="none">
+        <line x1="158" y1="102" x2="180" y2="102" marker-end="url(#ag)"/>
+        <line x1="332" y1="102" x2="354" y2="102" marker-end="url(#ag)"/>
+        <line x1="506" y1="102" x2="528" y2="102" marker-end="url(#ag)"/>
+        <line x1="680" y1="102" x2="702" y2="102" marker-end="url(#ag)"/>
+        <line x1="854" y1="102" x2="876" y2="102" marker-end="url(#ag)"/>
+      </g>
+
+      <g filter="url(#ns)">
+        <rect x="12"   y="54" width="146" height="96" rx="10" fill="#f1f0ec" stroke="#b9b4a6"/>
+        <rect x="186"  y="54" width="146" height="96" rx="10" fill="#e8f0f7" stroke="#8fa8c4"/>
+        <rect x="360"  y="54" width="146" height="96" rx="10" fill="#e8f0f7" stroke="#8fa8c4"/>
+        <rect x="534"  y="54" width="146" height="96" rx="10" fill="#0f4c81"/>
+        <rect x="708"  y="54" width="146" height="96" rx="10" fill="#fdf3e3" stroke="#d9b06a"/>
+        <rect x="882"  y="54" width="146" height="96" rx="10" fill="#fdf2f5" stroke="#c4738f"/>
+      </g>
+
+      <rect x="567" y="30" width="80" height="18" rx="9" fill="#b45309"/>
+      <text x="607" y="43" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">本系列基线</text>
+
+      <g text-anchor="middle" font-size="13.5" font-weight="700">
+        <text x="85"  y="88"  fill="#55524a">Naive RAG</text>
+        <text x="259" y="88"  fill="#2c4a68">Hybrid RAG</text>
+        <text x="433" y="88"  fill="#2c4a68">Rerank RAG</text>
+        <text x="607" y="88"  fill="#ffffff">Enterprise RAG</text>
+        <text x="781" y="88"  fill="#7a5a1e">Adaptive RAG</text>
+        <text x="955" y="88"  fill="#8f3153">Agentic RAG</text>
+      </g>
+      <g text-anchor="middle" font-size="10.5">
+        <text x="85"  y="110" fill="#7d7a70">向量检索 + 直接生成</text>
+        <text x="85"  y="128" fill="#7d7a70">验证问答可行性</text>
+        <text x="259" y="110" fill="#4a6a8c">Dense + BM25 双通道</text>
+        <text x="259" y="128" fill="#4a6a8c">解决精确标识符查询</text>
+        <text x="433" y="110" fill="#4a6a8c">交叉编码精排</text>
+        <text x="433" y="128" fill="#4a6a8c">解决弱相关噪音</text>
+        <text x="607" y="110" fill="#cfe0ef">权限 · 观测 · 评测 · 缓存</text>
+        <text x="607" y="128" fill="#cfe0ef">解决企业落地工程</text>
+        <text x="781" y="110" fill="#a08350">按复杂度动态检索</text>
+        <text x="781" y="128" fill="#a08350">解决一律检索的浪费</text>
+        <text x="955" y="110" fill="#b06e88">自主规划 · 工具 · 循环</text>
+        <text x="955" y="128" fill="#b06e88">解决开放式任务</text>
+      </g>
+
+      <text x="520" y="196" text-anchor="middle" font-size="12" fill="#6b7280">演进为叠加关系：Enterprise RAG 内部仍包含 Hybrid 与 Rerank —— 复杂度由业务问题驱动，而非技术名词驱动</text>
+    </svg>
+    </div>
+    <figcaption class="fig-cap"><b>图 3 · RAG 架构演进路线</b> — 阶段间为叠加关系而非淘汰关系；深蓝的 Enterprise RAG 是本系列重点基线，其后的 Adaptive / Agentic 为进阶方向。</figcaption>
+  </figure>
+
+  <table class="tbl">
+    <tr><th style="width:22%">阶段</th><th style="width:40%">解决的核心问题</th><th>遗留的问题（推动下一阶段）</th></tr>
+    <tr><td><b>Naive RAG</b></td><td>让「知识问答」这件事成立</td><td>换说法找不到、错误码查不到、噪音上下文多</td></tr>
+    <tr><td><b>Hybrid RAG</b></td><td>语义与精确关键词双覆盖</td><td>召回多但排序差，弱相关内容诱发幻觉</td></tr>
+    <tr><td><b>Rerank RAG</b></td><td>精度问题：把「找得全」升级为「排得准」</td><td>无权限即不可上线；效果不可度量、不可回归</td></tr>
+    <tr><td><b>Enterprise RAG</b></td><td>企业落地工程：安全、观测、评测、成本</td><td>「一律检索」对简单问题浪费、对复杂问题不足</td></tr>
+    <tr><td><b>Adaptive RAG</b></td><td>按问题复杂度动态决定检索策略</td><td>固定的「判断 → 检索」流程仍无法处理开放式任务</td></tr>
+    <tr><td><b>Agentic RAG</b></td><td>自主规划、多轮检索、工具协同</td><td>——（本系列后续专篇展开）</td></tr>
+  </table>
+
+  <p>两个提醒：其一，这张演进图<b>不是淘汰关系而是叠加关系</b>——Enterprise RAG 内部依然包含 Hybrid 与 Rerank，Adaptive 是在 Enterprise 基座上加策略层。其二，演进路线的终点不一定是 Agentic：多数企业的知识问答场景，打磨好 Enterprise RAG 的基线质量，收益远大于追逐新范式。</p>
+</section>
+
+<!-- ============ 18 ============ -->
+<section class="chapter" id="s18">
+  <div class="ch-no">SECTION 18</div>
+  <h2 class="ch-title">最终总结：建立统一认知</h2>
+
+  <p>如果说第 1 篇回答的是「Why RAG」，这一篇建立的架构认知就是后续所有章节的「地图」。请把它压缩成一行：</p>
+
+  <div class="formula">
+    <span class="k">Enterprise RAG</span><br>
+    <span class="op">=</span> <span class="k">Data</span> <span class="op">+</span> <span class="k">Retrieval</span> <span class="op">+</span> <span class="k">Ranking</span> <span class="op">+</span> <span class="k">Context</span> <span class="op">+</span> <span class="k">Generation</span><br>
+    <span class="op">+</span> <span class="k">Security</span> <span class="op">+</span> <span class="k">Evaluation</span> <span class="op">+</span> <span class="k">Infrastructure</span>
+  </div>
+
+  <p>本篇的五个关键结论，值得在团队内对齐：</p>
+
+  <p><strong>1. 企业 RAG 是检索系统，不是模型调用。</strong> LLM 是渲染引擎，系统的上限由检索与数据质量决定。</p>
+
+  <p><strong>2. 离线入库与在线查询是两条链路，唯一耦合点是索引。</strong> 写入纪律决定系统可维护性。</p>
+
+  <p><strong>3. 权限必须在检索时下推，而非生成后过滤。</strong> 这是企业级与 Demo 的分界线，也是安全底线。</p>
+
+  <p><strong>4. 召回找全、精排排准、上下文工程控本、生成层有据可拒。</strong> 每层职责单一，去掉任何一层都有明确的失败模式。</p>
+
+  <p><strong>5. 架构复杂度由业务问题驱动。</strong> 从 MVP 到 Production 到 Complex Enterprise，每一级都应有明确的触发条件。</p>
+
+  <div class="pull" style="font-size:23px">
+    真正困难的从来不是「让 RAG 跑起来」，<br>
+    而是让它在真实企业环境中<br>
+    长期稳定、准确、可控、可观测、可扩展地运行。<br>
+    <small>—— 本系列贯穿始终的核心观点</small>
+  </div>
+
+  <p>从下一篇开始，我们沿着这张地图逐层深入。第一站是整个系统的地基——<b>知识入库链路</b>：企业级数据工程与文档解析的完整实践。</p>
+</section>
+
+<footer class="end">
+  <p>《企业级 RAG 架构设计与工程实践》· 第 2 篇 / 架构总览篇</p>
+  <p class="next">下一篇 → <b>《企业知识如何进来？数据工程与文档解析的完整实践》</b></p>
+</footer>
+
+</div>
+</body>
+</html>
