@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chunking 决定 RAG 上限？企业知识切分策略深度解析 | 企业级 RAG 架构设计与工程实践 (4)</title>
+    <style>
+        :root {
+            --primary-color: #0f172a;
+            --accent-color: #3b82f6;
+            --accent-light: #eff6ff;
+            --text-main: #334155;
+            --text-secondary: #64748b;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-serif: 'Merriweather', "Georgia", serif;
+            --spacing-unit: 1rem;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.8;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4 {
+            color: var(--primary-color);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.3;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-bottom: 3rem;
+            font-family: var(--font-serif);
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            margin-top: 4rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+            position: relative;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 60px;
+            height: 2px;
+            background-color: var(--accent-color);
+        }
+
+        h3 {
+            font-size: 1.35rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        p { margin-bottom: 1.5rem; }
+
+        strong { color: var(--primary-color); font-weight: 700; }
+
+        /* Components */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+
+        .case-study {
+            border-left: 4px solid var(--accent-color);
+            background: linear-gradient(to right, var(--accent-light), var(--bg-card));
+        }
+
+        .block-quote {
+            background: var(--bg-card);
+            border-left: 4px solid var(--primary-color);
+            padding: 1.5rem;
+            font-style: italic;
+            color: var(--text-secondary);
+            margin: 2rem 0;
+            font-family: var(--font-serif);
+        }
+
+        .diagram-container {
+            text-align: center;
+            margin: 2.5rem 0;
+            padding: 1rem;
+            background: #fff;
+            border-radius: var(--radius);
+            border: 1px dashed var(--border-color);
+        }
+
+        /* Lists */
+        ul, ol {
+            padding-left: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        li { margin-bottom: 0.5rem; }
+        
+        /* Code Blocks */
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            overflow-x: auto;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+        
+        code {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            background: rgba(0,0,0,0.05);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: var(--accent-color);
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+            font-size: inherit;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--accent-light);
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: #fcfcfc; }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: var(--accent-light);
+            color: var(--accent-color);
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-right: 0.5rem;
+        }
+
+        /* SVG Styles */
+        .hand-drawn-svg {
+            max-width: 100%;
+            height: auto;
+            font-family: var(--font-main);
+        }
+        .svg-text { font-size: 14px; fill: var(--text-secondary); font-weight: 600; }
+        .svg-box { fill: var(--bg-card); stroke: var(--primary-color); stroke-width: 2; rx: 4; }
+        .svg-line { stroke: var(--text-secondary); stroke-width: 2; fill: none; }
+        .svg-arrow { stroke: var(--accent-color); stroke-width: 2; fill: var(--accent-color); }
+        .svg-highlight { fill: var(--accent-light); stroke: var(--accent-color); stroke-dasharray: 4; }
+
+        /* Next Article Teaser */
+        .next-article {
+            margin-top: 5rem;
+            padding: 2rem;
+            background: var(--primary-color);
+            color: white;
+            border-radius: var(--radius);
+            text-align: center;
+        }
+        .next-article h3 { color: white; margin-top: 0; }
+        .next-article p { color: #cbd5e1; }
+
+        /* Footer */
+        .footer {
+            margin-top: 3rem;
+            text-align: center;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- Header -->
+    <header>
+        <span class="tag">企业级 RAG 架构设计</span>
+        <span class="tag">工程实践</span>
+        <h1>Chunking 决定 RAG 上限？企业知识切分策略深度解析</h1>
+        <p class="subtitle">第 4 篇 · 从“搜得到但答不对”看企业知识库的颗粒度设计</p>
+    </header>
+
+    <!-- Intro Case Study -->
+    <section>
+        <div class="card case-study">
+            <h3>真实场景：RTC 故障排查中的“断章取义”</h3>
+            <p>在企业级知识库的实际运营中，我们经常遇到一种令人沮丧的现象：用户明明问了一个非常具体的问题，检索系统也找到了相关文档，但 LLM 就是不给正确答案。</p>
+            <p>比如，原始文档《<strong>RTC SDK 4.6.2 Android 接入与故障排查指南</strong>》中有一段完整的排障逻辑：</p>
+            <pre><code>错误码 RTC-10027 通常发生在 Android 14 环境下，主要表现为音频中断。
+需要首先检查系统权限设置（特别是录音权限）。
+如果客户端版本为 4.6.2，则需要启用特定的兼容模式。
+若同时开启了硬件加速（xxx 配置），则必须将其关闭。</code></pre>
+            <p>如果我们采用简单的“固定长度切分”，这段极具上下文依赖的信息可能会被无情地拆散：</p>
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin-bottom: 0.5rem; padding: 0.5rem; background: #f1f5f9; border-radius: 4px;"><strong>Chunk 1:</strong> RTC-10027 通常发生在 Android 14 环境下……</li>
+                <li style="margin-bottom: 0.5rem; padding: 0.5rem; background: #f1f5f9; border-radius: 4px;"><strong>Chunk 2:</strong> 需要首先检查系统权限设置……</li>
+                <li style="margin-bottom: 0.5rem; padding: 0.5rem; background: #f1f5f9; border-radius: 4px;"><strong>Chunk 3:</strong> 如果客户端版本为 4.6.2，则……</li>
+            </ul>
+            <p>当用户提问：“<strong>RTC-10027 在 4.6.2 版本下怎么处理？</strong>”，检索系统可能只召回了 Chunk 1，因为它包含了错误码。结果就是，LLM 只能泛泛而谈“发生在 Android 14”，却漏掉了核心的解决方案。</p>
+            <p><strong>反之</strong>，如果我们为了保全面面把 Chunk 切得过大（例如整整 8 页 PDF 合成一个 Chunk），虽然信息完整了，但会导致语义噪声剧增，检索精度大幅下降，且昂贵的 Token 成本都被浪费在无关的描述性文字上。</p>
+            <p>这就引出了架构师必须回答的三个问题：</p>
+            <div class="block-quote">
+                Chunk 到底应该多大？<br>
+                Chunk 到底应该在哪里切？<br>
+                一个好的 Chunk 究竟应该满足什么条件？
+            </div>
+        </div>
+    </section>
+
+    <!-- What is Chunking Solving -->
+    <section>
+        <h2>Chunking 到底在解决什么问题？</h2>
+        <p>很多工程师把 Chunking 仅仅看作是“数据预处理”的一个步骤，即把长文本切短以适应模型的上下文窗口。这种理解是片面的。</p>
+        <p>从检索机制的微观视角看，流程是这样的：</p>
+        
+        <div class="diagram-container">
+            <!-- SVG Flowchart -->
+            <svg width="100%" height="180" viewBox="0 0 600 180" class="hand-drawn-svg">
+                <!-- Boxes -->
+                <rect x="20" y="60" width="100" height="50" class="svg-box" />
+                <text x="70" y="90" text-anchor="middle" class="svg-text">Document</text>
+
+                <rect x="180" y="60" width="100" height="50" class="svg-box" />
+                <text x="230" y="90" text-anchor="middle" class="svg-text">Chunk</text>
+
+                <rect x="340" y="60" width="100" height="50" class="svg-box" />
+                <text x="390" y="90" text-anchor="middle" class="svg-text">Embedding</text>
+
+                <rect x="500" y="60" width="80" height="50" class="svg-box" />
+                <text x="540" y="90" text-anchor="middle" class="svg-text">Index</text>
+
+                <!-- Arrows -->
+                <line x1="120" y1="85" x2="175" y2="85" class="svg-line" marker-end="url(#arrowhead)" />
+                <line x1="280" y1="85" x2="335" y2="85" class="svg-line" marker-end="url(#arrowhead)" />
+                <line x1="440" y1="85" x2="495" y2="85" class="svg-line" marker-end="url(#arrowhead)" />
+                
+                <!-- Arrow Marker Def -->
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" class="svg-arrow" />
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+
+        <p><strong>Embedding 模型的基本单位最终不是整篇文档，而是 Chunk。</strong></p>
+        <p>这意味着，Chunk 实际上决定了检索系统“看”到的知识颗粒度。我们可以将其视为一条因果链：</p>
+        <div style="text-align: center; font-weight: 700; color: var(--accent-color); margin: 2rem 0;">
+            Chunk Size <span style="color:#cbd5e1">→</span> Retrieval Quality <span style="color:#cbd5e1">→</span> Context Quality <span style="color:#cbd5e1">→</span> Generation Quality
+        </div>
+        <ul>
+            <li><strong>Chunk 太小</strong> → 信息不完整 → Semantic Context（语义上下文）丢失。</li>
+            <li><strong>Chunk 太大</strong> → 噪声增加 → 相似度被稀释 → Context 成本增加。</li>
+        </ul>
+    </section>
+
+    <!-- What is a Good Chunk -->
+    <section>
+        <h2>什么是一个“好 Chunk”？</h2>
+        <p>在深入具体策略之前，我们需要建立明确的判断标准。一个高质量的 Chunk 应该尽量满足以下五个维度：</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="card" style="margin-bottom: 0; padding: 1.5rem;">
+                <h4 style="margin-top: 0;">1. 语义完整</h4>
+                <p style="font-size: 0.9rem;">不要把一个完整问题的条件、结论拆开。比如 API 的参数说明必须和参数名在一起。</p>
+            </div>
+            <div class="card" style="margin-bottom: 0; padding: 1.5rem;">
+                <h4 style="margin-top: 0;">2. 上下文独立</h4>
+                <p style="font-size: 0.9rem;">脱离原文后，仍然可以被理解。避免出现类似“该按钮位于上文所述的区域”这种指代不清的文本。</p>
+            </div>
+            <div class="card" style="margin-bottom: 0; padding: 1.5rem;">
+                <h4 style="margin-top: 0;">3. 检索可区分</h4>
+                <p style="font-size: 0.9rem;">不同知识单元之间应该有足够区别。如果所有 Chunk 都以“本公司规定...”开头，召回区分度会很差。</p>
+            </div>
+            <div class="card" style="margin-bottom: 0; padding: 1.5rem;">
+                <h4 style="margin-top: 0;">4. 长度适中</h4>
+                <p style="font-size: 0.9rem;">不能太短导致缺乏实体关系，也不能无意义地过长导致噪声。</p>
+            </div>
+            <div class="card" style="margin-bottom: 0; padding: 1.5rem;">
+                <h4 style="margin-top: 0;">5. 可以追溯</h4>
+                <p style="font-size: 0.9rem;">必须知道它来自哪个文档、哪个章节、第几页、什么版本。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Strategies -->
+    <section>
+        <h2>从简单到复杂：主流 Chunking 策略</h2>
+        <p>企业级架构并不是追求“最复杂”的算法，而是追求“最适合场景”的策略。以下从工程落地的角度逐一剖析。</p>
+
+        <h3>1. Fixed-size Chunking (固定长度切分)</h3>
+        <p>这是最简单的 Baseline。设定一个 Token 数量（如 500），机械地切分。</p>
+        <pre><code>document_text = "..."
+chunk_size = 512
+chunks = [document_text[i:i+chunk_size] for i in range(0, len(document_text), chunk_size)]</code></pre>
+        <p><strong>优点：</strong> 简单、快、稳定、易并行、易工程化。<br>
+        <strong>缺点：</strong> 极易切断语义、切断句子、切断代码、切断表格。<br>
+        <strong>工程建议：</strong> 它非常适合作为 Baseline，用于初期快速验证系统可行性，但在生产环境中通常需要配合重叠窗口使用。</p>
+
+        <h3>2. Sliding Window (滑动窗口)</h3>
+        <p>为了缓解边界切断问题，引入 Overlap。</p>
+        <div class="diagram-container">
+            <svg width="100%" height="100" viewBox="0 0 600 100" class="hand-drawn-svg">
+                <!-- Chunk 1 -->
+                <rect x="50" y="20" width="120" height="30" class="svg-box" style="stroke: #3b82f6;" />
+                <text x="110" y="40" text-anchor="middle" class="svg-text">Chunk 1</text>
+                <!-- Chunk 2 -->
+                <rect x="140" y="30" width="120" height="30" class="svg-box" style="stroke: #3b82f6; opacity: 0.8;" />
+                <text x="200" y="50" text-anchor="middle" class="svg-text">Chunk 2</text>
+                <!-- Chunk 3 -->
+                <rect x="230" y="40" width="120" height="30" class="svg-box" style="stroke: #3b82f6; opacity: 0.6;" />
+                <text x="290" y="60" text-anchor="middle" class="svg-text">Chunk 3</text>
+                
+                <text x="200" y="90" text-anchor="middle" class="svg-text" style="font-size: 12px;">Overlap 区域保留了语义边界</text>
+            </svg>
+        </div>
+        <p>通过设置 `Chunk Size = 512` 和 `Overlap = 100`，尽量降低语义被切断的风险。<br>
+        <strong>Trade-off：</strong> Overlap 越大，语义完整性越好，但会导致<strong>重复召回</strong>、存储成本和 Embedding 成本线性增加，且在生成阶段会导致 Context 中存在大量冗余信息。</p>
+
+        <h3>3. Recursive Chunking (递归切分)</h3>
+        <p>这是 LlamaIndex 等框架常用的策略。按照层级逐步切分：<code>Document → Paragraph → Sentence → Token</code>。<br>
+        它的核心逻辑是：<strong>“尽可能保留自然边界。”</strong> 比如优先按段落切，如果段落还是太长，再按句子切。这比纯固定长度更符合人类阅读习惯。</p>
+
+        <h3>4. Semantic Chunking (语义切分)</h3>
+        <p>不是根据字符数，而是根据语义变化切分。通过计算相邻句子的 Embedding 相似度，当相似度发生突降（意味着话题转换）时进行切分。</p>
+        <div class="diagram-container">
+             <svg width="100%" height="120" viewBox="0 0 600 120" class="hand-drawn-svg">
+                <!-- Line Chart -->
+                <polyline points="50,80 150,75 250,78 260,40 350,45 450,42 550,80" class="svg-line" style="stroke: #ef4444; fill: none;" />
+                
+                <!-- Regions -->
+                <rect x="50" y="85" width="210" height="20" class="svg-highlight" />
+                <text x="155" y="100" text-anchor="middle" class="svg-text">Topic A</text>
+                
+                <rect x="270" y="85" width="280" height="20" class="svg-highlight" />
+                <text x="410" y="100" text-anchor="middle" class="svg-text">Topic B</text>
+
+                <!-- Cut point -->
+                <line x1="265" y1="20" x2="265" y2="110" stroke="#3b82f6" stroke-width="2" stroke-dasharray="5,5" />
+                <text x="265" y="15" text-anchor="middle" class="svg-text" style="fill: #3b82f6;">Cut Here</text>
+            </svg>
+        </div>
+        <p><strong>优点：</strong> 语义完整性极强。<br>
+        <strong>缺点：</strong> 需要对整个文档进行 Embedding 计算，计算成本高；参数复杂（阈值难定）；对数据类型敏感（例如代码、表格的语义边界很难用相似度衡量）。</p>
+
+        <h3>5. Document-aware Chunking (文档结构感知切分)</h3>
+        <p><strong>这是企业场景的重中之重。</strong> 不同文档应该使用不同 Chunk Strategy。</p>
+        <ul>
+            <li><strong>Markdown/技术文档：</strong> 按 Heading（#、##）层级切分。</li>
+            <li><strong>FAQ：</strong> 严格按 Question/Answer 对切分。</li>
+            <li><strong>API 文档：</strong> 结构化提取（Description、Parameters、Example、Notes）。</li>
+            <li><strong>表格：</strong> 将表格作为整体单元，或将每一行与表头组合成独立 Chunk。</li>
+        </ul>
+        <p>企业级 Chunking 的核心不是寻找一个“万能 Chunk Size”，而是让切分策略<strong>理解文档结构</strong>。</p>
+    </section>
+
+    <!-- Advanced Strategies -->
+    <section>
+        <h2>进阶架构：解决精度与上下文的矛盾</h2>
+        
+        <h3>Parent-Child Chunking (父子文档索引)</h3>
+        <p>这是解决“检索精度 vs. 上下文完整性”这一矛盾的最佳实践之一。</p>
+        
+        <div class="diagram-container">
+            <svg width="100%" height="160" viewBox="0 0 600 160" class="hand-drawn-svg">
+                <!-- Parent -->
+                <rect x="220" y="10" width="160" height="40" class="svg-box" style="fill: #e2e8f0; stroke-width: 3;" />
+                <text x="300" y="35" text-anchor="middle" class="svg-text">Parent (Big Context)</text>
+                
+                <!-- Link -->
+                <line x1="300" y1="50" x2="300" y2="80" class="svg-line" />
+                
+                <!-- Children Container -->
+                <rect x="50" y="80" width="500" height="60" fill="none" stroke="#cbd5e1" stroke-dasharray="4" rx="4" />
+                
+                <!-- Child 1 -->
+                <rect x="80" y="95" width="100" height="30" class="svg-box" style="stroke: #10b981;" />
+                <text x="130" y="115" text-anchor="middle" class="svg-text">Child 1</text>
+                
+                <!-- Child 2 -->
+                <rect x="250" y="95" width="100" height="30" class="svg-box" style="stroke: #10b981;" />
+                <text x="300" y="115" text-anchor="middle" class="svg-text">Child 2</text>
+                
+                <!-- Child 3 -->
+                <rect x="420" y="95" width="100" height="30" class="svg-box" style="stroke: #10b981;" />
+                <text x="470" y="115" text-anchor="middle" class="svg-text">Child 3</text>
+                
+                <text x="500" y="35" text-anchor="middle" class="svg-text" style="font-size: 12px; fill: #64748b;">For Generation</text>
+                <text x="500" y="90" text-anchor="middle" class="svg-text" style="font-size: 12px; fill: #64748b;">For Retrieval</text>
+            </svg>
+        </div>
+
+        <p><strong>原理：</strong> 将文档切分成较大的 Parent Chunk（用于提供上下文），然后对每个 Parent Chunk 再进行细分，生成小的 Child Chunk（用于检索）。检索时只对 Child 做向量索引，召回后通过 ID 关联回 Parent Chunk。<br>
+        <strong>价值：</strong> 小粒度保证了检索的高 Precision，大粒度保证了生成时的丰富 Context。</p>
+
+        <h3>Hierarchical Chunking (层级切分)</h3>
+        <p>保留文档的树状结构（Document → Section → Subsection → Paragraph）。检索时不仅可以召回段落，还能携带其所属章节的摘要作为额外的背景信息。这对法律文档、长篇技术手册尤其有效。</p>
+    </section>
+
+    <!-- Metadata & Code -->
+    <section>
+        <h2>Chunk Metadata：被忽视的隐形成本</h2>
+        <p>一个“裸奔”的 Chunk 在生产环境是几乎没用的。每个 Chunk 都应该携带结构化 Metadata。它不只是用来展示引用，更是检索质量的关键。</p>
+        
+        <pre><code class="language-json">{
+  "chunk_id": "chk_rtc_10027_01",
+  "document_id": "doc_rtc_android_v4.6.2",
+  "title": "RTC SDK 4.6.2 Android 接入指南",
+  "section_hierarchy": ["故障排查", "错误码", "RTC-10027"],
+  "page": 27,
+  "version": "4.6.2",
+  "platform": "Android",
+  "created_at": "2024-01-15",
+  "token_count": 458,
+  "content_type": "troubleshooting_log"
+}</code></pre>
+
+        <p>Metadata 的工程价值：</p>
+        <ul>
+            <li><strong>Filter (过滤)：</strong> 用户查“iOS 相关问题”，直接在向量检索前过滤掉 `platform=Android` 的 Chunk，极大提高准确率。</li>
+            <li><strong>Ranking (排序)：</strong> 某些字段（如 `version`）可以作为 Reranker 的特征。</li>
+            <li><strong>Permission (权限)：</strong> 确保用户只能检索到他有权限访问的 Chunk。</li>
+        </ul>
+    </section>
+
+    <!-- Core Questions -->
+    <section>
+        <h2>核心决策：Size 与 Overlap</h2>
+        
+        <h3>Chunk Size 到底应该多大？</h3>
+        <p>没有绝对答案，但有以下工程经验值（基于主流 Embedding 模型如 bge-m3/openai）：</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Token 大小</th>
+                    <th>适用场景</th>
+                    <th>风险</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>128 - 256</strong></td>
+                    <td>Q&A 匹配、精确事实查询（如“谁什么时候加入的”）</td>
+                    <td>极易丢失上下文，导致 LLM 无法回答 Why 类问题。</td>
+                </tr>
+                <tr>
+                    <td><strong>512 - 768</strong></td>
+                    <td><strong>通用场景推荐区间</strong>。平衡了语义完整性和检索精度。</td>
+                    <td>对于特别复杂的技术步骤可能仍然不够。</td>
+                </tr>
+                <tr>
+                    <td><strong>1024 - 2048</strong></td>
+                    <td>小说总结、法律合同条款、长代码块</td>
+                    <td>噪声极多，检索时容易被看似相关实则泛泛的内容混淆。</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <p><strong>判断依据：</strong> 必须考虑 Query 长度、Embedding Model 的特性（有的模型对长文本语义理解能力强）、Reranker 的能力以及 LLM 的 Context Window。</p>
+
+        <h3>Overlap 到底应该设置多少？</h3>
+        <p>Overlap 是为了解决边界问题，而不是为了提升数字本身。</p>
+        <ul>
+            <li><strong>Overlap = 0：</strong> 极大概率切断语义，不推荐。</li>
+            <li><strong>Overlap = 10% - 20%：</strong> 常用设置。对于 512 的 Chunk，重叠 50-100 tokens 足以覆盖大部分句尾的关联词。</li>
+            <li><strong>Overlap > 30%：</strong> 存储和计算成本急剧上升，召回重复内容变多，对结果提升有限，除非是极其密集的代码文档。</li>
+        </ul>
+    </section>
+
+    <!-- Evaluation & Decision Table -->
+    <section>
+        <h2>评估与决策框架</h2>
+        
+        <h3>如何评估 Chunking 的好坏？</h3>
+        <p>不应该只通过人工阅读几个 Chunk 来判断。必须建立自动化评估指标：</p>
+        <ul>
+            <li><strong>Retrieval Metrics:</strong> Recall@K (召回率), Precision@K (准确率), MRR (平均倒数排名), NDCG。</li>
+            <li><strong>Chunk Quality Metrics:</strong> Semantic Completeness (人工打分或模型评估), Boundary Quality (是否截断句子/代码), Average Length。</li>
+            <li><strong>System Metrics:</strong> Token Cost, Latency (Embedding 耗时), Storage 占用。</li>
+        </ul>
+
+        <h3>企业数据类型决策表</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>数据类型</th>
+                    <th>推荐策略</th>
+                    <th>原因</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>FAQ</td>
+                    <td>Question-Answer Pairing</td>
+                    <td>问题和答案必须绑定，不能拆散。</td>
+                </tr>
+                <tr>
+                    <td>技术文档</td>
+                    <td>Hierarchical / Document-aware (Markdown headings)</td>
+                    <td>保留章节结构，知识有层级性。</td>
+                </tr>
+                <tr>
+                    <td>API 文档</td>
+                    <td>Structure-aware (JSON/YAML parsing)</td>
+                    <td>API 信息高度结构化，参数不能脱离定义。</td>
+                </tr>
+                <tr>
+                    <td>法律合同</td>
+                    <td>Clause-aware (按条款切分)</td>
+                    <td>条款边界重要，不能把条件和责任分开。</td>
+                </tr>
+                <tr>
+                    <td>表格</td>
+                    <td>Table-aware (HTML to Markdown or Row extraction)</td>
+                    <td>避免行列关系丢失，通常将表头追加到每一行。</td>
+                </tr>
+                <tr>
+                    <td>代码</td>
+                    <td>Function / Class slicing (AST-based)</td>
+                    <td>保持逻辑完整性，不要在函数中间切断。</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Failure Cases -->
+    <section>
+        <h2>常见失败案例</h2>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
+            <div class="card" style="padding: 1rem; border-left: 3px solid #ef4444;">
+                <h4 style="margin-top:0; color:#ef4444;">失败 1: “一把梭”式切分</h4>
+                <p><strong>现象：</strong> 统一 500 tokens 切所有文档。<br>
+                <strong>原因：</strong> 忽略文档类型差异。<br>
+                <strong>影响：</strong> 表格错乱、代码截断、FAQ 被拆成两半。<br>
+                <strong>解决：</strong> 引入 Document Classifier，分流处理。</p>
+            </div>
+
+            <div class="card" style="padding: 1rem; border-left: 3px solid #ef4444;">
+                <h4 style="margin-top:0; color:#ef4444;">失败 6: 表格惨案</h4>
+                <p><strong>现象：</strong> 检索结果中只有一堆孤立的人名或数字。<br>
+                <strong>原因：</strong> 表格被简单的按行或字符切分，丢失了 Header 信息。<br>
+                <strong>影响：</strong> LLM 无法理解这些数字代表什么。<br>
+                <strong>解决：</strong> 表格转 Markdown 或进行结构化提取，将表头作为 Metadata 或前缀拼接到每个单元格 Chunk 中。</p>
+            </div>
+
+            <div class="card" style="padding: 1rem; border-left: 3px solid #ef4444;">
+                <h4 style="margin-top:0; color:#ef4444;">失败 8: 上下文孤儿</h4>
+                <p><strong>现象：</strong> Chunk 内容是“请执行上述步骤中提到的配置”。<br>
+                <strong>原因：</strong> 没有保留 Parent / Section 信息，也没有使用 Parent-Child 索引。<br>
+                <strong>影响：</strong> 生成回答时 LLM 产生幻觉或无法回答。<br>
+                <strong>解决：</strong> 使用 Parent-Child 策略或在 Chunk 文本中追加路径信息。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final Framework -->
+    <section>
+        <h2>构建 Chunking 决策框架</h2>
+        <p>企业 RAG 最终应该走向“策略化 Chunking”，而不是“统一 Chunk Size”。建议的工程落地框架如下：</p>
+
+        <div class="diagram-container">
+            <svg width="100%" height="300" viewBox="0 0 400 300" class="hand-drawn-svg">
+                <!-- Steps -->
+                <rect x="100" y="10" width="200" height="30" rx="15" class="svg-box" />
+                <text x="200" y="30" text-anchor="middle" class="svg-text">1. Document Classification</text>
+                <line x1="200" y1="40" x2="200" y2="60" class="svg-line" marker-end="url(#arrowhead)" />
+
+                <rect x="80" y="60" width="240" height="30" rx="15" class="svg-box" />
+                <text x="200" y="80" text-anchor="middle" class="svg-text">2. Document-aware Strategy</text>
+                <line x1="200" y1="90" x2="200" y2="110" class="svg-line" marker-end="url(#arrowhead)" />
+
+                <rect x="100" y="110" width="200" height="30" rx="15" class="svg-box" />
+                <text x="200" y="130" text-anchor="middle" class="svg-text">3. Structure Parsing</text>
+                <line x1="200" y1="140" x2="200" y2="160" class="svg-line" marker-end="url(#arrowhead)" />
+
+                <rect x="80" y="160" width="240" height="30" rx="15" class="svg-box" />
+                <text x="200" y="180" text-anchor="middle" class="svg-text">4. Metadata Enrichment</text>
+                <line x1="200" y1="190" x2="200" y2="210" class="svg-line" marker-end="url(#arrowhead)" />
+
+                <rect x="80" y="210" width="240" height="30" rx="15" class="svg-box" />
+                <text x="200" y="230" text-anchor="middle" class="svg-text">5. Indexing (Vector+KV)</text>
+                <line x1="200" y1="240" x2="200" y2="260" class="svg-line" marker-end="url(#arrowhead)" />
+
+                <rect x="100" y="260" width="200" height="30" rx="15" class="svg-box" style="stroke: #10b981;" />
+                <text x="200" y="280" text-anchor="middle" class="svg-text">6. Evaluation</text>
+            </svg>
+        </div>
+
+        <p>最终我们得出结论：<strong>Chunking ≠ 切文本。Chunking = 为 Retrieval 设计知识边界。</strong></p>
+    </section>
+
+    <!-- Footer / Next -->
+    <div class="next-article">
+        <h3>下一篇预告</h3>
+        <p>Chunk 已经准备好了，接下来如何把它变成真正适合语义检索的向量？<br>
+        <strong>《企业级 RAG 架构设计与工程实践 (5)：Embedding 与 Vector Database》</strong></p>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2026 智谱清言. 企业级 RAG 架构设计与工程实践系列.</p>
+    </footer>
+
+</div>
+
+</body>
+</html>
