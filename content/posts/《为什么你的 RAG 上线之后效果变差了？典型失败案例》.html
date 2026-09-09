@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>为什么你的 RAG 上线之后效果变差了？10 个典型失败案例与系统化排障方法</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    background: #faf9f6;
+    color: #33302a;
+    line-height: 1.85;
+    margin: 0;
+    padding: 0;
+  }
+  .page { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  h1 { font-size: 1.9rem; color: #1e3a5f; line-height: 1.4; margin: 0 0 8px; }
+  h2 {
+    font-size: 1.35rem; color: #1e3a5f;
+    margin: 3.2rem 0 1rem; padding-bottom: 10px;
+    border-bottom: 2px solid #1e3a5f;
+  }
+  h3 { font-size: 1.1rem; color: #2c4a6e; margin: 2.2rem 0 .8rem; }
+  h4 { font-size: .95rem; color: #1e3a5f; margin: 0 0 8px; }
+  p  { font-size: .95rem; }
+  strong { color: #1e3a5f; }
+
+  .series-tag {
+    display: inline-block; background: #e8eef5; color: #1e3a5f;
+    font-size: .8rem; padding: 3px 12px; border-radius: 20px;
+    margin-bottom: 14px; font-weight: 600;
+  }
+  blockquote {
+    margin: 1.4rem 0; padding: 16px 20px;
+    background: #fdf6ec; border-left: 4px solid #c9962e;
+    border-radius: 0 8px 8px 0; font-size: .95rem; color: #5a4a20;
+  }
+  blockquote p { margin: 0; }
+
+  pre {
+    background: #2b2a26; color: #e8e4da;
+    border-radius: 10px; padding: 18px 20px;
+    overflow-x: auto; font-size: .82rem; line-height: 1.7;
+  }
+  pre.ascii { background: #f4f2ec; color: #4a463d; border: 1px solid #e5e0d5; }
+  code.inline, p code, li code, td code {
+    background: #eeecf3; color: #4a3f7a;
+    padding: 1px 6px; border-radius: 4px; font-size: .84em;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; }
+
+  table {
+    width: 100%; border-collapse: collapse; margin: 1.6rem 0;
+    background: #fff; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(30,58,95,.07); font-size: .86rem;
+  }
+  th { background: #1e3a5f; color: #fff; padding: 11px 14px; text-align: left; font-weight: 600; }
+  td { padding: 10px 14px; border-bottom: 1px solid #eee9df; color: #4a463d; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f8f7f3; }
+
+  .figure {
+    background: #fff; border: 1px solid #e8e4da; border-radius: 12px;
+    padding: 16px; margin: 1.8rem 0;
+    box-shadow: 0 1px 4px rgba(30,58,95,.05);
+  }
+  .figure svg { display: block; width: 100%; height: auto; }
+  .fig-cap {
+    text-align: center; font-size: .78rem; color: #8a8578;
+    margin-top: 10px; border-top: 1px dashed #e5e0d5; padding-top: 8px;
+  }
+
+  /* 六步法 */
+  .flow-six { display: flex; flex-wrap: wrap; gap: 10px; margin: 1.6rem 0; }
+  .fs-item {
+    flex: 1 1 130px; background: #fff; border: 1px solid #e5e0d5;
+    border-top: 3px solid #1e3a5f; border-radius: 8px;
+    padding: 12px 12px 10px; font-size: .82rem; color: #4a463d;
+  }
+  .fs-num {
+    display: inline-block; width: 22px; height: 22px; line-height: 22px;
+    text-align: center; background: #1e3a5f; color: #fff;
+    border-radius: 50%; font-size: .72rem; margin-right: 6px;
+  }
+  .fs-item b { color: #1e3a5f; font-size: .88rem; }
+  .fs-item small { display: block; margin-top: 6px; color: #8a8578; font-size: .74rem; line-height: 1.5; }
+
+  /* 公式卡 */
+  .formula-card {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    background: #fff; border: 1px solid #e5e0d5; border-radius: 12px;
+    padding: 1.3rem; margin: 1.8rem 0;
+    box-shadow: 0 1px 4px rgba(30,58,95,.06);
+    font-weight: 700; color: #1e3a5f; font-size: 1.05rem;
+  }
+  .fc-plus { font-size: 1.3rem; color: #c9962e; }
+  .fc-neq  { font-size: 1.4rem; color: #b54a35; }
+
+  /* Checklist */
+  .checklist-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px; margin: 1.6rem 0;
+  }
+  .cl-card {
+    background: #fff; border: 1px solid #e5e0d5; border-radius: 10px;
+    padding: 16px 18px; box-shadow: 0 1px 3px rgba(30,58,95,.05);
+  }
+  .cl-card h4 { border-bottom: 2px solid #e8eef5; padding-bottom: 8px; }
+  .cl-card ul { margin: 0; padding-left: 18px; }
+  .cl-card li { font-size: .82rem; color: #4a463d; line-height: 1.75; margin-bottom: 2px; }
+
+  /* 故障分级 */
+  .severity-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px; margin: 1.6rem 0;
+  }
+  .sev-card { border-radius: 10px; padding: 16px; background: #fff; border: 1px solid #e5e0d5; }
+  .sev-badge {
+    display: inline-block; padding: 3px 12px; border-radius: 20px;
+    font-size: .76rem; font-weight: 700; margin-bottom: 10px;
+  }
+  .sev-card ul { margin: 0 0 8px; padding-left: 18px; }
+  .sev-card li { font-size: .8rem; color: #4a463d; line-height: 1.7; }
+  .sev-note { font-size: .74rem; color: #8a8578; margin: 0; border-top: 1px dashed #e5e0d5; padding-top: 8px; }
+  .sev-p0 { border-top: 4px solid #b54a35; } .sev-p0 .sev-badge { background: #f7e9e5; color: #8f3423; }
+  .sev-p1 { border-top: 4px solid #c9962e; } .sev-p1 .sev-badge { background: #fdf6ec; color: #8a6a1c; }
+  .sev-p2 { border-top: 4px solid #1e3a5f; } .sev-p2 .sev-badge { background: #e8eef5; color: #1e3a5f; }
+  .sev-p3 { border-top: 4px solid #8a8578; } .sev-p3 .sev-badge { background: #f0efeb; color: #5a564c; }
+
+  .case-label {
+    display: inline-block; background: #1e3a5f; color: #fff;
+    font-size: .78rem; font-weight: 600; padding: 2px 12px;
+    border-radius: 4px; margin-right: 8px; vertical-align: 2px;
+  }
+  .next-ep {
+    background: linear-gradient(135deg, #1e3a5f, #2c5f8a);
+    color: #fff; border-radius: 12px; padding: 28px 30px; margin: 2.5rem 0;
+  }
+  .next-ep h3 { color: #fff; margin-top: 0; }
+  .next-ep p, .next-ep li { color: #d7e2ee; font-size: .9rem; }
+  .postscript {
+    background: #f4f2ec; border: 1px dashed #c9c3b4; border-radius: 10px;
+    padding: 20px 24px; margin-top: 3rem; font-size: .86rem; color: #6a6558;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<span class="series-tag">《企业级 RAG 架构设计与工程实践》系列 · 第 14 篇</span>
+<h1>为什么你的 RAG 上线之后效果变差了？<br>10 个典型失败案例与系统化排障方法</h1>
+
+<p>在前面 13 篇里，我们沿着 Data → Chunking → Embedding → Hybrid Retrieval → RRF → Reranker → Query Understanding → Context Engineering → Permission → Performance → Evaluation 这条主线，把企业级 RAG 的每一层拆开讲清楚了。</p>
+<p><strong>这一篇不介绍任何新技术。这一篇做一件更接近我日常真实工作的事：从故障出发，反向拆解整条 Pipeline。</strong></p>
+<blockquote><p><strong>RAG 的失败 ≠ LLM 的失败。RAG 的失败可能发生在 Data、Query、Retrieval、Ranking、Context、Generation、Security、Infrastructure 中的任何一层——而排障的全部价值，就在于快速回答"是哪一层"。</strong></p></blockquote>
+
+<h2>一、最危险的不是 RAG 做不出来，而是"看起来很好"</h2>
+<p>先设计一个几乎所有团队都经历过的场景。</p>
+<p><strong>POC 阶段：</strong></p>
+<pre class="ascii"><code>100 个测试问题
+      ↓
+大部分都能回答
+      ↓
+团队认为效果不错
+      ↓
+上线</code></pre>
+<p><strong>生产环境，现实的模样：</strong></p>
+<pre class="ascii"><code>真实用户          → Query 表达千奇百怪
+复杂 Query        → 多条件、多约束、口语化
+多轮对话          → 指代、省略、话题漂移
+版本混用          → 新旧制度并行
+历史文档          → 三年前的 Policy 还在索引里
+权限差异          → 同一个 Query，不同人不同答案
+数据持续更新      → 昨天对的答案今天错了
+长尾 Query        → 测试集从未覆盖</code></pre>
+<p>然后反馈涌进来：搜不到、搜错、排错、答错、引用错、延迟高、成本高、权限异常。</p>
+<p>我把整个企业 RAG Pipeline 的故障面抽象成 11 层。<strong>后面所有的案例、排障方法、故障树，都是围绕这张图展开的：</strong></p>
+
+<div class="figure">
+<svg viewBox="0 0 760 570" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs><marker id="mA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a8578"/></marker></defs>
+  <g text-anchor="middle">
+    <rect x="240" y="10"  width="280" height="40" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="380" y="35"  font-size="16" fill="#1e3a5f" font-weight="600">① Data 数据层</text>
+    <rect x="240" y="66"  width="280" height="40" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="380" y="91"  font-size="16" fill="#1e3a5f" font-weight="600">② Chunk 切分层</text>
+    <rect x="240" y="122" width="280" height="40" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="380" y="147" font-size="16" fill="#1e3a5f" font-weight="600">③ Embedding 向量层</text>
+    <rect x="240" y="178" width="280" height="40" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="380" y="203" font-size="16" fill="#1e3a5f" font-weight="600">④ Query 理解层</text>
+    <rect x="240" y="234" width="280" height="40" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="380" y="259" font-size="16" fill="#1e3a5f" font-weight="600">⑤ Retrieval 检索层</text>
+    <rect x="240" y="290" width="280" height="40" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="380" y="315" font-size="16" fill="#1e3a5f" font-weight="600">⑥ Fusion 融合层</text>
+    <rect x="240" y="346" width="280" height="40" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="380" y="371" font-size="16" fill="#1e3a5f" font-weight="600">⑦ Rerank 重排层</text>
+    <rect x="240" y="402" width="280" height="40" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.5"/><text x="380" y="427" font-size="16" fill="#8a6a1c" font-weight="600">⑧ Context 上下文层</text>
+    <rect x="240" y="458" width="280" height="40" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.5"/><text x="380" y="483" font-size="16" fill="#2c5f47" font-weight="600">⑨ Generation 生成层</text>
+    <rect x="240" y="514" width="130" height="40" rx="8" fill="#f7e9e5" stroke="#b54a35" stroke-width="1.5"/><text x="305" y="539" font-size="15" fill="#8f3423" font-weight="600">⑩ Security</text>
+    <rect x="390" y="514" width="130" height="40" rx="8" fill="#f7e9e5" stroke="#b54a35" stroke-width="1.5"/><text x="455" y="539" font-size="15" fill="#8f3423" font-weight="600">⑪ Infra</text>
+  </g>
+  <g stroke="#8a8578" stroke-width="1.5">
+    <line x1="380" y1="50"  x2="380" y2="62" marker-end="url(#mA)"/>
+    <line x1="380" y1="106" x2="380" y2="118" marker-end="url(#mA)"/>
+    <line x1="380" y1="162" x2="380" y2="174" marker-end="url(#mA)"/>
+    <line x1="380" y1="218" x2="380" y2="230" marker-end="url(#mA)"/>
+    <line x1="380" y1="274" x2="380" y2="286" marker-end="url(#mA)"/>
+    <line x1="380" y1="330" x2="380" y2="342" marker-end="url(#mA)"/>
+    <line x1="380" y1="386" x2="380" y2="398" marker-end="url(#mA)"/>
+    <line x1="380" y1="442" x2="380" y2="454" marker-end="url(#mA)"/>
+  </g>
+  <g font-size="12" fill="#8a8578">
+    <text x="545" y="360">横切层：贯穿全链路</text>
+    <text x="545" y="427">拼装 / 去重 / 预算</text>
+    <text x="545" y="483">Grounding / 幻觉</text>
+    <text x="545" y="539">权限泄露 / 延迟 / 容量</text>
+  </g>
+</svg>
+<div class="fig-cap">图 1 · 企业 RAG Pipeline 的 11 层故障面（全文的分析框架）</div>
+</div>
+
+<p>请记住这张图的三个颜色分区：</p>
+<ul>
+  <li><strong>蓝色（①–⑦）</strong>：数据与检索链路。故障表现是"找不到 / 找错 / 排错"。</li>
+  <li><strong>黄绿色（⑧–⑨）</strong>：上下文与生成链路。故障表现是"答错 / 不按文档答 / 幻觉"。</li>
+  <li><strong>红色（⑩–⑪）</strong>：横切层。故障表现是"越权 / 慢 / 挂"，其中 Security 是系统级风险，不是质量问题。</li>
+</ul>
+<p><strong>全文核心问题由此引出：RAG 的失败究竟发生在哪里？</strong></p>
+
+<h2>二、先建立故障定位框架，再谈案例</h2>
+<p>没有框架的排障，就是"感觉 Prompt 不行就改 Prompt，感觉 Embedding 不行就换 Embedding"。企业 RAG 的排障必须像传统分布式系统一样<strong>分层定位</strong>。</p>
+
+<h3>2.1 第一层分流：三问定层</h3>
+<p>当一个答案被判定为"错"，第一件事不是看代码，而是问三个问题：</p>
+
+<div class="figure">
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs><marker id="mB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a8578"/></marker></defs>
+  <rect x="290" y="10" width="180" height="40" rx="8" fill="#b54a35"/>
+  <text x="380" y="36" text-anchor="middle" font-size="17" fill="#fff" font-weight="700">Answer Wrong</text>
+  <g stroke="#8a8578" stroke-width="1.5" fill="none">
+    <path d="M380,50 L380,72 L130,72 L130,98" marker-end="url(#mB)"/>
+    <path d="M380,50 L380,98" marker-end="url(#mB)"/>
+    <path d="M380,50 L380,72 L630,72 L630,98" marker-end="url(#mB)"/>
+  </g>
+  <g text-anchor="middle">
+    <rect x="40" y="100" width="180" height="42" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="130" y="126" font-size="15" fill="#1e3a5f" font-weight="600">Retrieval 问题？</text>
+    <rect x="290" y="100" width="180" height="42" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.5"/><text x="380" y="126" font-size="15" fill="#8a6a1c" font-weight="600">Context 问题？</text>
+    <rect x="540" y="100" width="180" height="42" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.5"/><text x="630" y="126" font-size="15" fill="#2c5f47" font-weight="600">Generation 问题？</text>
+  </g>
+  <g font-size="13" fill="#4a463d" text-anchor="middle">
+    <text x="130" y="172">正确文档根本没进来？</text>
+    <text x="130" y="192" fill="#8a8578">→ 追问 Permission / Data</text>
+    <text x="380" y="172">版本冲突 / 排序错？</text>
+    <text x="380" y="192" fill="#8a8578">→ 追问 Version / Ranking</text>
+    <text x="630" y="172">证据在但没用对？</text>
+    <text x="630" y="192" fill="#8a8578">→ 追问 Prompt / Model</text>
+  </g>
+</svg>
+<div class="fig-cap">图 2 · 第一层分流：三问定层</div>
+</div>
+
+<h3>2.2 标准排障六步法</h3>
+<p>所有案例都将复用这条流程，我称之为 <strong>RAG 排障六步法</strong>：</p>
+<div class="flow-six">
+  <div class="fs-item"><span class="fs-num">1</span><b>问题现象</b><small>谁的 Query、什么表现、影响面多大</small></div>
+  <div class="fs-item"><span class="fs-num">2</span><b>故障层定位</b><small>Data / Retrieval / Context / Generation / Security / Infra</small></div>
+  <div class="fs-item"><span class="fs-num">3</span><b>根因</b><small>在定位层内继续下钻，直到可操作的根因</small></div>
+  <div class="fs-item"><span class="fs-num">4</span><b>验证方法</b><small>用 Trace / 复现 Query 证实假设</small></div>
+  <div class="fs-item"><span class="fs-num">5</span><b>修复方案</b><small>最小改动 + 可回滚</small></div>
+  <div class="fs-item"><span class="fs-num">6</span><b>回归验证</b><small>入测试集，防止复发</small></div>
+</div>
+<p>接下来是 10 个典型失败案例。每个案例都按"<strong>发生了什么 → 为什么发生 → 怎么定位 → 怎么修复 → 如何避免复发</strong>"五问展开。这些都是<strong>抽象自真实生产模式的典型案例</strong>，不是虚构的具体企业事故。</p>
+
+<h2>三、十个典型案例：逐层击穿</h2>
+
+<h3><span class="case-label">案例 1</span>Embedding 很强，但 Recall 很低</h3>
+<blockquote><p><strong>不要一看到 Recall 低就换 Embedding Model。这是我见过最常见的错误决策。</strong></p></blockquote>
+<p><strong>发生了什么：</strong>系统用的是表现不错的通用 Embedding Model，但用户持续反馈："知识库里明明有答案，系统就是找不到。"</p>
+<pre class="ascii"><code>Query："Android 14 RTC-10027 如何处理？"
+正确文档：《RTC SDK 4.6.2 Android RTC-10027 排查指南》
+结果：Retrieval Top-K 中没有该文档</code></pre>
+<p><strong>为什么发生：</strong>沿写入与查询链路逐层检查，可能的原因至少有六类：</p>
+<table>
+  <tr><th style="width:22%">位置</th><th>可能根因</th></tr>
+  <tr><td>Chunking</td><td>错误码与排查步骤被切开，Chunk 内关键实体残缺</td></tr>
+  <tr><td>表达不一致</td><td>Query 写 <code>RTC-10027</code>，文档里写"错误码 10027"，向量距离被拉开</td></tr>
+  <tr><td>Metadata</td><td>硬编码的 Filter（如 <code>status=approved</code>）把文档筛掉了</td></tr>
+  <tr><td>Index 参数</td><td>HNSW 的 <code>ef_search</code> 过小，高维空间里没搜到</td></tr>
+  <tr><td>领域适配</td><td>通用模型对专有缩写（RTC）完全不敏感</td></tr>
+  <tr><td>Query 改写</td><td>Rewrite 把"RTC-10027"改写成"实时通信错误"，关键实体丢失</td></tr>
+</table>
+<p><strong>怎么定位：</strong>系统化排查顺序，从<strong>便宜到昂贵</strong>：</p>
+<pre class="ascii"><code>1. 直接用文档原文的一句做 Query，看能不能召回自己
+   → 召回不了：问题在 Index / Metadata 层（写入侧）
+   → 召回了：问题在 Query / 表达一致性层（查询侧）
+2. 去掉 Metadata Filter 重试 → 确认是否被过滤误伤
+3. 检查该文档的 Chunk 内容，确认实体完整性
+4. 打印 Rewrite 前后的 Query，确认关键实体是否丢失
+5. 最后才考虑：换 / 微调 Embedding Model</code></pre>
+<p><strong>怎么修复 & 避免复发：</strong>本例的修复通常是组合拳——Chunking 时保证"错误码 + 处理步骤"落在同一 Chunk；建立<strong>领域实体词表</strong>保护 Query 改写中的关键实体；Metadata Filter 从硬编码改为配置化。避免复发的方式是把这类 Query 加入第 13 篇说的回归测试集。</p>
+
+<h3><span class="case-label">案例 2</span>Recall 很高，但最终答案仍然错误</h3>
+<p><strong>发生了什么：</strong>排查发现正确文档已经进入 Top-10，用户拿到的答案却还是错的。</p>
+<p><strong>为什么发生：</strong>这是最容易被误诊的一类问题——团队看到 Recall 高就说"检索没问题"，然后一头扎进 Prompt 调优。但<strong>正确文档进了 Top-10 ≠ 它最终能影响答案</strong>。中间还有三道关：</p>
+<pre class="ascii"><code>Retrieval ✅（正确文档在 Top-10）
+      ↓
+Reranker ?   ← 正确 Chunk 可能被排到第 9 位，刚好被 Context 截断
+      ↓
+Context ?    ← 新旧两个版本同时进入，互相冲突
+      ↓
+Generation ? ← 模型选了排位更靠前（但更旧）的证据</code></pre>
+<p><strong>怎么定位：</strong>直接看最终的 Prompt 快照（这就是为什么 Trace 必须记录最终 Context）：</p>
+<ol>
+  <li>正确 Chunk 在 Rerank 后排第几？是否进入了最终 Context？</li>
+  <li>Context 里有没有与它冲突的 Chunk（旧版本、其他部门口径）？</li>
+  <li>正确 Chunk 是否被 Token Budget 截断掉了关键条件句？</li>
+</ol>
+<p><strong>怎么修复：</strong>Rerank 后按分数做 Context 选择而不是固定 Top-N；Context 中按版本号 / 生效日期去重；关键限定条件句（"仅适用于…""但…"）所在 Chunk 给予截断保护。</p>
+<blockquote><p><strong>核心结论：Recall 高 ≠ Answer 正确。Recall 是必要条件，不是充分条件。</strong></p></blockquote>
+
+<h3><span class="case-label">案例 3</span>检索到了正确文档，但模型没有使用</h3>
+<p><strong>发生了什么：</strong></p>
+<pre class="ascii"><code>Context 中明明白白写着：
+"退款申请必须在签收后 7 天内提出。"
+
+模型回答：
+"通常需要在 14 天内申请。"</code></pre>
+<p><strong>为什么发生：</strong>这是<strong>模型参数知识与 Retrieved Context 发生冲突</strong>的典型场景。模型预训练语料里见过大量"14 天退款"的通用表述，当 Context 的"权威性信号"不够强时，参数知识赢了。必须打破一个幻觉：<strong>"把文档放进 Prompt"不等于"模型一定按照文档回答"。</strong></p>
+<p><strong>怎么定位：</strong></p>
+<ul>
+  <li>检查 System Prompt：有没有明确的 Grounding 指令（"仅依据提供的资料回答，资料未覆盖时明确说明"）？</li>
+  <li>检查 Context 结构：文档来源是否有权威性标注（如"现行有效制度"）？</li>
+  <li>检查冲突 Chunk：Context 里是否同时有一个旧的、或论坛式的"一般 14 天"表述被模型采纳了？</li>
+</ul>
+<p><strong>怎么修复（按优先级）：</strong></p>
+<ol>
+  <li><strong>System Instruction 强化 Grounding</strong>，要求引用来源编号；</li>
+  <li><strong>Context Priority</strong>：给官方制度类 Chunk 加权 / 置顶，明确标注 Source Authority；</li>
+  <li>若冲突频繁，在 Query Understanding 层做<strong>时效性意图识别</strong>，主动过滤过期口径。</li>
+</ol>
+<p><strong>避免复发：</strong>把"Context 与参数知识冲突"设计成一类固定测试用例——故意在 Context 中放置与常识不同的数字，验证模型是否遵循文档。</p>
+
+<h3><span class="case-label">案例 4</span>Chunk 切得太"好"，反而导致答案不完整</h3>
+<p><strong>发生了什么：</strong>团队按最佳实践做了语义切分，每个 Chunk 都语义完整：</p>
+<pre class="ascii"><code>Chunk 1：退款申请条件……
+Chunk 2：特殊情况……
+Chunk 3：例外条件……
+
+用户问："这个订单满足退款条件吗？"
+只召回了 Chunk 1。</code></pre>
+<p>答案看起来头头是道，实际是错的——因为 Chunk 2/3 里的例外条件（比如"定制类商品不适用"）根本没进 Context。</p>
+<p><strong>为什么发生：</strong>Chunking 的隐含假设出了问题：我们一直追求"每个 Chunk 独立完整"，但很多业务问题的答案<strong>天然横跨多个 Chunk</strong>。独立完整的 Chunk 服务的是检索命中率，不是答案完整性。</p>
+<p><strong>怎么定位：</strong>用 Trace 里记录的 Chunk ID，把命中的 Chunk 与源文档对照：答案所需的完整知识单元是否被切散了？</p>
+<p><strong>怎么修复：</strong>四个层次的方案，按工程成本递增：</p>
+<table>
+  <tr><th>方案</th><th>原理</th><th style="width:18%">成本</th></tr>
+  <tr><td>调整 Overlap</td><td>让边界信息冗余</td><td>低，但治标</td></tr>
+  <tr><td>Adjacent Chunk Retrieval</td><td>命中后自动带上前后相邻 Chunk</td><td>低</td></tr>
+  <tr><td>Parent-Child 检索</td><td>用小 Chunk 检索，用父级大 Chunk 进 Context</td><td>中</td></tr>
+  <tr><td>章节结构重建</td><td>以标题层级为切分边界（依赖解析质量）</td><td>中高</td></tr>
+</table>
+<blockquote><p><strong>核心观点：Chunking 的目标不是"让每个 Chunk 独立"，而是让 Retrieval 能够获得回答问题所需的最小完整知识单元。</strong></p></blockquote>
+
+<h3><span class="case-label">案例 5</span>BM25 和 Vector 各自都很好，Hybrid 之后却没有提升</h3>
+<p><strong>发生了什么：</strong>两套检索系统单独评估都不错，团队满怀期待上了 Hybrid，结果指标几乎不动，个别 Query 甚至变差。</p>
+<p><strong>为什么发生：</strong>画个图就明白了——</p>
+
+<div class="figure">
+<svg viewBox="0 0 760 270" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs><marker id="mC" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#c9962e"/></marker></defs>
+  <rect x="30" y="20" width="220" height="200" rx="10" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="140" y="48" text-anchor="middle" font-size="15" fill="#1e3a5f" font-weight="700">Dense Top-K</text>
+  <g font-size="14" fill="#334" text-anchor="middle">
+    <rect x="55" y="70"  width="170" height="28" rx="6" fill="#fff" stroke="#9db4cc"/><text x="140" y="89">A</text>
+    <rect x="55" y="104" width="170" height="28" rx="6" fill="#fff" stroke="#9db4cc"/><text x="140" y="123">B</text>
+    <rect x="55" y="138" width="170" height="28" rx="6" fill="#fff" stroke="#9db4cc"/><text x="140" y="157">C</text>
+    <rect x="55" y="172" width="170" height="28" rx="6" fill="#fff" stroke="#9db4cc"/><text x="140" y="191">D</text>
+  </g>
+  <rect x="510" y="20" width="220" height="200" rx="10" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.5"/>
+  <text x="620" y="48" text-anchor="middle" font-size="15" fill="#2c5f47" font-weight="700">BM25 Top-K</text>
+  <g font-size="14" fill="#334" text-anchor="middle">
+    <rect x="535" y="70"  width="170" height="28" rx="6" fill="#fff" stroke="#8fb8a2"/><text x="620" y="89">A</text>
+    <rect x="535" y="104" width="170" height="28" rx="6" fill="#fff" stroke="#8fb8a2"/><text x="620" y="123">B</text>
+    <rect x="535" y="138" width="170" height="28" rx="6" fill="#fff" stroke="#8fb8a2"/><text x="620" y="157">C</text>
+    <rect x="535" y="172" width="170" height="28" rx="6" fill="#fff" stroke="#8fb8a2"/><text x="620" y="191">E</text>
+  </g>
+  <path d="M255,120 L505,120" stroke="#c9962e" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#mC)"/>
+  <text x="380" y="108" text-anchor="middle" font-size="14" fill="#8a6a1c" font-weight="600">RRF Fusion</text>
+  <text x="140" y="248" text-anchor="middle" font-size="13" fill="#8a8578">交集 A B C ≈ 各自结果</text>
+  <text x="620" y="248" text-anchor="middle" font-size="13" fill="#8a8578">新增增益只有 E，寥寥无几</text>
+</svg>
+<div class="fig-cap">图 3 · 两路高度重叠时，Hybrid 的理论增益上限本来就低</div>
+</div>
+
+<p>两路结果<strong>高度重叠</strong>时，Hybrid 的理论增益上限本来就低。真正能带来增益的是两路的<strong>互补部分</strong>（如 E），但如果：</p>
+<ul>
+  <li><strong>Top-K 太小</strong>：每路只取 5，互补文档挤不进候选；</li>
+  <li><strong>RRF 参数不合适</strong>：k 值让某一路系统性压过另一路；</li>
+  <li><strong>两路 Metadata Filter 不一致</strong>：一边过滤了某租户文档，另一边没过滤，融合后引入本不该出现的候选；</li>
+  <li><strong>某一路噪声大</strong>：BM25 对长尾词的误匹配把大量噪声送进 Fusion，稀释了有效候选。</li>
+</ul>
+<p><strong>怎么定位：</strong>分别计算两路 Top-K 与 Ground Truth 的 Overlap 率和互补命中率。如果互补命中 ≈ 0，问题不在 Fusion，而在"为什么两路如此相似"（通常是 Chunking 粒度让两路退化为同一信号）。</p>
+<p><strong>怎么修复 & 避免复发：</strong></p>
+<ul>
+  <li>上 Hybrid 前先做<strong>离线互补性分析</strong>：两路候选重叠度多高？互补命中能带来多少 Recall 增益？——没有增益预期的 Hybrid 不值得付双倍的检索成本；</li>
+  <li>明确每一路的 Top-K 预算，确保互补文档有机会进入 Fusion 阶段。</li>
+</ul>
+<blockquote><p><strong>核心观点：Hybrid Retrieval 不是"两个检索器相加"就一定更好。它是互补性投资，不是免费午餐。</strong></p></blockquote>
+
+<h3><span class="case-label">案例 6</span>Reranker 上线后准确率提高，P95 却炸了</h3>
+<p><strong>发生了什么：</strong></p>
+<pre class="ascii"><code>Reranker On
+  → Recall / Ranking Quality ↑
+  → P95 Latency ↑↑   ← 用户体验断崖</code></pre>
+<p><strong>为什么发生：</strong>Reranker 是整个链路中唯一需要<strong>逐 Query 逐 Pair 推理</strong>的组件，成本随 Candidate Size 线性甚至超线性增长：</p>
+<pre class="ascii"><code>Candidate 20  → 推理 20 对，延迟可控
+Candidate 100 → 推理 100 对，P95 直接爆炸</code></pre>
+<p>Candidate Size 一旦从检索阶段"顺手"调大（比如为了保 Recall），Reranker 就成了全链路的延迟瓶颈。此外 Batch Size 与 GPU 利用率、模型体积、量化与否、下游队列排队时间，都会叠加。</p>
+<p><strong>怎么定位：</strong>在 Trace 中拆分 Rerank 阶段的耗时：排队时间 vs 推理时间 vs 序列化时间。P95 与 P50 的差值往往暴露的是排队（Queue Delay），而不是推理本身。</p>
+<p><strong>怎么修复（按优先级）：</strong></p>
+<ol>
+  <li><strong>Candidate Size 回调</strong>：用第 13 篇的评估确认"20 → 50 候选"带来的质量增益是否值回延迟；</li>
+  <li>Reranker 模型量化 / 换小模型（Cross-Encoder 蒸馏版）；</li>
+  <li>设置 Rerank 阶段 <strong>Timeout + Fallback</strong>：超时直接使用 RRF 排序结果——降级到"次优质量"远好于"用户超时"；</li>
+  <li>第 12 篇讲过的缓存与批量合并。</li>
+</ol>
+<blockquote><p><strong>核心结论：一个效果更好的 Reranker，不一定是一个更好的生产方案。真正的优化目标是三元组：</strong></p></blockquote>
+<div class="formula-card"><span>Quality</span><span class="fc-plus">+</span><span>Latency</span><span class="fc-plus">+</span><span>Cost</span></div>
+
+<h3><span class="case-label">案例 7</span>知识库更新了，但模型还在回答旧答案</h3>
+<p><strong>这是企业 RAG 中最具代表性的生产问题</strong>，值得单独放大。</p>
+<p><strong>发生了什么：</strong>Policy v1 已入库并上线。业务侧发布了 Policy v2 并推送更新。用户提问，拿到的仍是 v1 的答案。业务方在群里 @ 你："你们的 RAG 是不是坏了？"</p>
+<p><strong>为什么发生：</strong>因为"数据更新"和"RAG 已更新"之间，隔着一条长长的失效链，<strong>任何一环断掉，旧答案都会继续存在</strong>：</p>
+
+<div class="figure">
+<svg viewBox="0 0 760 210" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs><marker id="mD" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a8578"/></marker></defs>
+  <g text-anchor="middle" font-size="13">
+    <rect x="10"  y="30" width="105" height="52" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.4"/><text x="62"  y="52" fill="#1e3a5f" font-weight="600">Source 更新？</text><text x="62"  y="70" font-size="11" fill="#8a8578">源系统同步</text>
+    <rect x="135" y="30" width="105" height="52" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.4"/><text x="187" y="52" fill="#1e3a5f" font-weight="600">Index 更新？</text><text x="187" y="70" font-size="11" fill="#8a8578">向量库写入</text>
+    <rect x="260" y="30" width="105" height="52" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.4"/><text x="312" y="52" fill="#1e3a5f" font-weight="600">旧 Chunk 删除？</text><text x="312" y="70" font-size="11" fill="#8a8578">upsert ≠ delete</text>
+    <rect x="385" y="30" width="105" height="52" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.4"/><text x="437" y="52" fill="#1e3a5f" font-weight="600">Embedding 刷新？</text><text x="437" y="70" font-size="11" fill="#8a8578">异步任务</text>
+    <rect x="510" y="30" width="110" height="52" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.4"/><text x="565" y="52" fill="#8a6a1c" font-weight="600">检索缓存失效？</text><text x="565" y="70" font-size="11" fill="#8a8578">Query Cache</text>
+    <rect x="640" y="30" width="110" height="52" rx="8" fill="#f7e9e5" stroke="#b54a35" stroke-width="1.4"/><text x="695" y="52" fill="#8f3423" font-weight="600">语义/响应缓存？</text><text x="695" y="70" font-size="11" fill="#8a8578">最易被遗忘</text>
+  </g>
+  <g stroke="#8a8578" stroke-width="1.5">
+    <line x1="115" y1="56" x2="131" y2="56" marker-end="url(#mD)"/>
+    <line x1="240" y1="56" x2="256" y2="56" marker-end="url(#mD)"/>
+    <line x1="365" y1="56" x2="381" y2="56" marker-end="url(#mD)"/>
+    <line x1="490" y1="56" x2="506" y2="56" marker-end="url(#mD)"/>
+    <line x1="620" y1="56" x2="636" y2="56" marker-end="url(#mD)"/>
+  </g>
+  <rect x="230" y="128" width="300" height="56" rx="8" fill="#fdf6ec" stroke="#c9962e" stroke-width="1.2" stroke-dasharray="5 3"/>
+  <text x="380" y="151" text-anchor="middle" font-size="14" fill="#8a6a1c" font-weight="600">任何一环失效 → 用户持续拿到旧答案</text>
+  <text x="380" y="170" text-anchor="middle" font-size="12" fill="#8a8578">且各环节 TTL / 同步周期不一致，故障呈"间歇性"</text>
+</svg>
+<div class="fig-cap">图 4 · Freshness 失效链：数据更新 ≠ RAG 更新</div>
+</div>
+
+<p><strong>怎么定位：</strong>沿这条链从上游往下逐环验证：源文档版本 → 索引中的 Chunk 版本 → Embedding 时间戳 → 各层缓存的 TTL 与失效事件。<strong>特别注意</strong>：向量库的 upsert 不会删除旧 Chunk 中已经切出去的孤儿片段；语义缓存命中判断基于向量相似度，新版本文档写入后它不会自动失效。</p>
+<p><strong>怎么修复：</strong></p>
+<ul>
+  <li>建立<strong>文档级版本号</strong>贯穿全链路（Source → Chunk → Index → Cache Key）；</li>
+  <li>更新事件触发<strong>级联失效</strong>，而不是各自等待 TTL 过期；</li>
+  <li>高时效性语料（政策、价格、制度）使用更短的语义缓存 TTL 或直接绕过。</li>
+</ul>
+<blockquote><p><strong>核心观点：真正需要的不是"某次修好了"，而是一条 End-to-end Freshness Pipeline——让"数据更新"自动等价于"RAG 更新"。</strong></p></blockquote>
+
+<h3><span class="case-label">案例 8</span>用户没有权限，但文档却进入了 Context（高风险）</h3>
+<p><strong>发生了什么：</strong>User A 发起 Query。向量检索由于缺少有效过滤，敏感文档（其他部门 / 其他租户）进入 Top-K，随后进入 Context，送入 LLM。</p>
+<p>即使最终答案没有明确泄露内容——<strong>敏感信息已经进入了系统内部的处理链</strong>：它会出现在 Prompt 里、可能出现在日志里、可能被语义缓存以向量形式缓存、可能在极端 Prompt 注入下被吐出来。</p>
+<p><strong>为什么发生：</strong></p>
+<table>
+  <tr><th style="width:30%">根因</th><th>机制</th></tr>
+  <tr><td>无 Permission Filter</td><td>向量检索天然不理解权限，纯 ANN 搜索就是"全球无墙"</td></tr>
+  <tr><td>Post-filter 而非 Pre-filter</td><td>先取 Top-K 再过滤，且没有补位逻辑，恰好把越权文档留在候选里</td></tr>
+  <tr><td>Tenant ID 缺失</td><td>多租户共库时 Namespace / Partition 配置错误</td></tr>
+  <tr><td>缓存跨权限共享</td><td>语义缓存按 Query 向量命中，不校验请求者权限</td></tr>
+  <tr><td>Citation 泄露</td><td>答案没引用敏感文档，但 Citation 列表暴露了文档标题</td></tr>
+</table>
+<p><strong>怎么定位：</strong>这不是靠看答案能发现的问题。必须用带越权标记的<strong>探针 Query</strong> 做主动审计：定期以低权限账号发起 Query，检查 Trace 中的候选文档集合是否包含越权 ID。</p>
+<p><strong>怎么修复：</strong></p>
+<ol>
+  <li>权限过滤必须是 <strong>Pre-filter</strong>，在 ANN 检索阶段生效，而不是事后剔除；</li>
+  <li>缓存 Key 必须包含<strong>权限维度</strong>（至少是权限组 / 租户 ID），或低权限请求绕过共享缓存；</li>
+  <li>Citation 与答案走同一套权限校验。</li>
+</ol>
+<blockquote><p><strong>Security Failure 不是普通的 RAG Quality Failure，而是系统级风险。</strong>它不参与"效果提升 3%"这类权衡，它的处理优先级、响应流程、审批路径都应该与普通质量故障完全隔离。后面故障分级中，它独占 P0。</p></blockquote>
+
+<h3><span class="case-label">案例 9</span>Context 越来越长，效果反而越来越差</h3>
+<p><strong>发生了什么：</strong></p>
+<pre class="ascii"><code>Top-K = 5   → 效果不错
+Top-K = 20  → 信息更多，团队觉得"更保险"
+Top-K = 50  → 效果明显下降，且延迟成本翻倍</code></pre>
+<p><strong>为什么发生：</strong>"More Context ≠ More Useful Context"。当 K 增大：</p>
+<ul>
+  <li><strong>Noise</strong>：低相关 Chunk 稀释了模型的注意力；</li>
+  <li><strong>Duplication</strong>：同一文档的多个相似 Chunk 重复出现，占用 Token 预算却不增加信息；</li>
+  <li><strong>Lost in the Middle</strong>：关键证据落在 Context 中段时，模型利用率显著下降；</li>
+  <li><strong>Conflicting Sources</strong>：新旧版本、不同口径同时在场，模型随机站队；</li>
+  <li><strong>Token Budget 挤压</strong>：真正的关键 Chunk 可能因预算被截断。</li>
+</ul>
+<p><strong>怎么定位：</strong>做一个简单的 K-敏感性实验：固定评估集，扫 K ∈ {3, 5, 10, 20, 50}，同时记录质量指标与 P95 延迟。曲线通常呈现"先升后降"，而且<strong>质量下降点往往比延迟爆炸点更早出现</strong>。</p>
+<p><strong>怎么修复：</strong></p>
+<ul>
+  <li>Rerank 后按分数做<strong>动态选择</strong>，而非固定 Top-N；</li>
+  <li>相似 Chunk 去重（MMR 或基于 Chunk ID 的去重）；</li>
+  <li>高分证据置于 Context 首尾位置（利用 Lost in the Middle 特性）；</li>
+  <li>引入版本一致性检查，冲突来源只保留最高权威版本。</li>
+</ul>
+<blockquote><p><strong>核心观点：Context 应该追求最小充分证据集，而不是最大信息量。</strong></p></blockquote>
+
+<h3><span class="case-label">案例 10</span>Offline Evaluation 很好，上线后效果崩了（最重要）</h3>
+<p><strong>发生了什么：</strong>Offline 阶段 Recall@10、Faithfulness、Answer Relevance 全部漂亮。上线后用户反馈持续偏差，且离线指标完全无法解释。</p>
+<p><strong>为什么发生：</strong>五个 Drift，每一个都足以让离线指标失效：</p>
+<table>
+  <tr><th style="width:24%">Drift 类型</th><th>机制</th><th style="width:32%">典型表现</th></tr>
+  <tr><td><strong>Distribution Shift</strong></td><td>测试 Query 与真实 Query 分布不一致</td><td>测试集是工程师生造的短句，真实用户写 60 字长段落</td></tr>
+  <tr><td><strong>Long-tail</strong></td><td>评估集没覆盖边缘问题</td><td>测试集 100 条，真实 Query 空间是 10⁵ 级</td></tr>
+  <tr><td><strong>Data Drift</strong></td><td>生产数据持续变化</td><td>测试当天对，两周后语料变了没人知道</td></tr>
+  <tr><td><strong>Behavior Drift</strong></td><td>用户表达方式变化</td><td>产品改版后 Query 风格整体迁移</td></tr>
+  <tr><td><strong>System Drift</strong></td><td>模型 / Embedding / Index / Prompt 在变</td><td>每次变更都没有重跑完整回归</td></tr>
+</table>
+<p><strong>怎么定位：</strong>抽样真实失败 Query，与评估集 Query 做分布对比：长度分布、意图类型分布、实体领域分布。差异通常一目了然。</p>
+<p><strong>怎么修复：</strong></p>
+<ul>
+  <li>建立真实 Query 采样管道（脱敏后）持续补充评估集；</li>
+  <li>评估集按意图 / 领域 / 难度<strong>分层采样</strong>，避免只测"好写的题"；</li>
+  <li>任何系统组件变更（换 Embedding、改 Prompt、升级模型）必须触发<strong>全量回归</strong>；</li>
+  <li>上线后用第 12 篇的在线指标 + 用户反馈做持续监控，与离线指标形成双保险。</li>
+</ul>
+<div class="formula-card"><span>Offline Quality</span><span class="fc-neq">≠</span><span>Online Quality</span></div>
+
+<h2>四、RAG 故障树：统一的 Failure Taxonomy</h2>
+<p>十个案例讲完，现在把它们收拢到一个统一的分类体系里。<strong>不同类型的故障，应该走完全不同的排障路径</strong>——这正是故障树存在的意义。</p>
+
+<div class="figure">
+<svg viewBox="0 0 760 440" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs><marker id="mE" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a8578"/></marker></defs>
+  <rect x="290" y="8" width="180" height="40" rx="8" fill="#b54a35"/>
+  <text x="380" y="34" text-anchor="middle" font-size="16" fill="#fff" font-weight="700">RAG Failure</text>
+  <g stroke="#8a8578" stroke-width="1.5" fill="none">
+    <path d="M380,48 L380,70 L110,70 L110,94" marker-end="url(#mE)"/>
+    <path d="M380,48 L380,94" marker-end="url(#mE)"/>
+    <path d="M380,48 L380,70 L650,70 L650,94" marker-end="url(#mE)"/>
+  </g>
+  <g text-anchor="middle">
+    <rect x="30" y="96" width="160" height="40" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="110" y="122" font-size="15" fill="#1e3a5f" font-weight="700">Data 数据故障</text>
+    <rect x="300" y="96" width="160" height="40" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="380" y="122" font-size="15" fill="#1e3a5f" font-weight="700">Retrieval 检索故障</text>
+    <rect x="570" y="96" width="160" height="40" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.5"/><text x="650" y="122" font-size="15" fill="#2c5f47" font-weight="700">Generation 生成故障</text>
+  </g>
+  <g font-size="12.5" fill="#4a463d" text-anchor="middle">
+    <rect x="30" y="160" width="160" height="150" rx="6" fill="#f4f6f9" stroke="#dde4ec"/>
+    <text x="110" y="184" font-weight="600">· Parsing 解析</text>
+    <text x="110" y="206" font-weight="600">· Chunking 切分</text>
+    <text x="110" y="228" font-weight="600">· Metadata 元数据</text>
+    <text x="110" y="250" font-weight="600">· Freshness 时效</text>
+    <text x="110" y="272" font-weight="600">· Permission 权限</text>
+    <text x="110" y="296" fill="#8a8578" font-size="11">对应案例 1 / 4 / 7 / 8</text>
+    <rect x="300" y="160" width="160" height="150" rx="6" fill="#f4f6f9" stroke="#dde4ec"/>
+    <text x="380" y="184" font-weight="600">· Dense / BM25</text>
+    <text x="380" y="206" font-weight="600">· RRF / Fusion</text>
+    <text x="380" y="228" font-weight="600">· Rerank 重排</text>
+    <text x="380" y="250" font-weight="600">· Query 理解 / 改写</text>
+    <text x="380" y="272" font-weight="600" fill="#b54a35">· Index 配置</text>
+    <text x="380" y="296" fill="#8a8578" font-size="11">对应案例 1 / 2 / 5 / 6</text>
+    <rect x="570" y="160" width="160" height="150" rx="6" fill="#f2f7f3" stroke="#d5e5da"/>
+    <text x="650" y="184" font-weight="600">· Context 构建</text>
+    <text x="650" y="206" font-weight="600">· Prompt 设计</text>
+    <text x="650" y="228" font-weight="600">· Model 选择</text>
+    <text x="650" y="250" font-weight="600">· Grounding / Citation</text>
+    <text x="650" y="272" font-weight="600">· 幻觉</text>
+    <text x="650" y="296" fill="#8a8578" font-size="11">对应案例 2 / 3 / 9</text>
+  </g>
+  <g stroke="#b8b2a4" stroke-width="1.2" stroke-dasharray="4 3" fill="none">
+    <line x1="110" y1="310" x2="110" y2="336" marker-end="url(#mE)"/>
+    <line x1="380" y1="310" x2="380" y2="336" marker-end="url(#mE)"/>
+    <line x1="650" y1="310" x2="650" y2="336" marker-end="url(#mE)"/>
+  </g>
+  <g text-anchor="middle" font-size="13">
+    <rect x="270" y="338" width="220" height="36" rx="18" fill="#f7e9e5" stroke="#b54a35" stroke-width="1.4"/>
+    <text x="380" y="361" fill="#8f3423" font-weight="700">Security 安全故障（P0，独立通道）</text>
+    <rect x="30" y="390" width="330" height="34" rx="8" fill="#faf8f4" stroke="#d8d2c4" stroke-width="1.2"/>
+    <text x="195" y="412" fill="#6a6558">Performance 故障：延迟 / 成本 / 容量（案例 6 / 9）</text>
+    <rect x="400" y="390" width="330" height="34" rx="8" fill="#faf8f4" stroke="#d8d2c4" stroke-width="1.2"/>
+    <text x="565" y="412" fill="#6a6558">Infrastructure 故障：依赖 / 网络 / 缓存 / 队列（案例 7）</text>
+  </g>
+</svg>
+<div class="fig-cap">图 5 · RAG Failure Tree：不同故障进入不同排障路径</div>
+</div>
+
+<p>使用方法：拿到故障现象后，先归类到三大主枝之一，再进入对应子项下钻。<strong>Security 永远优先处理，且不与质量问题共享排障通道。</strong></p>
+
+<h2>五、从 "Answer Wrong" 反查整条 Pipeline</h2>
+<p>这是全文最具实践价值的部分。当你拿到一个错误答案，按这棵诊断树走：</p>
+
+<div class="figure">
+<svg viewBox="0 0 760 550" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="mF1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a8578"/></marker>
+    <marker id="mF2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#b54a35"/></marker>
+    <marker id="mF3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3a7d5c"/></marker>
+  </defs>
+  <rect x="300" y="10" width="160" height="42" rx="8" fill="#b54a35"/>
+  <text x="380" y="37" text-anchor="middle" font-size="16" fill="#fff" font-weight="700">Answer Wrong</text>
+  <line x1="380" y1="52" x2="380" y2="72" stroke="#8a8578" stroke-width="1.5" marker-end="url(#mF1)"/>
+  <rect x="270" y="74" width="220" height="40" rx="8" fill="#fdf6ec" stroke="#c9962e" stroke-width="1.5"/>
+  <text x="380" y="99" text-anchor="middle" font-size="14.5" fill="#8a6a1c" font-weight="600">正确文档被检索到了吗？</text>
+  <path d="M270,94 L200,94 L200,148" stroke="#b54a35" stroke-width="1.5" fill="none" marker-end="url(#mF2)"/>
+  <path d="M490,94 L560,94 L560,148" stroke="#3a7d5c" stroke-width="1.5" fill="none" marker-end="url(#mF3)"/>
+  <text x="222" y="86" font-size="12" fill="#b54a35" font-weight="700">No</text>
+  <text x="512" y="86" font-size="12" fill="#3a7d5c" font-weight="700">Yes</text>
+  <rect x="90" y="150" width="220" height="48" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.6"/>
+  <text x="200" y="170" text-anchor="middle" font-size="15" fill="#1e3a5f" font-weight="700">Retrieval Problem</text>
+  <text x="200" y="189" text-anchor="middle" font-size="11.5" fill="#8a8578">案例 1 / 5：Data → Chunk → Index → Query</text>
+  <rect x="450" y="150" width="220" height="40" rx="8" fill="#fdf6ec" stroke="#c9962e" stroke-width="1.5"/>
+  <text x="560" y="175" text-anchor="middle" font-size="14.5" fill="#8a6a1c" font-weight="600">正确证据在最终 Context 里吗？</text>
+  <path d="M450,170 L390,170 L390,228" stroke="#b54a35" stroke-width="1.5" fill="none" marker-end="url(#mF2)"/>
+  <path d="M670,170 L710,170 L710,228 L642,228" stroke="#3a7d5c" stroke-width="1.5" fill="none" marker-end="url(#mF3)"/>
+  <text x="412" y="162" font-size="12" fill="#b54a35" font-weight="700">No</text>
+  <text x="682" y="162" font-size="12" fill="#3a7d5c" font-weight="700">Yes</text>
+  <rect x="280" y="230" width="220" height="48" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.6"/>
+  <text x="390" y="250" text-anchor="middle" font-size="15" fill="#8a6a1c" font-weight="700">Context Problem</text>
+  <text x="390" y="269" text-anchor="middle" font-size="11.5" fill="#8a8578">案例 2 / 4 / 9：Rerank → 截断 → 冲突</text>
+  <rect x="500" y="230" width="220" height="48" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.6"/>
+  <text x="610" y="250" text-anchor="middle" font-size="15" fill="#2c5f47" font-weight="700">Generation Problem</text>
+  <text x="610" y="269" text-anchor="middle" font-size="11.5" fill="#8a8578">案例 3：Grounding / Prompt / Model</text>
+  <rect x="20" y="330" width="720" height="200" rx="10" fill="#faf8f4" stroke="#d8d2c4" stroke-width="1.2"/>
+  <text x="50" y="362" font-size="14.5" fill="#4a463d" font-weight="700">再叠加四条横向判断线：</text>
+  <g font-size="13" fill="#4a463d">
+    <rect x="45" y="380" width="150" height="30" rx="6" fill="#f7e9e5" stroke="#b54a35"/><text x="120" y="400" text-anchor="middle" font-weight="600" fill="#8f3423">Unauthorized ?</text>
+    <text x="215" y="400" font-size="12.5" fill="#8a8578">→ Security Problem（P0，优先于一切）</text>
+    <rect x="45" y="420" width="150" height="30" rx="6" fill="#f7e9e5" stroke="#b54a35"/><text x="120" y="440" text-anchor="middle" font-weight="600" fill="#8f3423">Wrong Citation ?</text>
+    <text x="215" y="440" font-size="12.5" fill="#8a8578">→ Grounding / Citation Problem</text>
+    <rect x="45" y="460" width="150" height="30" rx="6" fill="#f7e9e5" stroke="#b54a35"/><text x="120" y="480" text-anchor="middle" font-weight="600" fill="#8f3423">Slow ?</text>
+    <text x="215" y="480" font-size="12.5" fill="#8a8578">→ Performance Problem（拆分各阶段耗时）</text>
+    <rect x="45" y="496" width="150" height="30" rx="6" fill="#f7e9e5" stroke="#b54a35"/><text x="120" y="516" text-anchor="middle" font-weight="600" fill="#8f3423">Old Answer ?</text>
+    <text x="215" y="516" font-size="12.5" fill="#8a8578">→ Freshness / Cache Problem（案例 7 链路）</text>
+  </g>
+</svg>
+<div class="fig-cap">图 6 · Answer Wrong 诊断树：两分钟内确定责任层</div>
+</div>
+
+<p>两个判断问题的操作定义要说清楚，避免执行时扯皮：</p>
+<ul>
+  <li><strong>"正确文档被检索到了吗？"</strong>——看 Trace 中 Retrieval / Fusion / Rerank 各阶段的候选 ID 集合。注意它分两级：进了候选但被排出去，责任在 Rerank；候选里根本没有，责任在 Retrieval 或 Data。</li>
+  <li><strong>"正确证据在最终 Context 里吗？"</strong>——看 Prompt 快照。在 Context 里但没被用，责任在 Generation；不在 Context 里，责任在 Context 构建（排序、截断、预算）。</li>
+</ul>
+<blockquote><p><strong>这棵树的价值在于：任何纠纷，两分钟内确定责任层。</strong></p></blockquote>
+
+<h2>六、RAG Debugging Checklist</h2>
+<p>诊断树定层之后，用清单逐项过。建议直接做成内部工具的表单模板：</p>
+<div class="checklist-grid">
+  <div class="cl-card"><h4>🗂 Data</h4><ul>
+    <li>文档在源系统是否存在？</li>
+    <li>解析是否成功（表格 / 扫描件 / 版式）？</li>
+    <li>Chunk 边界与内容是否正确？</li>
+    <li>Metadata 是否完整（版本 / 日期 / 部门 / 状态）？</li>
+    <li>是否为最新版本？旧版本是否已删除？</li>
+  </ul></div>
+  <div class="cl-card"><h4>🔍 Query</h4><ul>
+    <li>原始 Query 是什么（原样保留）？</li>
+    <li>Rewrite 后变成了什么？</li>
+    <li>是否发生 Intent Drift / 关键实体丢失？</li>
+    <li>多轮对话中指代是否正确消解？</li>
+    <li>Metadata Filter 是否正确生效？</li>
+  </ul></div>
+  <div class="cl-card"><h4>🎯 Retrieval</h4><ul>
+    <li>Dense Top-K 是什么？分数多少？</li>
+    <li>BM25 Top-K 是什么？</li>
+    <li>RRF 融合后的排序？</li>
+    <li>Ground Truth 是否进入 Candidate？在哪一路？</li>
+    <li>两路 Filter 条件是否一致？</li>
+  </ul></div>
+  <div class="cl-card"><h4>⚖️ Reranker</h4><ul>
+    <li>Candidate 数量是多少？</li>
+    <li>Rerank Score 分布如何？</li>
+    <li>正确文档 Rerank 后排第几？</li>
+    <li>Rerank 阶段耗时与超时？</li>
+    <li>是否触发了 Fallback？</li>
+  </ul></div>
+  <div class="cl-card"><h4>📦 Context</h4><ul>
+    <li>最终 Context 全文是什么（快照）？</li>
+    <li>是否存在重复 Chunk？</li>
+    <li>是否存在版本 / 口径冲突？</li>
+    <li>是否超过 Token Budget？截断发生在哪？</li>
+    <li>证据的位置（首 / 中 / 尾）？</li>
+  </ul></div>
+  <div class="cl-card"><h4>✍️ Generation</h4><ul>
+    <li>完整 Prompt 快照（含 System）？</li>
+    <li>Model 名称与版本？</li>
+    <li>原始 Output（含被后处理删掉的部分）？</li>
+    <li>Citation 与证据 ID 的映射？</li>
+    <li>是否被安全策略拦截 / 改写？</li>
+  </ul></div>
+  <div class="cl-card"><h4>🔐 Security</h4><ul>
+    <li>请求者身份 / Tenant ID？</li>
+    <li>本次请求实际应用的权限范围？</li>
+    <li>候选中是否存在越权文档？</li>
+    <li>缓存命中是否校验了权限？</li>
+  </ul></div>
+  <div class="cl-card"><h4>⚙️ System</h4><ul>
+    <li>各阶段 Latency 分解？</li>
+    <li>各层缓存命中情况？</li>
+    <li>是否发生 Error / Retry / 降级？</li>
+    <li>Fallback 路径是否被激活？</li>
+  </ul></div>
+</div>
+
+<h2>七、RAG Trace：排障体系的地基</h2>
+<p>上面所有方法有一个共同前提：<strong>你能在事后看到当时发生了什么</strong>。没有 Trace，诊断树就是空中楼阁。</p>
+<h3>7.1 一条完整的 Trace 应该覆盖</h3>
+<pre class="ascii"><code>Request ID
+│
+├── User / Tenant            ← 谁，什么权限范围
+├── Original Query           ← 用户原话，永不改写
+├── Rewritten Query          ← 改写后（可多条）
+├── Metadata Filter          ← 本次实际生效的过滤条件
+├── Dense Retrieval          ← Top-K + Scores + Chunk IDs
+├── BM25 Retrieval           ← Top-K + Scores + Chunk IDs
+├── RRF                      ← 融合后排序
+├── Reranker                 ← 输入输出 + Scores + 耗时
+├── Context                  ← 最终上下文快照（受控记录）
+├── Prompt                   ← 完整 Prompt（含 System）
+├── LLM                      ← 模型版本 + 原始输出
+├── Citation                 ← 引用与证据映射
+└── Final Answer</code></pre>
+<p>每一步记录：<strong>latency、inputs、outputs、IDs、scores、model version、cache hit、errors</strong>。</p>
+
+<h3>7.2 一个可落地的 Trace 数据结构示例</h3>
+<pre><code>from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Optional
+
+class Stage(Enum):
+    QUERY_UNDERSTANDING = "query_understanding"
+    DENSE_RETRIEVAL     = "dense_retrieval"
+    BM25_RETRIEVAL      = "bm25_retrieval"
+    FUSION              = "fusion_rrf"
+    RERANK              = "rerank"
+    CONTEXT_BUILD       = "context_build"
+    GENERATION          = "generation"
+    POST_CHECK          = "post_check"   # 权限 / Citation 校验
+
+@dataclass
+class StageTrace:
+    stage: Stage
+    started_at: datetime
+    latency_ms: float
+    inputs: dict[str, Any]        # 只存 ID / Query / 参数，不盲目存全文
+    outputs: dict[str, Any]       # 候选 ID + Score 列表、Prompt 引用而非全文
+    model_version: Optional[str] = None
+    cache_hit: bool = False
+    error: Optional[str] = None
+    fallback_triggered: bool = False
+
+@dataclass
+class RAGTrace:
+    request_id: str
+    tenant_id: str
+    user_id: str
+    permission_scope: str          # 本次请求的权限集合摘要（哈希）
+    original_query: str
+    rewritten_queries: list[str] = field(default_factory=list)
+    metadata_filter: dict[str, Any] = field(default_factory=dict)
+    stages: list[StageTrace] = field(default_factory=list)
+    final_context_chunk_ids: list[str] = field(default_factory=list)
+    citations: list[dict] = field(default_factory=list)
+    final_answer: str = ""
+    evaluation_labels: dict[str, Any] = field(default_factory=dict)  # 人工标注回流用
+
+    def stage(self, s: Stage) -&gt; Optional[StageTrace]:
+        return next((t for t in self.stages if t.stage == s), None)
+
+    def find_chunk_first_appearance(self, chunk_id: str) -&gt; Optional[Stage]:
+        """定位某个 Chunk 最早出现在哪个阶段——诊断树的核心查询"""
+        order = [Stage.DENSE_RETRIEVAL, Stage.BM25_RETRIEVAL,
+                 Stage.FUSION, Stage.RERANK, Stage.CONTEXT_BUILD]
+        for s in order:
+            t = self.stage(s)
+            if t and chunk_id in t.outputs.get("chunk_ids", []):
+                return s
+        return None</code></pre>
+<p><code>find_chunk_first_appearance</code> 这个方法值得单独说明：<strong>给定一个"正确文档"，它出现在 Dense 里但没出现在 Context 里，责任就在 Rerank 或 Context 构建；它连 Dense 都不在，责任就在 Retrieval 或 Data。</strong>一个函数，自动完成诊断树的第一层分流。</p>
+<blockquote><p><strong>安全红线（必须写进规范）：</strong>敏感数据记录必须遵守企业安全策略。不是为了 Debug 就无限制地记录完整 Context 和用户 Query。采用：日志脱敏、Context 存哈希 + 按需解引用、Trace 保留期限、越级访问 Trace 的审计。</p></blockquote>
+
+<h2>八、RAG Failure 与 Evaluation 的闭环</h2>
+<p>第 13 篇讲 Evaluation 时强调过：评估集不是一次性的，而是活的。这一篇补上它真正的落地方式——<strong>失败回流</strong>：</p>
+
+<div class="figure">
+<svg viewBox="0 0 760 135" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs><marker id="mG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1e3a5f"/></marker></defs>
+  <g text-anchor="middle" font-size="13.5">
+    <rect x="15"  y="28" width="110" height="52" rx="10" fill="#f7e9e5" stroke="#b54a35" stroke-width="1.5"/><text x="70"  y="60" fill="#8f3423" font-weight="700">Production Failure</text>
+    <rect x="145" y="28" width="110" height="52" rx="10" fill="#fdf6ec" stroke="#c9962e" stroke-width="1.5"/><text x="200" y="60" fill="#8a6a1c" font-weight="700">Error Classification</text>
+    <rect x="275" y="28" width="110" height="52" rx="10" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="330" y="52" fill="#1e3a5f" font-weight="700">Add to Evaluation</text><text x="330" y="70" fill="#1e3a5f" font-weight="700">Dataset</text>
+    <rect x="405" y="28" width="105" height="52" rx="10" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="457" y="60" fill="#1e3a5f" font-weight="700">Regression Test</text>
+    <rect x="530" y="28" width="95" height="52" rx="10" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.5"/><text x="577" y="60" fill="#2c5f47" font-weight="700">Optimization</text>
+    <rect x="645" y="28" width="100" height="52" rx="10" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.5"/><text x="695" y="60" fill="#2c5f47" font-weight="700">Production</text>
+  </g>
+  <g stroke="#1e3a5f" stroke-width="1.6">
+    <line x1="125" y1="54" x2="141" y2="54" marker-end="url(#mG)"/>
+    <line x1="255" y1="54" x2="271" y2="54" marker-end="url(#mG)"/>
+    <line x1="385" y1="54" x2="401" y2="54" marker-end="url(#mG)"/>
+    <line x1="510" y1="54" x2="526" y2="54" marker-end="url(#mG)"/>
+    <line x1="625" y1="54" x2="641" y2="54" marker-end="url(#mG)"/>
+  </g>
+  <path d="M695,80 L695,112 L70,112 L70,84" stroke="#c9962e" stroke-width="1.6" fill="none" stroke-dasharray="6 4" marker-end="url(#mG)"/>
+  <text x="380" y="107" text-anchor="middle" font-size="12.5" fill="#8a6a1c">闭环回流：修复后的系统必须通过含本案例的回归集，才能重新上线</text>
+</svg>
+<div class="fig-cap">图 7 · Failure → Regression → Evaluation 闭环（第 13 篇的真正落地）</div>
+</div>
+
+<blockquote><p><strong>每一个真实线上失败案例，都应该尽可能转化成未来不会再犯的测试样本。</strong></p></blockquote>
+<p>操作上很简单：故障修复后，把该 Query（脱敏后）连同 Ground Truth、故障类型标签写入评估集。以后任何组件变更——换 Embedding、改 Prompt、升级 Reranker——回归测试都必须包含它。这一步也是后面 Postmortem 的必要交付物。</p>
+
+<h2>九、失败不是单点问题，而是链式问题</h2>
+<p>看一个完整的链式故障案例。这是生产中最常见的故障形态——<strong>最终错误发生在 Generation，根因却埋在 Data Layer</strong>：</p>
+
+<div class="figure">
+<svg viewBox="0 0 760 480" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs><marker id="mH" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a8578"/></marker></defs>
+  <g text-anchor="middle" font-size="13.5">
+    <rect x="260" y="10" width="240" height="42" rx="8" fill="#f7e9e5" stroke="#b54a35" stroke-width="1.6"/><text x="380" y="36" fill="#8f3423" font-weight="700">PDF Parsing Error（扫描件 / 版式错乱）</text>
+    <rect x="290" y="72"  width="180" height="38" rx="8" fill="#fbeee9" stroke="#c96a55" stroke-width="1.3"/><text x="380" y="96"  fill="#8f3423">标题层级丢失</text>
+    <rect x="290" y="128" width="180" height="38" rx="8" fill="#fbeee9" stroke="#c96a55" stroke-width="1.3"/><text x="380" y="152" fill="#8f3423">Chunk 边界切错（跨章节混切）</text>
+    <rect x="290" y="184" width="180" height="38" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.3"/><text x="380" y="208" fill="#8a6a1c">Embedding 表征质量下降</text>
+    <rect x="290" y="240" width="180" height="38" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.3"/><text x="380" y="264" fill="#8a6a1c">Dense Retrieval Recall ↓</text>
+    <rect x="290" y="296" width="180" height="38" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.3"/><text x="380" y="320" fill="#8a6a1c">RRF 候选缺失</text>
+    <rect x="260" y="352" width="240" height="38" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.3"/><text x="380" y="376" fill="#1e3a5f">Reranker 无能为力（无米之炊）</text>
+    <rect x="290" y="408" width="180" height="38" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.3"/><text x="380" y="432" fill="#2c5f47">Context 缺失关键证据</text>
+  </g>
+  <g stroke="#8a8578" stroke-width="1.5">
+    <line x1="380" y1="52"  x2="380" y2="68"  marker-end="url(#mH)"/>
+    <line x1="380" y1="110" x2="380" y2="124" marker-end="url(#mH)"/>
+    <line x1="380" y1="166" x2="380" y2="180" marker-end="url(#mH)"/>
+    <line x1="380" y1="222" x2="380" y2="236" marker-end="url(#mH)"/>
+    <line x1="380" y1="278" x2="380" y2="292" marker-end="url(#mH)"/>
+    <line x1="380" y1="334" x2="380" y2="348" marker-end="url(#mH)"/>
+    <line x1="380" y1="390" x2="380" y2="404" marker-end="url(#mH)"/>
+  </g>
+  <g text-anchor="middle" font-size="13.5">
+    <rect x="510" y="408" width="190" height="38" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.3"/><text x="605" y="432" fill="#2c5f47">模型编造答案（幻觉）</text>
+    <rect x="60" y="408" width="190" height="38" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.3"/><text x="155" y="432" fill="#2c5f47">错误 / 拒答</text>
+  </g>
+  <line x1="470" y1="427" x2="506" y2="427" stroke="#8a8578" stroke-width="1.5" marker-end="url(#mH)"/>
+  <line x1="290" y1="427" x2="254" y2="427" stroke="#8a8578" stroke-width="1.5" marker-end="url(#mH)"/>
+  <text x="380" y="470" text-anchor="middle" font-size="13" fill="#8f3423" font-weight="600">⚠ 症状出现在链路末端，根因埋藏在链路最前端 —— 这就是链式故障</text>
+</svg>
+<div class="fig-cap">图 8 · 链式故障：从 PDF Parsing Error 到 Wrong Answer</div>
+</div>
+
+<p>这个案例的团队第一反应是"换更强的模型""改 Prompt"，折腾两周无效。最后是靠 Trace 回放，沿着 <code>find_chunk_first_appearance</code> 发现那个 Chunk <strong>从未出现在任何检索候选里</strong>，一路追到 PDF 解析层才找到根因。</p>
+<blockquote><p><strong>最终错误发生在 Generation，但根因可能发生在 Data Layer。这是全文最重要的架构思想之一：永远不要只修症状出现的层。</strong></p></blockquote>
+
+<h2>十、故障分级与 Incident Response</h2>
+<h3>10.1 故障分级</h3>
+<p>参考 SRE 实践，建议按影响性质（而非仅影响规模）分级：</p>
+<div class="severity-grid">
+  <div class="sev-card sev-p0"><div class="sev-badge">P0 · Critical</div>
+    <ul><li>权限泄露 / 越权访问</li><li>跨租户数据泄露</li><li>敏感信息进入处理链或输出</li></ul>
+    <p class="sev-note">安全事件独立流程：立即阻断 + 上报，不适用普通排障节奏</p>
+  </div>
+  <div class="sev-card sev-p1"><div class="sev-badge">P1 · High</div>
+    <ul><li>大规模错误答案</li><li>知识库整体失效</li><li>检索 / 模型全面异常</li></ul>
+    <p class="sev-note">拉起 Incident Response，全链路排查</p>
+  </div>
+  <div class="sev-card sev-p2"><div class="sev-badge">P2 · Medium</div>
+    <ul><li>特定领域 Recall 下降</li><li>某类 Query 集中失败</li><li>延迟显著升高</li></ul>
+    <p class="sev-note">限时排查，纳入下一个迭代修复</p>
+  </div>
+  <div class="sev-card sev-p3"><div class="sev-badge">P3 · Low</div>
+    <ul><li>Citation 格式问题</li><li>非关键长尾错误</li></ul>
+    <p class="sev-note">记录回流评估集，低优修复</p>
+  </div>
+</div>
+<p><em>注意：具体等级名称、响应时间应由企业内部 SLA 定义，这里给的是结构性参考。</em></p>
+
+<h3>10.2 Incident Response 流程</h3>
+<p>企业 RAG 出问题后，不应该只"把 Prompt 改一下"。应该形成与生产系统一致的 Incident Management：</p>
+
+<div class="figure">
+<svg viewBox="0 0 760 105" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs><marker id="mI" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a8578"/></marker></defs>
+  <g text-anchor="middle" font-size="13">
+    <rect x="6"   y="25" width="76" height="48" rx="8" fill="#f7e9e5" stroke="#b54a35" stroke-width="1.4"/><text x="44"  y="53" fill="#8f3423" font-weight="600">Alert</text>
+    <rect x="94"  y="25" width="76" height="48" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.4"/><text x="132" y="53" fill="#1e3a5f" font-weight="600">Triage</text>
+    <rect x="182" y="25" width="72" height="48" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.4"/><text x="218" y="53" fill="#1e3a5f" font-weight="600">Trace</text>
+    <rect x="266" y="25" width="80" height="48" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.4"/><text x="306" y="47" fill="#1e3a5f" font-weight="600">Failure</text><text x="306" y="64" fill="#1e3a5f" font-weight="600">Layer</text>
+    <rect x="358" y="25" width="82" height="48" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.4"/><text x="399" y="53" fill="#1e3a5f" font-weight="600">Root Cause</text>
+    <rect x="452" y="25" width="80" height="48" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.4"/><text x="492" y="47" fill="#8a6a1c" font-weight="600">Mitigation</text><text x="492" y="64" fill="#8a6a1c" font-size="11">先止血</text>
+    <rect x="544" y="25" width="80" height="48" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.4"/><text x="584" y="47" fill="#8a6a1c" font-weight="600">Regression</text><text x="584" y="64" fill="#8a6a1c" font-size="11">Test</text>
+    <rect x="636" y="25" width="46" height="48" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.4"/><text x="659" y="53" fill="#2c5f47" font-weight="600">Fix</text>
+    <rect x="694" y="25" width="60" height="48" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.4"/><text x="724" y="47" fill="#2c5f47" font-weight="600">Post-</text><text x="724" y="64" fill="#2c5f47" font-weight="600">mortem</text>
+  </g>
+  <g stroke="#8a8578" stroke-width="1.5">
+    <line x1="82"  y1="49" x2="90"  y2="49" marker-end="url(#mI)"/>
+    <line x1="170" y1="49" x2="178" y2="49" marker-end="url(#mI)"/>
+    <line x1="254" y1="49" x2="262" y2="49" marker-end="url(#mI)"/>
+    <line x1="346" y1="49" x2="354" y2="49" marker-end="url(#mI)"/>
+    <line x1="440" y1="49" x2="448" y2="49" marker-end="url(#mI)"/>
+    <line x1="532" y1="49" x2="540" y2="49" marker-end="url(#mI)"/>
+    <line x1="624" y1="49" x2="632" y2="49" marker-end="url(#mI)"/>
+    <line x1="682" y1="49" x2="690" y2="49" marker-end="url(#mI)"/>
+  </g>
+</svg>
+<div class="fig-cap">图 9 · Incident Response 流程（Mitigation 止血与 Fix 根治分离）</div>
+</div>
+
+<p>注意 <strong>Mitigation（止血）和 Fix（根治）是分开的两步</strong>：先降级 / 回滚 / 关缓存止血恢复服务，再慢慢根治。P0 安全事件的 Mitigation 只有一个动作——<strong>立即阻断相关检索路径</strong>。</p>
+
+<h3>10.3 Postmortem 模板</h3>
+<pre class="ascii"><code>Incident              ← 什么事，何时发现
+Impact                ← 影响多少用户 / 哪些业务 / 数据风险
+Detection             ← 怎么发现的（告警 / 用户反馈？多久才发现？）
+Root Cause            ← 哪一层、什么根因（引用 Trace 证据）
+Contributing Factors  ← 哪些设计让它可能发生且难发现
+Immediate Fix         ← 止血动作与恢复时间
+Permanent Fix         ← 根治方案
+Regression Case       ← 加入评估集的具体样本（必须给出）
+Monitoring Improvement← 下次如何更早发现</code></pre>
+<blockquote><p><strong>一次故障真正的价值，是让系统以后不再重复犯同样的错误。没有 Regression Case 的 Postmortem 是不合格的。</strong></p></blockquote>
+
+<h2>十一、完整的生产排障体系</h2>
+<p>把前面所有内容装配成一个体系。这是我推荐的 Enterprise RAG Troubleshooting 架构全图：</p>
+
+<div class="figure">
+<svg viewBox="0 0 760 630" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs><marker id="mJ" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a8578"/></marker>
+  <marker id="mJ2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#b54a35"/></marker></defs>
+  <rect x="290" y="8" width="180" height="38" rx="8" fill="#f7e9e5" stroke="#b54a35" stroke-width="1.5"/>
+  <text x="380" y="32" text-anchor="middle" font-size="14" fill="#8f3423" font-weight="700">User Feedback / Alert</text>
+  <line x1="380" y1="46" x2="380" y2="58" stroke="#8a8578" stroke-width="1.5" marker-end="url(#mJ)"/>
+  <rect x="310" y="60" width="140" height="34" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="380" y="82" text-anchor="middle" font-size="14" fill="#1e3a5f" font-weight="600">Incident Triage</text>
+  <line x1="380" y1="94" x2="380" y2="106" stroke="#8a8578" stroke-width="1.5" marker-end="url(#mJ)"/>
+  <rect x="330" y="108" width="100" height="34" rx="8" fill="#fdf6ec" stroke="#c9962e" stroke-width="1.5"/>
+  <text x="380" y="130" text-anchor="middle" font-size="14" fill="#8a6a1c" font-weight="600">RAG Trace</text>
+  <g stroke="#8a8578" stroke-width="1.5" fill="none">
+    <path d="M330,125 L120,125 L120,158" marker-end="url(#mJ)"/>
+    <path d="M380,142 L380,158" marker-end="url(#mJ)"/>
+    <path d="M430,125 L640,125 L640,158" marker-end="url(#mJ)"/>
+  </g>
+  <g text-anchor="middle">
+    <rect x="35" y="160" width="170" height="36" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="120" y="183" font-size="14.5" fill="#1e3a5f" font-weight="700">Data 数据层</text>
+    <rect x="295" y="160" width="170" height="36" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/><text x="380" y="183" font-size="14.5" fill="#1e3a5f" font-weight="700">Retrieval 检索层</text>
+    <rect x="555" y="160" width="170" height="36" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.5"/><text x="640" y="183" font-size="14.5" fill="#2c5f47" font-weight="700">Generation 生成层</text>
+  </g>
+  <g font-size="12.5" fill="#4a463d" text-anchor="middle">
+    <rect x="35" y="208" width="170" height="108" rx="6" fill="#f4f6f9" stroke="#dde4ec"/>
+    <text x="120" y="230">Parse / Chunk</text><text x="120" y="252">Metadata 完整性</text><text x="120" y="274">Freshness 同步链</text><text x="120" y="296">Permission Pre-filter</text>
+    <rect x="295" y="208" width="170" height="108" rx="6" fill="#f4f6f9" stroke="#dde4ec"/>
+    <text x="380" y="230">Dense / BM25 / RRF</text><text x="380" y="252">Reranker 耗时与降级</text><text x="380" y="274">Query Rewrite 校验</text><text x="380" y="296">Index 配置审计</text>
+    <rect x="555" y="208" width="170" height="108" rx="6" fill="#f2f7f3" stroke="#d5e5da"/>
+    <text x="640" y="230">Context 构建 / 去重</text><text x="640" y="252">Prompt / Grounding</text><text x="640" y="274">Citation 一致性</text><text x="640" y="296">LLM 版本与输出</text>
+  </g>
+  <g stroke="#8a8578" stroke-width="1.5" fill="none">
+    <path d="M120,316 L120,344 L380,344 L380,358" marker-end="url(#mJ)"/>
+    <path d="M380,316 L380,358" marker-end="url(#mJ)"/>
+    <path d="M640,316 L640,344 L380,344" fill="none"/>
+  </g>
+  <rect x="280" y="360" width="200" height="36" rx="8" fill="#f3ece1" stroke="#c9962e" stroke-width="1.5"/>
+  <text x="380" y="383" text-anchor="middle" font-size="14" fill="#8a6a1c" font-weight="700">Root Cause Analysis</text>
+  <line x1="380" y1="396" x2="380" y2="408" stroke="#8a8578" stroke-width="1.5" marker-end="url(#mJ)"/>
+  <rect x="290" y="410" width="180" height="34" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="380" y="432" text-anchor="middle" font-size="14" fill="#1e3a5f" font-weight="600">Regression Dataset</text>
+  <line x1="380" y1="444" x2="380" y2="456" stroke="#8a8578" stroke-width="1.5" marker-end="url(#mJ)"/>
+  <rect x="320" y="458" width="120" height="34" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.5"/>
+  <text x="380" y="480" text-anchor="middle" font-size="14" fill="#2c5f47" font-weight="600">Evaluation</text>
+  <line x1="380" y1="492" x2="380" y2="504" stroke="#8a8578" stroke-width="1.5" marker-end="url(#mJ)"/>
+  <rect x="320" y="506" width="120" height="34" rx="8" fill="#eaf2ec" stroke="#3a7d5c" stroke-width="1.5"/>
+  <text x="380" y="528" text-anchor="middle" font-size="14" fill="#2c5f47" font-weight="600">Fix / Deploy</text>
+  <line x1="380" y1="540" x2="380" y2="552" stroke="#8a8578" stroke-width="1.5" marker-end="url(#mJ)"/>
+  <rect x="300" y="554" width="160" height="34" rx="8" fill="#e8eef5" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="380" y="576" text-anchor="middle" font-size="14" fill="#1e3a5f" font-weight="600">Monitoring</text>
+  <path d="M300,571 L60,571 L60,27 L286,27" stroke="#b54a35" stroke-width="1.5" fill="none" stroke-dasharray="6 4" marker-end="url(#mJ2)"/>
+  <text x="80" y="560" font-size="11.5" fill="#b54a35">持续监控 → 新告警回流</text>
+</svg>
+<div class="fig-cap">图 10 · Enterprise RAG Troubleshooting 全景架构</div>
+</div>
+
+<p>这个体系刻意保持了克制：<strong>没有为复杂而复杂的监控大盘，只有一条主干——告警进 Triage，Trace 定层，根因分析产出回归样本，评估守住变更，监控闭环。</strong>每个环节都是可人工执行的，工具化是后来的事。</p>
+
+<h2>十二、症状 → 根因对照表</h2>
+<p>最后给一张可以直接贴在团队 Wiki 上的速查表：</p>
+<table>
+  <tr><th>现象</th><th>第一怀疑层</th><th>常见根因</th><th>对应案例</th></tr>
+  <tr><td>知识库明明有但搜不到</td><td>Retrieval / Data</td><td>Chunk 切分 / Query 表达不一致 / Index 参数</td><td>案例 1</td></tr>
+  <tr><td>搜到很多但都不对</td><td>Retrieval</td><td>Query 改写漂移 / BM25 噪声 / Embedding 领域不适配</td><td>案例 1 / 5</td></tr>
+  <tr><td>正确文档在 Top-K 但答案错</td><td>Context / Generation</td><td>Rerank 排序 / 截断 / 版本冲突 / Prompt</td><td>案例 2 / 3</td></tr>
+  <tr><td>文档在但答案不完整</td><td>Data / Context</td><td>Chunk 边界 / 缺 Context Expansion</td><td>案例 4</td></tr>
+  <tr><td>Hybrid 后无提升</td><td>Retrieval</td><td>两路重叠 / Top-K 预算 / RRF 参数</td><td>案例 5</td></tr>
+  <tr><td>Reranker 开启后明显变慢</td><td>Performance</td><td>Candidate Size / 模型体积 / 队列排队</td><td>案例 6</td></tr>
+  <tr><td>新文档迟迟不生效</td><td>Freshness</td><td>Sync / Index / 各层 Cache 失效链断裂</td><td>案例 7</td></tr>
+  <tr><td>某些用户看到敏感数据</td><td><strong style="color:#b54a35">Security（P0）</strong></td><td>Permission Pre-filter / 缓存跨权限</td><td>案例 8</td></tr>
+  <tr><td>Top-K 越大效果越差</td><td>Context</td><td>Noise / Duplication / Lost in the Middle</td><td>案例 9</td></tr>
+  <tr><td>测试很好，上线变差</td><td>Evaluation</td><td>Dataset 偏差 / Distribution Shift</td><td>案例 10</td></tr>
+</table>
+
+<h2>十三、最终核心认知</h2>
+<p>回顾全文，我想留下的不是十个案例，而是一次思维方式的替换：</p>
+<div class="formula-card"><span>RAG Failure</span><span class="fc-neq">≠</span><span>LLM Failure</span></div>
+<p>更准确的理解是：</p>
+<pre class="ascii"><code>RAG Failure
+=
+      Data
+  ∨   Query
+  ∨   Retrieval
+  ∨   Ranking
+  ∨   Context
+  ∨   Generation
+  ∨   Security
+  ∨   Infrastructure</code></pre>
+<p>因此，RAG 排障思维应该完成一次根本转变：</p>
+<blockquote><p>从 <strong>"答案为什么错？"</strong><br>转变为 <strong>"错误是在数据、检索、排序、上下文、生成还是基础设施哪一层产生的？"</strong></p>
+<p>前一个问题通向无限次的 Prompt 微调；后一个问题通向工程。</p></blockquote>
+
+<div class="next-ep">
+<h3>下一篇预告</h3>
+<p>到这里，我们已经知道 RAG 为什么失败，也知道每一层应该承担什么责任——诊断树、故障分级、Trace、Incident Response、Postmortem、回归闭环，一个完整的生产排障体系已经成型。</p>
+<p>下一篇是本系列最终篇：</p>
+<p style="font-size:1.05rem;font-weight:700;color:#fff;">第 15 篇：从 Naive RAG 到 Enterprise RAG：一套真正可以落地的生产架构</p>
+<p>它将把整个系列的所有能力统一起来：</p>
+<pre class="ascii" style="background:rgba(0,0,0,.25);color:#d7e2ee;border:none;"><code>Data → Knowledge Processing → Query Understanding → Hybrid Retrieval
+→ Fusion → Reranking → Context Engineering → Permission → Generation
+→ Evaluation → Observability → Performance
+→ Enterprise RAG Platform</code></pre>
+<p>重点回答一个终极问题：<strong style="color:#fff;">如果今天从零开始建设一个企业级 RAG，应该如何分阶段建设？</strong></p>
+</div>
+
+<div class="postscript">
+<strong>审稿后记（写给同行）：</strong>以架构师 + SRE + IR 的三重视角自查过本文：十个案例各自锚定不同故障层，未互相重复；Security 作为 P0 独立于质量体系；Recall ≠ Answer Correct、Hybrid ≠ 免费增益、Reranker ≠ 万能药等结论均给出了边界条件；Trace 结构足以支撑诊断树的自动化分流（<code>find_chunk_first_appearance</code>）；Failure → Regression Dataset → Evaluation 闭环与第 13 篇衔接，Performance 权衡与第 12 篇衔接；所有案例均为抽象自真实生产模式的典型案例，未虚构任何具体企业事故与指标。文中引用的具体参数（如 Top-K 数值）为示意，落地时请以自身评估数据为准。
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>为什么检索到了 Top-K，还需要 Reranker？｜企业级 RAG 架构设计与工程实践 · 08</title>
+<style>
+  :root{
+    --ink:#1e293b;
+    --ink-soft:#475569;
+    --ink-faint:#94a3b8;
+    --paper:#fbfaf7;
+    --card:#ffffff;
+    --line:#e7e5df;
+    --accent:#4338ca;
+    --accent-soft:#eef2ff;
+    --teal:#0f766e;
+    --teal-soft:#f0fdfa;
+    --amber:#b45309;
+    --amber-soft:#fffbeb;
+    --rose:#9f1239;
+    --rose-soft:#fff1f2;
+    --code-bg:#1e293b;
+    --code-ink:#e2e8f0;
+    --serif:"Noto Serif SC","Songti SC","SimSun",Georgia,serif;
+    --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,sans-serif;
+    --mono:"SF Mono","JetBrains Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16.5px;
+    line-height:1.85;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:3px double var(--ink);
+    padding:48px 0 32px;
+    margin-bottom:56px;
+  }
+  .series-tag{
+    display:flex;align-items:center;gap:12px;
+    font-size:13px;letter-spacing:.18em;color:var(--accent);
+    font-weight:600;text-transform:uppercase;margin-bottom:20px;
+  }
+  .series-tag::after{content:"";flex:1;height:1px;background:var(--line)}
+  h1{
+    font-family:var(--serif);
+    font-size:clamp(30px,5vw,44px);
+    line-height:1.3;
+    font-weight:700;
+    margin-bottom:20px;
+  }
+  .dek{
+    font-family:var(--serif);
+    font-size:19px;color:var(--ink-soft);
+    border-left:3px solid var(--accent);
+    padding-left:18px;margin-bottom:28px;max-width:640px;
+  }
+  .meta{display:flex;flex-wrap:wrap;gap:10px;font-size:13px;color:var(--ink-faint)}
+  .meta span{border:1px solid var(--line);border-radius:999px;padding:3px 14px;background:var(--card)}
+
+  /* ---------- Sections ---------- */
+  section{margin-bottom:72px}
+  .sec-num{
+    font-family:var(--mono);font-size:13px;color:var(--accent);
+    letter-spacing:.2em;margin-bottom:6px;
+  }
+  h2{
+    font-family:var(--serif);
+    font-size:29px;line-height:1.4;
+    padding-bottom:12px;margin-bottom:28px;
+    border-bottom:1px solid var(--line);
+  }
+  h3{
+    font-family:var(--serif);font-size:21px;
+    margin:40px 0 16px;
+  }
+  h3::before{content:"§ ";color:var(--accent);font-family:var(--mono);font-size:16px}
+  p{margin-bottom:18px}
+  .lead{font-size:18px;color:var(--ink-soft)}
+  strong{color:var(--ink)}
+  em{font-style:normal;background:linear-gradient(transparent 62%,#fde68a88 62%);padding:0 2px}
+  a{color:var(--accent)}
+
+  /* pull quote */
+  .pull{
+    font-family:var(--serif);font-size:22px;line-height:1.7;
+    text-align:center;color:var(--ink);
+    margin:44px auto;max-width:620px;position:relative;padding:0 20px;
+  }
+  .pull::before,.pull::after{
+    content:"";display:block;width:48px;height:2px;background:var(--accent);margin:20px auto;
+  }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:26px 28px;margin:28px 0;
+    box-shadow:0 1px 2px rgba(30,41,59,.04);
+  }
+  .card-title{
+    font-family:var(--mono);font-size:12.5px;letter-spacing:.15em;
+    text-transform:uppercase;font-weight:700;margin-bottom:14px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .card-title::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--accent);display:inline-block}
+  .card.query{border-left:4px solid var(--accent)}
+  .card.warn{border-left:4px solid var(--amber)}
+  .card.danger{border-left:4px solid var(--rose)}
+  .card.ok{border-left:4px solid var(--teal)}
+  .card.query .card-title{color:var(--accent)}
+  .card.warn .card-title{color:var(--amber)}
+  .card.danger .card-title{color:var(--rose)}
+  .card.ok .card-title{color:var(--teal)}
+
+  /* ranked list */
+  .ranked{list-style:none;counter-reset:r}
+  .ranked li{
+    counter-increment:r;display:flex;align-items:baseline;gap:16px;
+    padding:12px 4px;border-bottom:1px dashed var(--line);
+    font-size:15.5px;
+  }
+  .ranked li:last-child{border-bottom:none}
+  .ranked li::before{
+    content:counter(r,decimal-leading-zero);
+    font-family:var(--mono);font-size:13px;color:var(--ink-faint);
+    min-width:28px;
+  }
+  .ranked li.hit{background:var(--teal-soft);border-radius:8px;padding:12px 14px;font-weight:600}
+  .ranked li.hit::before{color:var(--teal)}
+  .ranked li .why{margin-left:auto;font-size:12.5px;color:var(--ink-faint);font-family:var(--mono)}
+
+  /* ---------- Code ---------- */
+  pre{
+    background:var(--code-bg);color:var(--code-ink);
+    border-radius:14px;padding:24px 26px;overflow-x:auto;
+    font-family:var(--mono);font-size:13.5px;line-height:1.75;
+    margin:28px 0;
+  }
+  pre .kw{color:#93c5fd}
+  pre .fn{color:#fcd34d}
+  pre .str{color:#86efac}
+  pre .cm{color:#64748b;font-style:italic}
+  pre .num{color:#f9a8d4}
+  code.inline{
+    font-family:var(--mono);font-size:.85em;
+    background:#eceaf3;color:var(--accent);
+    padding:2px 7px;border-radius:6px;
+  }
+
+  /* ---------- Tables ---------- */
+  table{
+    width:100%;border-collapse:collapse;margin:28px 0;
+    font-size:14.5px;background:var(--card);
+    border-radius:14px;overflow:hidden;
+    box-shadow:0 1px 3px rgba(30,41,59,.06);
+  }
+  thead th{
+    background:var(--ink);color:#fff;font-weight:600;
+    padding:13px 18px;text-align:left;font-size:13.5px;letter-spacing:.04em;
+  }
+  tbody td{padding:13px 18px;border-bottom:1px solid var(--line);vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:nth-child(even){background:#fafaf8}
+  td.hl{color:var(--accent);font-weight:600}
+  td.good{color:var(--teal);font-weight:600}
+  td.bad{color:var(--rose);font-weight:600}
+
+  /* ---------- Stat cards ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:28px 0}
+  .stat{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:22px 20px;text-align:center;
+  }
+  .stat .v{font-family:var(--serif);font-size:34px;font-weight:700;color:var(--accent);line-height:1.2}
+  .stat .l{font-size:13px;color:var(--ink-soft);margin-top:8px}
+
+  /* ---------- Figure ---------- */
+  figure{margin:36px 0}
+  figure .fig-frame{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:28px 20px;box-shadow:0 1px 3px rgba(30,41,59,.05);
+  }
+  figcaption{
+    text-align:center;font-size:13px;color:var(--ink-faint);
+    margin-top:14px;font-family:var(--mono);
+  }
+  figcaption b{color:var(--ink-soft)}
+  svg{display:block;width:100%;height:auto}
+
+  /* ---------- Score bars ---------- */
+  .score-row{display:flex;align-items:center;gap:14px;margin:10px 0;font-size:14px}
+  .score-row .doc{width:280px;flex-shrink:0;color:var(--ink-soft)}
+  .score-row .bar-track{flex:1;height:12px;background:#f1f0ec;border-radius:6px;overflow:hidden}
+  .score-row .bar{height:100%;border-radius:6px}
+  .score-row .num{font-family:var(--mono);font-size:13px;width:46px;text-align:right}
+
+  /* ---------- Callout ---------- */
+  .callout{
+    background:var(--accent-soft);border:1px solid #c7d2fe;
+    border-radius:14px;padding:22px 26px;margin:30px 0;
+    font-size:15.5px;
+  }
+  .callout .tag{
+    display:inline-block;background:var(--accent);color:#fff;
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    padding:3px 12px;border-radius:999px;margin-bottom:10px;
+  }
+
+  /* ---------- Pipeline chips ---------- */
+  .chips{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:24px 0;font-family:var(--mono);font-size:13.5px}
+  .chip{
+    background:var(--card);border:1.5px solid var(--ink-soft);
+    border-radius:10px;padding:8px 16px;font-weight:600;
+  }
+  .chip.accent{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .chip.teal{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
+  .chip.amber{border-color:var(--amber);color:var(--amber);background:var(--amber-soft)}
+  .arrow{color:var(--ink-faint);font-size:16px}
+
+  /* ---------- Footer / next ---------- */
+  .next-article{
+    margin-top:80px;border-top:3px double var(--ink);
+    padding:44px 0 60px;text-align:center;
+  }
+  .next-article .label{font-family:var(--mono);font-size:12px;letter-spacing:.2em;color:var(--ink-faint);text-transform:uppercase}
+  .next-article h3{font-size:26px;margin:14px 0;border:none}
+  .next-article h3::before{content:none}
+  .next-article p{color:var(--ink-soft);max-width:560px;margin:0 auto}
+
+  .toc{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:28px 32px;margin-bottom:56px;
+  }
+  .toc h3{margin:0 0 14px;font-size:17px}
+  .toc h3::before{content:none}
+  .toc ol{list-style:none;columns:2;column-gap:40px;font-size:14px}
+  .toc li{padding:5px 0;border-bottom:1px dashed var(--line);break-inside:avoid}
+  .toc a{text-decoration:none;color:var(--ink-soft)}
+  .toc a:hover{color:var(--accent)}
+  .toc .n{font-family:var(--mono);color:var(--accent);margin-right:8px;font-size:12px}
+  @media(max-width:640px){.toc ol{columns:1}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ==================== Masthead ==================== -->
+  <header class="masthead">
+    <div class="series-tag">企业级 RAG 架构设计与工程实践 · No.08</div>
+    <h1>为什么检索到了 Top-K，<br>还需要 Reranker？</h1>
+    <p class="dek">RRF 已经把多个检索器的结果融合了起来，为什么还不能直接把这些文档交给 LLM？——这一篇，我们拆解「召回」与「排序」这两个经常被混为一谈的问题。</p>
+    <div class="meta">
+      <span>Retrieval / Ranking</span>
+      <span>Cross-Encoder</span>
+      <span>Two-Stage Architecture</span>
+      <span>生产实践</span>
+    </div>
+  </header>
+
+  <!-- ==================== TOC ==================== -->
+  <nav class="toc">
+    <h3>本篇目录</h3>
+    <ol>
+      <li><a href="#s1"><span class="n">01</span>Top-K 不等于 Top Relevant</a></li>
+      <li><a href="#s2"><span class="n">02</span>Retrieval 和 Ranking 是什么关系</a></li>
+      <li><a href="#s3"><span class="n">03</span>为什么不能直接让 LLM 排序</a></li>
+      <li><a href="#s4"><span class="n">04</span>Reranker 到底做什么</a></li>
+      <li><a href="#s5"><span class="n">05</span>Bi-Encoder vs Cross-Encoder</a></li>
+      <li><a href="#s6"><span class="n">06</span>为什么 Cross-Encoder 更适合精排</a></li>
+      <li><a href="#s7"><span class="n">07</span>为什么不能拿它扫全库</a></li>
+      <li><a href="#s8"><span class="n">08</span>Two-Stage Retrieval</a></li>
+      <li><a href="#s9"><span class="n">09</span>Reranker 放在 RRF 前还是后</a></li>
+      <li><a href="#s10"><span class="n">10</span>Retrieval Top-K 取多少</a></li>
+      <li><a href="#s11"><span class="n">11</span>Reranker Score 能直接比较吗</a></li>
+      <li><a href="#s12"><span class="n">12</span>模型如何选择</a></li>
+      <li><a href="#s13"><span class="n">13</span>是否需要微调</a></li>
+      <li><a href="#s14"><span class="n">14</span>Hard Negative 为什么重要</a></li>
+      <li><a href="#s15"><span class="n">15</span>与 Context Engineering 的关系</a></li>
+      <li><a href="#s16"><span class="n">16</span>与 LLM Generation 的关系</a></li>
+      <li><a href="#s17"><span class="n">17</span>性能优化</a></li>
+      <li><a href="#s18"><span class="n">18</span>什么时候不应该用 Reranker</a></li>
+      <li><a href="#s19"><span class="n">19</span>如何评估 Reranker</a></li>
+      <li><a href="#s20"><span class="n">20</span>一个完整生产案例</a></li>
+      <li><a href="#s21"><span class="n">21</span>最终架构</a></li>
+      <li><a href="#s22"><span class="n">22</span>最终建立核心认知</a></li>
+    </ol>
+  </nav>
+
+  <!-- ==================== 01 ==================== -->
+  <section id="s1">
+    <div class="sec-num">SECTION 01</div>
+    <h2>Top-K 不等于 Top Relevant</h2>
+
+    <p class="lead">先从一个真实的企业 Query 开始。</p>
+
+    <div class="card query">
+      <div class="card-title">用户 Query</div>
+      <p style="font-family:var(--serif);font-size:19px">「RTC SDK 4.6.2 在 Android 14 出现 RTC-10027，官方推荐怎么处理？」</p>
+    </div>
+
+    <p>这个 Query 经过我们前几篇搭建的链路——<code class="inline">Chunking → Embedding → Dense Retrieval + BM25 → Hybrid Retrieval → RRF</code>——之后，系统返回了这样一份 Candidate Set：</p>
+
+    <div class="card">
+      <div class="card-title">RRF 融合后的 Candidate Set（节选）</div>
+      <ol class="ranked">
+        <li>《RTC SDK 4.6.1 错误码说明》 <span class="why">版本不对</span></li>
+        <li>《Android 14 兼容性问题汇总》 <span class="why">太泛</span></li>
+        <li class="hit">《RTC SDK 4.6.2 错误码说明》 <span class="why">✓ 真正的答案</span></li>
+        <li>《RTC SDK 弱网优化指南》 <span class="why">主题偏移</span></li>
+        <li>《RTC-10027 历史工单》 <span class="why">可能有用</span></li>
+        <li>《RTC SDK 4.6.2 API 文档》 <span class="why">相关但非答案</span></li>
+      </ol>
+    </div>
+
+    <p>看起来 Top-K 里的每一篇都「沾边」——错误码、Android 14、SDK 版本号，关键词都能对上。但真正最应该出现在第一位的，是第 3 篇。第 1 篇甚至是<strong>版本号差一个小数点的高危陷阱</strong>：4.6.1 和 4.6.2 的错误码说明，在 Embedding 空间里几乎无法区分。</p>
+
+    <p>于是问题来了：</p>
+
+    <div class="pull">为什么 Retrieval 能找到很多相关文档，<br>却不能准确判断「哪个最应该排在前面」？</div>
+
+    <p>答案并不神秘：<strong>这不是 Retrieval 的 bug，而是它的设计目标本来就不是这个。</strong>要回答这个问题，我们需要先把 Retrieval 和 Ranking 这两件事彻底分开。</p>
+  </section>
+
+  <!-- ==================== 02 ==================== -->
+  <section id="s2">
+    <div class="sec-num">SECTION 02</div>
+    <h2>Retrieval 和 Ranking 到底是什么关系？</h2>
+
+    <p>在很多 RAG 教程里，「检索」被描述成一件事。但在任何一个真实的搜索引擎架构里——从传统 Web Search 到企业知识库——它从来都是两个阶段、两种目标、两套模型。</p>
+
+    <div class="chips">
+      <span class="chip">Query</span><span class="arrow">→</span>
+      <span class="chip teal">Retrieval</span><span class="arrow">→</span>
+      <span class="chip">Candidate Set</span><span class="arrow">→</span>
+      <span class="chip amber">Ranking</span><span class="arrow">→</span>
+      <span class="chip accent">Top Relevant</span>
+    </div>
+
+    <h3>Retrieval：尽可能找全</h3>
+    <p>Retrieval 的任务，是从几十万、上千万的文档库中，<strong>快速</strong>找到「可能相关」的候选。它面对的是全量语料，必须在毫秒级完成，所以它天然要牺牲精度换速度和覆盖面。它优先优化的指标是 <em>Recall</em>——宁滥勿缺，正确答案绝不能在这一步丢掉。</p>
+
+    <h3>Reranking：尽可能排准</h3>
+    <p>Reranking 的任务则完全不同。它面对的是一个已经被缩小到几十条的 Candidate Set，它有充裕的时间（几百毫秒）和算力预算去仔细判断：Query 与这每一篇文档，<strong>到底有多相关</strong>。它优先优化的是 <em>Precision / Ranking Quality</em>。</p>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="检索排序漏斗">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+            </marker>
+          </defs>
+          <!-- funnel bars -->
+          <rect x="20" y="30" width="760" height="46" rx="10" fill="#eef2ff" stroke="#4338ca" stroke-width="1.5"/>
+          <text x="400" y="59" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="17" font-weight="600" fill="#1e293b">Millions of Documents · 全量语料库</text>
+
+          <line x1="140" y1="76" x2="180" y2="118" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+          <line x1="660" y1="76" x2="620" y2="118" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+
+          <rect x="140" y="120" width="520" height="46" rx="10" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="400" y="149" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="17" font-weight="600" fill="#1e293b">Fast Retrieval（Dense + BM25 + RRF）</text>
+          <text x="680" y="149" font-family="JetBrains Mono, monospace" font-size="13" fill="#0f766e">Recall ↑</text>
+
+          <line x1="240" y1="166" x2="270" y2="208" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+          <line x1="560" y1="166" x2="530" y2="208" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+
+          <rect x="240" y="210" width="320" height="46" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+          <text x="400" y="239" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="17" font-weight="600" fill="#1e293b">Reranker · Top 50 → Top 5</text>
+          <text x="580" y="239" font-family="JetBrains Mono, monospace" font-size="13" fill="#b45309">Precision ↑</text>
+
+          <line x1="400" y1="256" x2="400" y2="284" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+          <rect x="290" y="286" width="220" height="28" rx="8" fill="#1e293b"/>
+          <text x="400" y="305" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="14" fill="#e2e8f0">交给 LLM 的 Context</text>
+        </svg>
+      </div>
+      <figcaption><b>图 1</b> ｜ 检索-排序漏斗：每一层都在缩小搜索空间、提高相关性密度</figcaption>
+    </figure>
+
+    <div class="callout">
+      <span class="tag">CORE MENTAL MODEL</span><br>
+      <strong>Retrieval 负责尽可能找全，Reranker 负责尽可能排准。</strong><br>
+      用一个类比：Retrieval 是把全图书馆里「可能提到这个话题」的书都搬到桌上，Reranker 是坐下来逐本翻目录、判断哪一本真正回答了你的问题。这两件事的能力模型、计算成本、优化目标完全不同——所以它们在架构上必须分开。
+    </div>
+  </section>
+
+  <!-- ==================== 03 ==================== -->
+  <section id="s3">
+    <div class="sec-num">SECTION 03</div>
+    <h2>为什么不能直接让 LLM 排序？</h2>
+
+    <p>看到这里，一个「聪明」的方案会自然浮现：既然 LLM 理解能力最强，为什么不直接这样？</p>
+
+    <pre><span class="cm"># 看似合理的方案：让 LLM 自己排</span>
+Query
+  ↓
+Retrieve 50 Documents
+  ↓
+LLM 逐个判断相关性
+  ↓
+输出排序结果</pre>
+
+    <p>这个方案在 Demo 里能跑通，在生产里会立刻撞上一堵墙：</p>
+
+    <div class="card danger">
+      <div class="card-title">LLM 直接排序的七个工程问题</div>
+      <ul style="list-style:none">
+        <li>▸ <strong>成本高</strong>：每个请求都要为 50 篇文档的全文付费，而 Reranker 是一个小得多的专用模型</li>
+        <li>▸ <strong>延迟高</strong>：LLM 的生成速度远慢于一次 Cross-Encoder 前向计算，P95 会被拖垮</li>
+        <li>▸ <strong>Token 消耗大</strong>：50 × 平均 1K token 的输入，仅排序环节就可能吃掉数万 token</li>
+        <li>▸ <strong>输出稳定性差</strong>：LLM 输出的是自然语言，排序结果需要解析、可能格式错乱、可能拒绝输出</li>
+        <li>▸ <strong>并发能力受限</strong>：昂贵的大模型推理资源被排序任务占满，影响真正的生成请求</li>
+        <li>▸ <strong>工程复杂度高</strong>：需要额外的解析、校验、重试逻辑</li>
+        <li>▸ <strong>任务错配</strong>：排序本质是一个判别式打分任务，不适合作为普通 Generation 来做</li>
+      </ul>
+    </div>
+
+    <p>核心矛盾在于：<strong>排序是一个「打分」问题，不是一个「生成」问题。</strong>它需要的是对一个 <code class="inline">(Query, Document)</code> 对输出一个确定性的相关性分数——这正是专用 Ranking Model 存在的理由。所以在一个成熟架构里，Reranker 必须是一个<strong>独立的、专用的 Ranking Model</strong>，而不是 LLM 的一个附加任务。</p>
+  </section>
+
+  <!-- ==================== 04 ==================== -->
+  <section id="s4">
+    <div class="sec-num">SECTION 04</div>
+    <h2>Reranker 到底做什么？</h2>
+
+    <p>抛开所有术语，Reranker 做的事情极其简单：</p>
+
+    <pre>Query
++
+Candidate Document
+  ↓
+Reranker
+  ↓
+Relevance Score</pre>
+
+    <p>它接收一个 Query 和一篇候选文档，输出一个相关性分数。回到开篇那个例子：</p>
+
+    <div class="card">
+      <div class="card-title">Query：RTC SDK 4.6.2 Android RTC-10027 怎么处理？</div>
+      <div class="score-row">
+        <span class="doc">A · RTC SDK 4.6.2 Android 错误码说明</span>
+        <div class="bar-track"><div class="bar" style="width:96%;background:linear-gradient(90deg,#0f766e,#14b8a6)"></div></div>
+        <span class="num" style="color:#0f766e;font-weight:700">0.96</span>
+      </div>
+      <div class="score-row">
+        <span class="doc">B · RTC SDK 4.5.0 错误码说明</span>
+        <div class="bar-track"><div class="bar" style="width:73%;background:linear-gradient(90deg,#b45309,#f59e0b)"></div></div>
+        <span class="num" style="color:#b45309">0.73</span>
+      </div>
+      <div class="score-row">
+        <span class="doc">C · Android 14 通用兼容性说明</span>
+        <div class="bar-track"><div class="bar" style="width:51%;background:linear-gradient(90deg,#94a3b8,#cbd5e1)"></div></div>
+        <span class="num" style="color:#94a3b8">0.51</span>
+      </div>
+    </div>
+
+    <p>注意两个关键点：</p>
+    <p>第一，<strong>Reranker 不是重新做一次数据库搜索</strong>。它的工作范围被严格限制在 Candidate Set 之内，它不会去发现「库里有第 51 篇文档更相关」——那是 Retrieval 的职责边界。第二，它输出的分数是<strong>精细的、有区分度的</strong>：同样的 Query，Reranker 能把「4.6.2 的错误码说明」和「4.5.0 的错误码说明」拉开明显差距——这正是 Embedding 相似度做不到的事。</p>
+  </section>
+
+  <!-- ==================== 05 ==================== -->
+  <section id="s5">
+    <div class="sec-num">SECTION 05</div>
+    <h2>Bi-Encoder vs Cross-Encoder</h2>
+
+    <p>这是本文最核心的技术部分。为什么 Reranker 通常比 Embedding 模型「看得更清楚」？根源在于两种架构的<strong>交互方式</strong>根本不同。</p>
+
+    <h3>Bi-Encoder：先各走各的路，再见面对答案</h3>
+    <pre>Query
+  ↓
+Encoder
+  ↓
+Vector Q
+
+Document
+  ↓
+Encoder
+  ↓
+Vector D
+
+Similarity(Q, D)</pre>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 840 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bi-Encoder 与 Cross-Encoder 对比">
+          <defs>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+            </marker>
+          </defs>
+          <!-- left panel: Bi-Encoder -->
+          <rect x="10" y="10" width="400" height="440" rx="16" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="210" y="46" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="16" font-weight="700" fill="#0f766e">Bi-Encoder</text>
+          <text x="210" y="68" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13" fill="#475569">双塔 · 独立编码 · 离线可预计算</text>
+
+          <rect x="40" y="92" width="120" height="40" rx="8" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+          <text x="100" y="117" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#1e293b">Query</text>
+          <line x1="100" y1="132" x2="100" y2="160" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+
+          <rect x="250" y="92" width="120" height="40" rx="8" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+          <text x="310" y="117" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#1e293b">Doc</text>
+          <line x1="310" y1="132" x2="310" y2="160" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+
+          <rect x="50" y="164" width="100" height="40" rx="8" fill="#1e293b"/>
+          <text x="100" y="189" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#e2e8f0">Encoder</text>
+          <rect x="260" y="164" width="100" height="40" rx="8" fill="#1e293b"/>
+          <text x="310" y="189" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#e2e8f0">Encoder</text>
+
+          <line x1="100" y1="204" x2="100" y2="240" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+          <line x1="310" y1="204" x2="310" y2="240" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+
+          <circle cx="100" cy="268" r="26" fill="#0f766e" opacity=".15" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="100" y="273" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#0f766e">V_Q</text>
+          <circle cx="310" cy="268" r="26" fill="#0f766e" opacity=".15" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="310" y="273" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#0f766e">V_D</text>
+
+          <line x1="126" y1="268" x2="180" y2="290" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+          <line x1="284" y1="268" x2="240" y2="290" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+          <rect x="160" y="294" width="100" height="36" rx="8" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="210" y="317" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#0f766e">cos( Q , D )</text>
+
+          <line x1="210" y1="330" x2="210" y2="356" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+          <rect x="130" y="360" width="160" height="36" rx="18" fill="#0f766e"/>
+          <text x="210" y="383" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="14" fill="#fff">Fast Retrieval</text>
+
+          <text x="210" y="428" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="12.5" fill="#64748b">Q 与 D 全程零交互，只在最后算一次相似度</text>
+
+          <!-- right panel: Cross-Encoder -->
+          <rect x="430" y="10" width="400" height="440" rx="16" fill="#eef2ff" stroke="#4338ca" stroke-width="1.5"/>
+          <text x="630" y="46" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="16" font-weight="700" fill="#4338ca">Cross-Encoder</text>
+          <text x="630" y="68" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13" fill="#475569">交叉编码 · 联合建模 · Token-level 交互</text>
+
+          <rect x="460" y="96" width="340" height="56" rx="8" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+          <text x="630" y="118" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1e293b">[CLS] Query [SEP] Doc [SEP]</text>
+          <text x="630" y="140" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="12" fill="#94a3b8">拼接后送入同一个 Encoder</text>
+
+          <line x1="630" y1="152" x2="630" y2="182" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+
+          <rect x="540" y="186" width="180" height="52" rx="8" fill="#1e293b"/>
+          <text x="630" y="208" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#e2e8f0">Single Encoder</text>
+          <text x="630" y="228" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="11.5" fill="#94a3b8">Attention 看到 Q×D 的每个 token 对</text>
+
+          <line x1="630" y1="238" x2="630" y2="270" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+
+          <rect x="540" y="274" width="180" height="44" rx="8" fill="#fff" stroke="#4338ca" stroke-width="1.5"/>
+          <text x="630" y="301" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#4338ca">Relevance Score</text>
+
+          <line x1="630" y1="318" x2="630" y2="348" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah2)"/>
+
+          <rect x="530" y="352" width="200" height="36" rx="18" fill="#4338ca"/>
+          <text x="630" y="375" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="14" fill="#fff">Accurate Reranking</text>
+
+          <text x="630" y="428" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="12.5" fill="#64748b">Q 与 D 的 token 逐层充分交互后打分</text>
+        </svg>
+      </div>
+      <figcaption><b>图 2</b> ｜ Bi-Encoder（左）与 Cross-Encoder（右）：交互发生在何时，是两者的本质区别</figcaption>
+    </figure>
+
+    <h3>两者对比</h3>
+
+    <table>
+      <thead>
+        <tr><th style="width:22%">维度</th><th>Bi-Encoder（双塔）</th><th>Cross-Encoder（交叉编码）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="hl">计算时机</td><td>Doc 向量可<strong>完全离线预计算</strong>，在线只需算 Query 向量</td><td>每次 Query 都要对每个候选<strong>重新做一次联合前向计算</strong></td></tr>
+        <tr><td class="hl">Query-Doc 交互</td><td>仅在最后一步做向量相似度，交互极有限</td><td>Token-level 充分交互（Attention 全程可见双方）</td></tr>
+        <tr><td class="hl">相关性判断能力</td><td>够用，但难以区分「高度相似但非答案」的候选</td><td class="good">显著更强，尤其擅长细粒度区分</td></tr>
+        <tr><td class="hl">速度</td><td class="good">极快（ANN 索引，毫秒级）</td><td class="bad">慢（每候选一次 Encoder 前向）</td></tr>
+        <tr><td class="hl">适合的位置</td><td class="good">First-Stage Retrieval</td><td class="good">Second-Stage Reranking</td></tr>
+      </tbody>
+    </table>
+
+    <p>一句话总结这对关系：</p>
+
+    <div class="pull">Bi-Encoder → Fast Retrieval<br>Cross-Encoder → Accurate Reranking</div>
+  </section>
+
+  <!-- ==================== 06 ==================== -->
+  <section id="s6">
+    <div class="sec-num">SECTION 06</div>
+    <h2>为什么 Cross-Encoder 通常更适合做 Reranker？</h2>
+
+    <p>很多文章到这里就一句话带过：「Cross-Encoder 更准确。」这句话是对的，但如果你不知道<strong>为什么</strong>，你就无法判断自己的场景是否需要它、需要付出多少代价。</p>
+
+    <p>关键在于交互发生的时机：</p>
+
+    <h3>Bi-Encoder 的路径</h3>
+    <pre>Q → Vector    D → Vector    →  再计算相似度</pre>
+    <p>Query 在编码时<strong>完全不知道</strong>会匹配到什么文档，Document 在编码时也不知道 Query 是什么。所有语义都被压缩成「事先固化」的一个向量。换句话说，Bi-Encoder 只能在<strong>表示层</strong>对齐语义，无法在<strong>推理时</strong>针对这个具体 Query 重新审视文档内容。</p>
+
+    <h3>Cross-Encoder 的路径</h3>
+    <pre>[CLS] Query [SEP] Document [SEP]  →  单个 Encoder 联合建模  →  Score</pre>
+    <p>Query 和 Document 被拼成一条输入，Attention 机制可以让 Query 里的每个 token 直接「看到」Document 里的每个 token。回到我们的例子：模型可以<strong>在同一个计算图里</strong>完成「4.6.2 ≠ 4.5.0」「RTC-10027 同时出现在 Query 和 Doc 的错误码表格中」这类细粒度比对——这正是区分「很像但不是答案」的候选所必需的能力。</p>
+
+    <div class="callout">
+      <span class="tag">WHY IT MATTERS</span><br>
+      Cross-Encoder 可以直接建模 Query 与候选文档之间<strong>更细粒度的 token-level 交互</strong>，因此通常更适合做精排。但注意「通常」二字——它更强的判断能力是用<strong>每候选一次前向计算</strong>的成本换来的。这个代价是否值得，取决于你的业务对排序质量的真实敏感度。
+    </div>
+  </section>
+
+  <!-- ==================== 07 ==================== -->
+  <section id="s7">
+    <div class="sec-num">SECTION 07</div>
+    <h2>为什么不能直接拿 Cross-Encoder 扫全库？</h2>
+
+    <p>既然 Cross-Encoder 这么准，为什么不跳过 Embedding，直接用它对全库打分？我们算一笔账。</p>
+
+    <div class="stats">
+      <div class="stat"><div class="v">10,000,000</div><div class="l">企业知识库文档数（典型量级）</div></div>
+      <div class="stat"><div class="v">×10M</div><div class="l">每个 Query 需要的 Cross-Encoder 前向计算</div></div>
+      <div class="stat"><div class="v">~50</div><div class="l">两阶段架构下每个 Query 的实际计算量</div></div>
+    </div>
+
+    <p>1 个 Query × 10,000,000 个文档，逐一做 Cross-Encoder 前向计算——这在任何成本模型下都不可行。而且 Cross-Encoder 的文档表示<strong>无法离线预计算</strong>（它依赖具体的 Query），你连用缓存摊薄成本的余地都没有。</p>
+
+    <p>所以答案只能是一个折中架构：</p>
+
+    <pre>Large Corpus
+  ↓
+Fast Retrieval（Bi-Encoder / BM25）
+  ↓
+Top-K Candidates（几十条）
+  ↓
+Cross-Encoder
+  ↓
+Final Ranking</pre>
+
+    <div class="pull">这也是 Retrieval + Reranking<br>两阶段架构存在的核心原因。</div>
+  </section>
+
+  <!-- ==================== 08 ==================== -->
+  <section id="s8">
+    <div class="sec-num">SECTION 08</div>
+    <h2>Two-Stage Retrieval：经典的分层架构</h2>
+
+    <p>把前面所有的分析合在一起，就是信息检索领域几十年沉淀下来的经典范式——Two-Stage Retrieval：</p>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-Stage Retrieval 架构">
+          <defs>
+            <marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+            </marker>
+          </defs>
+          <!-- Query -->
+          <rect x="330" y="16" width="140" height="40" rx="20" fill="#1e293b"/>
+          <text x="400" y="41" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#e2e8f0">Query</text>
+          <line x1="400" y1="56" x2="400" y2="84" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah3)"/>
+
+          <!-- Stage 1 zone -->
+          <rect x="60" y="88" width="680" height="150" rx="14" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.2" stroke-dasharray="6 4"/>
+          <text x="90" y="116" font-family="PingFang SC, sans-serif" font-size="14" font-weight="700" fill="#0f766e">First Stage · Recall-oriented（找全）</text>
+          <rect x="110" y="130" width="240" height="42" rx="9" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="230" y="156" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="14" fill="#1e293b">Dense Retrieval</text>
+          <rect x="450" y="130" width="240" height="42" rx="9" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="570" y="156" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="14" fill="#1e293b">BM25 Retrieval</text>
+          <line x1="230" y1="172" x2="230" y2="196" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah3)"/>
+          <line x1="570" y1="172" x2="570" y2="196" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah3)"/>
+          <rect x="270" y="198" width="260" height="30" rx="15" fill="#0f766e"/>
+          <text x="400" y="218" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#fff">Top 50 / Top 100</text>
+
+          <line x1="400" y1="238" x2="400" y2="266" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah3)"/>
+          <rect x="345" y="250" width="110" height="30" rx="15" fill="#64748b" opacity=".15"/>
+          <text x="400" y="270" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13" fill="#475569">Candidate Set</text>
+
+          <!-- Stage 2 zone -->
+          <rect x="60" y="292" width="680" height="120" rx="14" fill="#fffbeb" stroke="#b45309" stroke-width="1.2" stroke-dasharray="6 4"/>
+          <text x="90" y="320" font-family="PingFang SC, sans-serif" font-size="14" font-weight="700" fill="#b45309">Second Stage · Precision-oriented（排准）</text>
+          <rect x="290" y="336" width="220" height="44" rx="9" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+          <text x="400" y="363" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="14" font-weight="600" fill="#1e293b">Cross-Encoder Reranker</text>
+          <line x1="530" y1="358" x2="560" y2="358" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah3)"/>
+          <rect x="564" y="336" width="150" height="44" rx="9" fill="#b45309"/>
+          <text x="639" y="358" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#fff">Top 5 / 10</text>
+          <text x="639" y="374" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="11" fill="#fff" opacity=".85">Final Context</text>
+
+          <line x1="400" y1="412" x2="400" y2="438" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah3)"/>
+          <text x="400" y="462" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="15" font-weight="600" fill="#4338ca">Candidate Recall ＋ Ranking Precision ＝ 高质量 Context</text>
+        </svg>
+      </div>
+      <figcaption><b>图 3</b> ｜ Two-Stage Retrieval：第一阶段管 Recall，第二阶段管 Precision</figcaption>
+    </figure>
+
+    <p>两个阶段的分工必须刻进骨子里：</p>
+    <p><strong>First Stage</strong> 追求 Recall——候选池宁大勿小，正确答案绝不能在这里被截断；<strong>Second Stage</strong> 追求 Precision——在已经可控的小集合里，用最重的模型把最相关的顶到最前面。整个系统的质量 = <em>Candidate Recall ＋ Ranking Precision</em>，两者缺一不可。</p>
+  </section>
+
+  <!-- ==================== 09 ==================== -->
+  <section id="s9">
+    <div class="sec-num">SECTION 09</div>
+    <h2>Reranker 放在 RRF 前面还是后面？</h2>
+
+    <p>这是一个高频架构问题。上一篇我们建立了 Hybrid Retrieval + RRF 的融合链路，现在要插入 Reranker，插入点有两种选择。</p>
+
+    <h3>方案 A：Per-Retriever Rerank（每路检索后各自 Rerank）</h3>
+    <pre>Dense  → Reranker ↘
+                    RRF → 输出
+BM25   → Reranker ↗</pre>
+
+    <h3>方案 B：先融合，再统一 Rerank</h3>
+    <pre>Dense ↘
+        RRF → Candidate Set → Reranker → 输出
+BM25  ↗</pre>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 840 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reranker 与 RRF 的两种位置">
+          <defs>
+            <marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+            </marker>
+          </defs>
+          <!-- Plan A -->
+          <rect x="20" y="20" width="380" height="330" rx="16" fill="#fafaf8" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="210" y="54" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="16" font-weight="700" fill="#475569">方案 A · Per-Retriever Rerank</text>
+
+          <rect x="50" y="80" width="120" height="36" rx="8" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="110" y="103" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#0f766e">Dense</text>
+          <rect x="250" y="80" width="120" height="36" rx="8" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="310" y="103" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#0f766e">BM25</text>
+
+          <line x1="110" y1="116" x2="110" y2="140" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah4)"/>
+          <line x1="310" y1="116" x2="310" y2="140" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah4)"/>
+
+          <rect x="40" y="144" width="140" height="40" rx="8" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+          <text x="110" y="169" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13" fill="#b45309">Reranker ×2</text>
+          <rect x="240" y="144" width="140" height="40" rx="8" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+          <text x="310" y="169" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13" fill="#b45309">Reranker ×2</text>
+
+          <line x1="110" y1="184" x2="170" y2="222" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah4)"/>
+          <line x1="310" y1="184" x2="250" y2="222" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah4)"/>
+
+          <rect x="160" y="226" width="100" height="40" rx="8" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+          <text x="210" y="251" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#1e293b">RRF</text>
+
+          <line x1="210" y1="266" x2="210" y2="292" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah4)"/>
+          <text x="210" y="322" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="12.5" fill="#64748b">两套分数体系进 RRF，融合语义复杂</text>
+
+          <!-- Plan B -->
+          <rect x="440" y="20" width="380" height="330" rx="16" fill="#eef2ff" stroke="#4338ca" stroke-width="2"/>
+          <text x="630" y="54" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="16" font-weight="700" fill="#4338ca">方案 B · 先融合，再统一 Rerank ✓</text>
+          <text x="630" y="76" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="12" fill="#4338ca">推荐：典型企业 Hybrid Retrieval 的常见选择</text>
+
+          <rect x="470" y="96" width="120" height="36" rx="8" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="530" y="119" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#0f766e">Dense</text>
+          <rect x="670" y="96" width="120" height="36" rx="8" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="730" y="119" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#0f766e">BM25</text>
+
+          <line x1="530" y1="132" x2="600" y2="162" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah4)"/>
+          <line x1="730" y1="132" x2="660" y2="162" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah4)"/>
+
+          <rect x="580" y="166" width="100" height="40" rx="8" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+          <text x="630" y="191" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#1e293b">RRF</text>
+
+          <line x1="630" y1="206" x2="630" y2="228" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah4)"/>
+          <rect x="555" y="232" width="150" height="30" rx="15" fill="#64748b" opacity=".18"/>
+          <text x="630" y="252" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="12.5" fill="#475569">统一 Candidate Set</text>
+
+          <line x1="630" y1="262" x2="630" y2="284" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah4)"/>
+
+          <rect x="550" y="288" width="160" height="44" rx="9" fill="#b45309"/>
+          <text x="630" y="315" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="14" font-weight="600" fill="#fff">Reranker ×1</text>
+        </svg>
+      </div>
+      <figcaption><b>图 4</b> ｜ 方案 A vs 方案 B：企业系统更常见的是先融合、再统一精排</figcaption>
+    </figure>
+
+    <h3>对比分析</h3>
+    <table>
+      <thead>
+        <tr><th style="width:26%">维度</th><th>方案 A（RRF 前 Rerank）</th><th>方案 B（RRF 后 Rerank）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="hl">Reranker 调用量</td><td class="bad">每路各一次，成本 ×2</td><td class="good">全程一次</td></tr>
+        <tr><td class="hl">融合语义</td><td class="bad">两套 Reranker 分数进入 RRF，跨模型分数不可直接比</td><td class="good">RRF 处理排名，Reranker 只处理统一候选集</td></tr>
+        <tr><td class="hl">架构复杂度</td><td class="bad">高：需维护多路精排链路</td><td class="good">低：一条清晰的流水线</td></tr>
+        <tr><td class="hl">可观测性 / 调参</td><td class="bad">每一层都影响下游，归因困难</td><td class="good">Retrieval / 融合 / 精排三层可独立评估</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <span class="tag">ARCHITECTURE DECISION</span><br>
+      在典型企业 Hybrid Retrieval 中，<strong>更常见、也更容易控制复杂度的方式是先融合 Candidate，再进行统一 Reranking</strong>。但请注意这不是教条：某些特殊场景（例如某一路检索器噪声极大、需要独立精排后再融合）确实会采用 Per-Retriever Rerank，只是成本和架构复杂度通常更高，需要明确理由后再引入。
+    </div>
+  </section>
+
+  <!-- ==================== 10 ==================== -->
+  <section id="s10">
+    <div class="sec-num">SECTION 10</div>
+    <h2>Retrieval Top-K 到底取多少？</h2>
+
+    <p>两阶段架构引入了一个新的、必须在实践中反复校准的旋钮：喂给 Reranker 的 Candidate Set 有多大，以及 Reranker 最终输出多少条。</p>
+
+    <pre>Retrieve Top 20  /  Top 50  /  Top 100
+            ↓
+Rerank   Top 5   /  Top 10  /  Top 20</pre>
+
+    <h3>Candidate 太少会怎样？</h3>
+    <p>可能<strong>正确文档还没进入 Reranker，就已经被截断在召回阶段</strong>。此时 Reranker 再强也无能为力——它无法排序一条它从未见过的文档。这是所有排序系统的铁律：<em>Reranker 的上限，是 Candidate Set 的 Recall。</em></p>
+
+    <h3>Candidate 太多会怎样？</h3>
+    <p>Reranker latency 线性上升；GPU 成本增加；高并发下吞吐能力下降；同时低质量候选进入精排，边际收益快速递减。</p>
+
+    <div class="card warn">
+      <div class="card-title">核心权衡链条</div>
+      <pre style="background:transparent;padding:0;margin:0;color:#b45309">Retrieval K ↑
+  → Recall ↑
+  → Rerank Cost ↑
+  → Latency ↑</pre>
+      <p style="margin-top:14px;margin-bottom:0">这是一个单调权衡，不存在免费的午餐。<strong>不要期待一个「Top 50 一定最好」的答案——不存在这个数字。</strong>正确的做法是：用你自己的评测集，画出 Recall@K 与 P95 Latency 的关系曲线，在业务可接受的延迟预算内，取 Recall 的边际收益拐点。</p>
+    </div>
+  </section>
+
+  <!-- ==================== 11 ==================== -->
+  <section id="s11">
+    <div class="sec-num">SECTION 11</div>
+    <h2>Reranker Score 能不能直接比较？</h2>
+
+    <p>一个隐蔽但后果严重的误解：把 Reranker 的分数当作绝对概率来使用。必须明确：</p>
+
+    <div class="pull">Reranker 的分值，<br>主要用于当前 Query Candidate 集合内部排序。</div>
+
+    <p>两个例子：</p>
+    <ul>
+      <li><strong>跨 Query 比较不可靠</strong>：「Query A 的最高分 0.9」和「Query B 的最高分 0.7」不代表 A 的文档更相关——不同 Query 的分数分布本身不同。</li>
+      <li><strong>跨模型比较更不可靠</strong>：Model A 输出 0.92、Model B 输出 0.81，不能因此判断 Model A 认为的文档「绝对更相关」——两个模型的分数空间完全没有对齐。</li>
+    </ul>
+
+    <pre>Model A = 0.92
+Model B = 0.81
+      ✗ 不能推出 Model A 更相关</pre>
+
+    <p>如果你确实需要用分数做阈值过滤（例如「低于 0.3 的直接丢弃」）或跨模型对比，<strong>Score 的绝对值需要经过专门的 Calibration（校准）与验证</strong>——在你的标注数据上确认分数与真实相关性的映射关系，而不是直接相信模型输出。绝大多数系统应该只用分数做<strong>集合内排序</strong>，用固定 Top-N 做截断，绕开校准问题。</p>
+  </section>
+
+  <!-- ==================== 12 ==================== -->
+  <section id="s12">
+    <div class="sec-num">SECTION 12</div>
+    <h2>Reranker Model 如何选择？</h2>
+
+    <p>企业选型不是看社区榜单，而是在四个维度上同时约束求解。我不做任何具体模型的排名——榜单会过时，方法论不会。</p>
+
+    <table>
+      <thead>
+        <tr><th style="width:18%">维度</th><th>需要考察的关键点</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="hl">模型能力</td>
+          <td>中文 / 多语言支持；Domain 表现（你的领域文档它与通用语料的差距）；Query 类型覆盖（关键词型 vs 自然语言型）</td>
+        </tr>
+        <tr>
+          <td class="hl">性能</td>
+          <td>Latency（单条与 Batch）；Throughput；Batch 推理效率；是否需要 GPU、需要几张</td>
+        </tr>
+        <tr>
+          <td class="hl">工程</td>
+          <td>Context Length（能否吃下你的 Chunk + Query）；部署形态；Model Size；Quantization 支持；License 是否允许商用</td>
+        </tr>
+        <tr>
+          <td class="hl">业务</td>
+          <td>你的 Query 分布是关键词型（SKU-123456）还是自然语言型（「为什么下单后不发货」）？知识库是技术文档、FAQ 还是产品知识？不同分布下同一模型表现可能截然不同</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>实践建议：<strong>选 2–3 个候选模型，用你自己的评测集（而不是公开基准）做离线对比</strong>，再上线 A/B。你的数据才是唯一的裁判。</p>
+  </section>
+
+  <!-- ==================== 13 ==================== -->
+  <section id="s13">
+    <div class="sec-num">SECTION 13</div>
+    <h2>Reranker 是否需要微调？</h2>
+
+    <p>先回答现实问题：<strong>通用 Reranker 能不能直接用？</strong>能。在很多场景下，一个表现良好的通用 Cross-Encoder 作为 baseline 已经足够，先跑通、先建评测，再谈微调。</p>
+
+    <p>但企业领域往往存在一条「语义鸿沟」：</p>
+
+    <pre>通用 Query
+  ↓
+领域术语（RTC-10027 是什么？）
+  ↓
+业务缩写（NPS、QBR、SLA 的内部含义）
+  ↓
+内部产品名（只有你们公司知道的系统名）
+  ↓
+专有知识（内部流程、私有 API 行为）</pre>
+
+    <p>当通用模型在你的评测集上系统性地区分不出「版本号差一位的错误码文档」时，就需要考虑 <strong>Domain-specific Reranker Fine-tuning</strong>。涉及的核心概念包括：</p>
+    <ul>
+      <li><strong>Positive Pair</strong>：(Query, 正确文档) 对——通常来自点击日志、人工标注或 LLM 辅助标注；</li>
+      <li><strong>Hard Negative</strong>：下一节专门讲，这是微调成败的关键；</li>
+      <li><strong>Pairwise Training / Contrastive Learning</strong>：让模型学会「这篇比那篇更相关」，而不是只判断「是否相关」。</li>
+    </ul>
+    <p>训练细节超出本文范围，但原则可以给出：<strong>微调的数据质量，尤其是 Hard Negative 的质量，决定上限。</strong></p>
+  </section>
+
+  <!-- ==================== 14 ==================== -->
+  <section id="s14">
+    <div class="sec-num">SECTION 14</div>
+    <h2>Hard Negative 为什么重要？</h2>
+
+    <p>训练（或评估）Reranker 时，负样本怎么选？看一组对比：</p>
+
+    <div class="card">
+      <div class="card-title">Query：RTC SDK 4.6.2 Android RTC-10027 怎么解决？</div>
+      <table style="margin:8px 0 4px">
+        <thead><tr><th style="width:22%">类型</th><th>文档</th><th style="width:34%">模型需要学会什么</th></tr></thead>
+        <tbody>
+          <tr><td class="good">Positive</td><td>RTC SDK 4.6.2 Android RTC-10027 处理方案</td><td>识别真正的答案</td></tr>
+          <tr><td class="bad">Hard Negative</td><td>RTC SDK <strong>4.5.0</strong> Android RTC-10027 处理方案</td><td>识别「版本号差一位的陷阱」</td></tr>
+          <tr><td>普通 Negative</td><td>公司行政报销流程</td><td>几乎不用学——太容易了</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>「公司行政报销流程」这种负样本，模型看一眼就能排除，对训练几乎没有信息量。而 4.5.0 那篇——关键词全对上、错误码相同、句式一模一样，<strong>唯一错在版本号</strong>——才是模型真正需要学会排除的对象。</p>
+
+    <div class="pull">真正困难的不是区分「相关」和「完全不相关」，<br>而是区分「非常像、但其实不是答案」的候选。</div>
+
+    <p>这也解释了为什么企业场景特别需要 Hard Negative Mining：<strong>你的知识库里最危险的候选，往往就是上一版本的文档、相邻产品的文档、同主题不同条款的文档。</strong>它们在 Embedding 空间里与正确答案几乎重合，只有 Cross-Encoder 的细粒度交互才有机会分辨——前提是你训练时让它见过这样的样本。Hard Negative 的一个高效来源，恰恰就是<strong>现有检索系统召回的 Top-K 中未被点击的候选</strong>。</p>
+  </section>
+
+  <!-- ==================== 15 ==================== -->
+  <section id="s15">
+    <div class="sec-num">SECTION 15</div>
+    <h2>Reranker 与 Context Engineering 的关系</h2>
+
+    <p>Reranker 输出了 Top Relevant，是不是就可以直接拼给 LLM 了？还不是。Reranker 之后还有一整个 Context Construction 环节：</p>
+
+    <div class="chips">
+      <span class="chip teal">Retrieval</span><span class="arrow">→</span>
+      <span class="chip">RRF</span><span class="arrow">→</span>
+      <span class="chip amber">Reranker</span><span class="arrow">→</span>
+      <span class="chip accent">Top Relevant</span><span class="arrow">→</span>
+      <span class="chip accent">Context Construction</span><span class="arrow">→</span>
+      <span class="chip">LLM</span>
+    </div>
+
+    <p>Context Engineering 还可能负责：</p>
+    <ul>
+      <li><strong>去重</strong>：RRF 融合后同一个 Chunk 可能以不同父文档出现多次；</li>
+      <li><strong>压缩</strong>：长文档只保留与 Query 相关的段落；</li>
+      <li><strong>Parent Retrieval</strong>：Chunk 排序后，取其父文档/邻接段落补全上下文；</li>
+      <li><strong>Context Ordering</strong>：最相关内容放在 Context 的头部或尾部（LLM 对中间位置的注意力较弱）；</li>
+      <li><strong>Token Budget</strong>：在模型窗口内做取舍；</li>
+      <li><strong>Metadata 注入</strong>：版本号、更新时间、来源权限信息。</li>
+    </ul>
+
+    <div class="callout">
+      <span class="tag">POSITIONING</span><br>
+      <strong>Reranker 是 Context Construction 的重要上游，而不是 Context Engineering 的全部。</strong>它决定「哪些候选值得进入下一步」，但不决定「这些信息最终以什么形态、什么顺序、多少预算交给 LLM」。
+    </div>
+  </section>
+
+  <!-- ==================== 16 ==================== -->
+  <section id="s16">
+    <div class="sec-num">SECTION 16</div>
+    <h2>Reranker 与 LLM Generation 的关系</h2>
+
+    <p>如果没有 Reranker，直接把 Top 20 全部交给 LLM，会发生什么？</p>
+
+    <div class="card danger">
+      <div class="card-title">无 Reranker：Top 20 → 全部交给 LLM</div>
+      <ul style="list-style:none">
+        <li>▸ <strong>无关上下文</strong>：弱网优化指南混在错误码问题里，诱导 LLM 答非所问</li>
+        <li>▸ <strong>重复上下文</strong>：同一内容的多路召回副本挤占 Token Budget</li>
+        <li>▸ <strong>旧版本知识</strong>：4.6.1 的说明排在 4.6.2 前面，LLM 可能引用过时方案</li>
+        <li>▸ <strong>相似但错误的文档</strong>：恰好是本系列反复强调的那类「高度相似但非答案」的候选</li>
+      </ul>
+    </div>
+
+    <div class="card ok">
+      <div class="card-title">有 Reranker：Top 50 → Rerank → Top 5 → LLM</div>
+      <p style="margin-bottom:0">有机会显著降低 <strong>Noise-to-Context Ratio</strong>——Context 中噪声信息的占比。LLM 面对的证据更干净、更聚焦，基于证据生成的答案质量自然更有保障。</p>
+    </div>
+
+    <p>但必须划清边界：<strong>Reranker 不能解决所有幻觉。</strong>如果正确文档根本不在知识库里（Recall 为零），如果文档本身内容是错的或过时的，如果 LLM 无视 Context 自由发挥——这些都不是排序能解决的。Reranker 提高的是「证据质量」，不是「生成质量」的全部。</p>
+  </section>
+
+  <!-- ==================== 17 ==================== -->
+  <section id="s17">
+    <div class="sec-num">SECTION 17</div>
+    <h2>Reranker 的性能优化</h2>
+
+    <p>进入生产环境，Reranker 就不再是一个模型，而是一个有 SLO 的在线服务。以下是常用的优化手段：</p>
+
+    <h3>Batch Reranking</h3>
+    <pre>Query + [Doc1, Doc2, Doc3 ...]
+  ↓
+组装成 Batch（padding 对齐，控制 max_length）
+  ↓
+Reranker 一次前向
+  ↓
+批量输出 Scores</pre>
+    <p>把 K 个候选打包成 Batch 推理，利用 GPU 并行，远快于逐条计算。</p>
+
+    <h3>Async 并行</h3>
+    <p>Dense Retrieval 与 BM25 天然可以并行执行，RRF 融合完成后再触发 Reranker。精排阶段不要阻塞其他独立步骤。</p>
+
+    <h3>GPU / Quantization / Candidate Pruning</h3>
+    <ul>
+      <li><strong>GPU</strong>：高吞吐场景几乎必选；CPU 推理只适合低 QPS 内部工具；</li>
+      <li><strong>Model Quantization</strong>：INT8/FP8 量化降低推理成本，但上线前必须验证量化对排序质量的影响；</li>
+      <li><strong>Candidate Pruning</strong>：在精排前先用轻量规则（权限过滤、时间过滤、文档类型过滤、Metadata 硬条件）剔除明显不相关的候选，让贵算力只花在值得的候选上。</li>
+    </ul>
+
+    <h3>Cache</h3>
+    <p>Reranker 结果可以缓存，但缓存 Key 必须谨慎设计——缓存命中错误比不缓存更危险：</p>
+
+    <table>
+      <thead><tr><th style="width:28%">Key 组成</th><th>为什么必须包含</th></tr></thead>
+      <tbody>
+        <tr><td class="hl">Query</td><td>归一化后的 Query 文本（含同义改写策略需保持一致）</td></tr>
+        <tr><td class="hl">Model Version</td><td>换模型 / 微调后，旧分数全部作废</td></tr>
+        <tr><td class="hl">Candidate Set</td><td>知识库更新后，同一 Query 的候选集已变化</td></tr>
+        <tr><td class="hl">Permission</td><td class="bad">不同用户权限看到不同文档——缓存泄露是安全事故</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ==================== 18 ==================== -->
+  <section id="s18">
+    <div class="sec-num">SECTION 18</div>
+    <h2>Reranker 什么时候反而不应该使用？</h2>
+
+    <p>写了这么多 Reranker 的好处，这一节可能是全文最重要的「反面清单」。Reranker 是一个<strong>工程选择，不是 RAG 的宗教</strong>。</p>
+
+    <h3>场景一：数据量很小</h3>
+    <p>知识库只有几百个文档？全库直接塞进一个粗排甚至直接给 LLM 都可能绰绰有余。为一个中小型文档集合引入精排服务，是在为不存在的问题增加运维负担。</p>
+
+    <h3>场景二：Query 极度结构化</h3>
+    <div class="card query">
+      <div class="card-title">典型 Query</div>
+      <p style="font-family:var(--mono);font-size:15px">「SKU-123456」</p>
+    </div>
+    <p>这种精确标识符 Query，BM25 加上 Metadata 索引可能一步命中，排序几乎没有歧义。Reranker 在这里没有发挥空间——它擅长的是语义分辨，不是精确匹配。</p>
+
+    <h3>场景三：Latency 极度敏感</h3>
+    <p>如果你的链路 P95 已经卡在秒级红线，而监控显示 <strong>Reranker 成为 P95 的主要瓶颈</strong>，正确动作不是硬扛，而是重新评估：缩小 Candidate Size、换更小的模型、量化、或者干脆砍掉这一阶段——先测量，再决策。</p>
+
+    <div class="pull">先跑通检索，建立评测，<br>再决定要不要引入 Reranker。</div>
+  </section>
+
+  <!-- ==================== 19 ==================== -->
+  <section id="s19">
+    <div class="sec-num">SECTION 19</div>
+    <h2>如何评估 Reranker？</h2>
+
+    <p>任何关于「Reranker 有没有用」的结论，都必须来自对照实验：</p>
+
+    <pre><span style="color:#fcd34d">Baseline</span>    ：Dense + BM25 + RRF
+      ↓
+<span style="color:#fcd34d">Experiment</span>  ：Dense + BM25 + RRF + Reranker</pre>
+
+    <p>两组实验在同一评测集上对比，指标分两层看：</p>
+
+    <table>
+      <thead>
+        <tr><th style="width:30%">指标层</th><th>指标</th><th>回答的问题</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="hl" rowspan="4">排序质量</td><td>Recall@K</td><td>正确文档是否还在 Top-K 里</td></tr>
+        <tr><td>Precision@K</td><td>Top-K 里有多少是真相关的</td></tr>
+        <tr><td>MRR</td><td>第一个正确答案排得有多靠前</td></tr>
+        <tr><td>NDCG</td><td>整体排序质量（考虑分级相关性）</td></tr>
+        <tr><td class="hl" rowspan="4">系统指标</td><td>P50 / P95 Latency</td><td>排序质量是用延迟换的，代价多大</td></tr>
+        <tr><td>Throughput</td><td>高并发下还撑得住吗</td></tr>
+        <tr><td>GPU Cost</td><td>每千次请求的推理成本</td></tr>
+        <tr><td>端到端答案质量</td><td>最终要回到「用户拿到的答案变好了吗」</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <span class="tag">KEY PRINCIPLE</span><br>
+      <strong>不要只看模型 Offline Accuracy，还要看线上系统指标。</strong>NDCG 提升了 3 个点、但 P95 延迟翻倍、GPU 成本上涨 40%——这笔账要放在同一个表格里算。Reranker 的价值最终要以「端到端 RAG 效果 + 系统 SLO」来衡量。
+    </div>
+  </section>
+
+  <!-- ==================== 20 ==================== -->
+  <section id="s20">
+    <div class="sec-num">SECTION 20</div>
+    <h2>一个完整生产案例</h2>
+
+    <p>把本篇所有内容串起来，回到开篇那个 Query 的完整生命周期：</p>
+
+    <div class="card ok">
+      <div class="card-title">Query：RTC SDK 4.6.2 在 Android 14 出现 RTC-10027，官方推荐怎么处理？</div>
+      <ol class="ranked">
+        <li><strong>Metadata Filter</strong>：权限过滤 + 产品线过滤 + 文档时效过滤 <span class="why">先剔除无效候选</span></li>
+        <li><strong>Dense Search → Top 50</strong> <span class="why">语义召回</span></li>
+        <li><strong>BM25 Search → Top 50</strong> <span class="why">关键词召回（RTC-10027 精确命中）</span></li>
+        <li><strong>RRF 融合 → Candidate 70</strong> <span class="why">去重后不是 100</span></li>
+        <li><strong>Reranker 精排 → Top 5</strong> <span class="why">4.6.2 错误码说明升到第 1</span></li>
+        <li><strong>Context Construction</strong> <span class="why">去重 / Parent 补全 / Ordering</span></li>
+        <li><strong>LLM 生成 → 带 Citation 的答案</strong> <span class="why">可溯源</span></li>
+      </ol>
+    </div>
+
+    <p>一个值得注意的细节：Candidate 最终是 <strong>70 而不是 100</strong>。为什么？因为 Dense 和 BM25 的 Top 50 <strong>存在交集</strong>——正确的 4.6.2 错误码说明，两路检索都会召回它。RRF 融合去重后，实际候选数小于两路之和。这也意味着：<strong>不要想当然地按「两路 K 值相加」来规划 Reranker 的 Batch Size，要在自己的数据上统计真实交集率。</strong></p>
+
+    <p>在这个案例里，Reranker 完成的关键动作是：把「4.6.1 错误码说明」——那个 Embedding 空间里与正确答案几乎重合、RRF 排名还可能更高的<strong>危险候选</strong>——压到了 Top 5 之外。</p>
+  </section>
+
+  <!-- ==================== 21 ==================== -->
+  <section id="s21">
+    <div class="sec-num">SECTION 21</div>
+    <h2>最终架构</h2>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 860 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="企业级 RAG 检索排序完整架构">
+          <defs>
+            <marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+            </marker>
+          </defs>
+
+          <!-- Query -->
+          <rect x="340" y="14" width="180" height="42" rx="21" fill="#1e293b"/>
+          <text x="430" y="41" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="15" fill="#e2e8f0">Query</text>
+          <line x1="430" y1="56" x2="430" y2="78" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+
+          <!-- split -->
+          <path d="M430,78 L430,96 M180,96 L680,96 M180,96 L180,114 M680,96 L680,114" fill="none" stroke="#64748b" stroke-width="1.5"/>
+          <line x1="180" y1="96" x2="180" y2="114" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+          <line x1="680" y1="96" x2="680" y2="114" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+
+          <!-- First stage band -->
+          <rect x="40" y="112" width="780" height="130" rx="14" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.2" stroke-dasharray="6 4"/>
+          <text x="66" y="140" font-family="PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="#0f766e">FIRST STAGE · RECALL-ORIENTED</text>
+
+          <rect x="110" y="152" width="240" height="42" rx="9" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="230" y="178" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="14.5" fill="#1e293b">Dense Retrieval</text>
+          <rect x="510" y="152" width="240" height="42" rx="9" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="630" y="178" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="14.5" fill="#1e293b">BM25 Retrieval</text>
+
+          <line x1="230" y1="194" x2="230" y2="212" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah5)"/>
+          <line x1="630" y1="194" x2="630" y2="212" stroke="#64748b" stroke-width="1.4" marker-end="url(#ah5)"/>
+          <text x="230" y="230" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#0f766e">Top-K</text>
+          <text x="630" y="230" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#0f766e">Top-K</text>
+
+          <!-- merge to RRF -->
+          <path d="M230,240 L230,262 M630,240 L630,262 M230,262 L630,262 M430,262 L430,280" fill="none" stroke="#64748b" stroke-width="1.5"/>
+          <line x1="430" y1="262" x2="430" y2="280" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+
+          <!-- RRF -->
+          <rect x="365" y="284" width="130" height="44" rx="9" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+          <text x="430" y="311" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="15" fill="#1e293b">RRF</text>
+
+          <line x1="430" y1="328" x2="430" y2="350" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+          <rect x="345" y="354" width="170" height="34" rx="17" fill="#64748b" opacity=".15"/>
+          <text x="430" y="376" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13.5" fill="#475569">Candidate Set（≈70）</text>
+
+          <!-- Second stage band -->
+          <rect x="40" y="402" width="780" height="120" rx="14" fill="#fffbeb" stroke="#b45309" stroke-width="1.2" stroke-dasharray="6 4"/>
+          <text x="66" y="430" font-family="PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="#b45309">SECOND STAGE · PRECISION-ORIENTED</text>
+          <line x1="430" y1="388" x2="430" y2="428" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+
+          <rect x="290" y="436" width="280" height="48" rx="9" fill="#fff" stroke="#b45309" stroke-width="1.8"/>
+          <text x="430" y="465" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="15.5" font-weight="600" fill="#1e293b">Cross-Encoder Reranker</text>
+          <line x1="574" y1="460" x2="606" y2="460" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+          <rect x="610" y="438" width="170" height="44" rx="9" fill="#b45309"/>
+          <text x="695" y="458" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13.5" fill="#fff">Top-N Relevant</text>
+          <text x="695" y="475" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="11.5" fill="#fff" opacity=".85">Top 5 / Top 10</text>
+
+          <!-- context band -->
+          <line x1="430" y1="522" x2="430" y2="556" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+          <rect x="230" y="560" width="400" height="48" rx="9" fill="#eef2ff" stroke="#4338ca" stroke-width="1.5"/>
+          <text x="430" y="580" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="15" font-weight="600" fill="#4338ca">Context Construction</text>
+          <text x="430" y="599" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="11.5" fill="#4338ca" opacity=".8">去重 · 压缩 · Parent Retrieval · Ordering · Token Budget</text>
+
+          <line x1="430" y1="608" x2="430" y2="634" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+
+          <rect x="350" y="638" width="160" height="44" rx="22" fill="#1e293b"/>
+          <text x="430" y="665" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="15" fill="#e2e8f0">LLM</text>
+
+          <line x1="430" y1="682" x2="430" y2="706" stroke="#64748b" stroke-width="1.5" marker-end="url(#ah5)"/>
+
+          <rect x="310" y="710" width="240" height="40" rx="20" fill="#0f766e"/>
+          <text x="430" y="735" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="15" font-weight="600" fill="#fff">Grounded Answer + Citation</text>
+        </svg>
+      </div>
+      <figcaption><b>图 5</b> ｜ 企业级 RAG 检索-排序完整架构：两阶段分工明确，逐层缩小搜索空间</figcaption>
+    </figure>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 860 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="两阶段目标分工">
+          <defs>
+            <marker id="ah6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+            </marker>
+          </defs>
+          <rect x="20" y="40" width="360" height="150" rx="16" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="200" y="80" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="17" font-weight="700" fill="#0f766e">First Stage</text>
+          <text x="200" y="110" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#0f766e">Recall-oriented</text>
+          <text x="200" y="142" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13" fill="#475569">Bi-Encoder + BM25 · 快速扩大候选</text>
+          <text x="200" y="168" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13" fill="#475569">指标：Recall@K</text>
+
+          <line x1="390" y1="115" x2="466" y2="115" stroke="#64748b" stroke-width="2" marker-end="url(#ah6)"/>
+          <rect x="404" y="98" width="48" height="34" rx="8" fill="#64748b" opacity=".15"/>
+          <text x="428" y="120" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="12" fill="#475569">候选</text>
+
+          <rect x="480" y="40" width="360" height="150" rx="16" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+          <text x="660" y="80" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="17" font-weight="700" fill="#b45309">Second Stage</text>
+          <text x="660" y="110" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#b45309">Precision-oriented</text>
+          <text x="660" y="142" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13" fill="#475569">Cross-Encoder · 精细判别排序</text>
+          <text x="660" y="168" text-anchor="middle" font-family="PingFang SC, sans-serif" font-size="13" fill="#475569">指标：Precision@K / MRR / NDCG</text>
+        </svg>
+      </div>
+      <figcaption><b>图 6</b> ｜ 两阶段目标分工：Recall-oriented → Candidate → Precision-oriented</figcaption>
+    </figure>
+  </section>
+
+  <!-- ==================== 22 ==================== -->
+  <section id="s22">
+    <div class="sec-num">SECTION 22</div>
+    <h2>最终建立核心认知</h2>
+
+    <p>走到这里，系列前八篇的组件可以各归其位了。每一个组件回答一个不同的问题：</p>
+
+    <div class="card">
+      <div class="card-title">每个组件的职责边界</div>
+      <table style="margin:8px 0 4px">
+        <thead><tr><th style="width:34%">组件</th><th>回答的问题</th></tr></thead>
+        <tbody>
+          <tr><td class="hl">Retriever</td><td>「哪些文档值得看？」</td></tr>
+          <tr><td class="hl">RRF</td><td>「多路检索结果如何合并？」</td></tr>
+          <tr><td class="hl">Reranker</td><td>「这些候选中，哪个与 Query 最相关？」</td></tr>
+          <tr><td class="hl">Context Engineering</td><td>「哪些信息真正应该交给 LLM？」</td></tr>
+          <tr><td class="hl">LLM</td><td>「如何基于证据生成答案？」</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pull">RAG 的检索不是一次排序，<br>而是一个逐层缩小搜索空间、<br>逐步提高相关性的过程。</div>
+
+    <pre>Million Documents
+  ↓
+Fast Retrieval（Recall-oriented）
+  ↓
+Candidate Set
+  ↓
+RRF（多路融合）
+  ↓
+Reranker（Precision-oriented）
+  ↓
+Relevant Context
+  ↓
+LLM → Grounded Answer</pre>
+
+    <p>最后重申本篇的边界，避免矫枉过正：Reranker 不是必选项，它是一个需要用评测数据验证的工程决策；Cross-Encoder 不是万能的，它的精度优势以计算成本为代价；Reranker 不能弥补召回缺失，不能替代 Context Engineering，更不能消除所有幻觉。它能做的，是在召回已经正确的前提下，<strong>把最好的证据放到最前面</strong>——而这恰恰决定了 LLM 拿到的是清晰的路标，还是一堆语义相近的干扰项。</p>
+
+    <p>不过，你可能已经注意到一个贯穿全文的隐含假设：我们始终默认 Query 是一个「已经理解清楚」的输入。但开篇那个 Query 里藏着多少信息？「RTC-10027」是错误码，「4.6.2」是版本约束，「Android 14」是环境条件——<strong>系统真的理解这些吗？</strong>如果用户的原始问题是「为什么我用不了你们的 SDK」，我们连该检索什么都不知道。</p>
+
+    <p>这就是下一篇的主题。</p>
+  </section>
+
+  <!-- ==================== Next ==================== -->
+  <footer class="next-article">
+    <div class="label">Next · 系列第 09 篇</div>
+    <h3>用户问题不是一个字符串——Query Understanding</h3>
+    <p>Query 改写、意图识别、实体抽取、HyDE、多查询扩展——在检索开始之前，还有一整层工程在决定整个系统的上限。</p>
+  </footer>
+
+</div>
+</body>
+</html>

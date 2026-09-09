@@ -1,5 +1,194 @@
 [
   {
+    "slug": "enterprise-rag-15-enterprise-architecture",
+    "title": "企业级 RAG 架构设计与工程实践（十五）：从 Naive RAG 到 Enterprise RAG：一套真正可以落地的生产架构",
+    "date": "2026-09-10T18:00:00+08:00",
+    "readTime": "26 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "把系列能力统一成一套完整、可实施、可演进的 Enterprise RAG 生产架构。",
+    "file": "./content/posts/enterprise-rag-15-enterprise-architecture.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《从 Naive RAG 到 Enterprise RAG：完整生产架构》.html",
+    "subtitle": "一套真正可以落地的生产架构",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 15
+  },
+  {
+    "slug": "enterprise-rag-14-failure-cases",
+    "title": "企业级 RAG 架构设计与工程实践（十四）：为什么你的 RAG 上线之后效果变差了？10 个典型失败案例与系统化排障方法",
+    "date": "2026-09-10T17:00:00+08:00",
+    "readTime": "22 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "上线后效果变差，往往不是单一组件坏了。用 10 个典型失败案例讲清系统化排障与失败回流闭环。",
+    "file": "./content/posts/enterprise-rag-14-failure-cases.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《为什么你的 RAG 上线之后效果变差了？典型失败案例》.html",
+    "subtitle": "典型失败案例与系统化排障",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 14
+  },
+  {
+    "slug": "enterprise-rag-13-evaluation",
+    "title": "企业级 RAG 架构设计与工程实践（十三）：RAG 到底有没有变好？建立企业级 RAG Evaluation 体系",
+    "date": "2026-09-10T16:00:00+08:00",
+    "readTime": "28 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "改了 Chunking、换了 Reranker，怎么证明真的变好了？建立可回归、可持续改进的企业级 RAG 评估体系。",
+    "file": "./content/posts/enterprise-rag-13-evaluation.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《RAG 到底有没有变好？企业级 Evaluation 体系》.html",
+    "subtitle": "建立企业级 Evaluation 体系",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 13
+  },
+  {
+    "slug": "enterprise-rag-12-performance-cost",
+    "title": "企业级 RAG 架构设计与工程实践（十二）：又快又便宜 — 性能与成本优化",
+    "date": "2026-09-10T15:00:00+08:00",
+    "readTime": "24 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "从缓存、并行到模型路由，讲清企业 RAG 如何在延迟与成本之间做可落地的工程权衡。",
+    "file": "./content/posts/enterprise-rag-12-performance-cost.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《企业 RAG 性能与成本优化：缓存、并行与模型路由》.html",
+    "subtitle": "性能与成本优化",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 12
+  },
+  {
+    "slug": "enterprise-rag-11-permission-security",
+    "title": "企业级 RAG 架构设计与工程实践（十一）：企业 RAG 最容易被忽略的一层——权限、多租户与数据安全",
+    "date": "2026-09-10T14:00:00+08:00",
+    "readTime": "28 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "企业 RAG 与 Demo 的分界线往往在权限。讲清检索时权限下推、多租户隔离与数据安全底座。",
+    "file": "./content/posts/enterprise-rag-11-permission-security.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《企业 RAG 的关键底座：权限、多租户与数据安全》.html",
+    "subtitle": "权限、多租户与数据安全",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 11
+  },
+  {
+    "slug": "enterprise-rag-10-context-engineering",
+    "title": "企业级 RAG 架构设计与工程实践（十）：检索正确，答案为什么仍然错误？深入理解 RAG Context Engineering",
+    "date": "2026-09-10T13:00:00+08:00",
+    "readTime": "28 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "明明召回到了正确文档，答案仍可能错。讲清检索之后如何把候选加工成 LLM 真正可用的 Context。",
+    "file": "./content/posts/enterprise-rag-10-context-engineering.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《检索正确，答案为什么仍然错误？Context Engineering》.html",
+    "subtitle": "深入理解 Context Engineering",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 10
+  },
+  {
+    "slug": "enterprise-rag-09-query-understanding",
+    "title": "企业级 RAG 架构设计与工程实践（九）：用户问题不是一个字符串：企业 RAG Query Understanding 深度解析",
+    "date": "2026-09-10T12:00:00+08:00",
+    "readTime": "25 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "用户说的是自然语言，检索要的是可检索表达。系统拆解企业 RAG 的 Query Understanding 翻译层。",
+    "file": "./content/posts/enterprise-rag-09-query-understanding.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《用户问题不是一个字符串：Query Understanding》.html",
+    "subtitle": "Query Understanding 深度解析",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 9
+  },
+  {
+    "slug": "enterprise-rag-08-reranker",
+    "title": "企业级 RAG 架构设计与工程实践（八）：为什么检索到了 Top-K，还需要 Reranker？",
+    "date": "2026-09-10T11:00:00+08:00",
+    "readTime": "25 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "候选找全了，答案仍可能排错。讲清 Reranker 在 Top-K 之后解决什么问题，以及它与检索的职责边界。",
+    "file": "./content/posts/enterprise-rag-08-reranker.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《为什么检索到了 Top-K，还需要 Reranker？》.html",
+    "subtitle": "为什么还需要 Reranker",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 8
+  },
+  {
+    "slug": "enterprise-rag-07-rrf",
+    "title": "企业级 RAG 架构设计与工程实践（七）：BM25 + Vector Search 如何融合？深入理解 RRF",
+    "date": "2026-09-10T10:00:00+08:00",
+    "readTime": "16 分钟",
+    "category": "RAG 与检索",
+    "tags": [
+      "RAG",
+      "企业知识库",
+      "企业级 RAG",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/rag.svg",
+    "excerpt": "Dense 与 Sparse 各召回一堆结果后怎么合成一份排序？从 RRF 讲清 BM25 + 向量检索的融合方法。",
+    "file": "./content/posts/enterprise-rag-07-rrf.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《BM25 + Vector Search 如何融合？深入理解 RRF》.html",
+    "subtitle": "深入理解 RRF",
+    "series": "企业级 RAG 架构设计与工程实践",
+    "seriesOrder": 7
+  },
+  {
     "slug": "enterprise-rag-06-hybrid-retrieval",
     "title": "企业级 RAG 架构设计与工程实践（六）：为什么企业 RAG 不能只用向量搜索？深入理解 Hybrid Retrieval",
     "date": "2026-09-09T22:00:00+08:00",

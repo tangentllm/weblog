@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>检索正确，答案为什么仍然错误？—— 深入理解 RAG Context Engineering</title>
+<style>
+:root{
+  --ink:#1c2333; --ink-soft:#4a5568; --ink-mute:#8a94a6;
+  --paper:#f7f6f2; --card:#ffffff;
+  --accent:#0f4c81; --accent-light:#e8f0f8;
+  --warn:#b45309; --warn-bg:#fef6e7;
+  --ok:#0e7a4f; --ok-bg:#e9f5ef;
+  --bad:#b3372f; --bad-bg:#fbeceb;
+  --line:#e5e2da; --code-bg:#1e2433;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--paper);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-size:16.5px;line-height:1.85;}
+.wrap{max-width:880px;margin:0 auto;padding:0 28px 120px;}
+.hero{padding:72px 0 48px;border-bottom:1px solid var(--line);}
+.kicker{font-family:Consolas,monospace;font-size:13px;color:var(--accent);letter-spacing:.18em;text-transform:uppercase;margin-bottom:18px;}
+.hero h1{font-family:"Noto Serif SC","Songti SC",serif;font-weight:900;font-size:44px;line-height:1.35;}
+.hero .sub{margin-top:22px;font-family:"Noto Serif SC",serif;font-size:19px;color:var(--ink-soft);line-height:1.9;}
+.meta{margin-top:34px;font-family:Consolas,monospace;font-size:13px;color:var(--ink-mute);}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 36px;margin:44px 0;}
+.toc h3{font-family:"Noto Serif SC",serif;font-size:15px;letter-spacing:.2em;color:var(--ink-mute);margin-bottom:18px;}
+.toc ol{list-style:none;column-count:2;column-gap:44px;font-size:14.5px;}
+.toc li{padding:5px 0;border-bottom:1px dashed var(--line);}
+.toc a{color:var(--ink-soft);text-decoration:none;}
+.toc a:hover{color:var(--accent);}
+.toc .num{font-family:Consolas,monospace;color:var(--accent);margin-right:8px;font-size:12.5px;}
+section{margin-top:88px;}
+.sec-tag{font-family:Consolas,monospace;font-size:13px;color:var(--accent);letter-spacing:.16em;margin-bottom:10px;}
+h2{font-family:"Noto Serif SC",serif;font-size:31px;font-weight:900;line-height:1.4;margin-bottom:26px;padding-bottom:16px;border-bottom:2px solid var(--ink);}
+h3{font-family:"Noto Serif SC",serif;font-size:21px;font-weight:700;margin:44px 0 16px;}
+h3::before{content:"◆";color:var(--accent);margin-right:10px;font-size:14px;}
+p{margin-bottom:18px;color:#2c3446;}
+ul.plain{margin:0 0 18px 24px;}
+ul.plain li{margin-bottom:8px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:30px 34px;margin:28px 0;}
+.card-title{font-family:Consolas,monospace;font-size:12.5px;letter-spacing:.18em;color:var(--ink-mute);margin-bottom:14px;text-transform:uppercase;}
+.quote{border-left:4px solid var(--accent);background:var(--accent-light);border-radius:0 10px 10px 0;padding:22px 28px;margin:30px 0;font-family:"Noto Serif SC",serif;font-size:18.5px;line-height:1.9;}
+.callout{border-radius:10px;padding:22px 26px;margin:26px 0;font-size:15.5px;}
+.callout .t{font-weight:700;margin-bottom:8px;font-family:"Noto Serif SC",serif;}
+.callout.warn{background:var(--warn-bg);border:1px solid #f0dfc0;}
+.callout.warn .t{color:var(--warn);}
+.callout.ok{background:var(--ok-bg);border:1px solid #cde8da;}
+.callout.ok .t{color:var(--ok);}
+.callout.bad{background:var(--bad-bg);border:1px solid #efd3d0;}
+.callout.bad .t{color:var(--bad);}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:24px 0;}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px;text-align:center;}
+.stat .v{font-family:"Noto Serif SC",serif;font-weight:900;font-size:22px;color:var(--accent);}
+.stat .l{font-size:13.5px;color:var(--ink-mute);margin-top:6px;line-height:1.5;}
+table{width:100%;border-collapse:collapse;margin:28px 0;background:var(--card);border-radius:12px;overflow:hidden;font-size:14.5px;}
+th{background:var(--ink);color:#fff;font-weight:500;padding:13px 16px;text-align:left;font-size:13.5px;}
+td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+tr:nth-child(even) td{background:#fafaf7;}
+.yes{color:var(--ok);font-weight:700;}
+.no{color:var(--bad);font-weight:700;}
+.mid{color:var(--warn);font-weight:700;}
+pre{background:var(--code-bg);color:#dce3f0;border-radius:12px;padding:26px 28px;overflow-x:auto;margin:26px 0;font-family:Consolas,"Courier New",monospace;font-size:13.5px;line-height:1.75;white-space:pre;}
+code{font-family:Consolas,monospace;background:#edeae2;border-radius:5px;padding:2px 7px;font-size:.86em;color:#8a3b12;}
+pre code{background:none;padding:0;color:inherit;}
+.diagram{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:26px;margin:30px 0;}
+.diagram .cap{font-family:Consolas,monospace;font-size:12.5px;color:var(--ink-mute);text-align:center;margin-top:14px;}
+.diagram svg{display:block;width:100%;height:auto;}
+.formula{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:30px;text-align:center;margin:28px 0;font-family:"Noto Serif SC",serif;font-size:20px;}
+.formula .note{font-family:"Noto Sans SC",sans-serif;font-size:14px;color:var(--ink-mute);margin-top:14px;}
+.fail{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--bad);border-radius:0 12px 12px 0;padding:26px 30px;margin:24px 0;}
+.fail h4{font-family:"Noto Serif SC",serif;font-size:18px;margin-bottom:14px;}
+.fail .row{display:flex;gap:14px;margin-bottom:10px;font-size:15px;}
+.fail .k{font-family:Consolas,monospace;font-size:12px;color:var(--bad);width:70px;flex:none;padding-top:3px;}
+.query{background:var(--ink);color:#e8ecf5;border-radius:12px;padding:22px 26px;margin:24px 0;font-family:"Noto Serif SC",serif;}
+.query .q{font-size:12px;font-family:Consolas,monospace;color:#7d8db0;letter-spacing:.15em;margin-bottom:8px;}
+.query .t{font-size:17px;line-height:1.7;}
+.next{margin-top:90px;background:linear-gradient(135deg,#10233d,#0f4c81);color:#fff;border-radius:16px;padding:44px 48px;}
+.next .nk{font-family:Consolas,monospace;font-size:12.5px;letter-spacing:.2em;color:#9fc3e8;margin-bottom:14px;}
+.next h3{color:#fff;font-size:26px;margin:0 0 16px;}
+.next h3::before{color:#9fc3e8;}
+.next p{color:#c9d8ec;font-size:15.5px;}
+.next .hook{margin-top:20px;padding:18px 22px;background:rgba(255,255,255,.08);border-radius:10px;font-family:"Noto Serif SC",serif;font-size:17px;color:#fff;}
+footer{margin-top:60px;text-align:center;font-family:Consolas,monospace;font-size:12.5px;color:var(--ink-mute);}
+@media (max-width:640px){.hero h1{font-size:32px;}.toc ol{column-count:1;}section{margin-top:64px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="kicker">Enterprise RAG Architecture · Series 10 / 12</div>
+  <h1>检索正确，答案为什么仍然错误？<br>深入理解 RAG Context Engineering</h1>
+  <p class="sub">《企业级 RAG 架构设计与工程实践》第十篇。前九篇完成了从 Data、Chunking、Embedding、混合检索、RRF 到 Reranker 的完整链路——但一个最现实的问题依然存在：明明检索到了正确文档，为什么 LLM 最终还是可能给出错误答案？本文从"检索之后到底发生了什么"讲起，系统拆解 Context Engineering。</p>
+  <div class="meta">RAG Architecture · Context Engineering · LLM Application · Production Practice</div>
+</header>
+
+<!-- ================= TOC ================= -->
+<nav class="toc">
+  <h3>TABLE OF CONTENTS</h3>
+  <ol>
+    <li><a href="#s1"><span class="num">01</span>开篇：检索正确，答案却错了</a></li>
+    <li><a href="#s2"><span class="num">02</span>Context Engineering 到底是什么</a></li>
+    <li><a href="#s3"><span class="num">03</span>检索正确为何答案仍可能错误</a></li>
+    <li><a href="#s4"><span class="num">04</span>Context Selection</a></li>
+    <li><a href="#s5"><span class="num">05</span>为什么不能只看 Reranker 分数</a></li>
+    <li><a href="#s6"><span class="num">06</span>Context Diversity</a></li>
+    <li><a href="#s7"><span class="num">07</span>MMR：相关性与多样性的平衡</a></li>
+    <li><a href="#s8"><span class="num">08</span>Context Deduplication</a></li>
+    <li><a href="#s9"><span class="num">09</span>Context Compression</a></li>
+    <li><a href="#s10"><span class="num">10</span>Context Ordering</a></li>
+    <li><a href="#s11"><span class="num">11</span>版本冲突</a></li>
+    <li><a href="#s12"><span class="num">12</span>Source Authority</a></li>
+    <li><a href="#s13"><span class="num">13</span>Context Budget</a></li>
+    <li><a href="#s14"><span class="num">14</span>长上下文 ≠ 无限塞文档</a></li>
+    <li><a href="#s15"><span class="num">15</span>对话历史与检索上下文</a></li>
+    <li><a href="#s16"><span class="num">16</span>Context Template 与 Citation</a></li>
+    <li><a href="#s17"><span class="num">17</span>Context 与 Prompt 的边界</a></li>
+    <li><a href="#s18"><span class="num">18</span>完整 Context Pipeline</a></li>
+    <li><a href="#s19"><span class="num">19</span>完整企业 RAG 链路</a></li>
+    <li><a href="#s20"><span class="num">20</span>如何评估 Context Engineering</a></li>
+    <li><a href="#s21"><span class="num">21</span>十个常见失败案例</a></li>
+    <li><a href="#s22"><span class="num">22</span>生产环境推荐策略</a></li>
+    <li><a href="#s23"><span class="num">23</span>Python Context Builder</a></li>
+    <li><a href="#s24"><span class="num">24</span>核心认知</a></li>
+    <li><a href="#s25"><span class="num">25</span>下一篇预告</a></li>
+  </ol>
+</nav>
+
+<!-- ================= SECTION 1 ================= -->
+<section id="s1">
+  <div class="sec-tag">SECTION 01</div>
+  <h2>开篇：检索正确，答案却错了</h2>
+
+  <p>这是我在生产环境里被问得最多的一个问题，也是本文唯一要回答的问题。</p>
+
+  <p>假设你负责一个 RTC（实时音视频）SDK 的企业技术支持 RAG 系统。一位 Android 开发者发起提问：</p>
+
+  <div class="query">
+    <div class="q">QUERY EXAMPLE 01 · 技术支持</div>
+    <div class="t">"RTC SDK 4.6.2 在 Android 14 上出现 RTC-10027，官方推荐怎么处理？"</div>
+  </div>
+
+  <p>经过前九篇构建的检索链路——Chunking、Embedding、Dense + Sparse Retrieval、RRF、Reranker——系统成功召回了如下候选集：</p>
+
+  <table>
+    <thead><tr><th>候选文档</th><th>内容</th><th>相关性判定</th></tr></thead>
+    <tbody>
+      <tr><td><b>Document A</b></td><td>RTC SDK 4.6.2 Android 错误码说明</td><td class="yes">✅ 高度相关（答案所在）</td></tr>
+      <tr><td><b>Document B</b></td><td>RTC SDK 4.6.2 Android 接入指南</td><td class="yes">✅ 相关</td></tr>
+      <tr><td><b>Document C</b></td><td>RTC SDK 4.5.0 错误码说明</td><td class="mid">⚠️ 旧版本，语义高度相似</td></tr>
+      <tr><td><b>Document D</b></td><td>Android 14 通用兼容性问题</td><td class="mid">⚠️ 部分相关</td></tr>
+      <tr><td><b>Document E</b></td><td>RTC SDK 弱网优化方案</td><td class="mid">⚠️ 弱相关</td></tr>
+    </tbody>
+  </table>
+
+  <p>检索是<b>成功的</b>——Document A 明确就在候选集中。接下来最自然的做法是什么？把 A 到 E 全部拼接起来塞给 LLM：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 190" role="img" aria-label="全量拼接的朴素流程">
+      <defs><marker id="ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a94a6"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="30" y="60" width="160" height="70" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="110" y="90" text-anchor="middle" fill="#0f4c81" font-weight="bold">A+B+C+D+E</text>
+        <text x="110" y="112" text-anchor="middle" fill="#4a5568" font-size="11">全部直接拼接</text>
+        <line x1="190" y1="95" x2="320" y2="95" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#ar1)"/>
+        <rect x="325" y="60" width="130" height="70" rx="10" fill="#1c2333"/>
+        <text x="390" y="102" text-anchor="middle" fill="#ffffff" font-size="15">LLM</text>
+        <line x1="455" y1="95" x2="585" y2="95" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#ar1)"/>
+        <rect x="590" y="60" width="180" height="70" rx="10" fill="#fbeceb" stroke="#b3372f"/>
+        <text x="680" y="90" text-anchor="middle" fill="#b3372f" font-weight="bold">答案可能仍错</text>
+        <text x="680" y="112" text-anchor="middle" fill="#4a5568" font-size="11">版本混淆 / 冲突 / 稀释</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.1 — 朴素做法：全量拼接，把判断全部交给 LLM</div>
+  </div>
+
+  <p>结果呢？答案仍然可能出现以下任一问题：</p>
+
+  <ul class="plain">
+    <li><b>版本混淆</b>：旧版本 4.5.0 的处理方式混入了 4.6.2 的答案；</li>
+    <li><b>信息冲突</b>：不同版本文档给出不同配置，模型"各取一半"；</li>
+    <li><b>Context 过长</b>：正确内容被大量噪声包围，注意力被稀释；</li>
+    <li><b>重复信息</b>：同一事实在多个 Chunk 中反复出现；</li>
+    <li><b>重点被稀释</b>：真正关键的 RTC-10027 处理步骤，淹没在数千 Token 中。</li>
+  </ul>
+
+  <div class="quote">Retrieval 找到"正确候选"之后，系统仍然需要决定：<b>哪些信息真正值得进入 Context</b>。这就是 Context Engineering 要解决的问题。</div>
+</section>
+
+<!-- ================= SECTION 2 ================= -->
+<section id="s2">
+  <div class="sec-tag">SECTION 02</div>
+  <h2>Context Engineering 到底是什么？</h2>
+
+  <p>很多人把 Context Engineering 理解为"给 Prompt 填充上下文"——这是 Demo 视角的理解。从系统工程角度，它是检索完成之后、生成开始之前的<b>一整条信息加工流水线</b>：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 840 310" role="img" aria-label="Context Engineering 流水线">
+      <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="20" y="115" width="130" height="70" rx="10" fill="#edeae2" stroke="#8a94a6"/>
+        <text x="85" y="145" text-anchor="middle" fill="#1c2333" font-weight="bold">Retrieved</text>
+        <text x="85" y="165" text-anchor="middle" fill="#1c2333" font-weight="bold">Documents</text>
+        <line x1="150" y1="150" x2="185" y2="150" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <rect x="192" y="20" width="475" height="260" rx="14" fill="none" stroke="#0f4c81" stroke-dasharray="6 5"/>
+        <text x="430" y="46" text-anchor="middle" fill="#0f4c81" font-size="12" letter-spacing="2">CONTEXT ENGINEERING PIPELINE</text>
+        <rect x="215" y="62" width="200" height="38" rx="8" fill="#e8f0f8"/><text x="315" y="86" text-anchor="middle" fill="#0f4c81">① Selection 选择</text>
+        <rect x="437" y="62" width="200" height="38" rx="8" fill="#e8f0f8"/><text x="537" y="86" text-anchor="middle" fill="#0f4c81">② Filtering 过滤</text>
+        <rect x="215" y="110" width="200" height="38" rx="8" fill="#e8f0f8"/><text x="315" y="134" text-anchor="middle" fill="#0f4c81">③ Dedup 去重</text>
+        <rect x="437" y="110" width="200" height="38" rx="8" fill="#e8f0f8"/><text x="537" y="134" text-anchor="middle" fill="#0f4c81">④ Compression 压缩</text>
+        <rect x="215" y="158" width="200" height="38" rx="8" fill="#e8f0f8"/><text x="315" y="182" text-anchor="middle" fill="#0f4c81">⑤ Ordering 排序</text>
+        <rect x="437" y="158" width="200" height="38" rx="8" fill="#e8f0f8"/><text x="537" y="182" text-anchor="middle" fill="#0f4c81">⑥ Budget 预算</text>
+        <rect x="326" y="206" width="200" height="38" rx="8" fill="#0f4c81"/><text x="426" y="230" text-anchor="middle" fill="#ffffff">⑦ Context Assembly</text>
+        <line x1="667" y1="150" x2="702" y2="150" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <rect x="707" y="115" width="115" height="70" rx="10" fill="#1c2333"/>
+        <text x="764" y="145" text-anchor="middle" fill="#ffffff" font-weight="bold">Prompt</text>
+        <text x="764" y="165" text-anchor="middle" fill="#9fc3e8" font-size="11">→ LLM</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.2 — Context Engineering：一条信息加工流水线，而不是一次字符串拼接</div>
+  </div>
+
+  <div class="quote">Context Engineering 的本质，是把大量候选信息转换成 <b>LLM 最容易正确使用的最小有效上下文</b>。</div>
+
+  <div class="callout warn">
+    <div class="t">⚠️ 概念澄清</div>
+    Context Engineering ≠ Prompt Engineering。Prompt Engineering 解决的是"告诉模型应该怎么工作"；Context Engineering 解决的是"告诉模型应该依据哪些信息工作"。两者是互补关系，不是同一件事，也不是替代关系。第 17 节会专门讨论这条边界。
+  </div>
+</section>
+
+<!-- ================= SECTION 3 ================= -->
+<section id="s3">
+  <div class="sec-tag">SECTION 03</div>
+  <h2>检索正确，为什么答案仍然可能错误？</h2>
+
+  <p>先建立一个贯穿全文的认知模型。RAG 的生成质量不是由检索质量单方面决定的，而是经过<b>两层传递</b>：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 130" role="img" aria-label="质量传递链">
+      <defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="14">
+        <rect x="35" y="35" width="215" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="142" y="70" text-anchor="middle" fill="#0f4c81" font-weight="bold">Retrieval Quality</text>
+        <line x1="250" y1="65" x2="293" y2="65" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar3)"/>
+        <rect x="298" y="35" width="204" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="400" y="70" text-anchor="middle" fill="#0f4c81" font-weight="bold">Context Quality</text>
+        <line x1="502" y1="65" x2="545" y2="65" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar3)"/>
+        <rect x="550" y="35" width="215" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="657" y="70" text-anchor="middle" fill="#0f4c81" font-weight="bold">Generation Quality</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.3 — 检索质量不会自动传递到生成质量，中间隔着一层 Context 质量</div>
+  </div>
+
+  <p>这一层传递为什么会"漏"？我归纳为七类典型机制，每一种都在生产环境反复出现过：</p>
+
+  <div class="stats">
+    <div class="stat"><div class="v">① 太多</div><div class="l">正确内容被大量噪声包围，信号被稀释</div></div>
+    <div class="stat"><div class="v">② 重复</div><div class="l">同一事实多次出现，浪费 Token 与注意力</div></div>
+    <div class="stat"><div class="v">③ 冲突</div><div class="l">新旧版本文档同时在场，模型混着用</div></div>
+    <div class="stat"><div class="v">④ 乱序</div><div class="l">关键信息落在模型利用率最低的位置</div></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="v">⑤ 不完整</div><div class="l">只召回孤立 Chunk，缺少必要上下文</div></div>
+    <div class="stat"><div class="v">⑥ 超预算</div><div class="l">触发截断，恰好在答案附近被切掉</div></div>
+    <div class="stat"><div class="v">⑦ 不使用</div><div class="l">模型忽略证据，退回自身参数知识作答</div></div>
+  </div>
+
+  <p>其中第 ⑦ 类最隐蔽：即使 Context 完美，LLM 也可能"读过但不信"，优先使用预训练时记住的旧答案。Context Engineering 无法完全消除这一问题，但结构清晰、来源明确、体量精炼的 Context，能显著提高模型<b>依据证据作答</b>的概率。</p>
+
+  <div class="callout bad">
+    <div class="t">✕ 错误归因，错误修复</div>
+    生产中我看到太多团队，遇到这类问题先去改 Prompt——"请严格依据上下文回答！"改了十轮没有本质改善。因为问题不在指令层，而在信息层。<b>再漂亮的 Prompt，也无法弥补错误的 Context。</b>
+  </div>
+</section>
+
+<!-- ================= SECTION 4 ================= -->
+<section id="s4">
+  <div class="sec-tag">SECTION 04</div>
+  <h2>Context Selection：Top-K 是不是越多越好？</h2>
+
+  <p>Context Engineering 的第一步是 Selection——从 Candidate Set 里挑出真正进入 Context 的那一小部分。</p>
+
+  <p>先回答一个高频问题：为了保险，把 Reranker 的 Top-K 设成 50 行不行？看一下候选规模增长时各维度的变化：</p>
+
+  <table>
+    <thead><tr><th>候选规模</th><th>Recall</th><th>Noise</th><th>Token 成本</th><th>Latency</th><th>答案质量</th></tr></thead>
+    <tbody>
+      <tr><td><b>Top 5</b></td><td>较低</td><td>低</td><td>低</td><td>低</td><td>取决于命中率</td></tr>
+      <tr><td><b>Top 10</b></td><td>较高</td><td>可控</td><td>中</td><td>中</td><td class="yes">通常最优区间</td></tr>
+      <tr><td><b>Top 20</b></td><td>高</td><td>明显上升</td><td>高</td><td>中高</td><td>开始波动</td></tr>
+      <tr><td><b>Top 50</b></td><td>很高</td><td>高</td><td>很高</td><td>高</td><td class="no">经常不升反降</td></tr>
+    </tbody>
+  </table>
+
+  <p>规律很清晰：候选越多，Recall 上升，但 <b>Noise、Token 与 Latency 同步上升</b>。检索阶段的 K 应该为 Recall 服务，Context 阶段应该为 Precision 服务——两者不应该是同一个数字。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 230" role="img" aria-label="Selection 漏斗">
+      <defs><marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <polygon points="40,40 300,40 250,105 90,105" fill="#edeae2" stroke="#8a94a6"/>
+        <text x="170" y="78" text-anchor="middle" fill="#1c2333" font-weight="bold">Candidate Set（K = 20~50）</text>
+        <line x1="170" y1="108" x2="170" y2="142" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar4)"/>
+        <text x="185" y="134" fill="#0f4c81" font-size="11">Relevance Threshold</text>
+        <polygon points="90,146 250,146 222,178 118,178" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="170" y="168" text-anchor="middle" fill="#0f4c81" font-weight="bold">Top-N（N = 3~8）</text>
+        <rect x="330" y="30" width="450" height="165" rx="12" fill="#ffffff" stroke="#e5e2da"/>
+        <text x="555" y="60" text-anchor="middle" fill="#0f4c81" font-weight="bold">Selection 需要综合的维度</text>
+        <g fill="#4a5568" font-size="13">
+          <text x="360" y="92">▪ Top-N：控制进入 Context 的绝对数量</text>
+          <text x="360" y="116">▪ Score Threshold：低于阈值直接丢弃</text>
+          <text x="360" y="140">▪ Diversity：避免同源内容垄断</text>
+          <text x="360" y="164">▪ Source Authority：来源可信度加权</text>
+          <text x="360" y="188">▪ Version Priority：版本优先级过滤</text>
+        </g>
+      </g>
+    </svg>
+    <div class="cap">Fig.4 — 从 Candidate Set 到 Context，是一个不断收窄的漏斗</div>
+  </div>
+
+  <div class="quote">Reranker 的 Top-K 是<b>候选</b>，不是<b>Context</b>。把两者混为一谈，是 Context Engineering 最常见的起点性错误。</div>
+</section>
+
+<!-- ================= SECTION 5 ================= -->
+<section id="s5">
+  <div class="sec-tag">SECTION 05</div>
+  <h2>为什么不能只按 Reranker 分数选 Context？</h2>
+
+  <p>假设 Reranker 给出如下分数：</p>
+
+  <pre><code>Doc A = 0.95
+Doc B = 0.93
+Doc C = 0.92
+Doc D = 0.91
+Doc E = 0.90
+Doc F = 0.87   # 分数最低，却可能最关键</code></pre>
+
+  <p>一个看似合理的选择是：取 Top-5（A~E），丢弃 F。但请考虑一种生产中极其常见的情况——<b>A~E 全部来自同一份文档的相邻 Chunk</b>，比如《RTC SDK 4.6.2 错误码手册》被切成 5 段，每一段都在讲 RTC-10027 的描述。</p>
+
+  <p>把它们全部放进 Context，得到的是<b>同一信息重复五遍</b>。而 F——比如一篇讲"RTC-10027 实际是一个需要手动关闭硬件回声消除的已知问题及修复步骤"的 Release Note——虽然分数只有 0.87，却提供了 A~E 完全没有覆盖的关键解决步骤。</p>
+
+  <div class="callout bad">
+    <div class="t">✕ 常见误判</div>
+    "Reranker 分数最高的 Top-K，就是最好的 Context 组合。"<br><br>
+    正确的认知是：<b>"相关性最大"不等于"Context 组合最好"。</b>Reranker 评估的是单个 Chunk 与 Query 的相关性；而 Context 评估的应该是<b>一组 Chunk 合起来能否完整支撑回答</b>。前者是逐项打分，后者是组合优化。
+  </div>
+
+  <p>这也说明了一件事：<b>Reranker 和 Context Engineering 不能互相替代</b>。Reranker 负责"排序候选"，Context Builder 负责"组装证据组合"——它们是流水线上前后两个职责不同的工位。</p>
+</section>
+
+<!-- ================= SECTION 6 ================= -->
+<section id="s6">
+  <div class="sec-tag">SECTION 06</div>
+  <h2>Context Diversity：相关且不重复</h2>
+
+  <p>既然"全选高分"会导致同质化，目标就变成了：<b>Relevant + Diverse</b>——每一条都相关，且彼此互补。</p>
+
+  <p>回到开篇的例子。一个理想的 Context 组合应该像这样：</p>
+
+  <table>
+    <thead><tr><th></th><th>❌ 只按分数选（同质化）</th><th>✅ Diversity 选（互补）</th></tr></thead>
+    <tbody>
+      <tr><td><b>组合内容</b></td><td>Chunk A<br>Chunk A-1（A 的下一段）<br>Chunk A-2<br>Chunk A-3<br>Chunk A-4</td><td>Chunk A · 错误码定义与原因<br>Chunk F · 解决步骤<br>Chunk B · 配置要求<br>Chunk D · Android 14 已知兼容案例</td></tr>
+      <tr><td><b>信息增益</b></td><td>每加一条，新增信息趋近于零</td><td>每条都带来新的信息维度</td></tr>
+      <tr><td><b>可回答性</b></td><td>能描述问题，答不出步骤</td><td>原因 + 步骤 + 配置 + 案例，可完整作答</td></tr>
+    </tbody>
+  </table>
+
+  <p>实现 Diversity 的常用手段有四类：</p>
+
+  <ul class="plain">
+    <li><b>MMR（Maximal Marginal Relevance）</b>：在相关性/冗余度之间做显式权衡（下一节展开）；</li>
+    <li><b>Deduplication</b>：先去重再做多样性选择（第 8 节）；</li>
+    <li><b>Source Diversity</b>：限制同一来源文档占据的席位上限，比如"单一文档最多贡献 2 个 Chunk"；</li>
+    <li><b>Section Diversity</b>：结合 Chunk 的结构信息，优先覆盖"原因 / 步骤 / 配置 / 案例"等不同章节类型。</li>
+  </ul>
+
+  <div class="callout ok">
+    <div class="t">✓ 工程建议</div>
+    Source Diversity 是其中投入产出比最高的一条：它只需要 Metadata 里记录 document_id，就能避免"一份文档垄断 Context"这类最常见的退化，几乎零额外成本。
+  </div>
+</section>
+
+<!-- ================= SECTION 7 ================= -->
+<section id="s7">
+  <div class="sec-tag">SECTION 07</div>
+  <h2>MMR：在"相关"与"不重复"之间做平衡</h2>
+
+  <p>MMR（Maximal Marginal Relevance）是 Diversity Selection 中最经典、也最容易被误解的算法。它的选样标准是：</p>
+
+  <div class="formula">
+    MMR(D<sub>i</sub>) = λ · Sim(Q, D<sub>i</sub>) − (1 − λ) · max<sub>D<sub>j</sub> ∈ S</sub> Sim(D<sub>i</sub>, D<sub>j</sub>)
+    <div class="note">Q 为 Query，S 为已选入 Context 的文档集合；每轮从未选中集合中选取 MMR 得分最高者加入 S</div>
+  </div>
+
+  <p>逐项拆解：</p>
+
+  <ul class="plain">
+    <li><b>第一项</b> λ · Sim(Q, D<sub>i</sub>)：候选与 Query 的相关性——保证选出来的东西"有用"；</li>
+    <li><b>第二项</b> (1−λ) · max Sim(D<sub>i</sub>, D<sub>j</sub>)：候选与<b>已选集合中最相似成员</b>的相似度，作为惩罚项——保证新成员"带来新信息"；</li>
+    <li><b>λ</b>：权衡系数。λ 趋近 1 时退化为普通 Top-K 按相关性排序；λ 趋近 0 时过度追求差异性，可能选出"不相关但独特"的内容。</li>
+  </ul>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 250" role="img" aria-label="MMR 直觉示意">
+      <g font-family="Consolas,monospace" font-size="13">
+        <text x="60" y="40" fill="#1c2333" font-weight="bold">Query：RTC-10027 如何处理？</text>
+        <circle cx="200" cy="125" r="52" fill="#e8f0f8" stroke="#0f4c81" stroke-width="2"/>
+        <text x="200" y="131" text-anchor="middle" fill="#0f4c81" font-weight="bold" font-size="15">Q</text>
+        <circle cx="385" cy="92" r="15" fill="#0f4c81"/><text x="385" y="97" text-anchor="middle" fill="#ffffff" font-weight="bold">A</text>
+        <circle cx="418" cy="106" r="15" fill="#7fa6c9"/><text x="418" y="111" text-anchor="middle" fill="#ffffff" font-weight="bold">B</text>
+        <circle cx="400" cy="135" r="15" fill="#7fa6c9"/><text x="400" y="140" text-anchor="middle" fill="#ffffff" font-weight="bold">C</text>
+        <text x="402" y="175" text-anchor="middle" fill="#8a94a6" font-size="12">高相关，但互相高度冗余</text>
+        <circle cx="600" cy="82" r="15" fill="#0e7a4f"/><text x="600" y="87" text-anchor="middle" fill="#ffffff" font-weight="bold">F</text>
+        <text x="600" y="52" text-anchor="middle" fill="#0e7a4f" font-size="12">解决步骤（不同信息维度）</text>
+        <circle cx="632" cy="185" r="15" fill="#b45309"/><text x="632" y="190" text-anchor="middle" fill="#ffffff" font-weight="bold">G</text>
+        <text x="632" y="220" text-anchor="middle" fill="#b45309" font-size="12">兼容性案例（不同信息维度）</text>
+        <line x1="248" y1="108" x2="368" y2="96" stroke="#8a94a6" stroke-dasharray="4 4"/>
+        <line x1="248" y1="135" x2="583" y2="88" stroke="#0e7a4f" stroke-dasharray="4 4"/>
+      </g>
+    </svg>
+    <div class="cap">Fig.5 — MMR 的直觉：在 A/B/C 冗余簇中只取代表，把席位让给信息维度不同的 F、G</div>
+  </div>
+
+  <div class="callout warn">
+    <div class="t">⚠️ 保持克制</div>
+    不要把 MMR 神化。它不是唯一正确的 Context Selection 方法——Embedding 空间中的"相似"并不严格等于"语义冗余"，λ 也需要按业务调参。实践中，"Dedup + 单文档席位上限 + 分数阈值"这套简单策略，往往已经能解决 80% 的同质化问题，MMR 是在此之上的精调手段。
+  </div>
+</section>
+
+<!-- ================= SECTION 8 ================= -->
+<section id="s8">
+  <div class="sec-tag">SECTION 08</div>
+  <h2>Context Deduplication：重复从哪里来？</h2>
+
+  <p>企业 RAG 的候选集里，重复几乎不可避免。重复的来源至少有四类，各自的成因和对策不同：</p>
+
+  <table>
+    <thead><tr><th>重复类型</th><th>成因</th><th>典型表现</th><th>推荐检测方式</th></tr></thead>
+    <tbody>
+      <tr><td><b>文档重复</b></td><td>同一文档的多个版本/多次入库</td><td>同一份手册的 v1、v1.1 同时在库</td><td>文档指纹 / Hash + Metadata</td></tr>
+      <tr><td><b>Chunk 重叠</b></td><td>Chunking 时设置了 Overlap</td><td>相邻 Chunk 有 10~20% 内容完全相同</td><td>精确匹配 / MinHash</td></tr>
+      <tr><td><b>多路召回重复</b></td><td>Dense 与 BM25 召回同一 Chunk</td><td>RRF 前同一 chunk_id 出现两次</td><td>按 chunk_id 精确去重</td></tr>
+      <tr><td><b>Parent-Child 重复</b></td><td>Child 命中后，Parent 整段也进入候选</td><td>Child 内容是 Parent 的子集</td><td>层级关系检查 / 包含判定</td></tr>
+    </tbody>
+  </table>
+
+  <p>检测手段分两个层次：</p>
+
+  <ul class="plain">
+    <li><b>Exact Dedup（精确去重）</b>：Hash、chunk_id 对齐。快、零误杀，应无条件先做；</li>
+    <li><b>Semantic Dedup（语义去重）</b>：Embedding 相似度超过阈值即视为重复。能抓住"换了措辞的同一事实"，但有误杀风险——两段相似的文字可能一个说 4.5.0、一个说 4.6.2，语义去重前必须先过版本检查。</li>
+  </ul>
+
+  <div class="diagram">
+    <svg viewBox="0 0 760 220" role="img" aria-label="Dedup 流水线">
+      <defs><marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="15" y="80" width="140" height="60" rx="10" fill="#edeae2" stroke="#8a94a6"/>
+        <text x="85" y="115" text-anchor="middle" fill="#1c2333" font-weight="bold">Candidates</text>
+        <line x1="155" y1="110" x2="188" y2="110" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <rect x="193" y="80" width="165" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="275" y="105" text-anchor="middle" fill="#0f4c81">Document-level</text><text x="275" y="125" text-anchor="middle" fill="#0f4c81">Dedup</text>
+        <line x1="358" y1="110" x2="391" y2="110" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <rect x="396" y="80" width="165" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="478" y="105" text-anchor="middle" fill="#0f4c81">Chunk-level</text><text x="478" y="125" text-anchor="middle" fill="#0f4c81">Dedup</text>
+        <line x1="561" y1="110" x2="594" y2="110" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <rect x="599" y="80" width="150" height="60" rx="10" fill="#0f4c81"/>
+        <text x="674" y="105" text-anchor="middle" fill="#ffffff">Semantic Dedup</text><text x="674" y="125" text-anchor="middle" fill="#c9d8ec" font-size="11">（可选，谨慎）</text>
+        <text x="380" y="190" text-anchor="middle" fill="#8a94a6" font-size="12">先便宜后昂贵，先精确后语义——每一层过滤，都降低下一层的计算量与误杀风险</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.6 — 分层去重：Document → Chunk → Semantic</div>
+  </div>
+</section>
+
+<!-- ================= SECTION 9 ================= -->
+<section id="s9">
+  <div class="sec-tag">SECTION 09</div>
+  <h2>Context Compression：压缩是有损操作</h2>
+
+  <p>当筛选和去重之后 Context 依然过大，就需要压缩：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 720 140" role="img" aria-label="压缩示意">
+      <defs><marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="30" y="40" width="205" height="60" rx="10" fill="#edeae2" stroke="#8a94a6"/>
+        <text x="132" y="66" text-anchor="middle" fill="#1c2333" font-weight="bold">Retrieved Context</text>
+        <text x="132" y="86" text-anchor="middle" fill="#8a94a6" font-size="11">大而全，含噪声</text>
+        <line x1="235" y1="70" x2="285" y2="70" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <rect x="290" y="40" width="150" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="365" y="75" text-anchor="middle" fill="#0f4c81" font-weight="bold">Compression</text>
+        <line x1="440" y1="70" x2="490" y2="70" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <rect x="495" y="40" width="195" height="60" rx="10" fill="#e9f5ef" stroke="#0e7a4f"/>
+        <text x="592" y="66" text-anchor="middle" fill="#0e7a4f" font-weight="bold">Relevant Evidence</text>
+        <text x="592" y="86" text-anchor="middle" fill="#4a5568" font-size="11">小而准，直指答案</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.7 — 压缩：从"大而全"到"小而准"</div>
+  </div>
+
+  <p>压缩有三条技术路线，风险特征完全不同：</p>
+
+  <h3>Extractive Compression（抽取式）</h3>
+  <p>只保留原文中与 Query 相关的句子，不做任何改写。<b>保真度最高</b>，因为每个字都来自原文；但抽取器本身可能漏掉关键条件句——比如"仅在关闭硬件 AEC 时生效"这种限定语被丢弃后，答案就从"正确"变成"部分正确"。</p>
+
+  <h3>Abstractive Compression（摘要式）</h3>
+  <p>由模型对原文做概括。<b>Token 压缩率最高</b>，但风险也最大：概括过程可能丢失数字、版本号、条件限定——这些恰恰是技术文档里最要命的细节。</p>
+
+  <h3>LLM-based Compression（模型提取式）</h3>
+  <p>让一个（通常是更便宜的）模型面对多份文档，只提取与 Query 相关的事实。它介于两者之间，且天然支持"跨文档对齐"——比如同时看到 4.5.0 和 4.6.2 的文档时，可以只提取 4.6.2 相关内容。但同样存在幻觉与丢细节风险。</p>
+
+  <div class="callout warn">
+    <div class="t">⚠️ 核心原则</div>
+    <b>压缩本身是有损操作。</b>不要默认"压缩一定提升质量"——它提升的是 Token 效率，换来的是信息损失风险。企业知识库（错误码、版本号、配置参数）这类<b>高事实密度</b>场景，应优先选择 Extractive 或不做压缩，把预算花在 Selection 的精度上；只有当 Context 远超预算、且内容以叙述性文字为主时，才启用 Abstractive / LLM-based Compression。
+  </div>
+</section>
+
+<!-- ================= SECTION 10 ================= -->
+<section id="s10">
+  <div class="sec-tag">SECTION 10</div>
+  <h2>Context Ordering 与 Lost in the Middle</h2>
+
+  <p>同样的文档集合，<b>摆放顺序不同，模型的使用效果不同</b>。这不是玄学，而是 Transformer 注意力分布的真实特性。</p>
+
+  <p>Liu et al. 在 2023 年的论文《Lost in the Middle》中给出了关键发现：当关键信息位于长上下文的<b>中间位置</b>时，模型的利用率显著低于位于开头或结尾时的水平——利用率随位置呈 U 形分布：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" role="img" aria-label="Lost in the Middle 曲线">
+      <g font-family="Consolas,monospace" font-size="12" fill="#8a94a6">
+        <rect x="255" y="40" width="340" height="210" fill="#fbeceb" opacity="0.55"/>
+        <line x1="255" y1="40" x2="255" y2="250" stroke="#b3372f" stroke-dasharray="5 4"/>
+        <line x1="595" y1="40" x2="595" y2="250" stroke="#b3372f" stroke-dasharray="5 4"/>
+        <line x1="80" y1="250" x2="770" y2="250" stroke="#c9c5bb" stroke-width="1.5"/>
+        <line x1="80" y1="250" x2="80" y2="40" stroke="#c9c5bb" stroke-width="1.5"/>
+        <path d="M 100 80 C 200 100, 280 200, 425 210 C 570 200, 650 100, 750 80" fill="none" stroke="#0f4c81" stroke-width="3"/>
+        <text x="425" y="62" text-anchor="middle" fill="#b3372f" font-weight="bold">MIDDLE：利用率最低区</text>
+        <text x="100" y="70" fill="#0f4c81" font-weight="bold">BEGINNING：高</text>
+        <text x="645" y="70" fill="#0f4c81" font-weight="bold">END：高</text>
+        <text x="425" y="282" text-anchor="middle">Key Document 在 Context 中的位置</text>
+        <text x="30" y="150" transform="rotate(-90 30 150)" text-anchor="middle">信息利用率</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.8 — Lost in the Middle：关键证据放在中间，最容易被模型"视而不见"（示意曲线）</div>
+  </div>
+
+  <p>由此，Ordering 有几种可选策略，各自适配不同场景：</p>
+
+  <table>
+    <thead><tr><th>策略</th><th>做法</th><th>适用场景</th><th>注意点</th></tr></thead>
+    <tbody>
+      <tr><td><b>Most Relevant First</b></td><td>最高分放最前</td><td>通用默认；短 Context</td><td>长 Context 时中段仍会衰减</td></tr>
+      <tr><td><b>Most Relevant Last</b></td><td>最高分放最后（靠近 Query）</td><td>Context 较长、Query 在末尾的 Prompt 结构</td><td>与 Prompt 模板强耦合</td></tr>
+      <tr><td><b>两端放置</b></td><td>最重要两条放首尾</td><td>长 Context + 多证据支撑</td><td>需要至少两条"关键证据"</td></tr>
+      <tr><td><b>Chronological</b></td><td>按更新时间排序</td><td>时效敏感的知识库</td><td>需搭配"最新优先"而非纯粹时间序</td></tr>
+      <tr><td><b>Version / Authority Priority</b></td><td>按版本与来源权威度排序</td><td>企业多版本文档</td><td>需要 Metadata 支撑</td></tr>
+    </tbody>
+  </table>
+
+  <p>以开篇的 RTC 技术支持场景为例，一个合理的阅读顺序应该是：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 700 250" role="img" aria-label="企业文档推荐顺序">
+      <defs><marker id="ar7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="60" y="20" width="350" height="40" rx="8" fill="#0f4c81"/><text x="235" y="45" text-anchor="middle" fill="#ffffff">① 最新版本官方错误码说明（4.6.2）</text>
+        <line x1="235" y1="60" x2="235" y2="76" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar7)"/>
+        <rect x="60" y="80" width="350" height="40" rx="8" fill="#e8f0f8" stroke="#0f4c81"/><text x="235" y="105" text-anchor="middle" fill="#0f4c81">② 当前配置要求与解决步骤</text>
+        <line x1="235" y1="120" x2="235" y2="136" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar7)"/>
+        <rect x="60" y="140" width="350" height="40" rx="8" fill="#e8f0f8" stroke="#0f4c81"/><text x="235" y="165" text-anchor="middle" fill="#0f4c81">③ 兼容性要求（Android 14 案例）</text>
+        <line x1="235" y1="180" x2="235" y2="196" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar7)"/>
+        <rect x="60" y="200" width="350" height="40" rx="8" fill="#edeae2" stroke="#8a94a6"/><text x="235" y="225" text-anchor="middle" fill="#8a94a6">④ 历史版本文档（仅作参考，明确标注）</text>
+        <g fill="#4a5568" font-size="12.5">
+          <text x="445" y="105">← 旧版本永远排在最后，</text>
+          <text x="445" y="126">并且要在模板中显式标注</text>
+          <text x="445" y="147">"历史版本，仅作对比参考"，</text>
+          <text x="445" y="168">防止模型混用。</text>
+        </g>
+      </g>
+    </svg>
+    <div class="cap">Fig.9 — 企业技术文档的推荐排序：新版本在前，历史版本殿后并显式降权</div>
+  </div>
+
+  <div class="quote">Context Ordering 本质上是在设计<b>"模型阅读这批证据的顺序"</b>——它决定了模型在注意力分配时，谁先被看见、谁被反复回看。</div>
+</section>
+
+<!-- ================= SECTION 11 ================= -->
+<section id="s11">
+  <div class="sec-tag">SECTION 11</div>
+  <h2>版本冲突：企业 RAG 最典型的坑</h2>
+
+  <p>企业知识库天然是多版本的。用户这样问：</p>
+
+  <div class="query">
+    <div class="q">QUERY EXAMPLE 02 · 多版本文档</div>
+    <div class="t">"RTC SDK 4.6.2 的音频前处理应该怎么配置？"</div>
+  </div>
+
+  <p>而知识库里同时存在：</p>
+
+  <pre><code>RTC SDK 4.5.0 文档：  配置 A（已废弃，含已删除的参数）
+RTC SDK 4.6.1 文档：  配置 A'（部分适用）
+RTC SDK 4.6.2 文档：  配置 B（正确答案）</code></pre>
+
+  <p>由于三个版本的文档在语义上高度相似（都讲"音频前处理配置"），检索几乎必然同时召回。如果一起进入 Context，LLM 的典型行为是：<b>混合多个版本，给出一个现实中不存在的配置</b>——参数名来自 4.6.2，默认值来自 4.5.0，调用时机来自 4.6.1。每一段都"看起来有出处"，合起来是错的。</p>
+
+  <p>因此 Context Builder 必须内建版本治理能力：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 130" role="img" aria-label="版本治理流程">
+      <defs><marker id="ar8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="20" y="35" width="175" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="107" y="60" text-anchor="middle" fill="#0f4c81">Version Detection</text><text x="107" y="80" text-anchor="middle" fill="#4a5568" font-size="11">从 Query 识别目标版本</text>
+        <line x1="195" y1="65" x2="220" y2="65" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar8)"/>
+        <rect x="225" y="35" width="175" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="312" y="60" text-anchor="middle" fill="#0f4c81">Version Priority</text><text x="312" y="80" text-anchor="middle" fill="#4a5568" font-size="11">匹配 &gt; 相邻 &gt; 历史</text>
+        <line x1="400" y1="65" x2="425" y2="65" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar8)"/>
+        <rect x="430" y="35" width="185" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="522" y="60" text-anchor="middle" fill="#0f4c81">Conflict Resolution</text><text x="522" y="80" text-anchor="middle" fill="#4a5568" font-size="11">旧版降权或剔除</text>
+        <line x1="615" y1="65" x2="640" y2="65" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar8)"/>
+        <rect x="645" y="35" width="120" height="60" rx="10" fill="#0f4c81"/>
+        <text x="705" y="70" text-anchor="middle" fill="#ffffff" font-size="14">Context</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.10 — 版本治理三步：识别 → 定优先级 → 消解冲突</div>
+  </div>
+
+  <div class="callout ok">
+    <div class="t">✓ Metadata 的第二次生命</div>
+    很多团队以为 Metadata（version、updated_at、source）只在检索过滤时有用。实际上，<b>Metadata 在 Context Engineering 阶段依然发挥作用</b>——版本优先级、时间排序、来源标注、Citation 结构，全部依赖它。Chunk 入库时省掉的每一个 Metadata 字段，都会在 Context 阶段加倍偿还。
+  </div>
+</section>
+
+<!-- ================= SECTION 12 ================= -->
+<section id="s12">
+  <div class="sec-tag">SECTION 12</div>
+  <h2>Source Authority：不是所有文档都同等可信</h2>
+
+  <p>企业知识库里的信息来源五花八门，可信度天然不同：</p>
+
+  <table>
+    <thead><tr><th>来源类型</th><th>典型内容</th><th>可信特征</th></tr></thead>
+    <tbody>
+      <tr><td>官方技术文档</td><td>产品手册、API Reference</td><td>最权威，但可能存在多版本</td></tr>
+      <tr><td>内部知识库</td><td>内部 Wiki、运维手册</td><td>权威度较高，更新可能滞后</td></tr>
+      <tr><td>FAQ</td><td>高频问题标准答案</td><td>经过审核，覆盖面窄</td></tr>
+      <tr><td>历史工单</td><td>真实案例与处理过程</td><td>实战价值高，但可能含过期结论</td></tr>
+      <tr><td>论坛 / 社区</td><td>讨论帖、经验贴</td><td>参考价值，噪音大</td></tr>
+      <tr><td>用户上传文档</td><td>第三方资料</td><td>可信度最低，需谨慎使用</td></tr>
+    </tbody>
+  </table>
+
+  <p>一个常见的参考排序是：<b>官方最新文档 &gt; 官方历史文档 &gt; 内部经验 &gt; 非正式来源</b>。它体现为两个动作：</p>
+
+  <ul class="plain">
+    <li><b>Context Ranking</b>：同分情况下，权威来源优先入选、优先排序；</li>
+    <li><b>Conflict Resolution</b>：当权威来源与非正式来源冲突时，以权威来源为准，或在 Context 中显式标注分歧。</li>
+  </ul>
+
+  <div class="callout warn">
+    <div class="t">⚠️ 不要照抄别人的排序</div>
+    上面这个排序只是示例。<b>Source Authority 必须由业务定义</b>——在某些企业里，内部运维手册的可信度高于官方文档（因为它记录了本企业环境的真实约束）；在某些场景里，最新工单结论比去年的官方文档更准确。架构师要做的是提供 Authority 机制，具体等级表交给业务方维护。
+  </div>
+</section>
+
+<!-- ================= SECTION 13 ================= -->
+<section id="s13">
+  <div class="sec-tag">SECTION 13</div>
+  <h2>Context Budget：Context Window ≠ 可用 Token</h2>
+
+  <p>生产环境中最容易被低估的问题：<b>Token 预算管理</b>。先给定义：</p>
+
+  <div class="quote">Context Budget = 分配给"检索证据"的最大 Token 数。</div>
+
+  <p>很多团队的第一反应是：模型有 128K 窗口，Context 随便塞。但模型窗口是要被多个部分<b>分食</b>的：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 250" role="img" aria-label="Token Budget 分配">
+      <g font-family="Consolas,monospace" font-size="13">
+        <text x="410" y="30" text-anchor="middle" fill="#1c2333" font-weight="bold">Model Context Window（总量 N）</text>
+        <line x1="410" y1="102" x2="410" y2="120" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <rect x="40" y="45" width="740" height="52" rx="10" fill="#1c2333"/>
+        <text x="410" y="77" text-anchor="middle" fill="#ffffff">总窗口 N Tokens</text>
+        <rect x="40" y="128" width="112" height="74" rx="8" fill="#b3372f"/>
+        <text x="96" y="160" text-anchor="middle" fill="#ffffff" font-size="12">System Prompt</text>
+        <text x="96" y="180" text-anchor="middle" fill="#f3c2be" font-size="11">固定开销</text>
+        <rect x="160" y="128" width="130" height="74" rx="8" fill="#b45309"/>
+        <text x="225" y="160" text-anchor="middle" fill="#ffffff" font-size="12">Conversation</text>
+        <text x="225" y="180" text-anchor="middle" fill="#f5dfc0" font-size="11">历史对话</text>
+        <rect x="298" y="128" width="102" height="74" rx="8" fill="#8a6d1f"/>
+        <text x="349" y="160" text-anchor="middle" fill="#ffffff" font-size="12">User Query</text>
+        <text x="349" y="180" text-anchor="middle" fill="#eee5c4" font-size="11">当前提问</text>
+        <rect x="408" y="128" width="252" height="74" rx="8" fill="#0f4c81"/>
+        <text x="534" y="160" text-anchor="middle" fill="#ffffff" font-size="12">Retrieved Context</text>
+        <text x="534" y="180" text-anchor="middle" fill="#c9d8ec" font-size="11">← Context Budget 在这里</text>
+        <rect x="668" y="128" width="112" height="74" rx="8" fill="#0e7a4f"/>
+        <text x="724" y="160" text-anchor="middle" fill="#ffffff" font-size="12">Output Budget</text>
+        <text x="724" y="180" text-anchor="middle" fill="#c4e4d3" font-size="11">留给答案的空间</text>
+        <text x="410" y="234" text-anchor="middle" fill="#8a94a6" font-size="12">System Prompt + History + Query + Context + Output ≤ N</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.11 — 完整 Token Budget：Context 只是窗口的一部分，且必须为 Output 预留空间</div>
+  </div>
+
+  <p>这带来一个违反直觉但极其重要的结论：</p>
+
+  <div class="callout bad">
+    <div class="t">✕ 生产事故复盘中的高频发现</div>
+    如果 Context 占满了整个窗口，模型<b>连生成答案的空间都没有</b>——轻则输出被截断，重则服务端直接报 context length exceeded。而在截断发生的场景里，被切掉的往往恰好是排在 Context 末尾、也就是排序策略刻意安排的关键证据。<br><br>
+    <b>Context Window ≠ Retrieval 可以使用的全部 Token。</b>
+  </div>
+
+  <p>预算划分没有放之四海皆准的比例——它取决于任务类型（FAQ 短答还是报告生成）、模型窗口大小、对话长度分布。架构师要做的是<b>把预算显式化、参数化</b>，而不是让各个模块无意识地争抢同一个窗口。</p>
+</section>
+
+<!-- ================= SECTION 14 ================= -->
+<section id="s14">
+  <div class="sec-tag">SECTION 14</div>
+  <h2>长上下文模型，意味着 RAG 可以无限塞文档吗？</h2>
+
+  <p>必须明确回答：<b>不是。</b>每当新的长窗口模型发布，都会有团队尝试"把整个知识库塞进去，省掉检索"。这条路在企业场景走不通，原因有六：</p>
+
+  <div class="stats">
+    <div class="stat"><div class="v">Token Cost</div><div class="l">长 Context 按输入 Token 计费，成本随文档量线性甚至超线性增长</div></div>
+    <div class="stat"><div class="v">Latency</div><div class="l">检索与 Prefill 时间显著上升，首 Token 延迟恶化</div></div>
+    <div class="stat"><div class="v">Attention Cost</div><div class="l">注意力计算随序列长度增长，吞吐下降</div></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="v">Noise</div><div class="l">无关内容比例上升，正确信息被稀释</div></div>
+    <div class="stat"><div class="v">Conflicts</div><div class="l">更多新旧版本同场，冲突概率上升</div></div>
+    <div class="stat"><div class="v">Lost in Middle</div><div class="l">窗口越长，中段利用率问题越严重</div></div>
+  </div>
+
+  <div class="quote">更大的 Context Window 不等于更大的<b>有效</b> Context。长上下文模型改变的是"能装多少"，而 Context Engineering 解决的是"该装什么、怎么装"——后者不会因为窗口变大而消失，反而因为可塞的东西变多而更加重要。</div>
+</section>
+
+<!-- ================= SECTION 15 ================= -->
+<section id="s15">
+  <div class="sec-tag">SECTION 15</div>
+  <h2>Conversation History 与 Retrieved Context：两本账要分开管</h2>
+
+  <p>企业 RAG 几乎都是多轮对话形态。完整的 Prompt 结构是：</p>
+
+  <pre><code>System Prompt
++ Conversation History   # 多轮对话，越聊越长
++ Retrieved Context      # 本轮检索证据
++ Current Query</code></pre>
+
+  <p>问题在于：对话历史是无界增长的，而 Context Budget 是有限的。用户聊到第 15 轮时，历史可能已经吃掉大半窗口，<b>Retrieved Context 反而没有足够空间</b>——检索明明做得很好，却因为预算被挤占而只能放两三个 Chunk，答案质量随对话轮次持续劣化。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 760 140" role="img" aria-label="历史压缩">
+      <defs><marker id="ar9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="25" y="40" width="205" height="60" rx="10" fill="#edeae2" stroke="#8a94a6"/>
+        <text x="127" y="65" text-anchor="middle" fill="#1c2333">Conversation History</text>
+        <text x="127" y="85" text-anchor="middle" fill="#8a94a6" font-size="11">15 轮 · 数万 Token</text>
+        <line x1="230" y1="70" x2="268" y2="70" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar9)"/>
+        <rect x="273" y="40" width="235" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="390" y="65" text-anchor="middle" fill="#0f4c81">Summarization / Compression</text>
+        <text x="390" y="85" text-anchor="middle" fill="#4a5568" font-size="11">保留与当前任务相关的要素</text>
+        <line x1="508" y1="70" x2="546" y2="70" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar9)"/>
+        <rect x="551" y="40" width="185" height="60" rx="10" fill="#0f4c81"/>
+        <text x="643" y="65" text-anchor="middle" fill="#ffffff" font-size="13">Relevant History</text>
+        <text x="643" y="85" text-anchor="middle" fill="#c9d8ec" font-size="11">受独立子预算约束</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.12 — 对话历史压缩：用摘要换取 Context 空间</div>
+  </div>
+
+  <div class="callout ok">
+    <div class="t">✓ 核心原则</div>
+    <b>"历史对话"与"知识库上下文"应该分开管理</b>——各自有独立的子预算、各自的压缩策略。历史回答的是"我们聊过什么"，检索证据回答的是"事实是什么"，混在一个池子里互相争抢，是长对话场景答案质量劣化的常见根因。
+  </div>
+</section>
+
+<!-- ================= SECTION 16 ================= -->
+<section id="s16">
+  <div class="sec-tag">SECTION 16</div>
+  <h2>Context Template 与 Citation / Grounding</h2>
+
+  <h3>结构化 Context 模板</h3>
+
+  <p>把 Chunk 拼进 Context 时，裸拼接与结构化模板的差别很大。推荐给每个证据块附上 Metadata 头：</p>
+
+  <pre><code>[Document 1]
+Title:    RTC SDK 4.6.2 Android 错误码说明
+Version:  4.6.2
+Section:  RTC-10027
+Source:   Official Documentation
+Updated:  2026-08-01
+Doc ID:   rtc-errorcode-462
+
+Content:
+......
+
+[Document 2]
+Title:    Android 14 Compatibility Guide
+Version:  4.6.2
+Source:   Official Documentation
+Doc ID:   rtc-a14-compat
+
+Content:
+......
+
+[Document 3]
+Title:    RTC SDK 4.5.0 错误码说明        # 旧版本显式标注
+Version:  4.5.0（历史版本，仅作对比参考）
+Source:   Official Documentation
+Doc ID:   rtc-errorcode-450</code></pre>
+
+  <p>为什么结构化模板优于裸的 chunk1 + chunk2 + chunk3？</p>
+
+  <ul class="plain">
+    <li><b>证据边界清晰</b>：模型能明确知道"这里有几份文档、各自说什么"，减少跨文档的内容粘连；</li>
+    <li><b>可判定性</b>：版本、来源、更新时间以结构化字段呈现，模型不需要从正文中猜测"这是哪个版本的文档"；</li>
+    <li><b>可引用性</b>：为 Citation 提供了锚点（下一小节）；</li>
+    <li><b>可调试性</b>：出问题时，工程师能直接看出 Context 里到底装了什么——裸拼接的 Context 是黑盒，结构化 Context 是白盒。</li>
+  </ul>
+
+  <h3>Citation / Grounding</h3>
+
+  <p>企业级 RAG 的答案不仅要"对"，还要<b>"可追溯"</b>。用户需要知道每个结论出自哪里，审核者需要验证答案是否有依据。这要求 Context 从建库那一刻起就为 Citation 保留结构：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 190" role="img" aria-label="Citation 链路">
+      <defs><marker id="ar10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="30" y="60" width="125" height="56" rx="10" fill="#0f4c81"/>
+        <text x="92" y="93" text-anchor="middle" fill="#ffffff">Answer</text>
+        <line x1="155" y1="88" x2="186" y2="88" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar10)"/>
+        <rect x="191" y="60" width="130" height="56" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="256" y="93" text-anchor="middle" fill="#0f4c81">Evidence ID</text>
+        <line x1="321" y1="88" x2="352" y2="88" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar10)"/>
+        <rect x="357" y="60" width="130" height="56" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="422" y="93" text-anchor="middle" fill="#0f4c81">Document</text>
+        <line x1="487" y1="88" x2="518" y2="88" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar10)"/>
+        <rect x="523" y="60" width="105" height="56" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="575" y="93" text-anchor="middle" fill="#0f4c81">Section</text>
+        <line x1="628" y1="88" x2="659" y2="88" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar10)"/>
+        <rect x="664" y="60" width="90" height="56" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="709" y="93" text-anchor="middle" fill="#0f4c81">Page</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.13 — Citation 链：Answer → Evidence ID → Document → Section → Page</div>
+  </div>
+
+  <p>支撑这条链的，是每个 Chunk 入库时就必须携带的完整结构：</p>
+
+  <pre><code>Chunk
+├── chunk_id        # 证据引用的最小单位
+├── document_id     # 回溯到源文档
+├── page            # 定位到页
+├── section         # 定位到章节
+├── version         # 版本判定与冲突消解
+└── source          # 来源权威度</code></pre>
+
+  <div class="callout warn">
+    <div class="t">⚠️ 前向依赖</div>
+    没有 Metadata，就很难构建可靠 Citation。这一点必须回溯到<b>Chunking 与入库设计</b>阶段——Context 阶段发现的 Citation 问题，根子往往埋在数据层。
+  </div>
+</section>
+
+<!-- ================= SECTION 17 ================= -->
+<section id="s17">
+  <div class="sec-tag">SECTION 17</div>
+  <h2>Context 与 Prompt 的边界</h2>
+
+  <p>本系列接近尾声，值得把这对概念彻底切开：</p>
+
+  <table>
+    <thead><tr><th></th><th>Prompt Engineering</th><th>Context Engineering</th></tr></thead>
+    <tbody>
+      <tr><td><b>回答的问题</b></td><td>"告诉模型应该<b>怎么</b>工作"</td><td>"告诉模型应该<b>依据哪些信息</b>工作"</td></tr>
+      <tr><td><b>作用对象</b></td><td>Instruction（行为规范、角色、格式）</td><td>Evidence（事实材料）</td></tr>
+      <tr><td><b>典型手段</b></td><td>指令措辞、Few-shot、输出格式约束、CoT</td><td>Selection、Dedup、Diversity、Compression、Ordering、Budget</td></tr>
+      <tr><td><b>失效表现</b></td><td>模型行为不符合预期（格式乱、不遵循约束）</td><td>模型事实错误、幻觉、版本混淆</td></tr>
+      <tr><td><b>迭代方式</b></td><td>改措辞、调指令</td><td>改信息管线、调预算与策略</td></tr>
+    </tbody>
+  </table>
+
+  <p>最终送入模型的是三者的组合：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 760 150" role="img" aria-label="Instruction + Context + Query">
+      <defs><marker id="ar11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="35" y="45" width="150" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="110" y="80" text-anchor="middle" fill="#0f4c81">Instruction</text>
+        <text x="197" y="80" text-anchor="middle" fill="#0f4c81" font-size="17">+</text>
+        <rect x="212" y="45" width="150" height="60" rx="10" fill="#0f4c81"/>
+        <text x="287" y="80" text-anchor="middle" fill="#ffffff">Context</text>
+        <text x="374" y="80" text-anchor="middle" fill="#0f4c81" font-size="17">+</text>
+        <rect x="389" y="45" width="150" height="60" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="464" y="80" text-anchor="middle" fill="#0f4c81">Query</text>
+        <line x1="539" y1="75" x2="584" y2="75" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar11)"/>
+        <rect x="589" y="45" width="140" height="60" rx="10" fill="#1c2333"/>
+        <text x="659" y="80" text-anchor="middle" fill="#ffffff">LLM</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.14 — Instruction + Context + Query → LLM</div>
+  </div>
+
+  <div class="quote">再漂亮的 Prompt，也无法弥补错误的 Context。反过来，一个高质量的 Context，即使配上一个普通的 Prompt，往往也能得到合格的答案。<b>当两者冲突时，优先修 Context。</b></div>
+</section>
+
+<!-- ================= SECTION 18 ================= -->
+<section id="s18">
+  <div class="sec-tag">SECTION 18</div>
+  <h2>完整 Context Engineering Pipeline</h2>
+
+  <p>把前文所有环节收敛成一张生产级流水线图。注意每个阶段的输入输出——上一阶段的输出是下一阶段的输入，任何一步退化都会向下游传导：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 840 740" role="img" aria-label="Context Engineering 完整流水线">
+      <defs><marker id="ar12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="120" y="15" width="280" height="46" rx="9" fill="#edeae2" stroke="#8a94a6"/>
+        <text x="260" y="43" text-anchor="middle" fill="#1c2333">Retrieved Candidates</text>
+        <line x1="260" y1="61" x2="260" y2="78" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="82" width="280" height="46" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="260" y="110" text-anchor="middle" fill="#0f4c81">Relevance Filter</text>
+        <line x1="260" y1="128" x2="260" y2="145" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="149" width="280" height="46" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="260" y="177" text-anchor="middle" fill="#0f4c81">Deduplication</text>
+        <line x1="260" y1="195" x2="260" y2="212" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="216" width="280" height="46" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="260" y="244" text-anchor="middle" fill="#0f4c81">Diversity Control（MMR / 上限）</text>
+        <line x1="260" y1="262" x2="260" y2="279" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="283" width="280" height="46" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="260" y="311" text-anchor="middle" fill="#0f4c81">Compression</text>
+        <line x1="260" y1="329" x2="260" y2="346" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="350" width="280" height="46" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="260" y="378" text-anchor="middle" fill="#0f4c81">Version / Authority Filtering</text>
+        <line x1="260" y1="396" x2="260" y2="413" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="417" width="280" height="46" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="260" y="445" text-anchor="middle" fill="#0f4c81">Context Ordering</text>
+        <line x1="260" y1="463" x2="260" y2="480" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="484" width="280" height="46" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="260" y="512" text-anchor="middle" fill="#0f4c81">Token Budget</text>
+        <line x1="260" y1="530" x2="260" y2="547" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="551" width="280" height="46" rx="9" fill="#0f4c81"/>
+        <text x="260" y="579" text-anchor="middle" fill="#ffffff">Context Construction</text>
+        <line x1="260" y1="597" x2="260" y2="614" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="618" width="280" height="46" rx="9" fill="#edeae2" stroke="#8a94a6"/>
+        <text x="260" y="646" text-anchor="middle" fill="#1c2333">Prompt</text>
+        <line x1="260" y1="664" x2="260" y2="681" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar12)"/>
+        <rect x="120" y="685" width="280" height="50" rx="9" fill="#1c2333"/>
+        <text x="260" y="715" text-anchor="middle" fill="#ffffff" font-size="15">LLM</text>
+        <g fill="#8a94a6" font-size="11.5">
+          <text x="435" y="110">← 低于阈值的候选直接丢弃</text>
+          <text x="435" y="177">← 精确去重 + 语义去重</text>
+          <text x="435" y="244">← MMR / 单源席位上限</text>
+          <text x="435" y="311">← 有损操作，谨慎启用</text>
+          <text x="435" y="378">← 依赖 Metadata</text>
+          <text x="435" y="445">← 应对 Lost in the Middle</text>
+          <text x="435" y="512">← 为 Output 预留空间</text>
+          <text x="435" y="579">← 结构化模板 + Metadata 头</text>
+        </g>
+      </g>
+    </svg>
+    <div class="cap">Fig.15 — Context Engineering 完整流水线：九个阶段，逐级收窄，逐级精炼</div>
+  </div>
+</section>
+
+<!-- ================= SECTION 19 ================= -->
+<section id="s19">
+  <div class="sec-tag">SECTION 19</div>
+  <h2>完整企业 RAG 链路</h2>
+
+  <p>本篇是前九篇的汇合点。到这里，整条企业 RAG 链路第一次完整地呈现在一张图里——Context Engineering 正好位于检索与生成之间，是全链路的<b>最后一道质量控制关口</b>：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 860 840" role="img" aria-label="完整企业 RAG 链路">
+      <defs><marker id="ar13" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <g font-size="11" fill="#8a94a6" letter-spacing="1.5">
+          <text x="40" y="45">INPUT</text>
+          <text x="40" y="125">QUERY LAYER</text>
+          <text x="40" y="300">RETRIEVAL</text>
+          <text x="40" y="490">CONTEXT LAYER</text>
+          <text x="40" y="705">GENERATION</text>
+        </g>
+        <line x1="30" y1="55" x2="30" y2="720" stroke="#e5e2da" stroke-width="1"/>
+        <rect x="250" y="15" width="360" height="48" rx="10" fill="#1c2333"/>
+        <text x="430" y="45" text-anchor="middle" fill="#ffffff">User Query</text>
+        <line x1="430" y1="63" x2="430" y2="80" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar13)"/>
+        <rect x="250" y="84" width="360" height="48" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="430" y="114" text-anchor="middle" fill="#0f4c81">Query Understanding（第 9 篇）</text>
+        <line x1="430" y1="132" x2="430" y2="148" stroke="#0f4c81" stroke-width="1.5"/>
+        <line x1="330" y1="148" x2="530" y2="148" stroke="#0f4c81" stroke-width="1.5"/>
+        <line x1="330" y1="148" x2="330" y2="168" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar13)"/>
+        <line x1="530" y1="148" x2="530" y2="168" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar13)"/>
+        <rect x="215" y="171" width="230" height="48" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="330" y="201" text-anchor="middle" fill="#0f4c81">Dense Retrieval</text>
+        <rect x="415" y="171" width="230" height="48" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="530" y="201" text-anchor="middle" fill="#0f4c81">BM25（Sparse）</text>
+        <text x="430" y="248" text-anchor="middle" fill="#0f4c81" font-size="16">＋</text>
+        <line x1="430" y1="256" x2="430" y2="272" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar13)"/>
+        <rect x="250" y="275" width="360" height="48" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="430" y="305" text-anchor="middle" fill="#0f4c81">RRF 融合（第 7 篇）</text>
+        <line x1="430" y1="323" x2="430" y2="340" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar13)"/>
+        <rect x="250" y="344" width="360" height="48" rx="10" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="430" y="374" text-anchor="middle" fill="#0f4c81">Reranker（第 8 篇）</text>
+        <line x1="430" y1="392" x2="430" y2="409" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar13)"/>
+        <rect x="250" y="413" width="360" height="44" rx="10" fill="#edeae2" stroke="#8a94a6"/>
+        <text x="430" y="441" text-anchor="middle" fill="#1c2333">Candidate Set</text>
+        <line x1="430" y1="457" x2="430" y2="474" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar13)"/>
+        <rect x="170" y="478" width="520" height="178" rx="14" fill="none" stroke="#0f4c81" stroke-width="2" stroke-dasharray="7 5"/>
+        <text x="430" y="502" text-anchor="middle" fill="#0f4c81" font-size="12" letter-spacing="2">CONTEXT ENGINEERING（本篇）</text>
+        <g font-size="12.5" fill="#0f4c81">
+          <text x="215" y="531">Filter → Dedup → Diversity → Compression</text>
+          <text x="215" y="561">→ Version / Authority → Ordering</text>
+          <text x="215" y="591">→ Token Budget → Context Construction</text>
+        </g>
+        <line x1="430" y1="656" x2="430" y2="673" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar13)"/>
+        <rect x="250" y="677" width="360" height="48" rx="10" fill="#1c2333"/>
+        <text x="430" y="707" text-anchor="middle" fill="#ffffff">Prompt → LLM</text>
+        <line x1="430" y1="725" x2="430" y2="742" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar13)"/>
+        <rect x="250" y="746" width="170" height="48" rx="10" fill="#e9f5ef" stroke="#0e7a4f"/>
+        <text x="335" y="776" text-anchor="middle" fill="#0e7a4f">Grounded Answer</text>
+        <rect x="440" y="746" width="170" height="48" rx="10" fill="#e9f5ef" stroke="#0e7a4f"/>
+        <text x="525" y="776" text-anchor="middle" fill="#0e7a4f">Citation</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.16 — 完整企业 RAG 链路：Context Engineering 是检索与生成之间的最后一道质量关口</div>
+  </div>
+</section>
+
+<!-- ================= SECTION 20 ================= -->
+<section id="s20">
+  <div class="sec-tag">SECTION 20</div>
+  <h2>如何评估 Context Engineering？</h2>
+
+  <p>Context Engineering 的每一个策略（阈值取多少、λ 取多少、顺序怎么排）都不应该靠感觉决定，而应该<b>通过对照实验验证</b>。最小可行的实验设计：</p>
+
+  <div class="card">
+    <div class="card-title">Experiment Design</div>
+    <p style="margin-bottom:12px;"><b>Baseline 组</b>：Top-K → 直接拼接 → Prompt。这是绝大多数团队"能跑就行"的现状。</p>
+    <p style="margin-bottom:0;"><b>Experiment 组</b>：Filter + Dedup + Diversity + Compression + Ordering + Budget 的完整 Context Pipeline，其余环节完全一致。同一评测集、同一模型、同一 Prompt 模板，只变 Context 策略。</p>
+  </div>
+
+  <p>评估维度至少覆盖七个，缺一不可：</p>
+
+  <table>
+    <thead><tr><th>指标</th><th>衡量什么</th><th>归因到哪个环节</th></tr></thead>
+    <tbody>
+      <tr><td><b>Answer Accuracy</b></td><td>最终答案的事实正确率</td><td>整体效果</td></tr>
+      <tr><td><b>Faithfulness</b></td><td>答案是否忠于所给证据（不编造）</td><td>Context 质量 + 模型服从性</td></tr>
+      <tr><td><b>Groundedness</b></td><td>答案中的关键论断能否回溯到证据</td><td>Context + Citation 设计</td></tr>
+      <tr><td><b>Citation Accuracy</b></td><td>引用是否指向正确的文档/章节</td><td>Metadata 完整性</td></tr>
+      <tr><td><b>Context Relevance</b></td><td>进入 Context 的内容与 Query 的相关比例</td><td>Selection / Filter</td></tr>
+      <tr><td><b>Token Usage</b></td><td>平均每次请求消耗的 Context Token</td><td>Budget / Compression</td></tr>
+      <tr><td><b>Latency</b></td><td>端到端延迟（含 Context 构建开销）</td><td>整条 Pipeline</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout ok">
+    <div class="t">✓ 实践要点</div>
+    特别关注 <b>Answer Accuracy 与 Token Usage 的联合变化</b>：理想结果是 Accuracy 上升的同时 Token 下降；如果 Accuracy 持平但 Token 大降，也是值得上线的收益；如果 Accuracy 下降，回头检查是哪一级过滤误杀了关键证据——Context Engineering 的每个阶段都应该是<b>可独立开关、可独立归因</b>的。
+  </div>
+</section>
+
+<!-- ================= SECTION 21 ================= -->
+<section id="s21">
+  <div class="sec-tag">SECTION 21</div>
+  <h2>十个常见失败案例</h2>
+
+  <p>以下是我在生产环境中见过频率最高的十种 Context 层失败。每一种都按"现象 → 原因 → 影响 → 解决方案"展开。</p>
+
+  <div class="fail">
+    <h4>失败 1 ｜ "Top-K 越大越好"</h4>
+    <div class="row"><div class="k">现象</div><div>把 K 从 5 调到 50，期望覆盖率提升带来效果提升。</div></div>
+    <div class="row"><div class="k">原因</div><div>混淆了检索阶段的 Recall 目标与 Context 阶段的 Precision 目标。</div></div>
+    <div class="row"><div class="k">影响</div><div>噪声与 Token 成本暴涨，答案质量不升反降，延迟明显恶化。</div></div>
+    <div class="row"><div class="k">方案</div><div>检索用大 K 保 Recall，Context 用小 N 保 Precision，中间用阈值和 Selection 收窄。</div></div>
+  </div>
+
+  <div class="fail">
+    <h4>失败 2 ｜ Reranker 分数最高的全部塞进去</h4>
+    <div class="row"><div class="k">现象</div><div>把 Reranker Top-K 直接等于最终 Context，不做任何二次加工。</div></div>
+    <div class="row"><div class="k">原因</div><div>把"单条相关性排序"当成了"组合优化"。</div></div>
+    <div class="row"><div class="k">影响</div><div>同源内容垄断 Context，关键互补证据（低分但维度不同）被挤出。</div></div>
+    <div class="row"><div class="k">方案</div><div>Reranker 只出候选序，Context Builder 做独立的组合选择。</div></div>
+  </div>
+
+  <div class="fail">
+    <h4>失败 3 ｜ 同一文档重复出现大量 Chunk</h4>
+    <div class="row"><div class="k">现象</div><div>Context 里 8 个 Chunk 有 6 个来自同一份手册的相邻段落。</div></div>
+    <div class="row"><div class="k">原因</div><div>缺少 Source Diversity 控制和 Chunk 级去重。</div></div>
+    <div class="row"><div class="k">影响</div><div>信息增益趋近于零，Token 浪费，答案视角单一。</div></div>
+    <div class="row"><div class="k">方案</div><div>单文档席位上限 + Chunk-level Dedup，必要时 MMR。</div></div>
+  </div>
+
+  <div class="fail">
+    <h4>失败 4 ｜ 新旧版本混在 Context</h4>
+    <div class="row"><div class="k">现象</div><div>用户问 4.6.2，答案里混着 4.5.0 的已废弃参数。</div></div>
+    <div class="row"><div class="k">原因</div><div>无 Version Detection 与 Conflict Resolution，语义相似的新旧文档全部入选。</div></div>
+    <div class="row"><div class="k">影响</div><div>模型混合多版本信息，生成"现实中不存在的配置"。</div></div>
+    <div class="row"><div class="k">方案</div><div>Version Priority 过滤 + 旧版本显式降权标注。</div></div>
+  </div>
+
+  <div class="fail">
+    <h4>失败 5 ｜ Context 超预算后简单截断</h4>
+    <div class="row"><div class="k">现象</div><div>超长时直接对字符串做硬切（截取前 max_tokens 个字符）。</div></div>
+    <div class="row"><div class="k">原因</div><div>没有预算前置管理，把截断当兜底。</div></div>
+    <div class="row"><div class="k">影响</div><div>排在末尾的证据被整块切掉——往往恰是排序策略刻意安排的关键补充。</div></div>
+    <div class="row"><div class="k">方案</div><div>按 Chunk 粒度做预算装填，超预算时丢弃低优先级整块，而不是切断某一块。</div></div>
+  </div>
+
+  <div class="fail">
+    <h4>失败 6 ｜ Context 顺序完全随机</h4>
+    <div class="row"><div class="k">现象</div><div>检索结果什么顺序就什么顺序，甚至每次请求顺序不稳定。</div></div>
+    <div class="row"><div class="k">原因</div><div>没有意识到 Ordering 是设计对象。</div></div>
+    <div class="row"><div class="k">影响</div><div>关键证据随机落入 Lost in the Middle 区间，效果不可复现、难以排查。</div></div>
+    <div class="row"><div class="k">方案</div><div>显式 Ordering 策略：版本优先 / 权威优先 / 首尾放置。</div></div>
+  </div>
+
+  <div class="fail">
+    <h4>失败 7 ｜ Compression 丢失关键条件</h4>
+    <div class="row"><div class="k">现象</div><div>摘要式压缩后，答案丢失"仅在关闭硬件 AEC 时生效"这类限定条件。</div></div>
+    <div class="row"><div class="k">原因</div><div>压缩模型倾向保留主干、丢弃条件从句，而企业文档的关键恰在条件里。</div></div>
+    <div class="row"><div class="k">影响</div><div>答案从"正确"退化为"部分正确"——比明显错误更危险，因为难以察觉。</div></div>
+    <div class="row"><div class="k">方案</div><div>高事实密度内容用 Extractive 或不压缩；压缩后对数字/版本号/条件做完整性校验。</div></div>
+  </div>
+
+  <div class="fail">
+    <h4>失败 8 ｜ Conversation History 侵占 Context Budget</h4>
+    <div class="row"><div class="k">现象</div><div>长对话后期，答案质量持续下降。</div></div>
+    <div class="row"><div class="k">原因</div><div>历史无界增长且无独立预算，挤占 Retrieved Context 空间。</div></div>
+    <div class="row"><div class="k">影响</div><div>本轮检索明明成功，却只能塞进两三个 Chunk。</div></div>
+    <div class="row"><div class="k">方案</div><div>历史与证据分开记账，历史做摘要压缩并设独立子预算。</div></div>
+  </div>
+
+  <div class="fail">
+    <h4>失败 9 ｜ 没有保存 Source Metadata，Citation 不可靠</h4>
+    <div class="row"><div class="k">现象</div><div>答案附了引用，点进去发现文档对不上，或根本无法定位。</div></div>
+    <div class="row"><div class="k">原因</div><div>Chunking 入库时未保留 document_id / section / page。</div></div>
+    <div class="row"><div class="k">影响</div><div>用户与审核者无法验证答案，企业场景信任崩塌。</div></div>
+    <div class="row"><div class="k">方案</div><div>Metadata 体系前移到入库阶段，Context 构建全程携带。</div></div>
+  </div>
+
+  <div class="fail">
+    <h4>失败 10 ｜ 只优化 Prompt，不优化 Context</h4>
+    <div class="row"><div class="k">现象</div><div>答案错误后团队反复改指令措辞，"请严格依据上下文回答"改了十轮。</div></div>
+    <div class="row"><div class="k">原因</div><div>把信息层问题误判为指令层问题。</div></div>
+    <div class="row"><div class="k">影响</div><div>投入持续、收益趋零，团队对 RAG 失去信心。</div></div>
+    <div class="row"><div class="k">方案</div><div>建立归因习惯：先看 Context 里装了什么，再决定改哪一层。</div></div>
+  </div>
+</section>
+
+<!-- ================= SECTION 22 ================= -->
+<section id="s22">
+  <div class="sec-tag">SECTION 22</div>
+  <h2>企业生产环境推荐策略</h2>
+
+  <p>把前面所有内容收敛为一条可直接落地的生产级 Context Builder 流水线：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 700" role="img" aria-label="生产环境推荐策略">
+      <defs><marker id="ar14" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f4c81"/></marker></defs>
+      <g font-family="Consolas,monospace" font-size="13">
+        <rect x="230" y="15" width="360" height="44" rx="9" fill="#edeae2" stroke="#8a94a6"/>
+        <text x="410" y="43" text-anchor="middle" fill="#1c2333">Candidate Set</text>
+        <line x1="410" y1="59" x2="410" y2="74" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="230" y="78" width="360" height="44" rx="9" fill="#fbeceb" stroke="#b3372f"/>
+        <text x="410" y="106" text-anchor="middle" fill="#b3372f">Metadata / Permission Filter</text>
+        <line x1="410" y1="122" x2="410" y2="137" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="230" y="141" width="360" height="44" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="410" y="169" text-anchor="middle" fill="#0f4c81">Relevance Threshold</text>
+        <line x1="410" y1="185" x2="410" y2="200" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="230" y="204" width="360" height="44" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="410" y="232" text-anchor="middle" fill="#0f4c81">Deduplication</text>
+        <line x1="410" y1="248" x2="410" y2="263" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="230" y="267" width="360" height="44" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="410" y="295" text-anchor="middle" fill="#0f4c81">Diversity Selection</text>
+        <line x1="410" y1="311" x2="410" y2="326" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="230" y="330" width="360" height="44" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="410" y="358" text-anchor="middle" fill="#0f4c81">Version / Authority Prioritization</text>
+        <line x1="410" y1="374" x2="410" y2="389" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="230" y="393" width="360" height="44" rx="9" fill="#fef6e7" stroke="#b45309"/>
+        <text x="410" y="421" text-anchor="middle" fill="#b45309">Compression（按需，谨慎）</text>
+        <line x1="410" y1="437" x2="410" y2="452" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="230" y="456" width="360" height="44" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="410" y="484" text-anchor="middle" fill="#0f4c81">Ordering</text>
+        <line x1="410" y1="500" x2="410" y2="515" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="230" y="519" width="360" height="44" rx="9" fill="#e8f0f8" stroke="#0f4c81"/>
+        <text x="410" y="547" text-anchor="middle" fill="#0f4c81">Token Budget</text>
+        <line x1="410" y1="563" x2="410" y2="578" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="230" y="582" width="360" height="44" rx="9" fill="#0f4c81"/>
+        <text x="410" y="610" text-anchor="middle" fill="#ffffff">Structured Context</text>
+        <line x1="410" y1="626" x2="410" y2="641" stroke="#0f4c81" stroke-width="1.5" marker-end="url(#ar14)"/>
+        <rect x="290" y="645" width="240" height="44" rx="9" fill="#1c2333"/>
+        <text x="410" y="673" text-anchor="middle" fill="#ffffff">LLM</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.17 — 生产环境推荐策略：注意 Permission Filter 排在第一步（原因见下一篇）</div>
+  </div>
+
+  <div class="callout ok">
+    <div class="t">✓ 架构立场</div>
+    <b>Context Builder 应该成为 RAG 系统中的一个独立模块</b>，有清晰的输入（Candidate Set + Query + Metadata）、输出（Structured Context）、可配置的策略参数和可观测的日志——而不是散落在业务代码里的一个字符串拼接函数。它是否独立，直接决定了这套系统能否被系统地优化、评估和调试。
+  </div>
+</section>
+
+<!-- ================= SECTION 23 ================= -->
+<section id="s23">
+  <div class="sec-tag">SECTION 23</div>
+  <h2>Python Context Builder</h2>
+
+  <p>最后给一个简化但工程化的参考实现，覆盖 Dedup、单源席位限制、版本优先、排序、Token Budget 与结构化输出。为控制篇幅省略了完整 Tokenizer，用近似估算代替——生产环境请替换为与模型一致的 Tokenizer。</p>
+
+  <pre><code>from dataclasses import dataclass, field
+from typing import Optional
+
+
+@dataclass
+class RetrievedChunk:
+    chunk_id: str
+    document_id: str
+    content: str
+    score: float                      # Reranker 分数
+    metadata: dict = field(default_factory=dict)
+    # metadata 约定字段：
+    #   version: str          文档版本，如 "4.6.2"
+    #   source: str           来源类型，如 "official"
+    #   title / section / updated_at ...
+
+
+def estimate_tokens(text: str) -> int:
+    """近似估算 Token 数（生产环境请替换为真实 Tokenizer）。"""
+    return max(1, len(text) // 2)
+
+
+def exact_dedup(chunks):
+    """Chunk 级精确去重：同 chunk_id 只保留分高者。"""
+    best = {}
+    for c in chunks:
+        if c.chunk_id not in best or c.score > best[c.chunk_id].score:
+            best[c.chunk_id] = c
+    return list(best.values())
+
+
+def version_adjusted_score(chunk, target_version):
+    """版本加权：匹配目标版本加分，旧版本降权（不直接丢弃）。"""
+    v = chunk.metadata.get("version")
+    if target_version and v:
+        if v == target_version:
+            return chunk.score + 0.10
+        return chunk.score - 0.15      # 旧版本降权，排到最后并打标
+    return chunk.score
+
+
+def build_context(chunks, max_tokens,
+                  target_version=None,
+                  max_per_document=2,
+                  score_threshold=0.0):
+    """
+    Context Builder：Candidates -> Structured Context
+    流程：精确去重 -> 阈值过滤 -> 版本优先
+          -> 单源限制 -> 排序 -> 预算装填 -> 模板组装
+    """
+    # 1. Dedup
+    pool = exact_dedup(chunks)
+
+    # 2. Relevance Threshold
+    pool = [c for c in pool if c.score >= score_threshold]
+    if not pool:
+        return ""
+
+    # 3. Version Priority：按调整分排序（高分在前）
+    pool.sort(key=lambda c: version_adjusted_score(c, target_version),
+              reverse=True)
+
+    # 4. Source Diversity：单文档最多贡献 max_per_document 个 Chunk
+    selected = []
+    doc_count = {}
+    for c in pool:
+        if doc_count.get(c.document_id, 0) >= max_per_document:
+            continue
+        selected.append(c)
+        doc_count[c.document_id] = doc_count.get(c.document_id, 0) + 1
+
+    # 5. Token Budget：逐块装填，超预算整块放弃（不做块内截断）
+    header_cost = 30                    # 每块 Metadata 头的近似开销
+    used = 0
+    fitted = []
+    for c in selected:
+        cost = estimate_tokens(c.content) + header_cost
+        if used + cost > max_tokens:
+            continue                    # 放弃本块，尝试更小的下一块
+        fitted.append(c)
+        used += cost
+
+    # 6. 模板组装：携带完整 Metadata，旧版本显式标注
+    parts = []
+    for i, c in enumerate(fitted, start=1):
+        m = c.metadata
+        v = m.get("version", "N/A")
+        note = ""
+        if target_version and v != "N/A" and v != target_version:
+            note = "（历史版本 %s，仅作对比参考）" % v
+        block = "[Document %d]\n" % i
+        block += "Title:   %s\n" % m.get("title", "N/A")
+        block += "Version: %s%s\n" % (v, note)
+        block += "Section: %s\n" % m.get("section", "N/A")
+        block += "Source:  %s\n" % m.get("source", "N/A")
+        block += "Doc ID:  %s / Chunk: %s\n" % (c.document_id, c.chunk_id)
+        block += "\nContent:\n%s\n" % c.content
+        parts.append(block)
+
+    return "\n---\n".join(parts)</code></pre>
+
+  <div class="callout ok">
+    <div class="t">✓ 实现说明</div>
+    这是一个<b>教学级简化版</b>：省略了语义去重、MMR、压缩、权限过滤等环节，Token 估算是粗粒度的。但它体现了五个不可妥协的设计决策——<b>去重先于选择、阈值先于排序、版本参与打分、单源设席位上限、超预算弃整块而非硬截断</b>。这五条，建议在任何生产实现中都保留。
+  </div>
+</section>
+
+<!-- ================= SECTION 24 ================= -->
+<section id="s24">
+  <div class="sec-tag">SECTION 24</div>
+  <h2>核心认知</h2>
+
+  <p>用一张分工表收束全系列到此为止的架构认知：</p>
+
+  <div class="card">
+    <div class="card-title">Division of Responsibility</div>
+    <table style="margin:0;">
+      <thead><tr><th>环节</th><th>回答的问题</th></tr></thead>
+      <tbody>
+        <tr><td><b>Retrieval</b></td><td>"知识库里，<b>有哪些信息值得看？</b>"</td></tr>
+        <tr><td><b>Reranker</b></td><td>"这些候选里，<b>哪些更相关？</b>"</td></tr>
+        <tr><td><b>Context Engineering</b></td><td>"最终，<b>应该给 LLM 看什么？</b>"</td></tr>
+        <tr><td><b>LLM</b></td><td>"如何<b>基于这些证据</b>生成答案？"</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 140" role="img" aria-label="七步真链路">
+      <g font-family="Consolas,monospace" font-size="12">
+        <rect x="15" y="40" width="92" height="46" rx="9" fill="#e8f0f8" stroke="#0f4c81"/><text x="61" y="68" text-anchor="middle" fill="#0f4c81">Retrieve</text>
+        <rect x="132" y="40" width="78" height="46" rx="9" fill="#e8f0f8" stroke="#0f4c81"/><text x="171" y="68" text-anchor="middle" fill="#0f4c81">Rank</text>
+        <rect x="235" y="40" width="85" height="46" rx="9" fill="#0f4c81"/><text x="277" y="68" text-anchor="middle" fill="#ffffff">Select</text>
+        <rect x="345" y="40" width="108" height="46" rx="9" fill="#0f4c81"/><text x="399" y="68" text-anchor="middle" fill="#ffffff">Compress</text>
+        <rect x="478" y="40" width="85" height="46" rx="9" fill="#0f4c81"/><text x="520" y="68" text-anchor="middle" fill="#ffffff">Order</text>
+        <rect x="588" y="40" width="105" height="46" rx="9" fill="#0f4c81"/><text x="640" y="68" text-anchor="middle" fill="#ffffff">Construct</text>
+        <rect x="718" y="40" width="70" height="46" rx="9" fill="#1c2333"/><text x="753" y="68" text-anchor="middle" fill="#ffffff">LLM</text>
+        <line x1="107" y1="63" x2="130" y2="63" stroke="#8a94a6" stroke-width="1.2"/>
+        <line x1="210" y1="63" x2="233" y2="63" stroke="#8a94a6" stroke-width="1.2"/>
+        <line x1="320" y1="63" x2="343" y2="63" stroke="#8a94a6" stroke-width="1.2"/>
+        <line x1="453" y1="63" x2="476" y2="63" stroke="#8a94a6" stroke-width="1.2"/>
+        <line x1="563" y1="63" x2="586" y2="63" stroke="#8a94a6" stroke-width="1.2"/>
+        <line x1="693" y1="63" x2="716" y2="63" stroke="#8a94a6" stroke-width="1.2"/>
+        <text x="410" y="125" text-anchor="middle" fill="#8a94a6" font-size="12">蓝色实心 = Context Engineering 的职责范围</text>
+      </g>
+    </svg>
+    <div class="cap">Fig.18 — RAG 不是"检索完成之后就结束了"：Retrieve → Rank → Select → Compress → Order → Construct → Generate</div>
+  </div>
+
+  <div class="quote">Retrieval ≠ Context ≠ Answer。检索找到的是<b>候选</b>，Context 装的是<b>证据</b>，答案给出的是<b>结论</b>——三者之间每一步都有信息损耗的可能，而 Context Engineering 就是把这种损耗压到最低的最后一道工程防线。</div>
+</section>
+
+<!-- ================= SECTION 25 ================= -->
+<section id="s25">
+  <div class="sec-tag">SECTION 25 · NEXT</div>
+  <h2>下一篇预告</h2>
+  <p>到此为止，我们假设所有进入 Context 的文档都是"该被这个用户看到"的。但企业现实中，这个假设几乎从不成立——同一个知识库里，薪酬数据只有 HR 能查、客户合同只有对应团队能看、未公开的产品文档只有项目组能访问。</p>
+
+  <div class="next">
+    <div class="nk">SERIES 11 · ENTERPRISE RAG ARCHITECTURE</div>
+    <h3>企业 RAG 的关键底座——权限、多租户与数据安全</h3>
+    <p>Demo 和生产环境之间最深的鸿沟，从来不是检索效果，而是权限。下一篇进入普通教程集体回避、但企业落地绝对绕不开的领域：如何把组织架构、文档权限、多租户隔离真正融入 Retrieval 与 Context Pipeline——而不是在生成之后靠"希望它别说出来"来兜底。</p>
+    <div class="hook">一个值得带着进入下一篇的问题：如果 Context 中包含的文档，有一部分用户根本没有权限访问，会发生什么？</div>
+  </div>
+</section>
+
+<footer>
+  ENTERPRISE RAG ARCHITECTURE &amp; ENGINEERING PRACTICE · PART 10 / 12<br>
+  Retrieval ≠ Context ≠ Answer
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG 到底有没有变好？——建立企业级 RAG Evaluation 体系</title>
+<style>
+  :root{
+    --ink:#1c2530;
+    --ink-soft:#4a5568;
+    --ink-mute:#8a94a6;
+    --paper:#fbfaf7;
+    --card:#ffffff;
+    --accent:#1e5eff;
+    --accent-deep:#0f3bbd;
+    --amber:#d97706;
+    --green:#0d8a4f;
+    --red:#c2410c;
+    --line:#e5e2da;
+    --code-bg:#1e2430;
+    --code-ink:#d8dee9;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",Georgia,serif;
+    --sans:"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;
+    --mono:"SF Mono","JetBrains Mono","Fira Code",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:var(--sans);
+    background:var(--paper);
+    color:var(--ink);
+    font-size:16.5px;
+    line-height:1.85;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:920px;margin:0 auto;padding:0 28px 120px;}
+
+  /* ============ Hero ============ */
+  .hero{
+    max-width:920px;margin:0 auto;padding:72px 28px 48px;
+    border-bottom:1px solid var(--line);
+  }
+  .hero .kicker{
+    font-family:var(--mono);font-size:12px;letter-spacing:.25em;
+    color:var(--accent);text-transform:uppercase;margin-bottom:18px;
+  }
+  .hero h1{
+    font-family:var(--serif);font-weight:900;
+    font-size:clamp(30px,5vw,46px);line-height:1.3;letter-spacing:.01em;
+  }
+  .hero .sub{
+    margin-top:18px;font-size:18px;color:var(--ink-soft);
+    font-family:var(--serif);
+  }
+  .hero .meta{
+    margin-top:28px;display:flex;gap:24px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);
+  }
+  .hero .meta span{display:flex;align-items:center;gap:6px;}
+  .hero .meta .dot{width:5px;height:5px;border-radius:50%;background:var(--amber);}
+
+  /* ============ Pull quote ============ */
+  .pull{
+    margin:44px 0;padding:6px 0 6px 28px;
+    border-left:3px solid var(--accent);
+    font-family:var(--serif);font-size:21px;line-height:1.7;
+    color:var(--ink);font-weight:600;
+  }
+  .pull em{color:var(--accent-deep);font-style:normal;}
+
+  /* ============ Section headers ============ */
+  section{margin-top:88px;}
+  .sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:8px;}
+  .sec-num{
+    font-family:var(--mono);font-size:14px;font-weight:700;
+    color:var(--amber);letter-spacing:.1em;white-space:nowrap;
+  }
+  h2{
+    font-family:var(--serif);font-weight:800;font-size:27px;line-height:1.4;
+    padding-bottom:14px;border-bottom:2px solid var(--ink);flex:1;
+  }
+  h3{
+    font-family:var(--serif);font-weight:700;font-size:19.5px;
+    margin:40px 0 12px;color:var(--ink);
+  }
+  h3 .tag{
+    display:inline-block;font-family:var(--mono);font-size:11px;
+    background:var(--ink);color:#fff;padding:2px 8px;border-radius:3px;
+    vertical-align:3px;margin-right:10px;letter-spacing:.08em;
+  }
+  p{margin:16px 0;color:#333d4b;}
+  strong{color:var(--ink);font-weight:700;}
+  em.hl{font-style:normal;background:linear-gradient(transparent 62%,#fde9c8 62%);padding:0 2px;font-weight:600;}
+
+  /* ============ Cards ============ */
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:26px 30px;margin:26px 0;
+    box-shadow:0 1px 3px rgba(28,37,48,.05);
+  }
+  .card-title{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.2em;
+    color:var(--ink-mute);text-transform:uppercase;margin-bottom:14px;
+  }
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:700px){.grid-2{grid-template-columns:1fr;}}
+
+  /* ============ Stat cards ============ */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin:28px 0;}
+  .stat{
+    background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:20px 22px;position:relative;overflow:hidden;
+  }
+  .stat::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px;background:var(--accent);}
+  .stat.warn::before{background:var(--amber);}
+  .stat.bad::before{background:var(--red);}
+  .stat.good::before{background:var(--green);}
+  .stat .label{font-size:13px;color:var(--ink-mute);font-weight:600;}
+  .stat .value{font-family:var(--serif);font-size:30px;font-weight:900;margin:6px 0 2px;color:var(--ink);}
+  .stat .note{font-size:12.5px;color:var(--ink-soft);line-height:1.55;}
+
+  /* ============ Code ============ */
+  pre{
+    background:var(--code-bg);color:var(--code-ink);
+    border-radius:10px;padding:22px 24px;overflow-x:auto;
+    font-family:var(--mono);font-size:13.5px;line-height:1.75;
+    margin:24px 0;tab-size:4;
+  }
+  pre .cm{color:#7d8aa0;font-style:italic;}
+  pre .kw{color:#82aaff;}
+  pre .st{color:#c3e88d;}
+  pre .fn{color:#ffcb6b;}
+  pre .num{color:#f78c6c;}
+  code{
+    font-family:var(--mono);font-size:.88em;
+    background:#eef0f3;padding:2px 6px;border-radius:4px;color:var(--accent-deep);
+  }
+  pre code{background:none;padding:0;color:inherit;font-size:inherit;}
+
+  /* ============ Tables ============ */
+  .tbl-wrap{overflow-x:auto;margin:26px 0;}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--card);}
+  caption{
+    caption-side:top;text-align:left;font-family:var(--mono);font-size:11.5px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--ink-mute);
+    padding-bottom:10px;
+  }
+  th{
+    background:var(--ink);color:#fff;text-align:left;
+    padding:11px 16px;font-weight:600;font-size:13.5px;letter-spacing:.03em;
+  }
+  td{padding:11px 16px;border-bottom:1px solid var(--line);color:#333d4b;vertical-align:top;}
+  tr:nth-child(even) td{background:#faf9f6;}
+  td .pill{font-family:var(--mono);font-size:12px;}
+
+  /* ============ Formula ============ */
+  .formula{
+    background:#f4f3ef;border:1px solid var(--line);border-radius:8px;
+    padding:20px 26px;margin:24px 0;text-align:center;
+    font-family:var(--serif);font-size:18px;color:var(--ink);
+    overflow-x:auto;
+  }
+  .formula .frac{display:inline-block;vertical-align:middle;text-align:center;margin:0 4px;}
+  .formula .frac .top{display:block;border-bottom:1.5px solid var(--ink);padding:0 8px 2px;}
+  .formula .frac .bot{display:block;padding-top:2px;}
+
+  /* ============ Callouts ============ */
+  .callout{
+    border-radius:10px;padding:20px 26px;margin:26px 0;
+    font-size:15.5px;border:1px solid;
+  }
+  .callout .co-title{
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;margin-bottom:8px;font-weight:700;
+  }
+  .callout.insight{background:#eef4ff;border-color:#c6d8ff;}
+  .callout.insight .co-title{color:var(--accent-deep);}
+  .callout.warn{background:#fff7ea;border-color:#f5d9a8;}
+  .callout.warn .co-title{color:var(--amber);}
+  .callout.danger{background:#fdf0ea;border-color:#f2c4ab;}
+  .callout.danger .co-title{color:var(--red);}
+
+  /* ============ SVG figure ============ */
+  figure{margin:34px 0;}
+  figure svg{width:100%;height:auto;display:block;
+    background:var(--card);border:1px solid var(--line);border-radius:10px;}
+  figcaption{
+    text-align:center;font-family:var(--mono);font-size:12px;
+    color:var(--ink-mute);margin-top:12px;letter-spacing:.06em;
+  }
+  figcaption b{color:var(--ink-soft);}
+
+  /* ============ TOC ============ */
+  .toc{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:30px 34px;margin:40px 0;
+    columns:2;column-gap:44px;
+  }
+  @media(max-width:700px){.toc{columns:1;}}
+  .toc .toc-title{
+    column-span:all;font-family:var(--mono);font-size:11.5px;
+    letter-spacing:.25em;text-transform:uppercase;color:var(--ink-mute);
+    margin-bottom:18px;
+  }
+  .toc a{
+    display:block;text-decoration:none;color:var(--ink-soft);
+    font-size:14.5px;padding:5px 0;break-inside:avoid;
+    border-bottom:1px dashed #eee;
+  }
+  .toc a:hover{color:var(--accent);}
+  .toc a .n{font-family:var(--mono);color:var(--amber);margin-right:10px;font-size:12px;}
+
+  /* ============ misc ============ */
+  .divider{
+    display:flex;align-items:center;gap:14px;margin:64px 0 0;color:var(--ink-mute);
+  }
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line);}
+  .divider span{font-family:var(--mono);font-size:11px;letter-spacing:.3em;}
+  ul.plain{margin:14px 0 14px 24px;}
+  ul.plain li{margin:8px 0;color:#333d4b;}
+  ol.plain{margin:14px 0 14px 26px;}
+  ol.plain li{margin:8px 0;color:#333d4b;}
+
+  .next-ep{
+    margin-top:80px;background:var(--ink);color:#e8ecf3;border-radius:14px;
+    padding:44px 46px;
+  }
+  .next-ep .nk{font-family:var(--mono);font-size:11.5px;letter-spacing:.25em;color:#8ea6d8;text-transform:uppercase;}
+  .next-ep h3{color:#fff;font-size:24px;margin:14px 0 16px;font-family:var(--serif);}
+  .next-ep p{color:#b9c4d6;font-size:15.5px;}
+
+  .footer{
+    margin-top:64px;padding-top:28px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;color:var(--ink-mute);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="kicker">Enterprise RAG · Architecture &amp; Engineering · Part 13 / 14</div>
+  <h1>RAG 到底有没有变好？<br>建立企业级 RAG Evaluation 体系</h1>
+  <p class="sub">没有 Evaluation，RAG 优化就只能依赖感觉。企业 RAG Evaluation 不是一个指标，而是一套覆盖 Retrieval、Context、Generation、System 的质量工程体系。</p>
+  <div class="meta">
+    <span><span class="dot"></span>企业级 RAG 系列 · 第十三篇</span>
+    <span><span class="dot"></span>Retrieval / Generation / System Evaluation</span>
+    <span><span class="dot"></span>Offline · Regression · Online 闭环</span>
+  </div>
+</header>
+
+<div class="page">
+
+<!-- ================= TOC ================= -->
+<nav class="toc">
+  <div class="toc-title">Contents · 目录</div>
+  <a href="#s1"><span class="n">01</span>为什么「感觉效果不错」是不可靠的</a>
+  <a href="#s2"><span class="n">02</span>RAG Evaluation 为什么必须分层</a>
+  <a href="#s3"><span class="n">03</span>四个质量问题：四层模型</a>
+  <a href="#s4"><span class="n">04</span>Evaluation Dataset：评测从哪里开始</a>
+  <a href="#s5"><span class="n">05</span>Dataset 从哪里来</a>
+  <a href="#s6"><span class="n">06</span>Dataset 的覆盖维度</a>
+  <a href="#s7"><span class="n">07</span>Retrieval Evaluation</a>
+  <a href="#s8"><span class="n">08</span>Recall@K / Precision@K</a>
+  <a href="#s9"><span class="n">09</span>MRR 与 NDCG</a>
+  <a href="#s10"><span class="n">10</span>Retrieval 指标到底怎么选</a>
+  <a href="#s11"><span class="n">11</span>Context Evaluation</a>
+  <a href="#s12"><span class="n">12</span>Generation Evaluation</a>
+  <a href="#s13"><span class="n">13</span>LLM-as-a-Judge 及其局限</a>
+  <a href="#s14"><span class="n">14</span>Human Evaluation</a>
+  <a href="#s15"><span class="n">15</span>Offline Evaluation 与 Regression Test</a>
+  <a href="#s16"><span class="n">16</span>Online Evaluation 与 Offline+Online 闭环</a>
+  <a href="#s17"><span class="n">17</span>Error Taxonomy 与诊断树</a>
+  <a href="#s18"><span class="n">18</span>A/B Test 与统计显著性</a>
+  <a href="#s19"><span class="n">19</span>Quality / Latency / Cost 三角</a>
+  <a href="#s20"><span class="n">20</span>Evaluation Dashboard</a>
+  <a href="#s21"><span class="n">21</span>完整 Evaluation Architecture</a>
+  <a href="#s22"><span class="n">22</span>最小可行版本与常见错误</a>
+  <a href="#s23"><span class="n">23</span>最终闭环与下一篇</a>
+</nav>
+
+<div class="pull">
+  当你说「RAG 效果变好了」，你到底拿什么证明？
+</div>
+
+<p>这是整个 RAG 系列中最重要的一篇。前面的十二篇，我们走完了从 Data、Chunking、Embedding、Hybrid Retrieval、RRF、Reranker、Query Understanding、Context Engineering、Permission，到 Performance / Cost 的完整链路。但是有一条主线始终没有解决——</p>
+
+<p><strong>所有这些优化，我们怎么知道它们真的有效？</strong></p>
+
+<p>在企业生产环境中，我见过太多团队把 RAG 的迭代变成一场「玄学」：改了 Chunking 策略，感觉回答更好了；换了 Reranker，感觉更聪明了；加了 Query Rewrite，感觉长问题处理得更好了。<em class="hl">但「感觉」既不能被复现，也不能被回归，更不能被审计。</em>这一篇，我们就把「感觉」变成「证据」。</p>
+
+<!-- ================= S1 ================= -->
+<section id="s1">
+  <div class="sec-head"><span class="sec-num">§ 01</span><h2>为什么「感觉效果不错」是不可靠的？</h2></div>
+
+  <p>先看一个真实企业案例的抽象版本。同一个知识库，同一个 LLM，团队先后做了两个版本：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 320" role="img" aria-label="版本A与版本B架构对比">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a94a6"/>
+        </marker>
+      </defs>
+      <!-- Version A -->
+      <text x="120" y="36" font-family="monospace" font-size="13" fill="#c2410c" font-weight="bold" text-anchor="middle">VERSION A · 简单管线</text>
+      <rect x="40" y="56" width="160" height="44" rx="8" fill="#fff" stroke="#e5e2da"/>
+      <text x="120" y="83" font-size="14" text-anchor="middle" fill="#1c2530">Dense Retrieval</text>
+      <line x1="120" y1="100" x2="120" y2="126" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="40" y="128" width="160" height="44" rx="8" fill="#fff" stroke="#e5e2da"/>
+      <text x="120" y="155" font-size="14" text-anchor="middle" fill="#1c2530">Top-K</text>
+      <line x1="120" y1="172" x2="120" y2="198" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="40" y="200" width="160" height="44" rx="8" fill="#1c2530"/>
+      <text x="120" y="227" font-size="14" text-anchor="middle" fill="#fff">LLM</text>
+
+      <!-- Version B -->
+      <text x="580" y="36" font-family="monospace" font-size="13" fill="#0d8a4f" font-weight="bold" text-anchor="middle">VERSION B · 复杂管线</text>
+      <g font-size="13" text-anchor="middle">
+        <rect x="360" y="56" width="150" height="40" rx="8" fill="#fff" stroke="#e5e2da"/><text x="435" y="81" fill="#1c2530">Query Rewrite</text>
+        <rect x="530" y="56" width="150" height="40" rx="8" fill="#fff" stroke="#e5e2da"/><text x="605" y="81" fill="#1c2530">Hybrid Retrieval</text>
+        <rect x="700" y="56" width="120" height="40" rx="8" fill="#fff" stroke="#e5e2da"/><text x="760" y="81" fill="#1c2530">RRF</text>
+        <line x1="510" y1="76" x2="528" y2="76" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <line x1="680" y1="76" x2="698" y2="76" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <line x1="435" y1="96" x2="435" y2="120" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="435" y1="120" x2="605" y2="120" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="605" y1="120" x2="605" y2="132" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="445" y="134" width="150" height="40" rx="8" fill="#fff" stroke="#e5e2da"/><text x="520" y="159" fill="#1c2530">Reranker</text>
+        <line x1="520" y1="174" x2="520" y2="198" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="445" y="200" width="150" height="40" rx="8" fill="#fff" stroke="#e5e2da"/><text x="520" y="225" fill="#1c2530">Context Eng.</text>
+        <line x1="520" y1="240" x2="520" y2="262" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="445" y="264" width="150" height="40" rx="8" fill="#1c2530"/><text x="520" y="289" fill="#fff">LLM</text>
+      </g>
+      <!-- dotted divider -->
+      <line x1="310" y1="30" x2="310" y2="300" stroke="#e5e2da" stroke-dasharray="4 5"/>
+    </svg>
+    <figcaption><b>图 1</b> — 同一系统的两个版本：「看起来更好」的复杂管线 vs 简单基线</figcaption>
+  </figure>
+
+  <p>开发团队跑了几十个手头的测试问题，一致认为：<strong>「版本 B 看起来明显更好。」</strong>于是直接替换上线。两周之后，客服团队的反馈来了：</p>
+
+  <div class="stats">
+    <div class="stat bad"><div class="label">某类 Query 变差</div><div class="value">↓</div><div class="note">错误码类精确查询，因为 Query Rewrite 改写了原意，Dense 通道召回偏移</div></div>
+    <div class="stat warn"><div class="label">简单 Query 延迟</div><div class="value">+2.1s</div><div class="note">Reranker 与 Rewrite 对本不需要的 Query 也全量执行</div></div>
+    <div class="stat bad"><div class="label">特定版本号 Query</div><div class="value">Recall ↓</div><div class="note">改写后版本号被模型「纠正」为最新版本，召回全部错位</div></div>
+    <div class="stat warn"><div class="label">成本</div><div class="value">+40%</div><div class="note">Rewrite 与 Rerank 引入的额外 Token 与计算</div></div>
+  </div>
+
+  <div class="callout insight">
+    <div class="co-title">Insight · 核心问题</div>
+    团队并没有做错什么复杂的技术——Hybrid Retrieval、RRF、Reranker 本身都是正确的设计。他们错在：<strong>用一个不可复现、不可量化的「感觉」替代了 Evaluation。</strong>「看起来更好」必须被翻译成：在什么 Dataset 上，哪些指标，提升了多少，哪些场景退化了多少，代价是什么。否则每一次优化都可能是在拆东墙补西墙。
+  </div>
+</section>
+
+<!-- ================= S2 ================= -->
+<section id="s2">
+  <div class="sec-head"><span class="sec-num">§ 02</span><h2>RAG Evaluation 为什么必须分层？</h2></div>
+
+  <p>一个常见的错误是：只看最终答案对不对。答案错了，你不知道是检索没找到、Context 拼错了、还是 LLM 理解歪了；答案对了，你甚至不知道是「真的答对了」还是「LLM 靠参数知识蒙对了」。<em class="hl">如果只评价最终答案，你不知道系统到底是哪一层出了问题。</em></p>
+
+  <p>因此，企业级 RAG Evaluation 必须是一棵分层体系树：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 430" role="img" aria-label="分层评估体系">
+      <rect x="290" y="18" width="280" height="52" rx="10" fill="#1c2530"/>
+      <text x="430" y="50" font-size="17" fill="#fff" text-anchor="middle" font-weight="bold">RAG Evaluation</text>
+      <line x1="430" y1="70" x2="430" y2="104" stroke="#8a94a6" stroke-width="1.5"/>
+      <line x1="140" y1="104" x2="720" y2="104" stroke="#8a94a6" stroke-width="1.5"/>
+      <line x1="140" y1="104" x2="140" y2="130" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="430" y1="104" x2="430" y2="130" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="720" y1="104" x2="720" y2="130" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- three pillars -->
+      <g font-size="15" text-anchor="middle">
+        <rect x="50" y="132" width="180" height="46" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.2"/>
+        <text x="140" y="161" fill="#0f3bbd" font-weight="bold">Retrieval</text>
+        <rect x="340" y="132" width="180" height="46" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.2"/>
+        <text x="430" y="161" fill="#0f3bbd" font-weight="bold">Generation</text>
+        <rect x="630" y="132" width="180" height="46" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.2"/>
+        <text x="720" y="161" fill="#0f3bbd" font-weight="bold">System</text>
+      </g>
+      <line x1="140" y1="178" x2="140" y2="204" stroke="#c6d8ff" stroke-width="1.5"/>
+      <line x1="430" y1="178" x2="430" y2="204" stroke="#c6d8ff" stroke-width="1.5"/>
+      <line x1="720" y1="178" x2="720" y2="204" stroke="#c6d8ff" stroke-width="1.5"/>
+
+      <!-- metric chips -->
+      <g font-family="monospace" font-size="12.5" text-anchor="middle">
+        <!-- retrieval -->
+        <g fill="#fff">
+          <rect x="60" y="206" width="160" height="32" rx="16" fill="#1e5eff"/><text x="140" y="227">Recall@K</text>
+          <rect x="60" y="246" width="160" height="32" rx="16" fill="#5b85ff"/><text x="140" y="267">Precision@K</text>
+          <rect x="60" y="286" width="160" height="32" rx="16" fill="#5b85ff"/><text x="140" y="307">MRR</text>
+          <rect x="60" y="326" width="160" height="32" rx="16" fill="#8aa8ff"/><text x="140" y="347">NDCG</text>
+        </g>
+        <!-- generation -->
+        <g fill="#fff">
+          <rect x="350" y="206" width="160" height="32" rx="16" fill="#0d8a4f"/><text x="430" y="227">Faithfulness</text>
+          <rect x="350" y="246" width="160" height="32" rx="16" fill="#26a06a"/><text x="430" y="267">Groundedness</text>
+          <rect x="350" y="286" width="160" height="32" rx="16" fill="#26a06a"/><text x="430" y="307">Answer Relevance</text>
+          <rect x="350" y="326" width="160" height="32" rx="16" fill="#5cb98f"/><text x="430" y="347">Citation Accuracy</text>
+        </g>
+        <!-- system -->
+        <g fill="#fff">
+          <rect x="640" y="206" width="160" height="32" rx="16" fill="#d97706"/><text x="720" y="227">Latency</text>
+          <rect x="640" y="246" width="160" height="32" rx="16" fill="#e08e2b"/><text x="720" y="267">Cost</text>
+          <rect x="640" y="286" width="160" height="32" rx="16" fill="#e08e2b"/><text x="720" y="307">Error Rate</text>
+          <rect x="640" y="326" width="160" height="32" rx="16" fill="#eda64f"/><text x="720" y="347">QPS</text>
+        </g>
+      </g>
+      <text x="140" y="390" font-size="13" fill="#8a94a6" text-anchor="middle" font-family="monospace">找没找到？</text>
+      <text x="430" y="390" font-size="13" fill="#8a94a6" text-anchor="middle" font-family="monospace">答没答好？</text>
+      <text x="720" y="390" font-size="13" fill="#8a94a6" text-anchor="middle" font-family="monospace">快不快？稳不稳？贵不贵？</text>
+    </svg>
+    <figcaption><b>图 2</b> — RAG Evaluation 三大支柱：Retrieval / Generation / System</figcaption>
+  </figure>
+
+  <p>注意：Generation 支柱里的指标（Faithfulness 等）依赖 Context，而 Context 本身又是一层独立质量——我们在 §11 会把它单独拉出来评价。<em class="hl">分层不是学术洁癖，而是排障需求：生产环境出问题时，你需要立刻知道该去修哪一层。</em></p>
+</section>
+
+<!-- ================= S3 ================= -->
+<section id="s3">
+  <div class="sec-head"><span class="sec-num">§ 03</span><h2>先区分四个质量问题</h2></div>
+
+  <p>在指标之前，先建立一个更朴素的四层模型。每一次 bad case，都可以被归入其中一层：</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Layer 1 · Retrieval Quality</div>
+      <p style="margin:0"><strong>找没找到正确文档？</strong>用户问的是 4.6.2 版本的错误码，检索回来的却是 4.5.1 的文档——这是 Retrieval 层的问题，和 LLM 无关。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Layer 2 · Context Quality</div>
+      <p style="margin:0"><strong>给 LLM 的证据是否足够、相关、完整？</strong>文档找到了，但被截断在关键段落之前，或者多条冲突版本的文档混在一起——这是 Context 层的问题。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Layer 3 · Generation Quality</div>
+      <p style="margin:0"><strong>LLM 有没有根据证据正确回答？</strong>证据就在 Context 里，答案却写错了数字、编造了结论、或忽略了关键约束——这是 Generation 层的问题。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Layer 4 · System Quality</div>
+      <p style="margin:0"><strong>系统是否足够快、稳定、便宜？</strong>答案再好，P95 延迟 15 秒、每次请求成本 0.8 元，企业也无法接受。</p>
+    </div>
+  </div>
+
+  <pre><code><span class="cm"># 完整质量链路 —— 每一层只对自己的问题负责</span>
+Retrieval  <span class="cm">→ 找到正确的候选证据</span>
+    ↓
+Context    <span class="cm">→ 组装成 LLM 可用的高质量上下文</span>
+    ↓
+Generation <span class="cm">→ 基于证据生成忠实、相关的答案</span>
+    ↓
+System     <span class="cm">→ 以可接受的延迟与成本稳定交付</span></code></pre>
+</section>
+
+<!-- ================= S4 ================= -->
+<section id="s4">
+  <div class="sec-head"><span class="sec-num">§ 04</span><h2>Evaluation Dataset：评测从哪里开始</h2></div>
+
+  <div class="pull">没有高质量 Dataset，就没有可信 Evaluation。</div>
+
+  <p>这是全文最重要的基础。任何指标——Recall@K、Faithfulness、NDCG——都只有在<strong>正确的评测集</strong>上才有意义。一个典型的 Evaluation Dataset 样本，远不止一个 Query：</p>
+
+  <pre><code>{
+  <span class="st">"query"</span>: <span class="st">"RTC SDK 4.6.2 Android RTC-10027 怎么处理？"</span>,
+  <span class="st">"relevant_documents"</span>: [<span class="st">"doc_102"</span>, <span class="st">"doc_231"</span>],
+  <span class="st">"expected_answer"</span>: <span class="st">"重启推流会话，检查 AppKey 与频道权限配置，"
+                     "若持续出现则降级到 4.6.1 并提交工单……"</span>,
+  <span class="st">"metadata"</span>: {
+    <span class="st">"version"</span>: <span class="st">"4.6.2"</span>,
+    <span class="st">"platform"</span>: <span class="st">"Android"</span>,
+    <span class="st">"query_type"</span>: <span class="st">"exact_match + version"</span>,
+    <span class="st">"source"</span>: <span class="st">"production_log"</span>,
+    <span class="st">"difficulty"</span>: <span class="st">"hard"</span>
+  }
+}</code></pre>
+
+  <div class="callout warn">
+    <div class="co-title">关键区分 · Ground Truth 的两种形态</div>
+    <strong>Retrieval Evaluation</strong> 需要的是 <code>relevant_documents</code>——哪些文档是相关的，用于计算 Recall / MRR / NDCG。<strong>Generation Evaluation</strong> 需要的是 <code>expected_answer</code> 或评分标准——什么是好的回答。二者不完全相同：一个文档可能「相关」（包含线索）但不「充分」（不足以直接推出答案）；一段答案可能正确但对应多个不同的文档组合。把两者混为一谈，是评测集设计中最常见的结构错误。
+  </div>
+</section>
+
+<!-- ================= S5 ================= -->
+<section id="s5">
+  <div class="sec-head"><span class="sec-num">§ 05</span><h2>Evaluation Dataset 从哪里来？</h2></div>
+
+  <h3><span class="tag">来源 1</span>人工构造</h3>
+  <p>由领域专家（客服主管、文档作者、解决方案工程师）设计 Query。优点是意图清晰、Ground Truth 可靠；缺点是容易只覆盖「专家想象中的问题」，分布偏简单。</p>
+
+  <h3><span class="tag">来源 2</span>历史真实 Query</h3>
+  <p>从线上搜索日志、客服工单、FAQ 后台中抽取。这是<strong>分布最真实</strong>的来源——用户的真实表达远比专家想象的更口语、更残缺、更多错别字。真实 Query 举例：</p>
+
+  <ul class="plain">
+    <li><code>rtc 10027 报错 一直弹 安卓</code>（口语 + 错序 + 平台词）</li>
+    <li><code>为啥升级到新版以后共享屏幕就花屏了</code>（归因模糊 + 版本隐含）</li>
+    <li><code>咱们有没有那种限制外部人员入会的功能啊</code>（企业口语 + 无答案倾向）</li>
+    <li><code>Project-A 那个单子最后谈了多少</code>（权限敏感 Query）</li>
+  </ul>
+
+  <h3><span class="tag">来源 3</span>用户反馈</h3>
+  <p>👎、重试、转人工，是最强的「错误信号」。每一个被点踩的 Query，都应该被清洗进 Regression Dataset——它们是系统已经犯过的错，必须保证不再犯。</p>
+
+  <h3><span class="tag">来源 4</span>Synthetic Data</h3>
+  <p>用 LLM 基于文档生成测试 Query。它能高效扩大覆盖面（尤其是长尾文档、 rarely-asked 场景），但要注意：<em class="hl">Synthetic Dataset 可以扩大覆盖范围，但不能完全替代真实用户数据。</em>LLM 生成的 Query 往往语法过于完整、表述过于「文档腔」，与真实用户的破碎表达存在系统性分布差异。正确用法是：<strong>Synthetic 补广度，Real Query 定分布。</strong></p>
+</section>
+
+<!-- ================= S6 ================= -->
+<section id="s6">
+  <div class="sec-head"><span class="sec-num">§ 06</span><h2>Dataset 的覆盖维度</h2></div>
+
+  <p>企业 RAG 评测集不能只有「普通问题」。一个只覆盖简单事实问题的评测集，会让系统在评测中拿高分，却在生产中遍布盲区。至少要覆盖：</p>
+
+  <pre><code>简单事实问题 · 复杂问题 · 多轮问题 · 版本问题 · 错误码
+产品型号 · 同义表达 · 口语表达 · 跨文档问题 · 长文档问题
+无答案问题 · 权限问题 · 歧义问题</code></pre>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption>Table 1 · Query 类型覆盖矩阵（含真实企业示例）</caption>
+      <tr><th style="width:120px">Query 类型</th><th>企业示例</th><th>考察点</th></tr>
+      <tr><td class="pill">Fact</td><td>「RTC 是什么？」</td><td>基础语义召回</td></tr>
+      <tr><td class="pill">Exact Match</td><td>「RTC-10027 怎么解决？」</td><td>错误码精确匹配、BM25 通道</td></tr>
+      <tr><td class="pill">Version</td><td>「4.6.2 有什么变化？」</td><td>版本过滤、新旧文档区分</td></tr>
+      <tr><td class="pill">Multi-hop</td><td>「Arena 和 Studio 两个套餐在并发路数上有什么区别？」</td><td>跨文档证据整合</td></tr>
+      <tr><td class="pill">Multi-turn</td><td>「那 Android 呢？」（承接上一轮 iOS 问题）</td><td>Query 改写、上下文继承</td></tr>
+      <tr><td class="pill">No-answer</td><td>「公司有没有强制年假折现的政策？」</td><td>拒答能力、防止幻觉</td></tr>
+      <tr><td class="pill">Permission</td><td>「Project-A 的合同金额是多少？」</td><td>权限层拦截与合规</td></tr>
+      <tr><td class="pill">Colloquial</td><td>「开会的时候别人听我说话一卡一卡的」</td><td>口语→术语的语义映射</td></tr>
+    </table>
+  </div>
+
+  <div class="callout insight">
+    <div class="co-title">实践建议</div>
+    为每一类 Query 维护独立的分项得分。<strong>整体平均分会掩盖灾难：</strong>整体 Recall@5 从 78% 升到 81% 的背后，可能错误码类从 85% 跌到了 40%。分类别报表，是 Dataset 设计给予你的最强诊断能力。
+  </div>
+</section>
+
+<!-- ================= S7 ================= -->
+<section id="s7">
+  <div class="sec-head"><span class="sec-num">§ 07</span><h2>Retrieval Evaluation：第一核心指标体系</h2></div>
+
+  <p>Retrieval Evaluation 的逻辑非常清晰：把系统的召回结果与人工标注的 Ground Truth 做对比。它评估的对象是<strong>中间产物</strong>，而不是最终答案：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 240" role="img" aria-label="Retrieval Evaluation 流程">
+      <g font-size="14" text-anchor="middle">
+        <rect x="30" y="90" width="130" height="50" rx="8" fill="#fff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="95" y="120" fill="#1c2530">Query</text>
+        <line x1="160" y1="115" x2="205" y2="115" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="210" y="90" width="140" height="50" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="280" y="120" fill="#0f3bbd" font-weight="bold">Retriever</text>
+        <line x1="350" y1="115" x2="395" y2="115" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="400" y="90" width="170" height="50" rx="8" fill="#fff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="485" y="120" fill="#1c2530">Top-K Documents</text>
+        <line x1="570" y1="115" x2="615" y2="115" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="620" y="76" width="210" height="78" rx="8" fill="#1c2530"/>
+        <text x="725" y="108" fill="#fff">Compare with</text>
+        <text x="725" y="130" fill="#fff">Ground Truth</text>
+      </g>
+      <text x="95" y="70" font-family="monospace" font-size="11.5" fill="#8a94a6" text-anchor="middle">user question</text>
+      <text x="280" y="70" font-family="monospace" font-size="11.5" fill="#8a94a6" text-anchor="middle">dense + bm25 + rrf</text>
+      <text x="485" y="70" font-family="monospace" font-size="11.5" fill="#8a94a6" text-anchor="middle">ranked candidates</text>
+      <text x="725" y="70" font-family="monospace" font-size="11.5" fill="#8a94a6" text-anchor="middle">labeled relevant docs</text>
+      <text x="430" y="200" font-family="monospace" font-size="13" fill="#d97706" text-anchor="middle">→ Recall@K · Precision@K · MRR · NDCG</text>
+    </svg>
+    <figcaption><b>图 3</b> — Retrieval Evaluation：排名候选 vs 标注相关文档</figcaption>
+  </figure>
+
+  <p>下面通过一个贯穿性的例子讲解四个指标。假设 Ground Truth 中有 3 篇相关文档 <code>A B C</code>，系统召回的 Top-5 为：</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Ground Truth（人工标注）</div>
+      <pre style="margin:0;background:#26303f"><code>Rank 1:  A  <span class="st">✓ relevant</span>
+Rank 2:  B  <span class="st">✓ relevant</span>
+Rank 3:  C  <span class="st">✓ relevant</span></code></pre>
+    </div>
+    <div class="card">
+      <div class="card-title">系统召回 Top-5</div>
+      <pre style="margin:0;background:#26303f"><code>Rank 1:  A  <span class="st">✓ hit</span>
+Rank 2:  D  <span class="cm">✗</span>
+Rank 3:  E  <span class="cm">✗</span>
+Rank 4:  F  <span class="cm">✗</span>
+Rank 5:  G  <span class="cm">✗</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ================= S8 ================= -->
+<section id="s8">
+  <div class="sec-head"><span class="sec-num">§ 08</span><h2>Recall@K 与 Precision@K</h2></div>
+
+  <h3><span class="tag">指标</span>Recall@K</h3>
+  <div class="formula">
+    Recall@K =
+    <span class="frac"><span class="top">Top-K 中相关文档数量</span><span class="bot">Ground Truth 相关文档总数</span></span>
+  </div>
+  <p>Recall@K 回答的是：<strong>「正确答案有没有进入候选集合？」</strong>对 RAG 而言，这是生死线——相关文档没被召回，后面的 Reranker 和 LLM 再强也无济于事。代入上例：Top-5 中只命中了 A，所以 Recall@5 = 1/3 ≈ <strong>0.33</strong>。B 和 C 丢失，意味着 LLM 只能基于不完整的证据回答，多跳问题必然答不好。</p>
+
+  <h3><span class="tag">指标</span>Precision@K</h3>
+  <div class="formula">
+    Precision@K =
+    <span class="frac"><span class="top">Top-K 中相关文档数量</span><span class="bot">K</span></span>
+  </div>
+  <p>Precision 回答的是：<strong>「我召回的这些文档有多少是真相关？」</strong>上例中 Precision@5 = 1/5 = <strong>0.20</strong>。Precision 低意味着大量噪声进入 Context——不仅浪费 Token，还会稀释关键证据、诱发 LLM 混淆。</p>
+
+  <div class="callout insight">
+    <div class="co-title">一句话区分</div>
+    <pre style="margin:0;background:transparent;padding:0"><code>Recall     → 找全   （相关的东西漏了没有？）
+Precision  → 找准   （拿回来的东西有多少是真的？）</code></pre>
+  </div>
+
+  <p>两者天然存在张力：把 K 从 5 放大到 50，Recall 会上升，Precision 往往下降。RAG 的典型工程决策是——<strong>在 Recall@K 有保障的前提下，用 Reranker 把 Precision 在更小的 K 上拉回来</strong>。这正是第十二篇 Reranker 章节的设计依据，也是它能成立的量化前提。</p>
+
+  <div class="callout danger">
+    <div class="co-title">警惕</div>
+    Recall 高 ≠ 回答正确。Recall 只保证「证据进入过候选」，Reranker 可能把它排掉，Context Builder 可能把它截断，LLM 仍可能无视它。每一层都要独立评价。
+  </div>
+</section>
+
+<!-- ================= S9 ================= -->
+<section id="s9">
+  <div class="sec-head"><span class="sec-num">§ 09</span><h2>MRR 与 NDCG：排序质量的两种度量</h2></div>
+
+  <h3><span class="tag">指标</span>MRR · Mean Reciprocal Rank</h3>
+  <div class="formula">
+    MRR =
+    <span class="frac"><span class="top">1</span><span class="bot">N</span></span>
+    <span style="margin:0 8px">Σ</span>
+    <span class="frac"><span class="top">1</span><span class="bot">rank<sub>i</sub></span></span>
+  </div>
+  <p>MRR 特别关心<strong>第一个正确结果排得有多靠前</strong>。如果正确答案排在第 1 位，贡献 1.0；排在第 2 位，贡献 0.5；排在第 10 位，只贡献 0.1。它适合 FAQ、错误码查询、单答案问题——用户要的就是那一条，而且越靠前越好。对企业客服场景，MRR 直接对应「用户是否需要翻页」。</p>
+
+  <h3><span class="tag">指标</span>NDCG · Normalized Discounted Cumulative Gain</h3>
+  <p>当相关程度不止「相关 / 不相关」两类时——比如文档可以分为「核心依据 / 辅助参考 / 无关」三档——二元的 Recall 和 Precision 就丢失了信息。NDCG 引入两个机制：</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Relevance Grade</div>
+      <p style="margin:0">每篇文档有一个分级相关度 <code>rel</code>（如 0/1/2/3），而不是 0/1。核心文档比边缘文档「更值钱」。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Position Discount</div>
+      <p style="margin:0">排名越靠后，贡献被对数折扣：<code>log₂(rank+1)</code> 在分母。第 5 位的高相关文档，价值远低于第 1 位。</p>
+    </div>
+  </div>
+
+  <div class="formula">
+    DCG@K = Σ<sub style="font-size:12px">i=1..K</sub>
+    <span class="frac"><span class="top">2<sup>rel<sub>i</sub></sup> − 1</span><span class="bot">log₂(i + 1)</span></span>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    NDCG@K =
+    <span class="frac"><span class="top">DCG@K</span><span class="bot">IDCG@K</span></span>
+  </div>
+  <p>其中 IDCG 是理想排序（把所有相关文档按相关度从高到低排好）的 DCG，作为归一化分母，使 NDCG 落在 [0, 1] 区间，可以跨 Query 求平均。</p>
+</section>
+
+<!-- ================= S10 ================= -->
+<section id="s10">
+  <div class="sec-head"><span class="sec-num">§ 10</span><h2>Retrieval 指标到底怎么选？</h2></div>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption>Table 2 · Retrieval 指标选择决策表</caption>
+      <tr><th>指标</th><th>关注点</th><th>典型场景</th><th>不要用的地方</th></tr>
+      <tr><td class="pill">Recall@K</td><td>是否召回了正确文档</td><td><strong>RAG（必选）</strong>——K 应 ≥ Context 实际使用的文档数</td><td>无法反映排序质量</td></tr>
+      <tr><td class="pill">Precision@K</td><td>候选集合纯度</td><td>Search、Context 去噪</td><td>Ground Truth 不完整时会系统性低估</td></tr>
+      <tr><td class="pill">MRR</td><td>第一相关结果的位置</td><td>FAQ、错误码、单答案问答</td><td>多相关文档场景信息量不足</td></tr>
+      <tr><td class="pill">NDCG</td><td>多等级排序质量</td><td>文档有核心/辅助之分时</td><td>标注成本高，需要分级标注</td></tr>
+    </table>
+  </div>
+
+  <div class="pull">企业 RAG 通常不应该只看单一指标。最小组合是：Recall@K（保底线）+ MRR 或 NDCG（看排序）。</div>
+</section>
+
+<!-- ================= S11 ================= -->
+<section id="s11">
+  <div class="sec-head"><span class="sec-num">§ 11</span><h2>Context Evaluation：检索正确之后，Context 真的好吗？</h2></div>
+
+  <p>Retrieval 指标全部合格，不代表喂给 LLM 的 Context 合格。中间还隔着 Reranker 截断、去重、跨文档合并、Token 预算分配、位置排列——每一步都可能引入新的退化。Context Evaluation 评价的是<strong>最终拼装完成的上下文</strong>：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 190" role="img" aria-label="Context Evaluation 流程">
+      <g font-size="13.5" text-anchor="middle">
+        <rect x="30" y="66" width="170" height="52" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="115" y="88" fill="#1c2530">Candidate Documents</text>
+        <text x="115" y="106" font-size="11" fill="#8a94a6" font-family="monospace">ranked top-k</text>
+        <line x1="200" y1="92" x2="245" y2="92" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="250" y="66" width="165" height="52" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="332" y="97" fill="#0f3bbd" font-weight="bold">Context Builder</text>
+        <line x1="415" y1="92" x2="460" y2="92" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="465" y="66" width="140" height="52" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="535" y="97" fill="#1c2530">Final Context</text>
+        <line x1="605" y1="92" x2="650" y2="92" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="655" y="46" width="180" height="92" rx="8" fill="#1c2530"/>
+        <text x="745" y="78" fill="#fff">Context Evaluation</text>
+        <text x="745" y="100" font-size="11.5" fill="#aebdd8" font-family="monospace">Relevance · Completeness</text>
+        <text x="745" y="120" font-size="11.5" fill="#aebdd8" font-family="monospace">Redundancy · Correctness</text>
+      </g>
+    </svg>
+    <figcaption><b>图 4</b> — Context Evaluation 评估的是「最终上下文」，而非中间候选</figcaption>
+  </figure>
+
+  <h3><span class="tag">维度 1</span>Context Relevance</h3>
+  <p>Context 与 Query 相关吗？Reranker 的失效模式（比如被长文档的标题相似性欺骗）会在这里暴露。</p>
+
+  <h3><span class="tag">维度 2</span>Context Completeness</h3>
+  <p>关键证据是否完整？最常见的失败：文档找到了，但 Chunk 恰好切在关键表格之前；或者多跳问题只召回了第一跳的证据。Completeness 需要与 <code>expected_answer</code> 对照评价。</p>
+
+  <h3><span class="tag">维度 3</span>Context Redundancy</h3>
+  <p>是否大量重复？同一篇文档的相邻 Chunk 同时进入 Context，浪费 Token 且放大偏见。企业知识库中「同一份 PPT 的 PDF 版 + 汇报纪要版」共存时尤其严重。</p>
+
+  <h3><span class="tag">维度 4</span>Context Correctness</h3>
+  <p>是否包含错误或过时信息？这是企业场景的隐形杀手：知识库里同时存在「4.5.x 的旧配置说明」和「4.6.2 的新配置说明」，如果 Context 两者都包含且未声明版本，LLM 大概率输出过时答案——而这个错误会被错误地归因给 LLM。</p>
+</section>
+
+<!-- ================= S12 ================= -->
+<section id="s12">
+  <div class="sec-head"><span class="sec-num">§ 12</span><h2>Generation Evaluation：LLM 最终答案到底好不好？</h2></div>
+
+  <p>现在到了最外层。但注意，「答案正确」只是一个维度。企业级 Generation Evaluation 至少包含四个相互独立的指标：</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Faithfulness · 忠实性</div>
+      <p style="margin:0">答案是否<strong>忠实于提供的证据</strong>？答案中的每个事实性断言，能否在 Context 中找到支持？Faithfulness 低 = LLM 在编造或脑补，与 Context 质量无关。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Groundedness · 有据性</div>
+      <p style="margin:0">回答是否有<strong>证据支撑</strong>？它与 Faithfulness 互为镜像：Faithfulness 问「答案是否超出证据」，Groundedness 问「答案是否扎根于证据」。一个检测「多说了什么」，一个检测「说了的有没有依据」。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Answer Relevance · 答案相关性</div>
+      <p style="margin:0">答案是否<strong>真正回答了用户的问题</strong>？一个完全忠实、完全有据、但答非所问的长篇复述，Faithfulness 满分，Relevance 零分。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Citation Accuracy · 引用准确性</div>
+      <p style="margin:0">答案中的<strong>引用是否真的支持对应结论</strong>？标了 <code>[doc_102]</code>，但 doc_102 里根本没有这个数字——引用就变成了「可信度表演」，在审计场景比不引用更危险。</p>
+    </div>
+  </div>
+
+  <h3>为什么「答案正确」还不够？</h3>
+  <p>看两个回答（Query：「RTC-10027 错误码在 Android 端如何处理？」）：</p>
+
+  <div class="grid-2">
+    <div class="card" style="border-top:3px solid var(--amber)">
+      <div class="card-title">Answer A · 内容正确，无依据</div>
+      <p style="margin:0;font-size:15px">「请重启推流会话并检查频道权限配置。如果问题仍然存在，建议降级到上一个稳定版本并联系技术支持。」</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--green)">
+      <div class="card-title">Answer B · 内容正确，每个结论有来源</div>
+      <p style="margin:0;font-size:15px">「请重启推流会话并检查频道权限配置 <code>[doc_102]</code>。若持续出现，可降级到 4.6.1 并提交工单 <code>[doc_231]</code>。」</p>
+    </div>
+  </div>
+
+  <p>内容完全一致。但企业场景下，<em class="hl">Answer B 更容易审计、追溯和信任</em>——客服可以点开引用核对，出问题时可以定位到具体文档，知识库下线旧文档时可以评估影响面。因此企业 Generation 的目标函数是：</p>
+
+  <pre><code>Quality of Answer  =  Correctness  +  Grounding  +  Citation
+                     <span class="cm">对不对</span>           <span class="cm">有没有依据</span>       <span class="cm">依据可否追溯</span></code></pre>
+</section>
+
+<!-- ================= S13 ================= -->
+<section id="s13">
+  <div class="sec-head"><span class="sec-num">§ 13</span><h2>LLM-as-a-Judge：自动化评估的杠杆与陷阱</h2></div>
+
+  <p>人工评估 Faithfulness 和 Answer Relevance 的成本极高，无法每次回归都跑。于是业界普遍使用 LLM 对 RAG 答案进行自动评估：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 200" role="img" aria-label="LLM as a Judge 流程">
+      <g font-size="13.5" text-anchor="middle">
+        <rect x="40" y="60" width="130" height="52" rx="8" fill="#fff" stroke="#e5e2da"/><text x="105" y="91" fill="#1c2530">Question</text>
+        <rect x="40" y="122" width="130" height="46" rx="8" fill="#fff" stroke="#e5e2da"/><text x="105" y="150" fill="#1c2530">Context</text>
+        <rect x="40" y="-2" width="130" height="46" rx="8" fill="#fff" stroke="#e5e2da"/><text x="105" y="26" fill="#1c2530">Answer</text>
+        <line x1="170" y1="30" x2="300" y2="75" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <line x1="170" y1="88" x2="300" y2="88" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <line x1="170" y1="145" x2="300" y2="102" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="310" y="52" width="190" height="72" rx="10" fill="#0d8a4f"/>
+        <text x="405" y="84" fill="#fff" font-weight="bold" font-size="15">Judge LLM</text>
+        <text x="405" y="106" font-size="11.5" fill="#c9ecd9" font-family="monospace">rubric prompt</text>
+        <line x1="500" y1="88" x2="548" y2="88" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="555" y="46" width="270" height="104" rx="10" fill="#1c2530"/>
+        <text x="690" y="76" fill="#fff" font-size="14">Score + Reason</text>
+        <text x="690" y="102" font-size="11.5" fill="#aebdd8" font-family="monospace">faithfulness  4/5</text>
+        <text x="690" y="120" font-size="11.5" fill="#aebdd8" font-family="monospace">relevance     5/5</text>
+        <text x="690" y="138" font-size="11.5" fill="#aebdd8" font-family="monospace">citation      3/5</text>
+      </g>
+    </svg>
+    <figcaption><b>图 5</b> — LLM-as-a-Judge：以评分标准 Prompt 驱动的自动评审</figcaption>
+  </figure>
+
+  <h3>但它不是万能方案</h3>
+  <p>把 LLM Judge 当作绝对真值，是企业评测体系中最隐蔽的系统性风险。已知的失效模式至少包括：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption>Table 3 · LLM-as-a-Judge 的已知偏差与缓解手段</caption>
+      <tr><th style="width:170px">偏差类型</th><th>表现</th><th>缓解</th></tr>
+      <tr><td class="pill">Position Bias</td><td>A/B 对比时倾向偏好放在特定位置的答案</td><td>交换顺序评两次，取一致结果</td></tr>
+      <tr><td class="pill">Model Bias</td><td>Judge 对某种文风、长度、格式有系统性偏好</td><td>长答案与简洁答案分组校准</td></tr>
+      <tr><td class="pill">Self-preference</td><td>Judge 偏爱自己同源的模型生成的答案</td><td>Judge 与被评模型使用不同家族的模型</td></tr>
+      <tr><td class="pill">Prompt Sensitivity</td><td>评分标准措辞微调导致分数漂移</td><td>Rubric Prompt 本身纳入版本管理与回归</td></tr>
+      <tr><td class="pill">Non-determinism</td><td>同一样本多次评分结果不同</td><td>多次采样取均值；温度设 0；报告方差</td></tr>
+      <tr><td class="pill">Judge Bias（对齐偏差）</td><td>倾向给「看起来严谨」的答案高分，即使引用是假的</td><td>与 Citation Accuracy 规则校验交叉验证</td></tr>
+    </table>
+  </div>
+
+  <div class="pull">正确的姿势永远是三者共同使用：Automated Judge + Human Evaluation + Rule-based Checks。</div>
+
+  <p>Rule-based Checks 常被低估——它们便宜、确定、可解释：引用的文档 ID 是否真实存在于 Context 中？答案中的数字是否在 Context 中出现过（字符串/数值匹配）？无答案类 Query 是否触发了拒答模板？这些硬校验能抓住 LLM Judge 最容易放过的幻觉。</p>
+</section>
+
+<!-- ================= S14 ================= -->
+<section id="s14">
+  <div class="sec-head"><span class="sec-num">§ 14</span><h2>Human Evaluation：不可替代的锚点</h2></div>
+
+  <p>人工评测不是「用眼睛看看」，而是一套流程化的小规模深度审查：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 130" role="img" aria-label="Human Evaluation 流程">
+      <g font-size="14" text-anchor="middle">
+        <rect x="40" y="38" width="160" height="52" rx="8" fill="#fff" stroke="#e5e2da"/><text x="120" y="69" fill="#1c2530">Sample Queries</text>
+        <line x1="200" y1="64" x2="242" y2="64" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="248" y="38" width="160" height="52" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/><text x="328" y="69" fill="#0f3bbd" font-weight="bold">Expert Review</text>
+        <line x1="408" y1="64" x2="450" y2="64" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="456" y="38" width="140" height="52" rx="8" fill="#fff" stroke="#e5e2da"/><text x="526" y="69" fill="#1c2530">Score</text>
+        <line x1="596" y1="64" x2="638" y2="64" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="644" y="38" width="180" height="52" rx="8" fill="#1c2530"/><text x="734" y="69" fill="#fff">Error Analysis</text>
+      </g>
+    </svg>
+    <figcaption><b>图 6</b> — 人工评测的终点不是分数，而是 Error Analysis</figcaption>
+  </figure>
+
+  <p>推荐的评价标签集（比打分更利于错误归因）：</p>
+
+  <ul class="plain">
+    <li><strong>Correct</strong> — 答案完全正确且有据</li>
+    <li><strong>Partially Correct</strong> — 部分正确，遗漏关键约束或版本差异</li>
+    <li><strong>Incorrect</strong> — 事实性错误</li>
+    <li><strong>Unsupported</strong> — 答案含证据不支持的断言（幻觉）</li>
+    <li><strong>Refusal Appropriate</strong> — 对无答案/无权限问题正确拒答（这本身是一种「好答案」）</li>
+  </ul>
+
+  <div class="callout insight">
+    <div class="co-title">抽样原则</div>
+    人工评测样本不需要覆盖所有 Query，但应该<strong>覆盖关键高风险场景</strong>：无答案拒答、权限边界、版本敏感性、错误码精确匹配，以及最近一次线上事故相关的 Query 类型。每个版本 50～100 条，两位标注者独立标注，报告标注不一致率——不一致率本身就是评估体系健康度的信号。
+  </div>
+</section>
+
+<!-- ================= S15 ================= -->
+<section id="s15">
+  <div class="sec-head"><span class="sec-num">§ 15</span><h2>Offline Evaluation 与 Regression Test</h2></div>
+
+  <h3>Offline Evaluation：完整流程</h3>
+
+  <pre><code>Evaluation Dataset
+    ↓
+Pipeline（待测版本的 RAG 管线）
+    ↓
+Metrics（Retrieval / Context / Generation / System）
+    ↓
+Report（分 Query 类型、分模块的报表）
+    ↓
+Compare Versions（与上一版本逐项对比）</code></pre>
+
+  <p>每一次发布候选版本，跑一次完整的 Offline Evaluation，产出一张版本对比表：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption>Table 4 · 版本对比报表模板（示例格式，数值为占位结构）</caption>
+      <tr><th>指标</th><th>RAG v1</th><th>RAG v2</th><th>Δ</th><th>判读</th></tr>
+      <tr><td class="pill">Recall@5</td><td>78%</td><td>82%</td><td style="color:var(--green)">+4pt</td><td>整体召回改善</td></tr>
+      <tr><td class="pill">Recall@5（错误码类）</td><td>85%</td><td>71%</td><td style="color:var(--red)">−14pt</td><td><strong>回归！Rewrite 伤及精确匹配</strong></td></tr>
+      <tr><td class="pill">MRR@10</td><td>0.61</td><td>0.68</td><td style="color:var(--green)">+0.07</td><td>排序改善</td></tr>
+      <tr><td class="pill">NDCG@5</td><td>0.72</td><td>0.75</td><td style="color:var(--green)">+0.03</td><td>多级相关性改善</td></tr>
+      <tr><td class="pill">Faithfulness</td><td>0.88</td><td>0.86</td><td style="color:var(--red)">−0.02</td><td>Context 变长后需复查</td></tr>
+      <tr><td class="pill">Answer Relevance</td><td>0.84</td><td>0.87</td><td style="color:var(--green)">+0.03</td><td>—</td></tr>
+      <tr><td class="pill">Citation Accuracy</td><td>0.90</td><td>0.91</td><td style="color:var(--green)">+0.01</td><td>—</td></tr>
+      <tr><td class="pill">P95 Latency</td><td>3.2s</td><td>5.4s</td><td style="color:var(--red)">+2.2s</td><td><strong>需评估可接受性</strong></td></tr>
+      <tr><td class="pill">Cost / Request</td><td>¥0.11</td><td>¥0.15</td><td style="color:var(--red)">+36%</td><td><strong>需业务侧确认</strong></td></tr>
+    </table>
+  </div>
+
+  <p>这就是 §01 案例的正确打开方式：版本 B 的「看起来更好」，在这张表上现出原形——整体指标上升，但<strong>错误码类 Recall 大幅回归，延迟与成本显著恶化</strong>。没有这张表，你只能等线上事故来告诉你。</p>
+
+  <h3>Regression Test：RAG 的 CI/CD</h3>
+
+  <p>这一部分必须重点强调。<strong>RAG 系统中没有任何一个组件是局部修改：</strong></p>
+
+  <ul class="plain">
+    <li>改 <strong>Chunking</strong> → 索引全部重建，所有文档的召回集合都变了</li>
+    <li>换 <strong>Embedding</strong> → 全库向量分布迁移，历史调优全部失效</li>
+    <li>调 <strong>BM25</strong> 权重 → Dense/BM25 的 RRF 融合比例改变，所有 Query 受影响</li>
+    <li>换 <strong>Reranker</strong> → Top-K 截断点变化，Context 组成整体漂移</li>
+    <li>改 <strong>Prompt</strong> → Faithfulness 和拒答行为可能同时改变</li>
+    <li>改 <strong>Context Builder</strong> → Token 预算分配变化，长文档问题可能被截断</li>
+    <li>换 <strong>LLM</strong> → 一切生成侧行为重置</li>
+  </ul>
+
+  <figure>
+    <svg viewBox="0 0 860 150" role="img" aria-label="Regression Test 门禁">
+      <g font-size="14" text-anchor="middle">
+        <rect x="30" y="46" width="190" height="52" rx="8" fill="#fff" stroke="#1e5eff" stroke-width="1.3"/><text x="125" y="77" fill="#0f3bbd" font-weight="bold">Evaluation Dataset</text>
+        <line x1="220" y1="72" x2="262" y2="72" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="268" y="46" width="180" height="52" rx="8" fill="#fff" stroke="#e5e2da"/><text x="358" y="77" fill="#1c2530">Regression Test</text>
+        <line x1="448" y1="72" x2="490" y2="72" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="496" y="46" width="140" height="52" rx="8" fill="#fff" stroke="#e5e2da"/><text x="566" y="77" fill="#1c2530">Compare</text>
+        <line x1="636" y1="72" x2="678" y2="72" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <g>
+          <rect x="684" y="18" width="150" height="46" rx="8" fill="#0d8a4f"/><text x="759" y="46" fill="#fff" font-size="13.5">✓ Release</text>
+          <rect x="684" y="80" width="150" height="46" rx="8" fill="#c2410c"/><text x="759" y="108" fill="#fff" font-size="13.5">✗ Reject</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>图 7</b> — Regression Test 作为发布门禁：不过回归，不发版</figcaption>
+  </figure>
+
+  <div class="callout warn">
+    <div class="co-title">工程纪律</div>
+    把 Regression Test 做成发布流程的强制门禁：<strong>任何触及 Chunking / Embedding / BM25 / RRF / Reranker / Prompt / Context Builder / LLM 的改动，都必须在评测集上跑全量对比，且分类别指标不允许出现超过阈值的退化。</strong>这就是 RAG 的 CI/CD。退化的容忍阈值由业务定（例如核心类指标 −2pt 以内可接受，权限类零容忍）。
+  </div>
+</section>
+
+<!-- ================= S16 ================= -->
+<section id="s16">
+  <div class="sec-head"><span class="sec-num">§ 16</span><h2>Online Evaluation 与 Offline + Online 闭环</h2></div>
+
+  <p>Offline 好不代表线上一定好。评测集再精心，也只是线上流量分布的一个近似：<strong>线上会不断出现评测集里没有的 Query 类型、没有的文档组合、没有的用户行为。</strong>Online Evaluation 监控的是真实流量上的系统性信号：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 130" role="img" aria-label="Online Evaluation 流程">
+      <g font-size="14" text-anchor="middle">
+        <rect x="40" y="38" width="170" height="52" rx="8" fill="#fff" stroke="#e5e2da"/><text x="125" y="69" fill="#1c2530">Real User Query</text>
+        <line x1="210" y1="64" x2="252" y2="64" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="258" y="38" width="170" height="52" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/><text x="343" y="69" fill="#0f3bbd" font-weight="bold">Production RAG</text>
+        <line x1="428" y1="64" x2="470" y2="64" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="476" y="38" width="160" height="52" rx="8" fill="#fff" stroke="#e5e2da"/><text x="556" y="69" fill="#1c2530">User Feedback</text>
+        <line x1="636" y1="64" x2="678" y2="64" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="684" y="38" width="150" height="52" rx="8" fill="#d97706"/><text x="759" y="69" fill="#fff">Online Metrics</text>
+      </g>
+    </svg>
+    <figcaption><b>图 8</b> — Online Evaluation 数据链路</figcaption>
+  </figure>
+
+  <div class="stats">
+    <div class="stat"><div class="label">Answer Success Rate</div><div class="value" style="font-size:22px">成功回答占比</div><div class="note">未被点踩且未重试的会话比例</div></div>
+    <div class="stat"><div class="label">Retry Rate</div><div class="value" style="font-size:22px">重试率</div><div class="note">同一会话内改写重问 → 强烈的「答案不满意」信号</div></div>
+    <div class="stat bad"><div class="label">Escalation Rate</div><div class="value" style="font-size:22px">转人工率</div><div class="note">RAG 解决不了而升级人工的比例</div></div>
+    <div class="stat good"><div class="label">Resolution Rate</div><div class="value" style="font-size:22px">解决率</div><div class="note">会话结束后未再产生工单的比例</div></div>
+  </div>
+
+  <h3>Offline + Online 闭环：全文核心架构</h3>
+
+  <figure>
+    <svg viewBox="0 0 860 560" role="img" aria-label="Offline 与 Online 评估闭环">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#4a5568"/>
+        </marker>
+      </defs>
+      <g font-size="14" text-anchor="middle">
+        <!-- left column : offline -->
+        <rect x="60" y="30" width="220" height="50" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/><text x="170" y="60" fill="#0f3bbd" font-weight="bold">Offline Dataset</text>
+        <line x1="170" y1="80" x2="170" y2="112" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="60" y="114" width="220" height="50" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/><text x="170" y="144" fill="#0f3bbd" font-weight="bold">Offline Evaluation</text>
+        <line x1="170" y1="164" x2="170" y2="196" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="60" y="198" width="220" height="50" rx="8" fill="#fff" stroke="#e5e2da"/><text x="170" y="228" fill="#1c2530">Regression</text>
+        <line x1="280" y1="223" x2="330" y2="223" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <!-- center: production -->
+        <rect x="335" y="198" width="200" height="50" rx="8" fill="#1c2530"/><text x="435" y="228" fill="#fff" font-weight="bold">Production</text>
+
+        <!-- right column : online -->
+        <line x1="535" y1="223" x2="590" y2="223" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="595" y="198" width="210" height="50" rx="8" fill="#fff7ea" stroke="#d97706" stroke-width="1.3"/><text x="700" y="228" fill="#b45309" font-weight="bold">Online Monitoring</text>
+        <line x1="700" y1="248" x2="700" y2="280" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="595" y="282" width="210" height="50" rx="8" fill="#fff7ea" stroke="#d97706" stroke-width="1.3"/><text x="700" y="312" fill="#b45309" font-weight="bold">User Feedback</text>
+        <line x1="700" y1="332" x2="700" y2="364" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="595" y="366" width="210" height="50" rx="8" fill="#fff" stroke="#e5e2da"/><text x="700" y="396" fill="#1c2530">Error Mining</text>
+
+        <!-- feedback path back to dataset -->
+        <line x1="595" y1="391" x2="435" y2="391" stroke="#c2410c" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arr2)"/>
+        <rect x="325" y="366" width="220" height="50" rx="8" fill="#fdf0ea" stroke="#c2410c" stroke-width="1.3"/>
+        <text x="435" y="396" fill="#c2410c" font-weight="bold" font-size="13">New Evaluation Samples</text>
+        <line x1="325" y1="391" x2="170" y2="391" stroke="#c2410c" stroke-width="1.8" stroke-dasharray="6 4"/>
+        <line x1="170" y1="391" x2="170" y2="88" stroke="#c2410c" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arr2)"/>
+        <text x="382" y="440" font-size="12" fill="#c2410c" font-family="monospace">线上 bad case → 新评测样本 → 回归集</text>
+
+        <!-- optimization -->
+        <line x1="435" y1="248" x2="435" y2="470" stroke="#4a5568" stroke-width="1.5"/>
+        <rect x="330" y="472" width="210" height="50" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="435" y="502" fill="#0f3bbd" font-weight="bold">RAG Optimization</text>
+        <line x1="330" y1="497" x2="170" y2="497" stroke="#4a5568" stroke-width="1.5"/>
+        <line x1="170" y1="497" x2="170" y2="88" stroke="#4a5568" stroke-width="0" />
+        <path d="M 170 497 L 170 88" stroke="#4a5568" stroke-width="0" fill="none"/>
+        <line x1="170" y1="497" x2="170" y2="470" stroke="#4a5568" stroke-width="0"/>
+        <path d="M 170 497 C 90 497, 40 460, 40 300 C 40 130, 90 60, 160 56" fill="none" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)" opacity="0"/>
+        <line x1="170" y1="497" x2="170" y2="497" stroke="#4a5568"/>
+        <path d="M 170 497 L 170 88" fill="none" stroke="#4a5568" stroke-width="0"/>
+        <path d="M 170 497 C 85 497, 42 440, 42 300 C 42 140, 95 62, 158 57" fill="none" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+      </g>
+      <text x="430" y="548" font-size="12" fill="#8a94a6" text-anchor="middle" font-family="monospace">optimization feeds back into offline dataset &amp; evaluation</text>
+    </svg>
+    <figcaption><b>图 9</b> — Offline + Online 持续评估闭环：线上 bad case 沉淀为回归样本，优化结果回到离线评测验证</figcaption>
+  </figure>
+
+  <div class="pull">这张闭环图是本篇的题眼：<em class="hl">Evaluation 不是发布流程的一个环节，而是系统持续进化的反馈回路。</em></div>
+</section>
+
+<!-- ================= S17 ================= -->
+<section id="s17">
+  <div class="sec-head"><span class="sec-num">§ 17</span><h2>Error Taxonomy 与诊断树</h2></div>
+
+  <p>企业 RAG Evaluation 的产出不只是分数，必须建立 <strong>Error Taxonomy</strong>——错误分类体系。指标告诉你「多差」，Taxonomy 告诉你「为什么错」。最低配置包括：</p>
+
+  <pre><code>Data Error          <span class="cm">文档本身缺失 / 过时 / 内容错误</span>
+Parsing Error       <span class="cm">PDF 表格解析错乱 / OCR 失败</span>
+Chunk Error         <span class="cm">关键信息被切断 / Chunk 粒度失衡</span>
+Embedding Error     <span class="cm">语义空间中相关内容距离过远</span>
+Retrieval Error     <span class="cm">相关文档未进入候选集</span>
+Ranking Error       <span class="cm">相关文档进入候选但被排掉</span>
+Context Error       <span class="cm">证据被截断 / 冲突信息未处理 / 冗余</span>
+Generation Error    <span class="cm">LLM 无视证据 / 推理错误 / 格式错误</span>
+Permission Error    <span class="cm">越权返回 / 误拦截合法请求</span>
+Citation Error      <span class="cm">引用与结论不匹配</span>
+System Error        <span class="cm">超时 / 服务不可用 / 限流</span></code></pre>
+
+  <h3>从最终答案反推问题在哪一层：诊断树</h3>
+
+  <figure>
+    <svg viewBox="0 0 860 520" role="img" aria-label="RAG 错误诊断树">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#4a5568"/>
+        </marker>
+        <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/>
+        </marker>
+      </defs>
+      <g font-size="14" text-anchor="middle">
+        <rect x="330" y="20" width="200" height="50" rx="10" fill="#c2410c"/>
+        <text x="430" y="50" fill="#fff" font-weight="bold">Answer Wrong</text>
+
+        <line x1="430" y1="70" x2="430" y2="100" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <rect x="300" y="102" width="260" height="52" rx="8" fill="#fff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="430" y="133" fill="#0f3bbd" font-weight="bold">Correct Document Retrieved?</text>
+
+        <!-- No branch -->
+        <line x1="300" y1="128" x2="150" y2="128" stroke="#4a5568" stroke-width="1.5"/>
+        <line x1="150" y1="128" x2="150" y2="185" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <text x="205" y="120" font-size="12" fill="#c2410c" font-family="monospace">No</text>
+        <rect x="50" y="187" width="200" height="50" rx="8" fill="#c2410c"/>
+        <text x="150" y="217" fill="#fff" font-weight="bold">Retrieval Problem</text>
+        <text x="150" y="258" font-size="12" fill="#8a94a6" font-family="monospace">查 Recall@K / 分通道召回</text>
+
+        <!-- Yes path -->
+        <line x1="430" y1="154" x2="430" y2="185" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <text x="452" y="176" font-size="12" fill="#0d8a4f" font-family="monospace">Yes</text>
+        <rect x="300" y="187" width="260" height="52" rx="8" fill="#fff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="430" y="218" fill="#0f3bbd" font-weight="bold">Correct Evidence in Context?</text>
+
+        <!-- No branch -->
+        <line x1="560" y1="213" x2="680" y2="213" stroke="#4a5568" stroke-width="1.5"/>
+        <line x1="680" y1="213" x2="680" y2="270" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <text x="610" y="205" font-size="12" fill="#c2410c" font-family="monospace">No</text>
+        <rect x="580" y="272" width="200" height="50" rx="8" fill="#d97706"/>
+        <text x="680" y="302" fill="#fff" font-weight="bold">Context Problem</text>
+        <text x="680" y="343" font-size="12" fill="#8a94a6" font-family="monospace">查截断 / 冲突 / 冗余</text>
+
+        <!-- Yes path to generation -->
+        <line x1="430" y1="239" x2="430" y2="270" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <text x="452" y="261" font-size="12" fill="#0d8a4f" font-family="monospace">Yes</text>
+        <rect x="300" y="272" width="260" height="52" rx="8" fill="#c2410c"/>
+        <text x="430" y="303" fill="#fff" font-weight="bold">LLM Still Wrong</text>
+        <line x1="430" y1="324" x2="430" y2="352" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr3)"/>
+        <rect x="310" y="354" width="240" height="50" rx="8" fill="#c2410c"/>
+        <text x="430" y="384" fill="#fff" font-weight="bold">Generation Problem</text>
+
+        <!-- extra checks -->
+        <line x1="160" y1="237" x2="160" y2="430" stroke="#8a94a6" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <line x1="680" y1="322" x2="680" y2="430" stroke="#8a94a6" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <rect x="60" y="432" width="280" height="62" rx="8" fill="#fdf0ea" stroke="#c2410c" stroke-width="1"/>
+        <text x="200" y="458" font-size="13" fill="#c2410c" font-family="monospace">Unauthorized Data?</text>
+        <text x="200" y="480" font-size="12.5" fill="#1c2530">→ Permission Problem（越权 / 误拦）</text>
+        <rect x="520" y="432" width="280" height="62" rx="8" fill="#fdf0ea" stroke="#c2410c" stroke-width="1"/>
+        <text x="660" y="458" font-size="13" fill="#c2410c" font-family="monospace">Citation Incorrect?</text>
+        <text x="660" y="480" font-size="12.5" fill="#1c2530">→ Grounding / Citation Problem</text>
+      </g>
+    </svg>
+    <figcaption><b>图 10</b> — 从 bad case 到问题层的诊断树：先二分定位层，再做专项归因</figcaption>
+  </figure>
+
+  <p>诊断树的工程价值在于<strong>排障的确定性</strong>：拿到一个 bad case，按树走一遍，5 分钟内可以确定该找数据团队、检索团队还是 Prompt 团队。没有这棵树，bad case 分析会议通常会变成互相甩锅大会——「文档明明召回了」「Context 明明给了」「模型明明能答对」。</p>
+</section>
+
+<!-- ================= S18 ================= -->
+<section id="s18">
+  <div class="sec-head"><span class="sec-num">§ 18</span><h2>A/B Test 与统计显著性</h2></div>
+
+  <p>Offline Regression 通过后，重大变更（Chunking 策略、Reranker 模型、整体 Prompt 方案）仍应上线 A/B Test：</p>
+
+  <pre><code>Version A  vs  Version B
+  <span class="cm">例如：</span>
+Chunking A   vs  Chunking B
+Reranker A   vs  Reranker B
+Prompt A     vs  Prompt B</code></pre>
+
+  <p>对比维度包括 <strong>Quality（线上成功/点踩/转人工）、Latency、Cost、User Feedback</strong>。要强调的是：<em class="hl">提升单个离线指标，并不意味着整体线上体验一定提升。</em>离线指标提升可能只发生在评测集覆盖的分布上，而线上长尾流量的体验可能持平甚至恶化。</p>
+
+  <h3>别被 1% 的差距骗了</h3>
+
+  <p>如果 A/B 两个方案的结果是：</p>
+
+  <pre><code>A = 82%      B = 83%</code></pre>
+
+  <p>不能直接说 B 更好。这个差距可能只是抽样噪声。判断前需要考虑：</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Sample Size &amp; Variance</div>
+      <p style="margin:0">每边只有 50 个样本时，1 个样本就是 2pt。样本越小、方差越大，差距越不可信。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Confidence Interval</div>
+      <p style="margin:0">给每个指标报告置信区间。A = 82% ± 3%，B = 83% ± 3%——两个区间大量重叠，结论应为「无法区分」。</p>
+    </div>
+  </div>
+
+  <p>实践中最常用的轻量方法是 <strong>Bootstrap</strong>：对评测结果做上千次有放回重采样，每次重算指标，得到指标的分布，再比较两个版本指标分布的重叠程度。它不需要假设指标服从正态分布，实现只需要十几行代码，却能避免大量「看起来赢了」的错误决策。核心纪律只有一条：<strong>宣布 B 优于 A 之前，先确认差距超出了噪声范围。</strong></p>
+</section>
+
+<!-- ================= S19 ================= -->
+<section id="s19">
+  <div class="sec-head"><span class="sec-num">§ 19</span><h2>Quality / Latency / Cost：企业最终优化的是三角</h2></div>
+
+  <p>评测的终点不是「最高分」，而是决策。典型场景：</p>
+
+  <div class="grid-2">
+    <div class="card" style="border-top:3px solid var(--accent)">
+      <div class="card-title">方案 A</div>
+      <p style="margin:0">质量较高（Recall@5 = 84%，Faithfulness = 0.90）<br>成本较高（¥0.15 / 请求，P95 = 5.4s）<br><span style="color:var(--ink-mute);font-size:14px">双路召回 + 大 Reranker + 长 Context</span></p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--green)">
+      <div class="card-title">方案 B</div>
+      <p style="margin:0">质量略低（Recall@5 = 80%，Faithfulness = 0.87）<br>成本明显更低（¥0.06 / 请求，P95 = 2.1s）<br><span style="color:var(--ink-mute);font-size:14px">单路召回 + 轻量 Reranker + 紧 Context</span></p>
+    </div>
+  </div>
+
+  <p>哪个更好？<strong>取决于业务。</strong>内部工程师文档问答可能选 A；面向全员的 IT 自助问答（QPS 高、问题简单）几乎必然选 B。企业最终需要的是 <em class="hl">Business-aware Optimization</em>——用 Evaluation 把质量、延迟、成本放到同一张表上，让业务方做知情决策，而不是让算法团队单独追求最高 Accuracy。</p>
+</section>
+
+<!-- ================= S20 ================= -->
+<section id="s20">
+  <div class="sec-head"><span class="sec-num">§ 20</span><h2>企业 RAG Evaluation Dashboard</h2></div>
+
+  <p>所有指标最终沉淀为一个持续更新的 Dashboard。设计原则只有一条：<em class="hl">Dashboard 不应该只展示「一个总分」。</em>它应该让人在 30 秒内看出「哪一层、哪类 Query、哪个指标在退化」：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption>Table 5 · Evaluation Dashboard 指标布局</caption>
+      <tr><th style="width:110px">区块</th><th>指标</th><th>用途</th></tr>
+      <tr><td class="pill" style="color:var(--accent-deep)">Retrieval</td><td>Recall@5 · Recall@10 · MRR · NDCG</td><td>检索层健康度，按 Query 分类下钻</td></tr>
+      <tr><td class="pill" style="color:var(--green)">Generation</td><td>Faithfulness · Groundedness · Answer Relevance · Citation Accuracy</td><td>生成层质量，与 Context 版本关联分析</td></tr>
+      <tr><td class="pill" style="color:var(--amber)">System</td><td>P50 · P95 · TTFT · QPS · Error Rate</td><td>服务稳定性，与发布时间轴对齐</td></tr>
+      <tr><td class="pill" style="color:var(--red)">Cost</td><td>Input Tokens · Output Tokens · Cost/Request · Cost/Successful Answer</td><td>经济性；Cost/Successful Answer 揭示「无效成本占比」</td></tr>
+    </table>
+  </div>
+
+  <div class="callout insight">
+    <div class="co-title">一个容易被忽略的指标</div>
+    <code>Cost / Successful Answer</code> 比单独的 <code>Cost/Request</code> 更有业务含义：如果 30% 的请求最终被点踩或转人工，那么「成功回答」的真实成本被放大了。质量差本身就是一种成本。
+  </div>
+</section>
+
+<!-- ================= S21 ================= -->
+<section id="s21">
+  <div class="sec-head"><span class="sec-num">§ 21</span><h2>完整企业 RAG Evaluation Architecture</h2></div>
+
+  <p>把前面所有部分组装成完整的评估平台架构：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 700" role="img" aria-label="企业 RAG Evaluation 完整架构">
+      <g font-size="13.5" text-anchor="middle">
+        <rect x="290" y="16" width="280" height="48" rx="10" fill="#1c2530"/>
+        <text x="430" y="45" fill="#fff" font-weight="bold" font-size="15">Evaluation Platform</text>
+
+        <line x1="430" y1="64" x2="430" y2="88" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="140" y1="88" x2="720" y2="88" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="140" y1="88" x2="140" y2="110" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="430" y1="88" x2="430" y2="110" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="720" y1="88" x2="720" y2="110" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <rect x="40" y="112" width="200" height="46" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.2"/>
+        <text x="140" y="140" fill="#0f3bbd" font-weight="bold">Offline Dataset</text>
+        <rect x="330" y="112" width="200" height="46" rx="8" fill="#fff7ea" stroke="#d97706" stroke-width="1.2"/>
+        <text x="430" y="140" fill="#b45309" font-weight="bold">Online Traffic</text>
+        <rect x="620" y="112" width="200" height="46" rx="8" fill="#f3f0ea" stroke="#8a94a6" stroke-width="1.2"/>
+        <text x="720" y="140" fill="#4a5568" font-weight="bold">Human Review</text>
+
+        <line x1="140" y1="158" x2="140" y2="180" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="430" y1="158" x2="430" y2="180" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="720" y1="158" x2="720" y2="180" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <rect x="40" y="182" width="200" height="46" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="140" y="210" fill="#1c2530">RAG Pipeline (vN)</text>
+        <rect x="330" y="182" width="200" height="46" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="430" y="210" fill="#1c2530">Production RAG</text>
+        <rect x="620" y="182" width="200" height="46" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="720" y="210" fill="#1c2530">Expert Judge</text>
+
+        <line x1="140" y1="228" x2="140" y2="256" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="430" y1="228" x2="430" y2="256" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="720" y1="228" x2="720" y2="256" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="140" y1="256" x2="720" y2="256" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="430" y1="256" x2="430" y2="282" stroke="#4a5568" stroke-width="1.8" marker-end="url(#arr2)"/>
+
+        <rect x="290" y="284" width="280" height="48" rx="10" fill="#0f3bbd"/>
+        <text x="430" y="313" fill="#fff" font-weight="bold" font-size="15">Evaluation Engine</text>
+
+        <line x1="430" y1="332" x2="430" y2="356" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="140" y1="356" x2="720" y2="356" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="140" y1="356" x2="140" y2="378" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="430" y1="356" x2="430" y2="378" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <line x1="720" y1="356" x2="720" y2="378" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+        <rect x="30" y="380" width="220" height="64" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1"/>
+        <text x="140" y="406" fill="#0f3bbd" font-weight="bold">Retrieval Metrics</text>
+        <text x="140" y="428" font-size="11" fill="#5b7bc7" font-family="monospace">Recall@K · MRR · NDCG</text>
+        <rect x="320" y="380" width="220" height="64" rx="8" fill="#e8f6ee" stroke="#0d8a4f" stroke-width="1"/>
+        <text x="430" y="406" fill="#0a6b3d" font-weight="bold">Generation Metrics</text>
+        <text x="430" y="428" font-size="11" fill="#4d9c74" font-family="monospace">Faith · Ground · Relevance</text>
+        <rect x="610" y="380" width="220" height="64" rx="8" fill="#fff7ea" stroke="#d97706" stroke-width="1"/>
+        <text x="720" y="406" fill="#b45309" font-weight="bold">System Metrics</text>
+        <text x="720" y="428" font-size="11" fill="#c08a3e" font-family="monospace">Latency · Cost · Error Rate</text>
+
+        <line x1="140" y1="444" x2="140" y2="468" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="430" y1="444" x2="430" y2="468" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="720" y1="444" x2="720" y2="468" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="140" y1="468" x2="720" y2="468" stroke="#8a94a6" stroke-width="1.5"/>
+        <line x1="430" y1="468" x2="430" y2="492" stroke="#4a5568" stroke-width="1.8" marker-end="url(#arr2)"/>
+
+        <rect x="310" y="494" width="240" height="44" rx="8" fill="#fdf0ea" stroke="#c2410c" stroke-width="1.2"/>
+        <text x="430" y="521" fill="#c2410c" font-weight="bold">Error Taxonomy</text>
+        <line x1="430" y1="538" x2="430" y2="558" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="310" y="560" width="240" height="44" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="430" y="587" fill="#1c2530">Regression Dataset</text>
+        <line x1="430" y1="604" x2="430" y2="624" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="330" y="626" width="200" height="44" rx="8" fill="#0d8a4f"/>
+        <text x="430" y="653" fill="#fff" font-weight="bold">Optimization</text>
+      </g>
+      <text x="430" y="692" font-size="12" fill="#8a94a6" text-anchor="middle" font-family="monospace">Optimization → next version → back to top (continuous loop)</text>
+    </svg>
+    <figcaption><b>图 11</b> — 企业 RAG Evaluation Platform 完整架构：三路输入 → 统一评估引擎 → 三类指标 → 错误归因 → 回归集 → 优化</figcaption>
+  </figure>
+
+  <h3>一个可运行的 Evaluation 代码骨架</h3>
+
+  <pre><code><span class="kw">import</span> math
+<span class="kw">from</span> collections <span class="kw">import</span> Counter
+
+<span class="kw">def</span> <span class="fn">recall_at_k</span>(retrieved: list, relevant: set, k: int) -&gt; float:
+    <span class="cm">"""Recall@K = 命中的相关文档数 / 相关文档总数"""</span>
+    topk = retrieved[:k]
+    hits = sum(1 <span class="kw">for</span> d <span class="kw">in</span> topk <span class="kw">if</span> d <span class="kw">in</span> relevant)
+    <span class="kw">return</span> hits / len(relevant) <span class="kw">if</span> relevant <span class="kw">else</span> 0.0
+
+<span class="kw">def</span> <span class="fn">precision_at_k</span>(retrieved: list, relevant: set, k: int) -&gt; float:
+    <span class="cm">"""Precision@K = 命中的相关文档数 / K"""</span>
+    topk = retrieved[:k]
+    hits = sum(1 <span class="kw">for</span> d <span class="kw">in</span> topk <span class="kw">if</span> d <span class="kw">in</span> relevant)
+    <span class="kw">return</span> hits / k
+
+<span class="kw">def</span> <span class="fn">rr</span>(retrieved: list, relevant: set) -&gt; float:
+    <span class="cm">"""单条 Query 的 Reciprocal Rank"""</span>
+    <span class="kw">for</span> i, d <span class="kw">in</span> enumerate(retrieved, start=1):
+        <span class="kw">if</span> d <span class="kw">in</span> relevant:
+            <span class="kw">return</span> 1.0 / i
+    <span class="kw">return</span> 0.0
+
+<span class="kw">def</span> <span class="fn">ndcg_at_k</span>(retrieved: list, grades: dict, k: int) -&gt; float:
+    <span class="cm">"""grades: {doc_id: relevance_grade}，支持多级相关性"""</span>
+    <span class="kw">def</span> <span class="fn">dcg</span>(docs):
+        <span class="kw">return</span> sum((2**grades.get(d, 0) - 1) / math.log2(i + 2)
+                   <span class="kw">for</span> i, d <span class="kw">in</span> enumerate(docs[:k]))
+    ideal = sorted(grades.items(), key=<span class="kw">lambda</span> x: -x[1])
+    idcg = dcg([d <span class="kw">for</span> d, _ <span class="kw">in</span> ideal])
+    <span class="kw">return</span> dcg(retrieved) / idcg <span class="kw">if</span> idcg &gt; 0 <span class="kw">else</span> 0.0
+
+<span class="kw">def</span> <span class="fn">bootstrap_ci</span>(scores: list, n: int = 1000, ci: float = 0.95):
+    <span class="cm">"""Bootstrap 置信区间：不要用裸均值做版本决策"""</span>
+    <span class="kw">import</span> random, statistics
+    means = []
+    <span class="kw">for</span> _ <span class="kw">in</span> range(n):
+        sample = [random.choice(scores) <span class="kw">for</span> _ <span class="kw">in</span> range(len(scores))]
+        means.append(statistics.mean(sample))
+    means.sort()
+    lo = means[int((1 - ci) / 2 * n)]
+    hi = means[int((1 + ci) / 2 * n)]
+    <span class="kw">return</span> lo, hi
+
+<span class="cm"># ── 单条样本评估示例 ──</span>
+sample = {
+    <span class="st">"query"</span>: <span class="st">"RTC SDK 4.6.2 Android RTC-10027 怎么处理？"</span>,
+    <span class="st">"relevant"</span>: {<span class="st">"doc_102"</span>, <span class="st">"doc_231"</span>},
+    <span class="st">"grades"</span>: {<span class="st">"doc_102"</span>: 3, <span class="st">"doc_231"</span>: 2, <span class="st">"doc_077"</span>: 1},
+    <span class="st">"retrieved"</span>: [<span class="st">"doc_102"</span>, <span class="st">"doc_310"</span>, <span class="st">"doc_077"</span>,
+                  <span class="st">"doc_512"</span>, <span class="st">"doc_231"</span>],
+}
+print(recall_at_k(sample[<span class="st">"retrieved"</span>], sample[<span class="st">"relevant"</span>], 5))   <span class="cm"># 1.0</span>
+print(precision_at_k(sample[<span class="st">"retrieved"</span>], sample[<span class="st">"relevant"</span>], 5)) <span class="cm"># 0.4</span>
+print(rr(sample[<span class="st">"retrieved"</span>], sample[<span class="st">"relevant"</span>]))                <span class="cm"># 1.0</span>
+print(ndcg_at_k(sample[<span class="st">"retrieved"</span>], sample[<span class="st">"grades"</span>], 5))</code></pre>
+
+  <p>这个骨架刻意保持了「零依赖」——Recall / Precision / MRR / NDCG 都是十几行就能正确实现的指标。评测框架（Ragas、TruLens、自研平台等）可以在此基础上引入，但<strong>框架不能替代你对指标定义和 Dataset 质量的理解</strong>。</p>
+</section>
+
+<!-- ================= S22 ================= -->
+<section id="s22">
+  <div class="sec-head"><span class="sec-num">§ 22</span><h2>最小可行版本与常见错误</h2></div>
+
+  <h3>不要让 Evaluation 本身变得过于复杂</h3>
+
+  <p>很多团队听说要建 Evaluation Platform 之后直接放弃——因为听起来要标几十万条数据、搭一套平台。实际上，企业 RAG Evaluation 的 MVP 可以非常小：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 120" role="img" aria-label="Evaluation MVP">
+      <g font-size="13.5" text-anchor="middle">
+        <rect x="30" y="34" width="200" height="54" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.2"/>
+        <text x="130" y="56" fill="#0f3bbd" font-weight="bold">50~200 高质量 Query</text>
+        <text x="130" y="76" font-size="11" fill="#5b7bc7" font-family="monospace">+ Ground Truth</text>
+        <line x1="230" y1="61" x2="262" y2="61" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="268" y="34" width="180" height="54" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="358" y="56" fill="#1c2530" font-weight="bold">核心指标</text>
+        <text x="358" y="76" font-size="11" fill="#8a94a6" font-family="monospace">Recall@K · Faithfulness</text>
+        <line x1="448" y1="61" x2="480" y2="61" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="486" y="34" width="160" height="54" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="566" y="56" fill="#1c2530" font-weight="bold">Latency</text>
+        <text x="566" y="76" font-size="11" fill="#8a94a6" font-family="monospace">P50 / P95</text>
+        <line x1="646" y1="61" x2="678" y2="61" stroke="#8a94a6" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="684" y="34" width="150" height="54" rx="8" fill="#0d8a4f"/>
+        <text x="759" y="56" fill="#fff" font-weight="bold">Regression</text>
+        <text x="759" y="76" font-size="11" fill="#c9ecd9" font-family="monospace">每次改动必跑</text>
+      </g>
+    </svg>
+    <figcaption><b>图 12</b> — Evaluation MVP：小而准，胜过大而虚</figcaption>
+  </figure>
+
+  <p>然后渐进式演进：</p>
+
+  <pre><code>MVP
+ ↓
+Offline Evaluation（指标体系完整化、分类别报表）
+ ↓
+Regression（发布门禁自动化）
+ ↓
+Online Monitoring（线上指标 + 告警）
+ ↓
+Human Feedback（定期专家评审 + bad case 沉淀）
+ ↓
+Evaluation Platform（三路输入的完整平台）</code></pre>
+
+  <div class="pull">Evaluation 也应该渐进式建设。先让它跑起来，再让它变准，最后让它变全。</div>
+
+  <h3>十个最常见的错误</h3>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption>Table 6 · 企业 RAG Evaluation 常见错误清单</caption>
+      <tr><th style="width:56px">#</th><th style="width:210px">错误</th><th>后果与纠正</th></tr>
+      <tr><td>1</td><td>只看最终 Answer</td><td>无法定位问题层；必须分层评估 Retrieval / Context / Generation</td></tr>
+      <tr><td>2</td><td>只有人工评测，没有自动指标</td><td>无法回归、无法规模化；每次改动的验证成本高到放弃验证</td></tr>
+      <tr><td>3</td><td>只有 LLM Judge，没有人工校验</td><td>Judge 的系统性偏差无人发现；需定期人工抽样校准 Judge</td></tr>
+      <tr><td>4</td><td>Dataset 太小</td><td>20 条 Query 的 1 条波动就是 5pt，任何结论都在噪声范围内</td></tr>
+      <tr><td>5</td><td>Dataset 过于简单</td><td>评测分数虚高，线上长尾场景遍布盲区；须覆盖 §06 的全部类型</td></tr>
+      <tr><td>6</td><td>只关注平均分，不分析 Error Cases</td><td>平均分掩盖灾难性回归；分类别报表 + Error Taxonomy 是必须品</td></tr>
+      <tr><td>7</td><td>改了 Chunking，却没有跑 Regression</td><td>Chunking 是全量重建级变更；不跑回归等于盲飞</td></tr>
+      <tr><td>8</td><td>Offline 很好，线上没有监控</td><td>线下分布 ≠ 线上分布；线上指标漂移需要告警而非事后发现</td></tr>
+      <tr><td>9</td><td>指标很多，但没有对应业务目标</td><td>指标堆砌导致「优化指标但不优化业务」；每个指标要有 owner 和业务含义</td></tr>
+      <tr><td>10</td><td>为了提高指标而过度优化 Test Set</td><td>Test Set Overfitting：评测集变成训练集，分数上涨、线上效果不变；评测集要定期从线上流量换血</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ================= S23 ================= -->
+<section id="s23">
+  <div class="sec-head"><span class="sec-num">§ 23</span><h2>最终建立 Evaluation 闭环</h2></div>
+
+  <p>把整篇收束成一张最终的闭环图——这也是企业 RAG Evaluation 体系的完整生命周期：</p>
+
+  <figure>
+    <svg viewBox="0 0 860 700" role="img" aria-label="Evaluation 最终闭环">
+      <g font-size="14" text-anchor="middle">
+        <rect x="310" y="14" width="240" height="46" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="430" y="42" fill="#0f3bbd" font-weight="bold">Evaluation Dataset</text>
+        <line x1="430" y1="60" x2="430" y2="80" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="310" y="82" width="240" height="46" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="430" y="110" fill="#0f3bbd" font-weight="bold">Offline Evaluation</text>
+        <line x1="430" y1="128" x2="430" y2="148" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="310" y="150" width="240" height="46" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="430" y="178" fill="#1c2530">Regression</text>
+        <line x1="430" y1="196" x2="430" y2="216" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="310" y="218" width="240" height="46" rx="8" fill="#1c2530"/>
+        <text x="430" y="246" fill="#fff" font-weight="bold">Production</text>
+        <line x1="430" y1="264" x2="430" y2="284" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="310" y="286" width="240" height="46" rx="8" fill="#fff7ea" stroke="#d97706" stroke-width="1.3"/>
+        <text x="430" y="314" fill="#b45309" font-weight="bold">Online Monitoring</text>
+        <line x1="430" y1="332" x2="430" y2="352" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="310" y="354" width="240" height="46" rx="8" fill="#fff7ea" stroke="#d97706" stroke-width="1.3"/>
+        <text x="430" y="382" fill="#b45309" font-weight="bold">User Feedback</text>
+        <line x1="430" y1="400" x2="430" y2="420" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="310" y="422" width="240" height="46" rx="8" fill="#fff" stroke="#e5e2da"/>
+        <text x="430" y="450" fill="#1c2530">Error Mining</text>
+        <line x1="430" y1="468" x2="430" y2="488" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="310" y="490" width="240" height="46" rx="8" fill="#fdf0ea" stroke="#c2410c" stroke-width="1.3"/>
+        <text x="430" y="518" fill="#c2410c" font-weight="bold">Dataset Expansion</text>
+        <line x1="430" y1="536" x2="430" y2="556" stroke="#4a5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+        <rect x="310" y="558" width="240" height="46" rx="8" fill="#eef4ff" stroke="#1e5eff" stroke-width="1.3"/>
+        <text x="430" y="586" fill="#0f3bbd" font-weight="bold">RAG Optimization</text>
+        <!-- loop back -->
+        <line x1="550" y1="581" x2="780" y2="581" stroke="#0d8a4f" stroke-width="2" stroke-dasharray="7 5"/>
+        <line x1="780" y1="581" x2="780" y2="37" stroke="#0d8a4f" stroke-width="2" stroke-dasharray="7 5"/>
+        <line x1="780" y1="37" x2="558" y2="37" stroke="#0d8a4f" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arr2)"/>
+        <text x="795" y="315" font-size="12" fill="#0d8a4f" font-family="monospace" transform="rotate(90 795 315)">continuous loop</text>
+      </g>
+    </svg>
+    <figcaption><b>图 13</b> — Evaluation 闭环：从 Dataset 到 Optimization 再回到 Dataset，周而复始</figcaption>
+  </figure>
+
+  <div class="pull">Evaluation 不是上线前的一次测试，而是 RAG 系统持续进化的反馈回路。</div>
+
+  <p>回顾本系列的轨迹：我们建立了数据管线、检索管线、排序管线、Context 工程、权限与性能体系——而这一篇补上了让这一切<strong>可以被证明、被回归、被持续改进</strong>的底盘。从下一篇开始，我们换一个视角：不再讲「应该怎么做对」，而是讲「真实生产中为什么会错」。</p>
+
+  <!-- next episode -->
+  <div class="next-ep">
+    <div class="nk">Next · 系列第十四篇（收官核心篇）</div>
+    <h3>为什么你的 RAG 上线之后效果变差了？——企业 RAG 典型失败案例</h3>
+    <p>我们已经知道如何设计数据、检索、排序、构建 Context，也建立了完整的 Evaluation 体系。但真实生产环境为什么还是会不断出问题？知识库更新后答案突然过时、某个部门的文档永远检索不到、版本升级后全线 Recall 下跌——下一篇将从失败案例出发，沿 Data → Retrieval → Reranker → Context → Generation → Security → Performance 的链路，逐一拆解所有可能失败的地方。</p>
+  </div>
+
+  <div class="footer">
+    <span>Enterprise RAG Series · Part 13 — Evaluation</span>
+    <span>上一篇：Performance / Cost &nbsp;·&nbsp; 下一篇：Failure Cases</span>
+  </div>
+</section>
+
+</div><!-- /page -->
+</body>
+</html>

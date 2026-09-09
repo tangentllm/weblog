@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>从 Naive RAG 到 Enterprise RAG：一套真正可以落地的生产架构</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700;900&family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --bg-color: #f8f9fa;
+            --paper-color: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #4b5563;
+            --accent-color: #2563eb;
+            --accent-light: #eff6ff;
+            --border-color: #e5e7eb;
+            --code-bg: #1e1e1e;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --font-serif: 'Noto Serif SC', serif;
+            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4 {
+            font-family: var(--font-serif);
+            color: #111827;
+            line-height: 1.3;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 3rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            position: relative;
+        }
+        
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 80px;
+            height: 2px;
+            background-color: var(--accent-color);
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #374151;
+        }
+
+        h4 {
+            font-size: 1.1rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-color);
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+            font-size: 1.05rem;
+        }
+
+        a {
+            color: var(--accent-color);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--accent-color);
+        }
+
+        a:hover {
+            border-bottom-style: solid;
+        }
+
+        /* Layout */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+        }
+
+        header {
+            margin-bottom: 4rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .meta {
+            font-family: var(--font-sans);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .author-badge {
+            background-color: var(--accent-light);
+            color: var(--accent-color);
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        /* Components */
+        .card {
+            background: var(--paper-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card.warning {
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .card.info {
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .card-title {
+            font-family: var(--font-sans);
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        blockquote {
+            font-family: var(--font-serif);
+            font-size: 1.25rem;
+            font-style: italic;
+            color: #4b5563;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 1.5rem;
+            margin: 2rem 0;
+            background: var(--accent-light);
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            padding-right: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            font-size: 0.95rem;
+            background: var(--paper-color);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #f3f4f6;
+            font-weight: 700;
+            font-family: var(--font-sans);
+            color: #111827;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background-color: var(--code-bg);
+            color: #d4d4d4;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border: 1px solid #333;
+            white-space: pre;
+            line-height: 1.5;
+        }
+
+        .code-block .comment { color: #6a9955; }
+        .code-block .keyword { color: #569cd6; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .string { color: #ce9178; }
+        .code-block .class { color: #4ec9b0; }
+
+        /* SVG Diagrams */
+        .diagram-container {
+            background-color: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            text-align: center;
+            overflow-x: auto;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.01);
+        }
+
+        svg {
+            max-width: 100%;
+            height: auto;
+            font-family: var(--font-sans);
+        }
+
+        /* Grid Layout for Stats/Lists */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            h1 { font-size: 2rem; }
+        }
+
+        .stat-item {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Tag styling */
+        .tag {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            background: #e5e7eb;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 0.3rem;
+            margin-bottom: 0.3rem;
+            font-weight: 600;
+        }
+
+        /* Fix for arrows */
+        .arrow {
+            display: inline-block;
+            margin: 0 0.5rem;
+            font-weight: bold;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="meta">
+                <span class="author-badge">Enterprise RAG Series #15</span>
+                <span>By 清言</span>
+                <span>2026-06-18</span>
+            </div>
+            <h1>从 Naive RAG 到 Enterprise RAG：<br>一套真正可以落地的生产架构</h1>
+            <p style="font-size: 1.2rem; color: var(--text-secondary); margin-top: 1rem;">
+                把整个系列的技术能力统一成一套完整、可实施、可演进的 Enterprise RAG Architecture。
+            </p>
+        </header>
+
+        <main>
+            <!-- 一、开篇 -->
+            <section>
+                <h2>一、开篇：真正困难的不是把 RAG 跑起来</h2>
+                <p>从一个典型场景开始：一个团队在周末完成了 <code>PDF -> Chunk -> Embedding -> Vector DB -> LLM</code> 的闭环。系统在 Demo 环境中可以正常回答问题。于是团队认为：“我们的 RAG 已经完成了。”</p>
+                <p>然而，几个月后，生产环境开始出现各种魔幻现实主义问题：搜不到、排错、旧版本内容残留、权限泄露、Latency 高昂、成本失控、无法评估效果、线上问题无法定位。</p>
+                <p>这引出了核心问题：<strong>为什么“能运行的 RAG”和“能生产运行的 RAG”完全是两回事？</strong></p>
+                <p>因为前者是一个验证原型的 Toy Project，而后者是一套复杂的分布式信息处理系统。</p>
+            </section>
+
+            <!-- 二、重新定义 Enterprise RAG -->
+            <section>
+                <h2>二、先重新定义 Enterprise RAG</h2>
+                <p>不要重新解释 RAG 基础概念。让我们直接达成共识：</p>
+                <div class="card info">
+                    <div class="grid-2">
+                        <div>
+                            <strong>Naive RAG</strong>
+                            <p style="margin-top:0.5rem">= Retrieve + Generate</p>
+                        </div>
+                        <div>
+                            <strong>Enterprise RAG</strong>
+                            <p style="margin-top:0.5rem">= Data + Retrieval + Ranking + Context + Generation + Security + Evaluation + Observability + Infrastructure</p>
+                        </div>
+                    </div>
+                </div>
+                <blockquote>
+                    Enterprise RAG 本质上不是一个模型组件，而是一套企业知识处理与智能信息访问系统。
+                </blockquote>
+            </section>
+
+            <!-- 三、最终生产架构 -->
+            <section>
+                <h2>三、最终生产架构</h2>
+                <p>这是本文的核心。下图涵盖了一个 Enterprise RAG 系统的所有关键组件，包括 Online 服务链路和 Offline 数据处理链路。</p>
+                
+                <div class="diagram-container">
+                    <svg viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+                            </marker>
+                            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.1"/>
+                            </filter>
+                        </defs>
+
+                        <!-- Offline Pipeline (Top) -->
+                        <rect x="50" y="30" width="900" height="150" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="5,5"/>
+                        <text x="70" y="60" font-weight="bold" fill="#64748b">Offline Pipeline (Knowledge Production)</text>
+
+                        <g transform="translate(100, 80)">
+                            <rect x="0" y="0" width="100" height="60" fill="#fff" stroke="#333" rx="5" filter="url(#shadow)"/>
+                            <text x="50" y="30" text-anchor="middle">Data Source</text>
+                            <line x1="100" y1="30" x2="140" y2="30" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+                        <g transform="translate(250, 80)">
+                            <rect x="0" y="0" width="100" height="60" fill="#fff" stroke="#333" rx="5" filter="url(#shadow)"/>
+                            <text x="50" y="30" text-anchor="middle">Parsing & Clean</text>
+                            <line x1="100" y1="30" x2="140" y2="30" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+                        <g transform="translate(400, 80)">
+                            <rect x="0" y="0" width="100" height="60" fill="#fff" stroke="#333" rx="5" filter="url(#shadow)"/>
+                            <text x="50" y="30" text-anchor="middle">Chunking</text>
+                            <line x1="100" y1="30" x2="140" y2="30" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+                        <g transform="translate(550, 80)">
+                            <rect x="0" y="0" width="100" height="60" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" rx="5" filter="url(#shadow)"/>
+                            <text x="50" y="30" text-anchor="middle" fill="#1e40af">Embedding</text>
+                            <line x1="100" y1="30" x2="140" y2="30" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+                        <g transform="translate(700, 80)">
+                            <rect x="0" y="0" width="150" height="60" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" rx="5" filter="url(#shadow)"/>
+                            <text x="75" y="30" text-anchor="middle" fill="#1e40af">Vector / Keyword Index</text>
+                        </g>
+
+                        <!-- Online Pipeline (Bottom) -->
+                        <text x="70" y="240" font-weight="bold" fill="#64748b">Online Pipeline (Query Serving)</text>
+                        
+                        <!-- Layers -->
+                        <g transform="translate(100, 260)">
+                            <rect x="0" y="0" width="150" height="40" fill="#e0f2fe" stroke="#0284c7" rx="20"/>
+                            <text x="75" y="25" text-anchor="middle" font-size="14" fill="#0369a1">API Gateway & Auth</text>
+                            <line x1="75" y1="40" x2="75" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+
+                        <g transform="translate(100, 320)">
+                            <rect x="0" y="0" width="150" height="40" fill="#fff" stroke="#333" rx="5"/>
+                            <text x="75" y="25" text-anchor="middle">Query Understanding</text>
+                            <line x1="75" y1="40" x2="75" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+
+                        <g transform="translate(100, 380)">
+                            <rect x="0" y="0" width="150" height="40" fill="#fff" stroke="#333" rx="5"/>
+                            <text x="75" y="25" text-anchor="middle">Query Router / Rewrite</text>
+                            <line x1="75" y1="40" x2="75" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+
+                        <!-- Retrieval Core -->
+                        <rect x="50" y="440" width="800" height="100" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="1"/>
+                        <text x="70" y="465" font-size="12" fill="#15803d" font-weight="bold">Retrieval Layer</text>
+                        
+                        <g transform="translate(100, 480)">
+                            <!-- Dense -->
+                            <rect x="0" y="0" width="100" height="40" fill="#fff" stroke="#333" rx="5"/>
+                            <text x="50" y="25" text-anchor="middle">Dense (Vec)</text>
+                            
+                            <!-- BM25 -->
+                            <rect x="150" y="0" width="100" height="40" fill="#fff" stroke="#333" rx="5"/>
+                            <text x="200" y="25" text-anchor="middle">BM25</text>
+
+                            <!-- Filter -->
+                            <rect x="300" y="0" width="100" height="40" fill="#fff" stroke="#333" rx="5"/>
+                            <text x="350" y="25" text-anchor="middle">Metadata</text>
+
+                            <!-- RRF -->
+                            <path d="M50 40 L50 55 L50 65 L200 65 L200 55" stroke="#333" fill="none"/>
+                            <path d="M200 40 L200 55" stroke="#333" fill="none"/>
+                            <rect x="450" y="20" width="80" height="40" fill="#fef9c3" stroke="#eab308" rx="5"/>
+                            <text x="490" y="45" text-anchor="middle" font-size="12">RRF Fusion</text>
+                            
+                            <line x1="530" y1="40" x2="580" y2="40" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                            
+                            <!-- Reranker -->
+                            <rect x="580" y="10" width="100" height="60" fill="#fae8ff" stroke="#d946ef" stroke-width="2" rx="5"/>
+                            <text x="630" y="45" text-anchor="middle" fill="#a21caf">Reranker</text>
+                        </g>
+
+                        <line x1="175" y1="420" x2="175" y2="440" stroke="#333" stroke-width="2"/>
+                        <line x1="175" y1="440" x2="150" y2="460" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/> <!-- To Dense -->
+                        <line x1="175" y1="440" x2="300" y2="460" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/> <!-- To BM25 -->
+                        <line x1="175" y1="440" x2="350" y2="460" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/> <!-- To Filter -->
+
+                        <!-- Reranker Output -->
+                        <line x1="680" y1="480" x2="710" y2="480" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+                        <!-- Generation -->
+                        <g transform="translate(100, 570)">
+                            <rect x="0" y="0" width="150" height="40" fill="#fff" stroke="#333" rx="5"/>
+                            <text x="75" y="25" text-anchor="middle">Context Builder</text>
+                            <line x1="75" y1="40" x2="75" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+                        
+                        <!-- Link Reranker to Context -->
+                        <path d="M710 480 L850 480 L850 590 L260 590" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+                        <g transform="translate(100, 630)">
+                            <rect x="0" y="0" width="150" height="40" fill="#ffe4e6" stroke="#e11d48" stroke-width="2" rx="5"/>
+                            <text x="75" y="25" text-anchor="middle" fill="#9f1239">LLM Gateway</text>
+                            <line x1="75" y1="40" x2="75" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+
+                        <g transform="translate(100, 690)">
+                            <rect x="0" y="0" width="150" height="40" fill="#fff" stroke="#333" rx="5"/>
+                            <text x="75" y="25" text-anchor="middle">Answer & Citation</text>
+                        </g>
+
+                        <!-- Right Side: Support Systems -->
+                        <g transform="translate(750, 260)">
+                            <rect x="0" y="0" width="120" height="80" fill="#f1f5f9" stroke="#64748b" rx="5"/>
+                            <text x="60" y="30" text-anchor="middle" font-weight="bold">Support</text>
+                            <text x="60" y="50" text-anchor="middle" font-size="12">Redis Cache</text>
+                            <text x="60" y="65" text-anchor="middle" font-size="12">Config Center</text>
+                        </g>
+
+                        <g transform="translate(750, 360)">
+                            <rect x="0" y="0" width="120" height="80" fill="#f1f5f9" stroke="#64748b" rx="5"/>
+                            <text x="60" y="30" text-anchor="middle" font-weight="bold">Platform</text>
+                            <text x="60" y="50" text-anchor="middle" font-size="12">Observability</text>
+                            <text x="60" y="65" text-anchor="middle" font-size="12">Evaluation</text>
+                        </g>
+
+                         <g transform="translate(750, 460)">
+                            <rect x="0" y="0" width="120" height="80" fill="#f1f5f9" stroke="#64748b" rx="5"/>
+                            <text x="60" y="30" text-anchor="middle" font-weight="bold">Security</text>
+                            <text x="60" y="50" text-anchor="middle" font-size="12">RBAC/ABAC</text>
+                            <text x="60" y="65" text-anchor="middle" font-size="12">Audit Log</text>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="card">
+                    <span class="card-title">Supporting Infrastructure</span>
+                    <div>
+                        <span class="tag">Object Storage</span>
+                        <span class="tag">Metadata DB</span>
+                        <span class="tag">Vector DB</span>
+                        <span class="tag">Search Engine</span>
+                        <span class="tag">Model Gateway</span>
+                        <span class="tag">Evaluation Platform</span>
+                        <span class="tag">Observability</span>
+                        <span class="tag">Permission Service</span>
+                        <span class="tag">Audit</span>
+                        <span class="tag">Data Governance</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 四、核心层 -->
+            <section>
+                <h2>四、把 Enterprise RAG 拆成 7 个核心层</h2>
+                <div class="grid-2">
+                    <div class="stat-item">
+                        <span class="stat-label">1. Data Layer</span>
+                        <span class="stat-value">企业数据源（Confluence, PDF, DB）</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">2. Knowledge Processing</span>
+                        <span class="stat-value">解析、清洗、切片、向量化</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">3. Retrieval</span>
+                        <span class="stat-value">混合检索、重排序、过滤</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">4. Ranking / Context</span>
+                        <span class="stat-value">上下文构建、压缩、排序</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">5. Generation</span>
+                        <span class="stat-value">LLM 推理、引用生成</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">6. Security</span>
+                        <span class="stat-value">多租户、鉴权、审计</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">7. Platform</span>
+                        <span class="stat-value">评估、监控、治理</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 五、Offline/Online Pipeline -->
+            <section>
+                <h2>五、Offline Pipeline 与 Online Pipeline</h2>
+                <p>这是最终架构必须重点强调的概念。一个成熟的 Enterprise RAG，必须把“知识生产”和“问题回答”设计成两套不同的系统能力。</p>
+                
+                <div class="diagram-container">
+                    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb" />
+                            </marker>
+                        </defs>
+
+                        <!-- Offline Side -->
+                        <rect x="20" y="20" width="360" height="360" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2"/>
+                        <text x="200" y="50" text-anchor="middle" font-weight="bold" font-size="16" fill="#1e40af">Offline Pipeline (Async)</text>
+
+                        <g transform="translate(60, 80)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#fff" stroke="#93c5fd"/>
+                            <text x="140" y="25" text-anchor="middle">Raw Data (Object Storage)</text>
+                            <line x1="140" y1="40" x2="140" y2="60" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowhead2)"/>
+                        </g>
+                        <g transform="translate(60, 140)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#fff" stroke="#93c5fd"/>
+                            <text x="140" y="25" text-anchor="middle">Parsing / OCR / Clean</text>
+                            <line x1="140" y1="40" x2="140" y2="60" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowhead2)"/>
+                        </g>
+                        <g transform="translate(60, 200)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#fff" stroke="#93c5fd"/>
+                            <text x="140" y="25" text-anchor="middle">Chunking / Structure</text>
+                            <line x1="140" y1="40" x2="140" y2="60" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowhead2)"/>
+                        </g>
+                        <g transform="translate(60, 260)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+                            <text x="140" y="25" text-anchor="middle" font-weight="bold">Embedding Model</text>
+                            <line x1="140" y1="40" x2="140" y2="60" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowhead2)"/>
+                        </g>
+                        <g transform="translate(60, 320)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+                            <text x="140" y="25" text-anchor="middle" font-weight="bold">Vector DB / Search Index</text>
+                        </g>
+
+                        <!-- Online Side -->
+                        <rect x="420" y="20" width="360" height="360" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2"/>
+                        <text x="600" y="50" text-anchor="middle" font-weight="bold" font-size="16" fill="#166534">Online Pipeline (Sync)</text>
+
+                        <g transform="translate(460, 80)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#fff" stroke="#86efac"/>
+                            <text x="140" y="25" text-anchor="middle">User Query</text>
+                            <line x1="140" y1="40" x2="140" y2="60" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead2)"/>
+                        </g>
+                        <g transform="translate(460, 140)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#fff" stroke="#86efac"/>
+                            <text x="140" y="25" text-anchor="middle">Query Understanding</text>
+                            <line x1="140" y1="40" x2="140" y2="60" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead2)"/>
+                        </g>
+                        <g transform="translate(460, 200)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#fff" stroke="#86efac"/>
+                            <text x="140" y="25" text-anchor="middle">Hybrid Retrieval + Rerank</text>
+                            <line x1="140" y1="40" x2="140" y2="60" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead2)"/>
+                        </g>
+                        <g transform="translate(460, 260)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                            <text x="140" y="25" text-anchor="middle" font-weight="bold">Context Builder</text>
+                            <line x1="140" y1="40" x2="140" y2="60" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowhead2)"/>
+                        </g>
+                        <g transform="translate(460, 320)">
+                            <rect x="0" y="0" width="280" height="40" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                            <text x="140" y="25" text-anchor="middle" font-weight="bold">LLM Generation</text>
+                        </g>
+                    </svg>
+                </div>
+                <div class="grid-2">
+                    <div class="stat-item">
+                        <span class="stat-label">Offline 特点</span>
+                        <span class="stat-value" style="font-size:0.9rem">高计算、异步、可重试、批处理、版本化</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Online 特点</span>
+                        <span class="stat-value" style="font-size:0.9rem">低延迟、高并发、强稳定性、超时控制、Fallback</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 六到十一、架构演进 -->
+            <section>
+                <h2>六、从 0 到 1 的架构演进</h2>
+                <p>全文的核心：不要一开始就追求完美的 Enterprise RAG，要分阶段演进。</p>
+                
+                <div class="diagram-container">
+                    <svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrowhead3" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#555" />
+                            </marker>
+                        </defs>
+                        
+                        <!-- Nodes -->
+                        <g transform="translate(20, 50)">
+                            <rect x="0" y="0" width="140" height="80" rx="5" fill="#fff" stroke="#333" stroke-width="2"/>
+                            <text x="70" y="30" text-anchor="middle" font-weight="bold">Phase 1</text>
+                            <text x="70" y="50" text-anchor="middle" font-size="14">Naive RAG</text>
+                            <text x="70" y="65" text-anchor="middle" font-size="10" fill="#666">MVP</text>
+                        </g>
+
+                        <line x1="160" y1="90" x2="200" y2="90" stroke="#555" stroke-width="2" marker-end="url(#arrowhead3)"/>
+
+                        <g transform="translate(200, 50)">
+                            <rect x="0" y="0" width="140" height="80" rx="5" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+                            <text x="70" y="30" text-anchor="middle" font-weight="bold" fill="#2563eb">Phase 2</text>
+                            <text x="70" y="50" text-anchor="middle" font-size="14">Production RAG</text>
+                            <text x="70" y="65" text-anchor="middle" font-size="10" fill="#666">Hybrid + Rerank</text>
+                        </g>
+
+                        <line x1="340" y1="90" x2="380" y2="90" stroke="#555" stroke-width="2" marker-end="url(#arrowhead3)"/>
+
+                        <g transform="translate(380, 50)">
+                            <rect x="0" y="0" width="140" height="80" rx="5" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+                            <text x="70" y="30" text-anchor="middle" font-weight="bold" fill="#1e3a8a">Phase 3</text>
+                            <text x="70" y="50" text-anchor="middle" font-size="14">Enterprise RAG</text>
+                            <text x="70" y="65" text-anchor="middle" font-size="10" fill="#666">Security + Scale</text>
+                        </g>
+
+                        <line x1="520" y1="90" x2="560" y2="90" stroke="#555" stroke-width="2" marker-end="url(#arrowhead3)"/>
+
+                        <g transform="translate(560, 50)">
+                            <rect x="0" y="0" width="140" height="80" rx="5" fill="#fff" stroke="#9333ea" stroke-width="2"/>
+                            <text x="70" y="30" text-anchor="middle" font-weight="bold" fill="#9333ea">Phase 4</text>
+                            <text x="70" y="50" text-anchor="middle" font-size="14">Adaptive RAG</text>
+                            <text x="70" y="65" text-anchor="middle" font-size="10" fill="#666">Router + Strategy</text>
+                        </g>
+
+                         <line x1="700" y1="90" x2="740" y2="90" stroke="#555" stroke-width="2" marker-end="url(#arrowhead3)"/>
+
+                        <g transform="translate(740, 50)">
+                            <rect x="0" y="0" width="140" height="80" rx="5" fill="#fff" stroke="#db2777" stroke-width="2"/>
+                            <text x="70" y="30" text-anchor="middle" font-weight="bold" fill="#db2777">Phase 5</text>
+                            <text x="70" y="50" text-anchor="middle" font-size="14">Agentic RAG</text>
+                            <text x="70" y="65" text-anchor="middle" font-size="10" fill="#666">Planning + Tool</text>
+                        </g>
+
+                        <!-- Bottom Description -->
+                        <text x="450" y="180" text-anchor="middle" fill="#666" font-style="italic">Architecture complexity grows with business needs</text>
+                    </svg>
+                </div>
+
+                <h3>Phase 1：Naive RAG</h3>
+                <p>目标：快速验证业务价值。包含：基础解析、Chunk、Embedding、Vector Search、LLM。不要过度工程化。</p>
+
+                <h3>Phase 2：Production RAG</h3>
+                <p>目标：解决效果稳定性和线上可用性。增加：Hybrid Retrieval、RRF、Reranker、Metadata、Cache、Monitoring、Evaluation。</p>
+
+                <h3>Phase 3：Enterprise RAG</h3>
+                <p>目标：支撑企业规模化使用。增加：Multi-Tenant、RBAC / ABAC、Permission-aware Retrieval、Document Version、Incremental Sync、Audit、Observability、Model Gateway、Evaluation Platform。</p>
+
+                <h3>Phase 4：Adaptive RAG</h3>
+                <p>核心思想：不是所有 Query 都走相同 Pipeline。通过 <code>Strategy Router</code> 根据查询复杂度分发到 Simple Retrieval、Multi-Query 或 Decomposition 等不同路径。</p>
+
+                <h3>Phase 5：Agentic RAG</h3>
+                <p>核心思想：引入 Planning、Tool Use、Verification。注意：<strong>Agentic RAG 不是 Enterprise RAG 的必经之路</strong>。仅在处理复杂、多步骤知识任务时考虑。</p>
+            </section>
+
+            <!-- 十二、核心组件职责 -->
+            <section>
+                <h2>十二、核心组件的最终职责边界</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>组件</th>
+                            <th>核心问题</th>
+                            <th>输入</th>
+                            <th>输出</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Query Understanding</td>
+                            <td>用户想找什么？</td>
+                            <td>User Query</td>
+                            <td>Intent, Entities, Rewritten Query</td>
+                        </tr>
+                        <tr>
+                            <td>Retrieval</td>
+                            <td>哪些文档可能相关？</td>
+                            <td>Query Vector, Keywords</td>
+                            <td>Top-K Candidates (Recall)</td>
+                        </tr>
+                        <tr>
+                            <td>RRF</td>
+                            <td>多路检索结果如何融合？</td>
+                            <td>List[Doc1], List[Doc2]</td>
+                            <td>Fused List</td>
+                        </tr>
+                        <tr>
+                            <td>Reranker</td>
+                            <td>哪些候选真正更相关？</td>
+                            <td>Query, N Candidates</td>
+                            <td>Ranked Top-M</td>
+                        </tr>
+                        <tr>
+                            <td>Context Engineering</td>
+                            <td>哪些信息最终交给 LLM？</td>
+                            <td>Ranked Chunks, Prompt</td>
+                            <td>Formatted Context</td>
+                        </tr>
+                        <tr>
+                            <td>LLM</td>
+                            <td>如何基于证据生成答案？</td>
+                            <td>Context, Query</td>
+                            <td>Answer, Citation</td>
+                        </tr>
+                        <tr>
+                            <td>Evaluation</td>
+                            <td>系统到底有没有变好？</td>
+                            <td>Query, Answer, Ground Truth</td>
+                            <td>Metrics (Faithfulness, Recall)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 十三、数据模型 -->
+            <section>
+                <h2>十三、最终的数据模型</h2>
+                <p>Enterprise RAG 的核心不是数据库里存了一堆向量，而是建立了一套可追踪的知识实体体系。</p>
+                <div class="diagram-container">
+                    <svg viewBox="0 0 700 350" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrowhead4" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+                            </marker>
+                        </defs>
+                        <!-- Tenant & User -->
+                        <rect x="20" y="20" width="120" height="50" fill="#e0f2fe" stroke="#0284c7" rx="5"/>
+                        <text x="80" y="50" text-anchor="middle">Tenant</text>
+
+                        <rect x="20" y="100" width="120" height="50" fill="#e0f2fe" stroke="#0284c7" rx="5"/>
+                        <text x="80" y="130" text-anchor="middle">User</text>
+                        <line x1="80" y1="70" x2="80" y2="100" stroke="#333" marker-end="url(#arrowhead4)"/>
+
+                        <!-- Document Hierarchy -->
+                        <rect x="250" y="20" width="120" height="50" fill="#f3e8ff" stroke="#9333ea" rx="5"/>
+                        <text x="310" y="50" text-anchor="middle">Document</text>
+                        
+                        <rect x="250" y="100" width="120" height="50" fill="#f3e8ff" stroke="#9333ea" rx="5"/>
+                        <text x="310" y="130" text-anchor="middle">DocumentVersion</text>
+                         <line x1="310" y1="70" x2="310" y2="100" stroke="#333" marker-end="url(#arrowhead4)"/>
+
+                         <rect x="250" y="180" width="120" height="50" fill="#f3e8ff" stroke="#9333ea" rx="5"/>
+                        <text x="310" y="210" text-anchor="middle">Section</text>
+                        <line x1="310" y1="150" x2="310" y2="180" stroke="#333" marker-end="url(#arrowhead4)"/>
+
+                        <rect x="250" y="260" width="120" height="50" fill="#f3e8ff" stroke="#9333ea" rx="5"/>
+                        <text x="310" y="290" text-anchor="middle">Chunk</text>
+                        <line x1="310" y1="230" x2="310" y2="260" stroke="#333" marker-end="url(#arrowhead4)"/>
+
+                        <!-- Embedding -->
+                        <rect x="450" y="260" width="120" height="50" fill="#dbeafe" stroke="#2563eb" rx="5"/>
+                        <text x="510" y="290" text-anchor="middle">Embedding</text>
+                        <line x1="370" y1="285" x2="450" y2="285" stroke="#333" marker-end="url(#arrowhead4)"/>
+
+                        <!-- Permission Link -->
+                        <path d="M140 125 C 180 125, 180 45, 250 45" stroke="#333" fill="none" marker-end="url(#arrowhead4)"/>
+                        <text x="190" y="80" font-size="10" fill="#666">Permission</text>
+                    </svg>
+                </div>
+            </section>
+
+             <!-- 十四、十五、Lifecycle -->
+             <section>
+                <h2>十四 & 十五、Document 与 Query Lifecycle</h2>
+                <div class="grid-2">
+                    <div class="card">
+                        <span class="card-title">Document Lifecycle</span>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-top:1rem;">
+                            <span>Create</span> <span class="arrow">→</span> 
+                            <span>Parse</span> <span class="arrow">→</span> 
+                            <span>Validate</span> <span class="arrow">→</span> 
+                            <span>Index</span> <span class="arrow">→</span> 
+                            <span>Publish</span> <span class="arrow">→</span> 
+                            <span>Update</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-top:0.5rem;">
+                            <span>Re-index</span> <span class="arrow">→</span> 
+                            <span>Deprecate</span> <span class="arrow">→</span> 
+                            <span>Delete</span>
+                        </div>
+                        <p style="font-size:0.8rem; margin-top:1rem; color:#666">包含：Version, Status, Effective Time, Owner, Permission</p>
+                    </div>
+                    <div class="card">
+                        <span class="card-title">Query Lifecycle</span>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-top:1rem;">
+                            <span>Received</span> <span class="arrow">→</span> 
+                            <span>Normalize</span> <span class="arrow">→</span> 
+                            <span>Understand</span> <span class="arrow">→</span> 
+                            <span>Authorize</span> <span class="arrow">→</span> 
+                            <span>Retrieve</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-top:0.5rem;">
+                            <span>Rank</span> <span class="arrow">→</span> 
+                            <span>Context</span> <span class="arrow">→</span> 
+                            <span>Generate</span> <span class="arrow">→</span> 
+                            <span>Cite</span> <span class="arrow">→</span> 
+                            <span>Evaluate</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 十六、技术选型 -->
+            <section>
+                <h2>十六、核心技术选型</h2>
+                <p>没有唯一正确技术栈。选择依据：数据规模 + 团队能力 + 部署环境 + 合规要求 + 业务 SLA。</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>能力</th>
+                            <th>可选方案</th>
+                            <th>选择考虑</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Object Storage</td>
+                            <td>S3 / OSS / MinIO</td>
+                            <td>数据规模、成本</td>
+                        </tr>
+                        <tr>
+                            <td>Search</td>
+                            <td>Elasticsearch / OpenSearch</td>
+                            <td>BM25 精度, Filter 能力</td>
+                        </tr>
+                        <tr>
+                            <td>Vector DB</td>
+                            <td>Milvus / Qdrant / PGVector</td>
+                            <td>规模、运维复杂度、扩展性</td>
+                        </tr>
+                        <tr>
+                            <td>Cache</td>
+                            <td>Redis</td>
+                            <td>性能、语义缓存需求</td>
+                        </tr>
+                        <tr>
+                            <td>Embedding</td>
+                            <td>BGE / OpenAI / Cohere</td>
+                            <td>效果、成本、语言支持</td>
+                        </tr>
+                        <tr>
+                            <td>Reranker</td>
+                            <td>Cross-Encoder / LLM-as-Judge</td>
+                            <td>效果 vs Latency 权衡</td>
+                        </tr>
+                        <tr>
+                            <td>LLM</td>
+                            <td>GPT-4 / Claude / Qwen / Llama3</td>
+                            <td>推理能力、长窗口、数据隐私</td>
+                        </tr>
+                        <tr>
+                            <td>Observability</td>
+                            <td>OpenTelemetry / LangSmith</td>
+                            <td>Trace 粒度、集成难度</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 十七、MVP vs Enterprise -->
+            <section>
+                <h2>十七、最小技术栈 vs 企业技术栈</h2>
+                <div class="grid-2">
+                    <div class="card info">
+                        <span class="card-title">MVP (验证价值)</span>
+                        <ul style="padding-left:1.2rem; font-size:0.9rem; margin-top:0.5rem;">
+                            <li>Python (LangChain/LlamaIndex)</li>
+                            <li>FastAPI</li>
+                            <li>FAISS / Qdrant (单机)</li>
+                            <li>OpenAI Embedding / LLM</li>
+                            <li>简单的文件处理脚本</li>
+                        </ul>
+                    </div>
+                    <div class="card warning">
+                        <span class="card-title">Enterprise (规模运行)</span>
+                        <ul style="padding-left:1.2rem; font-size:0.9rem; margin-top:0.5rem;">
+                            <li>API Gateway (Nginx/Kong)</li>
+                            <li>微服务架构</li>
+                            <li>S3/MinIO + Metadata DB</li>
+                            <li>Elasticsearch + Milvus Cluster</li>
+                            <li>Redis Cluster</li>
+                            <li>LLM Gateway (vLLM/TGI)</li>
+                            <li>独立 Evaluation Platform</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 十八、服务边界 -->
+            <section>
+                <h2>十八、如何设计服务边界？</h2>
+                <p>讨论哪些能力应该独立服务：Document Service, Retrieval Service, Rerank Service, Context Service, LLM Gateway, Permission Service, Evaluation Service。</p>
+                <div class="card">
+                    <span class="card-title">演进原则</span>
+                    <p><strong>早期团队：</strong> <code>Modular Monolith</code>。通过 Module 隔离逻辑，但进程内通信，降低运维成本。</p>
+                    <p><strong>规模团队：</strong> <code>Microservices</code>。根据团队边界、数据量级、故障隔离需求进行拆分。</p>
+                    <p style="color:var(--text-secondary); font-size:0.9rem; font-style:italic;">服务拆分不能成为目的。架构复杂度应该与业务规模同步增长。</p>
+                </div>
+            </section>
+
+            <!-- 十九、高可用设计 -->
+            <section>
+                <h2>十九、企业 RAG 的高可用设计</h2>
+                <p>Failure Matrix 是工程落地的关键。每个组件都要有 Bypass 机制。</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>组件</th>
+                            <th>故障表现</th>
+                            <th>降级策略</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>LLM Service</td>
+                            <td>超时 / 不可用</td>
+                            <td>Fallback Model (如 GPT-4o -> GPT-3.5 -> 本地模型)</td>
+                        </tr>
+                        <tr>
+                            <td>Reranker</td>
+                            <td>超时 / 不可用</td>
+                            <td>降级为 RRF Ranking 结果</td>
+                        </tr>
+                        <tr>
+                            <td>Vector DB</td>
+                            <td>节点宕机</td>
+                            <td>降级为 Keyword Search (BM25)</td>
+                        </tr>
+                        <tr>
+                            <td>BM25 Engine</td>
+                            <td>不可用</td>
+                            <td>降级为 Dense Retrieval</td>
+                        </tr>
+                        <tr>
+                            <td>Redis Cache</td>
+                            <td>不可用</td>
+                            <td>Bypass Cache，直接请求下游</td>
+                        </tr>
+                        <tr>
+                            <td>Permission Service</td>
+                            <td>不可用</td>
+                            <td><strong>Fail-Close (拒绝访问)</strong> 或使用本地缓存（视安全策略而定）</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 二十一、版本体系 -->
+            <section>
+                <h2>二十一、企业 RAG 的版本体系</h2>
+                <p>线上出现问题时，必须能够回溯到当时使用的具体配置。</p>
+                <div class="code-block"><span class="keyword">class</span> <span class="class">SystemSnapshot</span>:
+    <span class="function">def</span> <span class="function">__init__</span>(self):
+        self.prompt_version = <span class="string">"v12.3"</span>
+        self.embedding_model = <span class="string">"bge-large-zh-v1.5"</span>
+        self.index_version = <span class="string">"idx-20231027-001"</span>
+        self.reranker_model = <span class="string">"bge-reranker-v2"</span>
+        self.llm_model = <span class="string">"gpt-4-0613"</span>
+        <span class="comment"># 这允许我们复现任何时刻的行为</span></div>
+            </section>
+
+            <!-- 二十二、Observability -->
+            <section>
+                <h2>二十二、企业 RAG 的 Observability</h2>
+                <p>如果无法看到一次 Query 到底经过了什么，企业 RAG 很难真正运维。</p>
+                <div class="diagram-container">
+                    <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="50" y1="100" x2="750" y2="100" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"/>
+                        
+                        <!-- Spans -->
+                        <circle cx="50" cy="100" r="6" fill="#3b82f6"/>
+                        <text x="50" y="130" text-anchor="middle" font-size="12">Gateway</text>
+
+                        <line x1="50" y1="100" x2="200" y2="100" stroke="#3b82f6" stroke-width="4"/>
+                        <circle cx="200" cy="100" r="6" fill="#8b5cf6"/>
+                        <text x="200" y="130" text-anchor="middle" font-size="12">Retrieval</text>
+
+                        <line x1="200" y1="100" x2="350" y2="100" stroke="#8b5cf6" stroke-width="4"/>
+                        <circle cx="350" cy="100" r="6" fill="#ec4899"/>
+                        <text x="350" y="130" text-anchor="middle" font-size="12">Rerank</text>
+
+                        <line x1="350" y1="100" x2="500" y2="100" stroke="#ec4899" stroke-width="4"/>
+                        <circle cx="500" cy="100" r="6" fill="#10b981"/>
+                        <text x="500" y="130" text-anchor="middle" font-size="12">LLM</text>
+
+                        <line x1="500" y1="100" x2="650" y2="100" stroke="#10b981" stroke-width="4"/>
+                        <circle cx="650" cy="100" r="6" fill="#f59e0b"/>
+                        <text x="650" y="130" text-anchor="middle" font-size="12">Total</text>
+
+                        <!-- Annotations -->
+                        <text x="200" y="80" text-anchor="middle" font-size="10" fill="#666">120ms</text>
+                        <text x="500" y="80" text-anchor="middle" font-size="10" fill="#666">2.5s</text>
+                    </svg>
+                </div>
+                <p>关键 Trace ID 需要贯穿：User, Query, Retrieval Results, Context, LLM Input/Output, Latency, Tokens, Cost。</p>
+            </section>
+
+            <!-- 二十三、Evaluation 闭环 -->
+            <section>
+                <h2>二十三、Enterprise RAG 的 Evaluation 闭环</h2>
+                <div class="diagram-container">
+                    <svg viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrowhead5" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+                            </marker>
+                        </defs>
+
+                        <!-- Top Row -->
+                        <rect x="220" y="20" width="160" height="40" rx="20" fill="#dbeafe" stroke="#2563eb"/>
+                        <text x="300" y="45" text-anchor="middle">Offline Dataset</text>
+
+                        <!-- Right Down -->
+                        <path d="M380 40 L450 40 L450 80" stroke="#333" fill="none" marker-end="url(#arrowhead5)"/>
+                        <rect x="390" y="80" width="120" height="40" rx="5" fill="#fff" stroke="#333"/>
+                        <text x="450" y="105" text-anchor="middle">Evaluation</text>
+                        
+                        <path d="M450 120 L450 150 L300 150" stroke="#333" fill="none" marker-end="url(#arrowhead5)"/>
+                        <rect x="180" y="130" width="120" height="40" rx="5" fill="#fff" stroke="#333"/>
+                        <text x="240" y="155" text-anchor="middle">Deploy</text>
+
+                        <!-- Bottom Circle -->
+                        <rect x="50" y="200" width="500" height="60" rx="10" fill="#f3f4f6" stroke="#9ca3af"/>
+                        <text x="300" y="225" text-anchor="middle" font-weight="bold">Production Traffic</text>
+                        <text x="300" y="245" text-anchor="middle" font-size="12">Online Monitoring → User Feedback → Error Mining → Dataset Expansion</text>
+
+                        <path d="M300 170 L300 200" stroke="#333" fill="none" marker-end="url(#arrowhead5)"/>
+                        <path d="M300 200 L300 150" stroke="#333" fill="none" marker-end="url(#arrowhead5)"/>
+                    </svg>
+                </div>
+            </section>
+
+            <!-- 二十六、实施路线 -->
+            <section>
+                <h2>二十六、如何从今天开始真正建设？</h2>
+                <p>推荐实施路线图，不要一开始就做 Agentic。</p>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="card" style="border-left: 5px solid #94a3b8; padding-left: 1rem;">
+                        <h4>Stage 1：验证价值</h4>
+                        <p style="margin:0; font-size:0.9rem;">基础数据处理 + Chunk + Embedding + Vector Search + LLM。验证业务场景是否成立。</p>
+                    </div>
+                    <div class="card" style="border-left: 5px solid #3b82f6; padding-left: 1rem;">
+                        <h4>Stage 2：提升 Retrieval</h4>
+                        <p style="margin:0; font-size:0.9rem;">Hybrid + RRF + Reranker + Metadata。提升检索质量。</p>
+                    </div>
+                    <div class="card" style="border-left: 5px solid #10b981; padding-left: 1rem;">
+                        <h4>Stage 3：生产化</h4>
+                        <p style="margin:0; font-size:0.9rem;">Cache + Observability + Evaluation + Timeout + Fallback。保证稳定运行。</p>
+                    </div>
+                    <div class="card" style="border-left: 5px solid #f59e0b; padding-left: 1rem;">
+                        <h4>Stage 4：企业化</h4>
+                        <p style="margin:0; font-size:0.9rem;">Tenant + RBAC/ABAC + Permission-aware Retrieval + Audit + Version + Governance。支撑规模化。</p>
+                    </div>
+                    <div class="card" style="border-left: 5px solid #ec4899; padding-left: 1rem;">
+                        <h4>Stage 5：智能化</h4>
+                        <p style="margin:0; font-size:0.9rem;">Adaptive Retrieval + Query Planning + Agentic RAG + Verification。解决复杂任务。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 二十七、完整请求示例 -->
+            <section>
+                <h2>二十七、一个完整生产请求</h2>
+                <p><strong>Query：</strong> “帮我分析 RTC SDK 4.6.2 在 Android 14 下出现 RTC-10027 的原因，并给出官方推荐的解决方案。”</p>
+                <div class="diagram-container" style="text-align: left; font-size: 0.85rem;">
+                    <svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrowhead6" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+                            </marker>
+                        </defs>
+
+                        <rect x="20" y="20" width="160" height="30" rx="5" fill="#333"/>
+                        <text x="100" y="40" text-anchor="middle" fill="#fff" font-weight="bold">User (Android Dev)</text>
+                        <line x1="100" y1="50" x2="100" y2="80" stroke="#333" marker-end="url(#arrowhead6)"/>
+
+                        <rect x="20" y="80" width="160" height="30" rx="5" fill="#e2e8f0" stroke="#475569"/>
+                        <text x="100" y="100" text-anchor="middle">Gateway (Auth: Pass)</text>
+                        <line x1="100" y1="110" x2="100" y2="140" stroke="#333" marker-end="url(#arrowhead6)"/>
+
+                        <rect x="20" y="140" width="160" height="30" rx="5" fill="#e2e8f0" stroke="#475569"/>
+                        <text x="100" y="160" text-anchor="middle">Query Understanding</text>
+                        <text x="200" y="160" font-size="10" fill="#666">Intent: Troubleshoot; Entity: RTC-10027, SDK-4.6.2</text>
+                        <line x1="100" y1="170" x2="100" y2="200" stroke="#333" marker-end="url(#arrowhead6)"/>
+
+                        <!-- Retrieval Box -->
+                        <rect x="20" y="200" width="760" height="120" rx="5" fill="#f0fdf4" stroke="#22c55e" stroke-dasharray="5,5"/>
+                        <text x="40" y="220" font-weight="bold" fill="#15803d" font-size="12">Retrieval Layer</text>
+                        
+                        <rect x="40" y="230" width="120" height="30" rx="5" fill="#fff" stroke="#333"/>
+                        <text x="100" y="250" text-anchor="middle">Permission Filter</text>
+                        <line x1="100" y1="260" x2="100" y2="280" stroke="#333" marker-end="url(#arrowhead6)"/>
+
+                        <rect x="40" y="280" width="120" height="30" rx="5" fill="#fff" stroke="#333"/>
+                        <text x="100" y="300" text-anchor="middle">Hybrid Search</text>
+                        
+                        <rect x="200" y="280" width="100" height="30" rx="5" fill="#fef9c3" stroke="#eab308"/>
+                        <text x="250" y="300" text-anchor="middle">RRF</text>
+                        <line x1="160" y1="295" x2="200" y2="295" stroke="#333" marker-end="url(#arrowhead6)"/>
+
+                        <rect x="320" y="280" width="100" height="30" rx="5" fill="#fae8ff" stroke="#d946ef"/>
+                        <text x="370" y="300" text-anchor="middle">Reranker</text>
+                        <line x1="300" y1="295" x2="320" y2="295" stroke="#333" marker-end="url(#arrowhead6)"/>
+                        
+                        <text x="450" y="300" font-size="11" fill="#666">Found: "Known Issue: Android 14 Compatibility..." (Score: 0.92)</text>
+
+                        <line x1="100" y1="320" x2="100" y2="350" stroke="#333" marker-end="url(#arrowhead6)"/>
+
+                        <rect x="20" y="350" width="160" height="30" rx="5" fill="#e2e8f0" stroke="#475569"/>
+                        <text x="100" y="370" text-anchor="middle">Context Builder</text>
+                        <line x1="100" y1="380" x2="100" y2="410" stroke="#333" marker-end="url(#arrowhead6)"/>
+
+                        <rect x="20" y="410" width="160" height="30" rx="5" fill="#ffe4e6" stroke="#e11d48"/>
+                        <text x="100" y="430" text-anchor="middle">LLM Gateway</text>
+                        <line x1="100" y1="440" x2="100" y2="470" stroke="#333" marker-end="url(#arrowhead6)"/>
+
+                        <rect x="20" y="470" width="300" height="30" rx="5" fill="#333"/>
+                        <text x="170" y="490" text-anchor="middle" fill="#fff">Answer + Citation + Trace ID</text>
+                    </svg>
+                </div>
+            </section>
+
+             <!-- Python 示例 1 -->
+             <section>
+                <h2>Python 示例 1：Enterprise RAG Pipeline</h2>
+                <p>体现架构中的关键步骤与校验点。</p>
+                <div class="code-block"><span class="keyword">def</span> <span class="function">enterprise_rag_pipeline</span>(query: str, user_id: str):
+    trace_id = generate_trace_id()
+    logger.info(<span class="string">f"[{trace_id}] Query received: {query}"</span>)
+    
+    <span class="comment"># 1. Query Understanding & Auth</span>
+    intent = understand_intent(query)
+    user_perms = get_permissions(user_id)
+    
+    <span class="comment"># 2. Retrieval Strategy Router (Adaptive)</span>
+    strategy = router.decide(intent, query_complexity(query))
+    
+    <span class="comment"># 3. Hybrid Retrieval with Permissions</span>
+    candidates = []
+    <span class="keyword">if</span> strategy.use_vector:
+        candidates.extend(vector_store.search(query, filter=user_perms))
+    <span class="keyword">if</span> strategy.use_keyword:
+        candidates.extend(search_engine.search(query, filter=user_perms))
+        
+    <span class="comment"># 4. Reranking (Try-Catch for HA)</span>
+    <span class="keyword">try</span>:
+        ranked_chunks = reranker.rerank(query, candidates, top_k=10)
+    <span class="keyword">except</span> Exception as e:
+        logger.warning(<span class="string">f"[{trace_id}] Reranker failed, using RRF fallback"</span>)
+        ranked_chunks = rrf_fusion(candidates)[:10]
+        
+    <span class="comment"># 5. Context Building</span>
+    context = context_builder.build(ranked_chunks, max_tokens=4000)
+    
+    <span class="comment"># 6. Generation</span>
+    answer = llm.generate(query, context)
+    
+    <span class="comment"># 7. Evaluation (Async)</span>
+    async_evaluator.submit(trace_id, query, context, answer)
+    
+    <span class="keyword">return</span> Answer(text=answer, trace_id=trace_id)</div>
+            </section>
+
+             <!-- Python 示例 2 -->
+             <section>
+                <h2>Python 示例 2：Fallback & Degradation</h2>
+                <p>代码重点是体现架构思想，而不是堆业务代码。</p>
+                <div class="code-block"><span class="keyword">def</span> <span class="function">safe_rerank</span>(query, candidates, timeout=500):
+    <span class="keyword">try</span>:
+        <span class="comment"># 设置超时，防止 Reranker 拖垮整个链路</span>
+        result = call_with_timeout(
+            reranker_service.rank, 
+            args=[query, candidates], 
+            timeout_ms=timeout
+        )
+        <span class="keyword">return</span> result
+    <span class="keyword">except</span> TimeoutError:
+        metrics.increment(<span class="string">"reranker.timeout"</span>)
+        <span class="keyword">return</span> candidates  <span class="comment"># 降级：返回原始检索结果</span>
+    <span class="keyword">except</span> ServiceUnavailable:
+        metrics.increment(<span class="string">"reranker.error_503"</span>)
+        <span class="keyword">return</span> candidates[:10]  <span class="comment"># 降级：截断 Top 10</span></div>
+            </section>
+
+            <!-- 二十九、架构原则 -->
+            <section>
+                <h2>二十九、Enterprise RAG 最终架构原则</h2>
+                <ol style="padding-left: 1.5rem; line-height: 2;">
+                    <li><strong>Data First：</strong> 垃圾进，垃圾出。数据工程的质量决定了 RAG 的上限。</li>
+                    <li><strong>Separate Offline / Online：</strong> 写时优化，读时极速。不要在请求链路里做繁重的 ETL。</li>
+                    <li><strong>Permission-aware Retrieval：</strong> 安全是底线。在索引阶段或检索阶段必须严格绑定权限。</li>
+                    <li><strong>Candidate Recall before Ranking：</strong> 检索重广度，重排重精度。</li>
+                    <li><strong>Context is a first-class component：</strong> 不要简单拼接 Token。Context 的组织方式（引用、顺序、去重）直接影响幻觉率。</li>
+                    <li><strong>Evaluation-driven Optimization：</strong> 没有评估就没有优化。建立 Golden Dataset。</li>
+                    <li><strong>Observability by Default：</strong> 所有组件必须可观测。</li>
+                    <li><strong>Graceful Degradation：</strong> 任何组件挂了都不能导致整个服务 502。核心降级，非核心 Bypass。</li>
+                    <li><strong>Complexity grows with business needs：</strong> 不要为了用 Agent 而用 Agent。</li>
+                    <li><strong>Architecture over Models：</strong> 好的架构可以平滑升级模型，但好的模型救不了烂架构。</li>
+                </ol>
+            </section>
+
+            <!-- 三十、RAG 与 Agent -->
+            <section>
+                <h2>三十、RAG 与 Agent 的边界</h2>
+                <div class="grid-2">
+                    <div class="card">
+                        <span class="card-title">RAG 的适用场景</span>
+                        <p>知识检索 + 证据生成。问题是静态的，答案存在于知识库中。</p>
+                        <code>Query -> Retrieve -> Read</code>
+                    </div>
+                    <div class="card">
+                        <span class="card-title">Agent 的适用场景</span>
+                        <p>Planning + Tool Use + Multi-step Reasoning。需要拆解任务，调用外部 API 改变环境状态。</p>
+                        <code>Goal -> Plan -> Act -> Observe</code>
+                    </div>
+                </div>
+                <p>Agent 可以调用 RAG，RAG 也可以成为 Agent 的一个 Tool。不要为了“高级”而强行把 Agent 融入所有 RAG。</p>
+            </section>
+
+            <!-- 三十一、RAG 与 Search -->
+            <section>
+                <h2>三十一、Enterprise RAG 与传统 Search 的关系</h2>
+                <p>RAG 不是传统 Search 的替代品。企业最终往往是 <code>Search + RAG + LLM</code> 的统一信息访问层。Search 提供广度和控制感，RAG 提供深度和生成能力。</p>
+            </section>
+
+             <!-- 三十二、Platform -->
+             <section>
+                <h2>三十二、Enterprise RAG 最终不是“一个 API”</h2>
+                <p>真正的企业 RAG 最终更像一个 Platform。</p>
+                <div class="card info">
+                    <p>平台提供：Knowledge Management, Retrieval, Reranking, Context, Generation, Permission, Evaluation, Observability, Model Gateway, Governance。</p>
+                    <hr style="border:0; border-top:1px dashed #ccc; margin:1rem 0;">
+                    <p>不同业务应用（客服、销售、研发、HR、法务）通过统一平台复用能力，只需配置不同的数据源和 Prompt。</p>
+                </div>
+            </section>
+
+            <!-- 最终总结 -->
+            <section>
+                <h2>三十四、最终总结</h2>
+                <blockquote>
+                    RAG 真正的工程难点，从来不是“怎么把文本塞进向量数据库”，而是如何把企业知识变成一种可检索、可理解、可授权、可追踪、可评估、可持续更新的信息基础设施。
+                </blockquote>
+                <p>Enterprise RAG 的终点不是一个更复杂的 RAG Pipeline，而是一个能够持续吸收企业知识、理解用户问题、控制数据访问、可靠生成答案，并通过反馈不断进化的企业知识智能平台。</p>
+            </section>
+
+        </main>
+
+        <footer style="margin-top: 5rem; padding-top: 2rem; border-top: 1px solid var(--border-color); color: var(--text-secondary); font-size: 0.9rem;">
+            <p>&copy; 2026 Enterprise RAG Series. All rights reserved.</p>
+            <p>Designed by 清言 (GLM-5.2).</p>
+        </footer>
+    </div>
+
+</body>
+</html>

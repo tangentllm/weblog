@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>用户问题不是一个字符串：企业 RAG Query Understanding 深度解析</title>
+<style>
+  :root {
+    --ink: #1a1d23;
+    --ink-soft: #4a5060;
+    --ink-mute: #8a90a0;
+    --paper: #fdfcf9;
+    --card: #ffffff;
+    --accent: #b04a2f;
+    --accent-soft: #f5e8e3;
+    --blue: #2c5a7a;
+    --blue-soft: #e8f0f5;
+    --green: #3a6b4f;
+    --green-soft: #e9f2ec;
+    --line: #e4e1da;
+    --code-bg: #23272f;
+    --code-ink: #d8dce4;
+    --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, serif;
+    --sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", -apple-system, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.85;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 28px 120px; }
+
+  /* ===== Hero ===== */
+  .hero { padding: 90px 0 40px; border-bottom: 1px solid var(--line); }
+  .kicker {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 2.5px;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 18px;
+  }
+  .kicker::before { content: ""; display: inline-block; width: 28px; height: 1px; background: var(--accent); vertical-align: middle; margin-right: 10px; }
+  h1.title {
+    font-family: var(--serif); font-size: 42px; font-weight: 700;
+    line-height: 1.3; letter-spacing: -0.5px; margin-bottom: 22px;
+  }
+  .subtitle { font-size: 17px; color: var(--ink-soft); max-width: 620px; }
+  .meta-row { display: flex; gap: 26px; margin-top: 34px; font-size: 13px; color: var(--ink-mute); font-family: var(--mono); }
+  .meta-row span b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ===== Section numbering ===== */
+  section { margin-top: 88px; }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 10px; }
+  .sec-num {
+    font-family: var(--serif); font-size: 15px; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 50%;
+    width: 38px; height: 38px; min-width: 38px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transform: translateY(6px);
+  }
+  h2 {
+    font-family: var(--serif); font-size: 29px; font-weight: 700;
+    letter-spacing: -0.3px; line-height: 1.4;
+  }
+  h3 {
+    font-family: var(--serif); font-size: 20px; font-weight: 700;
+    margin: 46px 0 14px; color: var(--ink);
+    padding-left: 14px; border-left: 3px solid var(--accent);
+  }
+  p { margin: 18px 0; color: var(--ink-soft); }
+  p strong, li strong { color: var(--ink); }
+  em { font-style: normal; background: linear-gradient(transparent 62%, var(--accent-soft) 62%); padding: 0 2px; }
+
+  /* ===== Pull quote ===== */
+  .pull {
+    font-family: var(--serif); font-size: 22px; line-height: 1.7;
+    color: var(--ink); margin: 44px 0; padding: 6px 0 6px 30px;
+    border-left: 3px solid var(--accent); font-weight: 600;
+  }
+  .pull .sub { display: block; font-size: 14px; color: var(--ink-mute); font-weight: 400; margin-top: 10px; font-family: var(--sans); }
+
+  /* ===== Cards ===== */
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 26px 30px; margin: 28px 0;
+    box-shadow: 0 1px 3px rgba(26,29,35,.04);
+  }
+  .card-label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
+    color: var(--ink-mute); text-transform: uppercase; margin-bottom: 12px;
+  }
+  .card-blue { border-top: 3px solid var(--blue); }
+  .card-green { border-top: 3px solid var(--green); }
+  .card-warn { border-top: 3px solid var(--accent); background: #fdf8f5; }
+  .dialog { display: flex; flex-direction: column; gap: 12px; }
+  .bubble { max-width: 88%; padding: 12px 18px; border-radius: 14px; font-size: 15px; line-height: 1.7; }
+  .bubble.user { align-self: flex-end; background: var(--blue-soft); border-bottom-right-radius: 4px; color: var(--blue); }
+  .bubble.sys { align-self: flex-start; background: #f2f1ed; border-bottom-left-radius: 4px; color: var(--ink-soft); }
+  .bubble .who { display: block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.5px; margin-bottom: 3px; opacity: .65; }
+
+  /* ===== Intent decomposition grid ===== */
+  .intent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 24px 0; }
+  .intent-item { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .intent-item .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.5px; color: var(--accent); text-transform: uppercase; }
+  .intent-item .v { font-size: 15px; color: var(--ink); font-weight: 600; margin-top: 4px; }
+
+  /* ===== SVG Figures ===== */
+  figure.fig { margin: 40px 0; }
+  figure.fig svg { width: 100%; height: auto; display: block; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  figcaption { font-family: var(--mono); font-size: 12px; color: var(--ink-mute); text-align: center; margin-top: 12px; letter-spacing: 1px; }
+
+  /* ===== Tables ===== */
+  .tbl-wrap { margin: 32px 0; overflow-x: auto; border-radius: 12px; border: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 14.5px; }
+  thead th {
+    background: #2b2f38; color: #e8e6e0; font-weight: 600; text-align: left;
+    padding: 13px 18px; font-size: 13.5px; letter-spacing: .5px; white-space: nowrap;
+  }
+  tbody td { padding: 13px 18px; border-top: 1px solid var(--line); color: var(--ink-soft); vertical-align: top; }
+  tbody tr:nth-child(even) { background: #faf9f6; }
+  tbody td:first-child { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .yes { color: var(--green); font-weight: 600; }
+  .no { color: var(--accent); font-weight: 600; }
+
+  /* ===== Code blocks ===== */
+  .code-card { background: var(--code-bg); border-radius: 12px; margin: 28px 0; overflow: hidden; }
+  .code-head {
+    display: flex; align-items: center; gap: 8px; padding: 11px 18px;
+    background: #1b1e25; border-bottom: 1px solid #30343d;
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: #e0604f; } .dot.y { background: #e0a83a; } .dot.g { background: #55b264; }
+  .code-title { margin-left: 8px; font-family: var(--mono); font-size: 12px; color: #7d8492; letter-spacing: 1px; }
+  pre { padding: 22px 24px; overflow-x: auto; }
+  code, pre { font-family: var(--mono); font-size: 13.5px; line-height: 1.75; color: var(--code-ink); }
+  .cm { color: #6a7180; } .kw { color: #c792ea; } .st { color: #a3be8c; } .fn { color: #82aaff; } .nu { color: #f0a45d; } .pr { color: #7ec4cf; }
+
+  /* ===== Stat cards ===== */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 30px 0; }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 22px; text-align: left;
+  }
+  .stat .sym { font-size: 24px; }
+  .stat .name { font-family: var(--serif); font-size: 16px; font-weight: 700; color: var(--ink); margin-top: 6px; }
+  .stat .desc { font-size: 13px; color: var(--ink-mute); margin-top: 6px; line-height: 1.6; }
+
+  /* ===== Failure list ===== */
+  .fail { border-left: 3px solid var(--accent); background: #fdf8f5; border-radius: 0 10px 10px 0; padding: 20px 24px; margin: 20px 0; }
+  .fail .f-title { font-weight: 700; font-family: var(--serif); font-size: 16.5px; color: var(--ink); margin-bottom: 8px; }
+  .fail .f-fix { margin-top: 10px; font-size: 14px; }
+  .fail .f-fix b { color: var(--green); }
+
+  /* ===== Decision table highlight ===== */
+  .note {
+    background: var(--blue-soft); border-radius: 10px; padding: 18px 24px;
+    font-size: 14.5px; color: var(--blue); margin: 26px 0;
+  }
+  .note b { font-weight: 700; }
+
+  /* ===== Ending ===== */
+  .ending {
+    margin-top: 90px; padding: 50px 40px; background: #2b2f38; border-radius: 16px; color: #d8dce4;
+  }
+  .ending h2 { color: #fff; font-size: 26px; margin-bottom: 20px; }
+  .ending p { color: #aab0bd; }
+  .next-card {
+    margin-top: 34px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px; padding: 26px 30px;
+  }
+  .next-card .k { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: #e0a83a; }
+  .next-card h3 { color: #fff; border: none; padding: 0; margin: 10px 0 12px; font-size: 20px; }
+  .next-card p { margin: 0; font-size: 14.5px; }
+  .series-nav { display: flex; justify-content: space-between; margin-top: 70px; font-family: var(--mono); font-size: 13px; }
+  .series-nav a { color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 640px) {
+    h1.title { font-size: 30px; }
+    h2 { font-size: 24px; }
+    .stat-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- shared svg defs -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a5060"/>
+    </marker>
+    <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b04a2f"/>
+    </marker>
+    <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2c5a7a"/>
+    </marker>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <div class="kicker">Enterprise RAG Architecture · Series 09</div>
+    <h1 class="title">用户问题不是一个字符串<br>企业 RAG Query Understanding 深度解析</h1>
+    <p class="subtitle">Chunking、Embedding、Hybrid Retrieval、RRF、Reranker——整条链路已经搭建完毕。但还有一个被严重低估的问题：<strong>Retrieval 到底拿什么 Query 去搜索？</strong></p>
+    <div class="meta-row">
+      <span>系列 · <b>企业级 RAG 架构设计与工程实践</b></span>
+      <span>篇目 · <b>09 / 12</b></span>
+      <span>难度 · <b>★★★★☆</b></span>
+    </div>
+  </header>
+
+  <!-- ================= 一 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>同一个问题，为什么人能理解，搜索系统却搜不到？</h2></div>
+
+    <p>先看一个我在企业项目里真实处理过的 Case。这是来自一个 RTC（实时音视频）技术支持知识库的用户提问：</p>
+
+    <div class="card">
+      <div class="card-label">真实用户 Query · 企业知识库</div>
+      <p style="margin:0; font-family:var(--serif); font-size:18px; color:var(--ink);">"我们这个 Android 新版本最近一上线，RTC 老是偶发连接失败，之前有没有类似问题？怎么排查？"</p>
+    </div>
+
+    <p>任何人读完这句话，都能立刻提取出其中的关键信息。但请注意——这句话里其实<strong>压缩了至少六个维度的结构化信息</strong>：</p>
+
+    <div class="intent-grid">
+      <div class="intent-item"><div class="k">平台</div><div class="v">Android</div></div>
+      <div class="intent-item"><div class="k">版本</div><div class="v">新版本</div></div>
+      <div class="intent-item"><div class="k">业务</div><div class="v">RTC</div></div>
+      <div class="intent-item"><div class="k">问题</div><div class="v">连接失败</div></div>
+      <div class="intent-item"><div class="k">时间</div><div class="v">最近 / 上线后</div></div>
+      <div class="intent-item"><div class="k">目标</div><div class="v">历史相似问题 + 排查方案</div></div>
+    </div>
+
+    <p>而如果按照第 2~8 篇建立的标准链路，直接把整句话送进 Embedding：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 170" xmlns="http://www.w3.org/2000/svg">
+      <rect x="40" y="60" width="150" height="52" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="115" y="83" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1d23">Raw Query</text>
+      <text x="115" y="100" text-anchor="middle" font-size="11" fill="#8a90a0">整句自然语言</text>
+      <line x1="190" y1="86" x2="290" y2="86" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="295" y="60" width="150" height="52" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="370" y="91" text-anchor="middle" font-size="14" fill="#1a1d23">Embedding</text>
+      <line x1="445" y1="86" x2="545" y2="86" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="550" y="60" width="160" height="52" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="630" y="91" text-anchor="middle" font-size="14" fill="#1a1d23">Vector Search</text>
+      <text x="380" y="150" text-anchor="middle" font-size="12" fill="#b04a2f">六个维度的结构化信息，被压缩进了一个稠密向量</text>
+    </svg>
+    <figcaption>FIG 1-1 · 直接 Embedding 原始 Query：结构化信息在语义压缩中大量流失</figcaption>
+    </figure>
+
+    <p>问题不在于 Embedding 模型不够好，而在于<strong>这种用法从一开始就浪费了信息</strong>。"Android"应该变成 Metadata Filter，而不是和"排查方法"一起被压进同一个向量；"有没有类似问题"和"怎么排查"是两个检索目标，却被当成一个语义整体处理。</p>
+
+    <div class="pull">用户说的是"自然语言"，而 Retrieval 需要的是"可检索表达"。<span class="sub">这两者之间隔着的一整层工程，就是本文的主题：Query Understanding。</span></div>
+  </section>
+
+  <!-- ================= 二 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Query Understanding 到底在解决什么问题？</h2></div>
+
+    <p>从架构视角看，Query Understanding 是插在用户输入和检索系统之间的一个<strong>翻译层</strong>——但它翻译的不是"语言"，而是<strong>表达形态</strong>：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 190" xmlns="http://www.w3.org/2000/svg">
+      <rect x="30" y="70" width="140" height="56" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="100" y="93" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1d23">User Query</text>
+      <text x="100" y="111" text-anchor="middle" font-size="11" fill="#8a90a0">人类表达</text>
+      <line x1="170" y1="98" x2="240" y2="98" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="245" y="52" width="220" height="92" rx="10" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="355" y="80" text-anchor="middle" font-size="15" font-weight="700" fill="#b04a2f">Query Understanding</text>
+      <text x="355" y="102" text-anchor="middle" font-size="11.5" fill="#4a5060">Intent · Entity · Filter</text>
+      <text x="355" y="120" text-anchor="middle" font-size="11.5" fill="#4a5060">Rewrite · Decompose · Route</text>
+      <line x1="465" y1="98" x2="535" y2="98" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="540" y="55" width="190" height="44" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="635" y="82" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Structured Search Intent</text>
+      <line x1="635" y1="99" x2="635" y2="128" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="540" y="130" width="190" height="44" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="635" y="157" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Retrieval Query(s)</text>
+    </svg>
+    <figcaption>FIG 2-1 · Query Understanding：从"人类表达"到"可检索表达"的翻译层</figcaption>
+    </figure>
+
+    <p>这一层可能包含的能力模块包括：</p>
+
+    <div class="card">
+      <div class="card-label">Query Understanding 能力清单</div>
+      <ul style="padding-left:22px; font-size:15px; color:var(--ink-soft); line-height:2.1;">
+        <li><strong>Intent Detection</strong> —— 用户是在排查问题、查概念，还是要做版本对比？</li>
+        <li><strong>Entity Extraction</strong> —— 提取产品名、错误码、模块名等关键实体</li>
+        <li><strong>Metadata Filter Extraction</strong> —— version / platform / product / doc_type 等结构化约束</li>
+        <li><strong>Query Rewrite</strong> —— 把口语化、指代化表达改写成可检索表达</li>
+        <li><strong>Query Expansion</strong> —— 扩展同义词、缩写、英文术语，扩大召回面</li>
+        <li><strong>Query Decomposition</strong> —— 把复杂问题拆成多个子问题</li>
+        <li><strong>Time / Version / Platform Resolution</strong> —— "最近""新版本"这类相对表达的绝对化</li>
+      </ul>
+    </div>
+
+    <p>这些能力共同产出的，往往不是一句话，而是一个<strong>结构化的检索意图对象</strong>：</p>
+
+    <div class="code-card">
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="code-title">structured_query.json</span></div>
+      <pre>{
+  <span class="pr">"query"</span>: <span class="st">"RTC Android 连接失败"</span>,
+  <span class="pr">"platform"</span>: <span class="st">"Android"</span>,
+  <span class="pr">"version"</span>: <span class="st">"latest"</span>,
+  <span class="pr">"issue"</span>: <span class="st">"connection failure"</span>,
+  <span class="pr">"intent"</span>: <span class="st">"troubleshooting"</span>,
+  <span class="pr">"time_range"</span>: <span class="st">"last_30_days"</span>
+}</pre>
+    </div>
+
+    <div class="pull">Query Understanding 的目标，不是"把用户问题改写得更漂亮"，而是让 Retrieval 更容易找到真正相关的知识。<span class="sub">判断一切 Query 处理手段是否合理的唯一标准：它是否提升了"正确文档进入候选池"的概率。</span></div>
+  </section>
+
+  <!-- ================= 三 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>为什么原始 Query 经常不能直接检索？</h2></div>
+
+    <p>在企业环境中，我几乎每周都能看到这类检索失败。归纳下来，原始 Query 的"不可直接检索性"主要来自六类问题——每一类我在生产系统里都踩过真实的坑。</p>
+
+    <h3>问题 1 · 口语化</h3>
+    <div class="card"><p style="margin:0; font-family:var(--serif); font-size:17px;">"这个东西怎么突然不工作了？"</p></div>
+    <p>"这个东西"是什么？"不工作"是崩溃、超时还是返回错误？Embedding 模型对模糊指代的容忍度，远没有人类想象的那么高。</p>
+
+    <h3>问题 2 · 指代</h3>
+    <div class="card"><p style="margin:0; font-family:var(--serif); font-size:17px;">"它为什么这样？"</p></div>
+    <p>脱离上下文，这句话对任何检索系统都是噪声。它必须先被"还原"才有检索价值。</p>
+
+    <h3>问题 3 · 上下文依赖</h3>
+    <div class="dialog card">
+      <div class="bubble user"><span class="who">USER</span>怎么配置 Android SDK？</div>
+      <div class="bubble sys"><span class="who">ASSISTANT</span>……（介绍了通用接入流程）……</div>
+      <div class="bubble user"><span class="who">USER</span>那 4.6.2 呢？</div>
+    </div>
+    <p>第二轮 Query "那 4.6.2 呢？"单独拿去检索，几乎不可能命中"RTC SDK 4.6.2 Android 配置差异"这类文档。<strong>多轮对话中的当前 Query，语义是不完整的。</strong></p>
+
+    <h3>问题 4 · 信息缺失</h3>
+    <div class="card"><p style="margin:0; font-family:var(--serif); font-size:17px;">"报错了怎么办？"</p></div>
+    <p>什么产品？什么错误码？什么平台？Query 缺失的关键信息，检索系统无法凭空补齐——但至少应该识别出"这是一个信息不足的 Query"，而不是硬着头皮去搜。</p>
+
+    <h3>问题 5 · 多意图</h3>
+    <div class="card"><p style="margin:0; font-family:var(--serif); font-size:17px;">"这个错误是什么原因？怎么解决？有没有历史案例？"</p></div>
+    <p>一句话里包含三个不同的检索目标。单个 Query 的向量表示会在这三个意图之间"平均化"，导致每个方向都召回得不充分。</p>
+
+    <h3>问题 6 · 领域术语与黑话</h3>
+    <div class="card"><p style="margin:0; font-family:var(--serif); font-size:17px;">"RTC 挂了"</p></div>
+    <p>在企业内部，"挂了"的真实含义可能是"RTC 通道连接失败"。知识库文档里写的是规范术语，用户嘴里说的是黑话——<strong>两个表达空间之间存在系统性错位</strong>。</p>
+
+    <div class="pull">Query Understanding 的价值，是把"人类表达"转换成"检索系统可以更好处理的表达"。<span class="sub">注意：是"更好处理"，而不是"必须处理"——有些 Query 直接送进去效果就很好，这是后文 Adaptive Retrieval 的出发点。</span></div>
+  </section>
+
+  <!-- ================= 四 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>Query Rewrite：把问题改写成"可检索的问题"</h2></div>
+
+    <p>Query Rewrite 是 Query Understanding 中使用频率最高的手段。它的流程非常朴素：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 120" xmlns="http://www.w3.org/2000/svg">
+      <rect x="40" y="34" width="190" height="52" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="135" y="57" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Original Query</text>
+      <text x="135" y="75" text-anchor="middle" font-size="11" fill="#8a90a0">口语化 / 指代 / 不完整</text>
+      <line x1="230" y1="60" x2="290" y2="60" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="295" y="30" width="170" height="60" rx="10" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="380" y="65" text-anchor="middle" font-size="14" font-weight="700" fill="#b04a2f">Rewrite Model</text>
+      <line x1="465" y1="60" x2="525" y2="60" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="530" y="34" width="200" height="52" rx="8" fill="#e9f2ec" stroke="#3a6b4f" stroke-width="1.5"/>
+      <text x="630" y="57" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Search-friendly Query</text>
+      <text x="630" y="75" text-anchor="middle" font-size="11" fill="#3a6b4f">补全实体 · 消除指代</text>
+    </svg>
+    <figcaption>FIG 4-1 · Query Rewrite 流程</figcaption>
+    </figure>
+
+    <p>一个典型的企业案例：</p>
+
+    <div class="card card-warn">
+      <div class="card-label">Rewrite 示例 · 企业技术支持场景</div>
+      <p style="margin:0 0 14px;"><strong style="color:var(--accent);">原始 Query：</strong></p>
+      <p style="margin:0 0 20px; font-family:var(--serif); font-size:16.5px; color:var(--ink);">"这个错误是不是 4.6.2 才有？Android 14 上怎么处理？"</p>
+      <p style="margin:0 0 14px;"><strong style="color:var(--green);">Rewrite 后：</strong></p>
+      <p style="margin:0; font-family:var(--serif); font-size:16.5px; color:var(--ink);">"RTC SDK 4.6.2 Android 14 RTC-10027 错误原因与解决方案"</p>
+    </div>
+
+    <p>注意这个 Rewrite 做了什么：<strong>补全了隐含实体（RTC SDK、RTC-10027）、消除了指代（"这个错误"→ 具体错误码）、把疑问句式转换成了文档式表达</strong>。知识库文档是工程师写的，Rewrite 的作用就是让 Query 的表达方式向文档的表达方式靠拢。</p>
+  </section>
+
+  <!-- ================= 五 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>什么情况下 Query Rewrite 才有价值？</h2></div>
+
+    <p>先说一个我在做架构评审时反复强调的原则：<strong>Rewrite 不是默认开启的免费午餐</strong>。它在以下场景中收益明确：</p>
+
+    <div class="card">
+      <div class="card-label">Rewrite 高价值场景</div>
+      <table style="border:none;">
+        <tbody style="background:transparent;">
+          <tr><td style="border:none; padding:8px 12px 8px 0;">口语化</td><td style="border:none; color:var(--ink-soft);">"RTC 挂了" → "RTC 通道连接失败"</td></tr>
+          <tr><td style="border:none; padding:8px 12px 8px 0;">省略主语</td><td style="border:none; color:var(--ink-soft);">"怎么初始化？" → "RTC Engine 初始化方法"</td></tr>
+          <tr><td style="border:none; padding:8px 12px 8px 0;">多轮对话</td><td style="border:none; color:var(--ink-soft);">"那 4.6.2 呢？" → 完整独立问题（详见第 06 节）</td></tr>
+          <tr><td style="border:none; padding:8px 12px 8px 0;">指代消解</td><td style="border:none; color:var(--ink-soft);">"它为什么报错" → "XX 功能为什么报错"</td></tr>
+          <tr><td style="border:none; padding:8px 12px 8px 0;">复杂表达</td><td style="border:none; color:var(--ink-soft);">多重条件压缩的长句 → 聚焦核心检索语义</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Rewrite 最大的风险：Intent Drift</h3>
+
+    <p>Rewrite 由 LLM 执行，而 LLM 有一个根深蒂固的倾向：<strong>它不仅想改写你的问题，还想"帮"你回答你的问题</strong>。这就产生了 Query Rewrite 最危险的失败模式——Intent Drift（意图漂移）：</p>
+
+    <div class="card card-warn">
+      <div class="card-label">Intent Drift 典型案例</div>
+      <p style="margin:0 0 12px;"><strong>用户：</strong>"为什么 RTC 会断线？"（意图：<em>诊断原因</em>）</p>
+      <p style="margin:0 0 12px;"><strong>错误的 Rewrite：</strong>"如何配置 RTC 重连？"（意图：<em>配置操作</em>）</p>
+      <p style="margin:0; font-size:14px;">这里发生的是：<strong>Rewrite 模型擅自把"诊断原因"替换成了"给出解法"</strong>。检索会命中一大堆重连配置文档，而真正分析断线根因的故障排查文档被完全错过。用户拿到答案后会觉得"系统答非所问"——但每一步单看都"看起来在正常工作"。</p>
+    </div>
+
+    <div class="note">工程铁律：<b>Rewrite 的唯一合法操作是改变"表达"，而不是改变"意图"</b>。Rewrite Prompt 中必须显式约束这一点，并且 Evaluation 中必须有专门的 Intent Consistency 检查（见第 20 节）。</div>
+  </section>
+
+  <!-- ================= 六 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">06</span><h2>多轮对话：Context-aware Rewrite 是刚需，不是优化</h2></div>
+
+    <p>企业 RAG 通常不是单轮问答。真实的技术支持对话长这样：</p>
+
+    <div class="dialog card">
+      <div class="bubble user"><span class="who">USER</span>怎么接入 RTC SDK？</div>
+      <div class="bubble sys"><span class="who">ASSISTANT</span>接入 RTC SDK 首先需要在控制台创建应用……</div>
+      <div class="bubble user"><span class="who">USER</span>Android 呢？</div>
+      <div class="bubble sys"><span class="who">ASSISTANT</span>Android 平台需要在 build.gradle 中添加依赖……</div>
+      <div class="bubble user"><span class="who">USER</span>4.6.2 有区别吗？</div>
+    </div>
+
+    <p>第三轮的"4.6.2 有区别吗？"如果直接去检索，向量空间里它和任何文档都对不上。但结合上下文，真正的检索 Query 应该是：</p>
+
+    <div class="card card-green">
+      <p style="margin:0; font-family:var(--serif); font-size:16.5px; color:var(--ink);">"RTC SDK 4.6.2 Android 接入方式及与之前版本的差异"</p>
+    </div>
+
+    <p>这就是 <strong>Context-aware Query Rewrite</strong>（有时也叫 Query Condensation 或 Standalone Question Rewriting），流程如下：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 210" xmlns="http://www.w3.org/2000/svg">
+      <rect x="60" y="20" width="230" height="46" rx="8" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.5"/>
+      <text x="175" y="48" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2c5a7a">Conversation History</text>
+      <rect x="470" y="20" width="230" height="46" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="585" y="48" text-anchor="middle" font-size="13.5" font-weight="600" fill="#b04a2f">Current Query（不完整）</text>
+      <line x1="175" y1="66" x2="330" y2="112" stroke="#2c5a7a" stroke-width="1.5" marker-end="url(#arrB)"/>
+      <line x1="585" y1="66" x2="430" y2="112" stroke="#b04a2f" stroke-width="1.5" marker-end="url(#arrR)"/>
+      <rect x="280" y="118" width="200" height="50" rx="10" fill="#fff" stroke="#1a1d23" stroke-width="1.5"/>
+      <text x="380" y="148" text-anchor="middle" font-size="14" font-weight="700" fill="#1a1d23">Context-aware Rewrite</text>
+      <line x1="380" y1="168" x2="380" y2="192" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="395" y="186" font-size="12.5" fill="#3a6b4f" font-weight="600">Standalone Query → Retrieval</text>
+    </svg>
+    <figcaption>FIG 6-1 · 多轮对话中的 Standalone Query 生成</figcaption>
+    </figure>
+
+    <div class="pull">多轮对话中的当前 Query，往往必须先恢复成"独立语义"，才有资格进入检索。<span class="sub">这是企业 RAG 和 Demo RAG 的一道分水岭：Demo 里没有人会连续追问，真实用户一定会。</span></div>
+
+    <p>工程细节上要注意两点：第一，送入 Rewrite 的 History 不需要全部轮次，通常<strong>最近 2~3 轮</strong>足够且更稳定；第二，Rewrite 产出的 Standalone Query 应该被<strong>持久化记录</strong>——它是后续排查"为什么搜到了错误文档"的第一线索。</p>
+  </section>
+
+  <!-- ================= 七 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">07</span><h2>Query Expansion：不是改写，是扩展</h2></div>
+
+    <p>Rewrite 解决的是"表达不对"的问题，而 Expansion 解决的是另一个问题：<strong>用户的表达是"对的"，但不覆盖知识库中所有的相关写法</strong>。</p>
+
+    <p>用户查询"RTC 连接失败"，但知识库里的文档可能分别使用了这些表述：</p>
+
+    <div class="code-card">
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="code-title">expansion_result.txt</span></div>
+      <pre>原始 Query: <span class="st">"RTC 连接失败"</span>
+
+扩展 Query 项:
+  <span class="fn">→</span> RTC connection failure          <span class="cm"># 英文术语表达</span>
+  <span class="fn">→</span> RTC reconnect                   <span class="cm"># 相关但不同词</span>
+  <span class="fn">→</span> RTC connection timeout          <span class="cm"># 失败的一种具体形态</span>
+  <span class="fn">→</span> RTC channel join failure        <span class="cm"># 频道加入失败（子场景）</span>
+  <span class="fn">→</span> RTC-10027                       <span class="cm"># 该问题对应的内部错误码</span></pre>
+    </div>
+
+    <p>Expansion 的目标很明确：<strong>增加可能命中的词项和表达</strong>。尤其在企业场景中，同一种问题散落在故障报告、错误码手册、FAQ、英文文档中，用词各不相同——单一 Query 几乎不可能同时覆盖。</p>
+
+    <p>实现方式上，Expansion 通常输出多个 Query 变体，分别检索后做结果融合（Fusion）；对于 Term 级别的扩展，也可以直接注入 BM25 的同义词词典（Synonym Dictionary），这是更传统但延迟更低的做法。</p>
+  </section>
+
+  <!-- ================= 八 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">08</span><h2>Rewrite 与 Expansion：必须分清的两个概念</h2></div>
+
+    <p>实践中我看到太多团队把这两者混为一谈，导致架构设计错位。它们的本质区别是：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 150" xmlns="http://www.w3.org/2000/svg">
+      <text x="190" y="26" text-anchor="middle" font-size="14" font-weight="700" fill="#2c5a7a">Rewrite：重新表达</text>
+      <rect x="90" y="50" width="80" height="44" rx="8" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.5"/>
+      <text x="130" y="77" text-anchor="middle" font-size="14" font-weight="600" fill="#2c5a7a">A</text>
+      <line x1="170" y1="72" x2="215" y2="72" stroke="#2c5a7a" stroke-width="1.5" marker-end="url(#arrB)"/>
+      <rect x="220" y="50" width="140" height="44" rx="8" fill="#fff" stroke="#2c5a7a" stroke-width="1.5"/>
+      <text x="290" y="77" text-anchor="middle" font-size="14" font-weight="600" fill="#2c5a7a">Better A</text>
+      <text x="570" y="26" text-anchor="middle" font-size="14" font-weight="700" fill="#3a6b4f">Expansion：扩展维度</text>
+      <rect x="470" y="50" width="70" height="44" rx="8" fill="#e9f2ec" stroke="#3a6b4f" stroke-width="1.5"/>
+      <text x="505" y="77" text-anchor="middle" font-size="14" font-weight="600" fill="#3a6b4f">A</text>
+      <line x1="540" y1="72" x2="580" y2="72" stroke="#3a6b4f" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="585" y="18" width="60" height="38" rx="8" fill="#fff" stroke="#3a6b4f" stroke-width="1.2"/>
+      <text x="615" y="42" text-anchor="middle" font-size="13" fill="#3a6b4f">A1</text>
+      <rect x="585" y="62" width="60" height="38" rx="8" fill="#fff" stroke="#3a6b4f" stroke-width="1.2"/>
+      <text x="615" y="86" text-anchor="middle" font-size="13" fill="#3a6b4f">A2</text>
+      <rect x="585" y="106" width="60" height="38" rx="8" fill="#fff" stroke="#3a6b4f" stroke-width="1.2"/>
+      <text x="615" y="130" text-anchor="middle" font-size="13" fill="#3a6b4f">A3</text>
+    </svg>
+    <figcaption>FIG 8-1 · Rewrite 是"A → 更好的 A"，Expansion 是"A → A1 + A2 + A3"</figcaption>
+    </figure>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>能力</th><th>Query Rewrite</th><th>Query Expansion</th></tr></thead>
+        <tbody>
+          <tr><td>核心目标</td><td>改写表达，使问题可检索</td><td>扩展召回面，覆盖更多表达</td></tr>
+          <tr><td>Query 数量</td><td>通常 1 个</td><td>通常多个</td></tr>
+          <tr><td>主要风险</td><td class="no">Intent Drift（意图漂移）</td><td class="no">Query Noise（查询噪声）</td></tr>
+          <tr><td>适合场景</td><td>口语化 / 多轮 / 指代</td><td>术语 / 同义词 / 缩写 / 黑话</td></tr>
+          <tr><td>主要作用</td><td>提高可检索性</td><td>提高 Recall</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">一句话记忆：<b>Rewrite 改变的是"这句话怎么说"，Expansion 改变的是"用几句话去搜"</b>。前者不增加检索次数，后者通常会增加。</div>
+  </section>
+
+  <!-- ================= 九 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">09</span><h2>Multi-Query Retrieval：从多个视角覆盖一个复杂问题</h2></div>
+
+    <p>当用户的问题天然包含多个检索角度时，单个 Query——无论改写得多好——都只能提供一个视角。Multi-Query 的做法是让 LLM 从同一问题中生成多个互补 Query，分别检索后融合：</p>
+
+    <div class="card">
+      <div class="card-label">复杂企业 Query 示例</div>
+      <p style="margin:0; font-family:var(--serif); font-size:16.5px; color:var(--ink);">"Android 14 上 RTC 4.6.2 出现 RTC-10027，怎么排查、为什么发生、有没有解决案例？"</p>
+    </div>
+
+    <div class="code-card">
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="code-title">multi_query_plan.txt</span></div>
+      <pre><span class="kw">Q1:</span> RTC 4.6.2 Android 14 RTC-10027 发生原因
+<span class="kw">Q2:</span> RTC-10027 排查方法与诊断步骤
+<span class="kw">Q3:</span> RTC-10027 历史解决案例与修复记录</pre>
+    </div>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg">
+      <rect x="280" y="15" width="200" height="40" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="380" y="40" text-anchor="middle" font-size="13.5" font-weight="600" fill="#b04a2f">复杂原始 Query</text>
+      <line x1="380" y1="55" x2="150" y2="95" stroke="#4a5060" stroke-width="1.3" marker-end="url(#arr)"/>
+      <line x1="380" y1="55" x2="380" y2="95" stroke="#4a5060" stroke-width="1.3" marker-end="url(#arr)"/>
+      <line x1="380" y1="55" x2="610" y2="95" stroke="#4a5060" stroke-width="1.3" marker-end="url(#arr)"/>
+      <rect x="70" y="100" width="160" height="40" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="150" y="125" text-anchor="middle" font-size="12.5" fill="#1a1d23">Q1 · 原因分析</text>
+      <rect x="300" y="100" width="160" height="40" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="380" y="125" text-anchor="middle" font-size="12.5" fill="#1a1d23">Q2 · 排查方法</text>
+      <rect x="530" y="100" width="160" height="40" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="610" y="125" text-anchor="middle" font-size="12.5" fill="#1a1d23">Q3 · 历史案例</text>
+      <line x1="150" y1="140" x2="330" y2="180" stroke="#4a5060" stroke-width="1.3" marker-end="url(#arr)"/>
+      <line x1="380" y1="140" x2="380" y2="180" stroke="#4a5060" stroke-width="1.3" marker-end="url(#arr)"/>
+      <line x1="610" y1="140" x2="430" y2="180" stroke="#4a5060" stroke-width="1.3" marker-end="url(#arr)"/>
+      <rect x="270" y="185" width="220" height="44" rx="10" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.5"/>
+      <text x="380" y="212" text-anchor="middle" font-size="14" font-weight="700" fill="#2c5a7a">Fusion / RRF</text>
+      <text x="380" y="248" text-anchor="middle" font-size="12" fill="#4a5060">多路候选去重、融合、统一排序</text>
+    </svg>
+    <figcaption>FIG 9-1 · Multi-Query：多路检索 + RRF 融合</figcaption>
+    </figure>
+
+    <div class="pull">Multi-Query 的本质，是从多个检索视角覆盖一个复杂问题。<span class="sub">第 8 篇的 Reranker 只能对"已经进入候选池"的文档排序——Multi-Query 决定的是"哪些文档有机会进入候选池"。</span></div>
+  </section>
+
+  <!-- ================= 十 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">10</span><h2>Multi-Query 不是免费的 Recall 提升器</h2></div>
+
+    <p>很多团队上线 Multi-Query 后发现：Recall 指标确实好看了一点，但系统整体变"糊"了。原因在于 Multi-Query 有一条完整的代价链：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 190" xmlns="http://www.w3.org/2000/svg">
+      <rect x="40" y="65" width="170" height="60" rx="10" fill="#e9f2ec" stroke="#3a6b4f" stroke-width="1.5"/>
+      <text x="125" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#3a6b4f">More Queries</text>
+      <text x="125" y="110" text-anchor="middle" font-size="11" fill="#3a6b4f">潜在 Recall ↑</text>
+      <line x1="210" y1="95" x2="270" y2="95" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="275" y="65" width="180" height="60" rx="10" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="365" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#b04a2f">Retrieval Cost ↑</text>
+      <text x="365" y="110" text-anchor="middle" font-size="11" fill="#b04a2f">延迟 × N · Token × N</text>
+      <line x1="455" y1="95" x2="515" y2="95" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="520" y="65" width="200" height="60" rx="10" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="620" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#b04a2f">Candidate Noise ↑</text>
+      <text x="620" y="110" text-anchor="middle" font-size="11" fill="#b04a2f">重复 · 低相关 · 融合复杂</text>
+      <text x="380" y="165" text-anchor="middle" font-size="12.5" fill="#8a90a0">收益和代价同时线性增长，净收益取决于 Query 是否真的需要多视角</text>
+    </svg>
+    <figcaption>FIG 10-1 · Multi-Query 的代价链</figcaption>
+    </figure>
+
+    <p>具体来说，Multi-Query 引入的问题包括：</p>
+
+    <ul style="padding-left:24px; font-size:15px; color:var(--ink-soft); line-height:2.1;">
+      <li><strong>Retrieval 次数增加</strong> —— N 个 Query 意味着 N 路向量检索 + N 路 BM25；</li>
+      <li><strong>Latency 增加</strong> —— 即便并行执行，融合前的最慢一路决定尾延迟；</li>
+      <li><strong>成本增加</strong> —— Query 生成需要一次 LLM 调用，检索需要 N 倍计算；</li>
+      <li><strong>Query Noise 增加</strong> —— 生成的子 Query 可能偏离原始意图，召回无关文档；</li>
+      <li><strong>结果重复增加</strong> —— 同一文档被多路命中，需要去重与融合策略；</li>
+      <li><strong>Fusion 复杂度增加</strong> —— RRF 中各路权重的公平性成为新的调参问题。</li>
+    </ul>
+
+    <div class="pull">Multi-Query 是以计算成本换取 Retrieval Coverage。<span class="sub">它应该被路由触发，而不是被默认执行——这正是第 16 节 Query Router 存在的理由。</span></div>
+  </section>
+
+  <!-- ================= 十一 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">11</span><h2>Query Decomposition：把复杂问题拆成子问题</h2></div>
+
+    <p>有一类问题，不是"表达不好"，而是<strong>结构上就无法用一次检索回答</strong>：</p>
+
+    <div class="card">
+      <div class="card-label">需要 Decomposition 的企业 Query</div>
+      <p style="margin:0; font-family:var(--serif); font-size:16.5px; color:var(--ink);">"比较 RTC 4.6.1 和 4.6.2 在 Android 14 上的兼容性，并说明 RTC-10027 是否只存在于 4.6.2。"</p>
+    </div>
+
+    <p>这个问题需要三份互相独立的知识，缺一份答案就不完整。正确的做法是拆解：</p>
+
+    <div class="code-card">
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="code-title">decomposition_plan.txt</span></div>
+      <pre><span class="kw">Q1:</span> RTC 4.6.1 Android 14 兼容性
+<span class="kw">Q2:</span> RTC 4.6.2 Android 14 兼容性
+<span class="kw">Q3:</span> RTC-10027 出现在哪些 SDK 版本</pre>
+    </div>
+
+    <p>三个子问题独立检索，各自召回各自的证据，最终由生成阶段汇总比较。<strong>Decomposition 产出的不是"同一个问题的不同说法"，而是"回答原问题所必需的多个信息块"。</strong></p>
+  </section>
+
+  <!-- ================= 十二 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">12</span><h2>Decomposition 与 Multi-Query：别再混用这两个词</h2></div>
+
+    <p>这是本文需要第二次"划清界限"的地方。两者都会产出多个 Query，但动机完全不同：</p>
+
+    <ul style="padding-left:24px; font-size:15px; color:var(--ink-soft); line-height:2.1;">
+      <li><strong>Multi-Query</strong> 的多个 Query —— 为的是<strong>从不同表达方式寻找相似信息</strong>，子问题之间是并列冗余的，任意一路都独立可用；</li>
+      <li><strong>Query Decomposition</strong> 的多个 Query —— 为的是<strong>把一个复杂问题拆成多个相互关联的子问题</strong>，子问题合在一起才构成完整答案，缺任何一个答案都不完整。</li>
+    </ul>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th></th><th>Multi-Query</th><th>Query Decomposition</th></tr></thead>
+        <tbody>
+          <tr><td>目标</td><td>增加检索视角</td><td>拆解复杂任务</td></tr>
+          <tr><td>子问题关系</td><td>通常并列、可冗余</td><td>可能有依赖关系</td></tr>
+          <tr><td>缺失子问题的后果</td><td>影响不大（仍有召回）</td><td>答案不完整甚至错误</td></tr>
+          <tr><td>适合场景</td><td>提高召回覆盖</td><td>多实体 / 多条件 / 比较类问题</td></tr>
+          <tr><td>实现复杂度</td><td>中</td><td>高（需考虑子问题依赖与答案合成）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">一个实用的判别方法：<b>把任意一个子 Query 单独拿掉，答案还完整吗？</b>完整 → Multi-Query；不完整 → Decomposition。</div>
+  </section>
+
+  <!-- ================= 十三 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">13</span><h2>HyDE：让 LLM 先"假装回答"，再拿回答去搜</h2></div>
+
+    <p>HyDE（Hypothetical Document Embeddings）是 Query Understanding 中最"反直觉"的一个技术：<strong>不拿 Query 去搜，而是先让 LLM 生成一个假设性的答案文档，拿这个假设文档的向量去搜。</strong></p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 130" xmlns="http://www.w3.org/2000/svg">
+      <rect x="30" y="40" width="120" height="48" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="90" y="69" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">User Query</text>
+      <line x1="150" y1="64" x2="205" y2="64" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="210" y="36" width="100" height="56" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="260" y="69" text-anchor="middle" font-size="14" font-weight="700" fill="#b04a2f">LLM</text>
+      <line x1="310" y1="64" x2="365" y2="64" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="370" y="30" width="210" height="68" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="475" y="56" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">Hypothetical Document</text>
+      <text x="475" y="76" text-anchor="middle" font-size="11" fill="#8a90a0">假设性答案文档（可能含事实错误）</text>
+      <line x1="580" y1="64" x2="630" y2="64" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="635" y="40" width="100" height="48" rx="8" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.5"/>
+      <text x="685" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#2c5a7a">Embedding</text>
+      <text x="685" y="79" text-anchor="middle" font-size="10.5" fill="#2c5a7a">→ Vector Search</text>
+    </svg>
+    <figcaption>FIG 13-1 · HyDE 流程：检索的不是问题，而是"假设的答案"</figcaption>
+    </figure>
+
+    <p>企业场景示例——用户查询：</p>
+    <div class="card"><p style="margin:0; font-family:var(--serif); font-size:16.5px;">"RTC-10027 怎么解决？"</p></div>
+    <p>LLM 先生成一段假设性文档：</p>
+    <div class="card card-warn">
+      <p style="margin:0; font-size:14.5px; font-style:italic; color:var(--ink-soft);">"RTC-10027 错误通常与 Android 14 环境下的网络权限配置有关。排查时应首先检查 AndroidManifest 中的 INTERNET 权限声明，其次确认 SDK 初始化时传入的 AppKey 是否与当前环境匹配……"</p>
+    </div>
+    <p>注意：<strong>这段假设文档的内容可能是错的</strong>——但这不影响它的用途，因为我们只用它的向量，不用它的内容。</p>
+  </section>
+
+  <!-- ================= 十四 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">14</span><h2>HyDE 为什么可能有效？又为什么会失效？</h2></div>
+
+    <p>HyDE 有效性的根源在于<strong>向量空间的不对称性</strong>。"怎么解决？"是一个非常短的 Query：</p>
+
+    <div class="code-card">
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="code-title">asymmetry.txt</span></div>
+      <pre>Query:        <span class="st">"怎么解决？"</span>          <span class="cm"># 4 个字，语义极稀薄</span>
+
+Hypothetical: "RTC-10027 可能与 Android 14 环境下…"  <span class="cm"># 数百字</span>
+              <span class="cm"># 充满领域术语、排比结构、文档式表达</span>
+
+Knowledge Doc: 与 Hypothetical <span class="kw">处于相近的表达空间</span></pre>
+    </div>
+
+    <p>知识库文档都是"答案形态"的长文本，而用户 Query 是"问题形态"的短文本——两者在向量空间中存在系统性距离。<strong>HyDE 用一个"答案形态"的代理文本，跨越了这道距离。</strong></p>
+
+    <p>但必须立刻说清楚它的另一面——<strong>HyDE 会引入生成误差</strong>：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 110" xmlns="http://www.w3.org/2000/svg">
+      <rect x="60" y="30" width="160" height="48" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="140" y="59" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b04a2f">错误假设</text>
+      <line x1="220" y1="54" x2="280" y2="54" stroke="#b04a2f" stroke-width="1.5" marker-end="url(#arrR)"/>
+      <rect x="285" y="30" width="180" height="48" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="375" y="59" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b04a2f">错误 Embedding</text>
+      <line x1="465" y1="54" x2="525" y2="54" stroke="#b04a2f" stroke-width="1.5" marker-end="url(#arrR)"/>
+      <rect x="530" y="30" width="170" height="48" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="615" y="59" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b04a2f">错误 Retrieval</text>
+    </svg>
+    <figcaption>FIG 14-1 · HyDE 的误差传导链</figcaption>
+    </figure>
+
+    <p>更隐蔽的是，HyDE 的失败<strong>不表现为报错，而表现为"自信地搜错方向"</strong>——假设文档中的错误实体（比如幻觉出一个不存在的配置项）会把检索拉向一片错误的文档区域，而且系统没有任何告警。</p>
+
+    <div class="note">结论：<b>HyDE 不是"一定提高 Retrieval"的技术，而是一种在特定条件下有效的向量空间对齐手段。</b>它最适合：Query 极短、语义密度低、且领域术语可预期的场景；最不适合：实体密集、错误码明确的 Query——这类 Query 直接走 BM25 效果更好也更便宜。</div>
+  </section>
+
+  <!-- ================= 十五 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">15</span><h2>Query Understanding 的另一半：Metadata Filtering</h2></div>
+
+    <p>前面讲的所有手段都在优化"语义匹配"，但企业 RAG 中有一类信息根本不需要语义匹配——<strong>结构化约束</strong>。</p>
+
+    <p>从 Query "4.6.2 Android 的 RTC 错误码"中，我们不应该只产出一个改写后的字符串，而应该同时提取出：</p>
+
+    <div class="code-card">
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="code-title">metadata_filter.json</span></div>
+      <pre>{
+  <span class="pr">"version"</span>: <span class="st">"4.6.2"</span>,
+  <span class="pr">"platform"</span>: <span class="st">"Android"</span>,
+  <span class="pr">"product"</span>: <span class="st">"RTC"</span>,
+  <span class="pr">"doc_type"</span>: <span class="st">"error_code"</span>
+}</pre>
+    </div>
+
+    <p>这些 Filter 在检索阶段作为硬约束生效：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 140" xmlns="http://www.w3.org/2000/svg">
+      <rect x="40" y="45" width="200" height="50" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="140" y="66" text-anchor="middle" font-size="13" font-weight="700" fill="#b04a2f">Query Understanding</text>
+      <text x="140" y="84" text-anchor="middle" font-size="11" fill="#8a90a0">语义 + 结构化双重输出</text>
+      <line x1="240" y1="70" x2="295" y2="70" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="300" y="45" width="170" height="50" rx="8" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.5"/>
+      <text x="385" y="66" text-anchor="middle" font-size="13" font-weight="700" fill="#2c5a7a">Metadata Filter</text>
+      <text x="385" y="84" text-anchor="middle" font-size="11" fill="#2c5a7a">硬约束：先过滤后检索</text>
+      <line x1="470" y1="70" x2="525" y2="70" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="530" y="45" width="190" height="50" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="625" y="66" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1d23">Hybrid Retrieval</text>
+      <text x="625" y="84" text-anchor="middle" font-size="11" fill="#8a90a0">在正确子集内做语义搜索</text>
+      <text x="380" y="125" text-anchor="middle" font-size="12" fill="#3a6b4f">先收窄候选空间，再语义匹配 —— 精度和成本同时受益</text>
+    </svg>
+    <figcaption>FIG 15-1 · 结构化过滤前置的混合检索</figcaption>
+    </figure>
+
+    <div class="pull">Query Understanding 不只是改写 Query，还可以把自然语言转换成结构化 Retrieval Constraints。<span class="sub">这是企业 RAG 与普通 Demo RAG 最重要的区别之一：企业知识天然带有版本、平台、产品线、文档类型等强结构，不用等于浪费。</span></div>
+
+    <p>依赖的前提是：Chunking 阶段（第 2 篇）必须为每个 Chunk 打好 Metadata。如果入库时没有 version / platform 字段，Query 侧提取得再准也无法过滤——<strong>Query Understanding 和 Index Schema 是一对必须共同设计的契约</strong>。</p>
+  </section>
+
+  <!-- ================= 十六 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">16</span><h2>Query Routing：不同的 Query，不该走同一条流水线</h2></div>
+
+    <p>到目前为止我们介绍了 Rewrite、Expansion、Multi-Query、Decomposition、HyDE、Metadata Extraction 六种手段。一个自然的诱惑是：<strong>把它们全串起来，让所有 Query 都走一遍。</strong></p>
+
+    <p>这是企业 RAG 中最常见、代价也最高的架构错误。正确的做法是先问：<strong>这个 Query 属于哪一类？</strong></p>
+
+    <div class="code-card">
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="code-title">routing_examples.txt</span></div>
+      <pre><span class="st">"什么是 RTC？"</span>              <span class="cm">→ Semantic Retrieval（简单语义）</span>
+<span class="st">"RTC-10027"</span>                 <span class="cm">→ Keyword / BM25 First（精确错误码）</span>
+<span class="st">"比较 4.5.0 和 4.6.2"</span>       <span class="cm">→ Multi-Step Retrieval（拆解比较）</span>
+<span class="st">"帮我总结这三份文档"</span>        <span class="cm">→ Document Retrieval + Summarization</span></pre>
+    </div>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg">
+      <rect x="310" y="15" width="140" height="44" rx="8" fill="#fff" stroke="#1a1d23" stroke-width="1.5"/>
+      <text x="380" y="42" text-anchor="middle" font-size="14" font-weight="700" fill="#1a1d23">Query</text>
+      <line x1="380" y1="59" x2="380" y2="85" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="290" y="90" width="180" height="46" rx="10" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="380" y="118" text-anchor="middle" font-size="14" font-weight="700" fill="#b04a2f">Query Router</text>
+      <line x1="380" y1="136" x2="380" y2="158" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="110" y1="158" x2="650" y2="158" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="110" y1="158" x2="110" y2="180" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="290" y1="158" x2="290" y2="180" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="470" y1="158" x2="470" y2="180" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="650" y1="158" x2="650" y2="180" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <rect x="35" y="185" width="150" height="60" rx="8" fill="#e9f2ec" stroke="#3a6b4f" stroke-width="1.3"/>
+      <text x="110" y="210" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a6b4f">Simple Retrieval</text>
+      <text x="110" y="230" text-anchor="middle" font-size="10.5" fill="#8a90a0">Dense + BM25</text>
+      <rect x="215" y="185" width="150" height="60" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="290" y="210" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">Hybrid + Filter</text>
+      <text x="290" y="230" text-anchor="middle" font-size="10.5" fill="#8a90a0">带 Metadata 约束</text>
+      <rect x="395" y="185" width="150" height="60" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="470" y="210" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">Multi-Query</text>
+      <text x="470" y="230" text-anchor="middle" font-size="10.5" fill="#8a90a0">多视角 / Decomposition</text>
+      <rect x="575" y="185" width="150" height="60" rx="8" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.3"/>
+      <text x="650" y="210" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2c5a7a">No Retrieval</text>
+      <text x="650" y="230" text-anchor="middle" font-size="10.5" fill="#8a90a0">闲聊 / 答案在上下文中</text>
+      <line x1="380" y1="245" x2="380" y2="275" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="255" y="278" width="250" height="42" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="380" y="304" text-anchor="middle" font-size="12.5" fill="#1a1d23">Hybrid Retrieval → Rerank → Generation</text>
+    </svg>
+    <figcaption>FIG 16-1 · Query Router：按 Query 类型分发到不同的检索策略</figcaption>
+    </figure>
+
+    <div class="pull">不同 Query 使用不同 Retrieval Strategy，通常比所有 Query 强行经过复杂 Pipeline 更合理。<span class="sub">Router 本身可以是一个轻量分类模型，也可以是一次廉价的 LLM 分类调用——关键是这个决策必须被记录，成为可分析的数据。</span></div>
+  </section>
+
+  <!-- ================= 十七 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">17</span><h2>Adaptive Retrieval：让检索策略跟着 Query 走</h2></div>
+
+    <p>Query Router 回答"走哪条路"，Adaptive Retrieval 更进一步：<strong>根据 Query 的复杂度和特征，动态决定 Pipeline 的深度</strong>。</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Query 特征</th><th>示例</th><th>推荐策略</th></tr></thead>
+        <tbody>
+          <tr><td>简单事实型</td><td>"什么是 RTC？"</td><td>Dense + BM25，直接检索</td></tr>
+          <tr><td>复杂排查型</td><td>"偶发连接失败怎么排查？"</td><td>Rewrite + Hybrid + Rerank</td></tr>
+          <tr><td>多实体比较</td><td>"比较 4.6.1 和 4.6.2"</td><td>Decomposition + 分步检索</td></tr>
+          <tr><td>明确错误码</td><td>"RTC-10027"</td><td>BM25 First，精确匹配优先</td></tr>
+          <tr><td>极短语义型</td><td>"怎么解决？"+ 明确上下文</td><td>可考虑 HyDE</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 150" xmlns="http://www.w3.org/2000/svg">
+      <rect x="60" y="45" width="220" height="60" rx="10" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="170" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="#b04a2f">Query Complexity</text>
+      <text x="170" y="92" text-anchor="middle" font-size="11" fill="#8a90a0">意图 · 实体数 · 结构化程度</text>
+      <line x1="280" y1="75" x2="345" y2="75" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="350" y="45" width="200" height="60" rx="10" fill="#fff" stroke="#1a1d23" stroke-width="1.5"/>
+      <text x="450" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="#1a1d23">Retrieval Strategy</text>
+      <text x="450" y="92" text-anchor="middle" font-size="11" fill="#8a90a0">动态选择 · 按需启用</text>
+      <line x1="550" y1="75" x2="615" y2="75" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="620" y="45" width="110" height="60" rx="10" fill="#e9f2ec" stroke="#3a6b4f" stroke-width="1.5"/>
+      <text x="675" y="70" text-anchor="middle" font-size="12.5" font-weight="700" fill="#3a6b4f">Pipeline</text>
+      <text x="675" y="92" text-anchor="middle" font-size="11" fill="#3a6b4f">可变深度</text>
+      <text x="380" y="135" text-anchor="middle" font-size="12" fill="#4a5060">核心思想：Pipeline 不是固定的，而是被 Query "召唤"出来的</text>
+    </svg>
+    <figcaption>FIG 17-1 · Adaptive Retrieval：Query 特征驱动策略选择</figcaption>
+    </figure>
+
+    <div class="note">工程经验：Adaptive 逻辑初期不需要做得很聪明。<b>先用 3~5 条简单规则覆盖 80% 的流量（比如"包含错误码格式 → BM25 First"），剩余流量回退到默认 Hybrid Pipeline</b>，再根据线上 Query 分布逐步细化。一上来就训练 Router 模型，往往是过度设计。</div>
+  </section>
+
+  <!-- ================= 十八 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">18</span><h2>完整的 Query Understanding 架构</h2></div>
+
+    <p>把前面的所有模块组装起来，企业级 Query Understanding 的整体架构如下：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 780 620" xmlns="http://www.w3.org/2000/svg">
+      <!-- User Query -->
+      <rect x="310" y="15" width="160" height="46" rx="8" fill="#2b2f38"/>
+      <text x="390" y="43" text-anchor="middle" font-size="14.5" font-weight="700" fill="#fff">User Query</text>
+      <line x1="390" y1="61" x2="390" y2="80" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <!-- Context -->
+      <rect x="295" y="85" width="190" height="42" rx="8" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.3"/>
+      <text x="390" y="111" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2c5a7a">+ Conversation Context</text>
+      <line x1="390" y1="127" x2="390" y2="146" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <!-- QU box -->
+      <rect x="240" y="151" width="300" height="50" rx="10" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.8"/>
+      <text x="390" y="181" text-anchor="middle" font-size="15" font-weight="700" fill="#b04a2f">Query Understanding</text>
+      <line x1="390" y1="201" x2="390" y2="218" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="140" y1="218" x2="640" y2="218" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="140" y1="218" x2="140" y2="238" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="390" y1="218" x2="390" y2="238" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="640" y1="218" x2="640" y2="238" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <!-- Three analysis modules -->
+      <rect x="60" y="243" width="160" height="70" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="140" y="270" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Intent Detection</text>
+      <text x="140" y="290" text-anchor="middle" font-size="10.5" fill="#8a90a0">排查 / 概念 / 比较 / 操作</text>
+      <rect x="310" y="243" width="160" height="70" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="390" y="270" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Entity / Filter</text>
+      <text x="390" y="290" text-anchor="middle" font-size="10.5" fill="#8a90a0">version · platform · product</text>
+      <rect x="560" y="243" width="160" height="70" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="640" y="270" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Complexity Analysis</text>
+      <text x="640" y="290" text-anchor="middle" font-size="10.5" fill="#8a90a0">单跳 / 多跳 / 多实体</text>
+      <line x1="140" y1="313" x2="140" y2="333" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="640" y1="313" x2="640" y2="333" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="140" y1="333" x2="640" y2="333" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="390" y1="313" x2="390" y2="333" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <!-- Router -->
+      <rect x="285" y="338" width="210" height="46" rx="10" fill="#2b2f38"/>
+      <text x="390" y="366" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">Query Strategy Router</text>
+      <line x1="390" y1="384" x2="390" y2="400" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="120" y1="400" x2="660" y2="400" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="120" y1="400" x2="120" y2="420" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="300" y1="400" x2="300" y2="420" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="480" y1="400" x2="480" y2="420" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="660" y1="400" x2="660" y2="420" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <!-- Four strategies -->
+      <rect x="50" y="425" width="140" height="52" rx="8" fill="#e9f2ec" stroke="#3a6b4f" stroke-width="1.3"/>
+      <text x="120" y="456" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a6b4f">Rewrite</text>
+      <rect x="230" y="425" width="140" height="52" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="300" y="456" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">Expansion</text>
+      <rect x="410" y="425" width="140" height="52" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="480" y="456" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">Multi-Query</text>
+      <rect x="590" y="425" width="140" height="52" rx="8" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.3"/>
+      <text x="660" y="449" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2c5a7a">Decomposition</text>
+      <text x="660" y="467" text-anchor="middle" font-size="10" fill="#8a90a0">（子问题可递归路由）</text>
+      <line x1="120" y1="477" x2="120" y2="497" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="660" y1="477" x2="660" y2="497" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="120" y1="497" x2="660" y2="497" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="390" y1="477" x2="390" y2="497" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <!-- Retrieval -->
+      <rect x="280" y="502" width="220" height="44" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="390" y="529" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b04a2f">Hybrid Retrieval</text>
+      <text x="390" y="546" text-anchor="middle" font-size="10.5" fill="#8a90a0">+ Metadata Filter 前置</text>
+      <line x1="390" y1="546" x2="390" y2="563" stroke="#4a5060" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="320" y="566" width="140" height="40" rx="8" fill="#fff" stroke="#1a1d23" stroke-width="1.5"/>
+      <text x="390" y="591" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1a1d23">Reranker</text>
+    </svg>
+    <figcaption>FIG 18-1 · 企业级 Query Understanding 完整架构（注意：四个策略分支是"或"的关系，由 Router 按需触发）</figcaption>
+    </figure>
+
+    <p>请特别注意图中最容易被误读的一点：<strong>四个策略分支是选择关系，不是串联关系</strong>。绝大多数 Query 只会走其中一条分支，甚至（简单事实型 Query）直接走默认 Hybrid Retrieval。</p>
+  </section>
+
+  <!-- ================= 十九 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">19</span><h2>Query Understanding 的工程代价</h2></div>
+
+    <p>任何 Query Transformation 都不是免费的。在架构评审时，我要求团队对每一项 Query 处理能力回答四个问题：</p>
+
+    <div class="stat-row">
+      <div class="stat">
+        <div class="sym">🎯</div>
+        <div class="name">Accuracy</div>
+        <div class="desc">可能提高 Retrieval 质量——但"可能"意味着必须用 Evaluation 证明，而不是假设。收益因 Query 分布而异。</div>
+      </div>
+      <div class="stat">
+        <div class="sym">⏱️</div>
+        <div class="name">Latency</div>
+        <div class="desc">Rewrite / HyDE / Multi-Query 生成均需 LLM 调用，通常增加 300ms~2s 的首字节延迟，是用户体感最敏感的代价。</div>
+      </div>
+      <div class="stat">
+        <div class="sym">💰</div>
+        <div class="name">Cost</div>
+        <div class="desc">每次 Transformation 都是 Token 消耗。多轮场景下，每一轮都要为 Context + Rewrite 付费，成本随对话深度累积。</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="sym">🎲</div>
+        <div class="name">Stability</div>
+        <div class="desc">Rewrite 可能产生 Intent Drift，且 LLM 输出有随机性——同一个 Query 不同时刻可能被改写成不同检索意图。</div>
+      </div>
+      <div class="stat" style="grid-column: span 2;">
+        <div class="sym">🔍</div>
+        <div class="name">Observability</div>
+        <div class="desc">每次请求必须完整记录：Original Query、Rewrite Query、Expanded Queries、Sub Queries、Metadata Filter、Router Decision。没有这条链路，Retrieval 出问题时你连"是搜错了还是没搜到"都分不清。</div>
+      </div>
+    </div>
+
+    <div class="code-card">
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="code-title">query_trace.log · 必须持久化的观测字段</span></div>
+      <pre>original_query:      <span class="st">"那 4.6.2 呢？"</span>
+rewrite_query:       <span class="st">"RTC SDK 4.6.2 Android 接入方式及版本差异"</span>
+expanded_queries:    [<span class="st">"RTC 4.6.2 release notes"</span>, ...]
+sub_queries:         []
+metadata_filter:     {<span class="pr">"version"</span>: <span class="st">"4.6.2"</span>, <span class="pr">"platform"</span>: <span class="st">"Android"</span>}
+router_decision:     <span class="st">"hybrid_with_filter"</span>
+router_confidence:   <span class="nu">0.93</span>
+latency_ms:          {<span class="pr">"rewrite"</span>: <span class="nu">640</span>, <span class="pr">"retrieval"</span>: <span class="nu">120</span>, <span class="pr">"rerank"</span>: <span class="nu">210</span>}</pre>
+    </div>
+
+    <div class="pull">Query Transformation 必须可观测，否则 Retrieval 出问题时，你很难定位到底是"谁改变了 Query"。<span class="sub">在事故复盘里，"原始 Query 和最终检索 Query 之间的每一次变换"都应该可以被逐帧回放。</span></div>
+  </section>
+
+  <!-- ================= 二十 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">20</span><h2>如何评估 Query Understanding？</h2></div>
+
+    <p>评估的核心思路是<strong>A/B 对照</strong>：同一批标注 Query，分别走 Baseline 和加 Query Understanding 的链路，比较检索指标：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg">
+      <!-- baseline -->
+      <rect x="60" y="25" width="220" height="46" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="170" y="53" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Original Query</text>
+      <line x1="170" y1="71" x2="170" y2="90" stroke="#4a5060" stroke-width="1.3" marker-end="url(#arr)"/>
+      <rect x="60" y="95" width="220" height="46" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="170" y="123" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Baseline Retrieval</text>
+      <text x="170" y="165" text-anchor="middle" font-size="12" fill="#8a90a0">Recall@K · MRR · NDCG</text>
+      <!-- enhanced -->
+      <rect x="480" y="25" width="220" height="46" rx="8" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="590" y="46" text-anchor="middle" font-size="13" font-weight="600" fill="#b04a2f">Query Understanding</text>
+      <text x="590" y="64" text-anchor="middle" font-size="10.5" fill="#8a90a0">Rewrite / Expand / Filter / Route</text>
+      <line x1="590" y1="71" x2="590" y2="90" stroke="#4a5060" stroke-width="1.3" marker-end="url(#arr)"/>
+      <rect x="480" y="95" width="220" height="46" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="590" y="123" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1d23">Transformed Query → Retrieval</text>
+      <text x="590" y="165" text-anchor="middle" font-size="12" fill="#8a90a0">同批指标 + 质量专项检查</text>
+      <line x1="380" y1="195" x2="380" y2="210" stroke="#4a5060" stroke-width="1.2"/>
+      <text x="380" y="228" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">指标对比 + 专项质量审计 + Latency / Token Cost 核算</text>
+    </svg>
+    <figcaption>FIG 20-1 · Query Understanding 评估框架</figcaption>
+    </figure>
+
+    <p><strong>指标层面</strong>，沿用第 8 篇的检索评估体系，额外增加成本维度：</p>
+
+    <ul style="padding-left:24px; font-size:15px; color:var(--ink-soft); line-height:2.1;">
+      <li><strong>Recall@K / MRR / NDCG / Precision@K</strong> —— 检索质量核心指标</li>
+      <li><strong>Query Success Rate</strong> —— Top-K 中至少包含一条可用文档的 Query 占比（最贴近用户体感）</li>
+      <li><strong>Latency P50 / P99</strong> —— Transformation 引入的延迟增量</li>
+      <li><strong>Token Cost / Query</strong> —— 单次问答的平均 Transformation 成本</li>
+    </ul>
+
+    <p><strong>质量专项层面</strong>，有三个指标无法用自动化指标覆盖，必须抽样人工审计：</p>
+
+    <div class="card">
+      <div class="card-label">三类专项审计</div>
+      <ul style="padding-left:22px; font-size:15px; color:var(--ink-soft); line-height:2.1;">
+        <li><strong>Rewrite Quality</strong> —— Rewrite 前后用户意图是否一致？重点抓 Intent Drift；</li>
+        <li><strong>Filter Accuracy</strong> —— 提取的 version / product / platform 是否正确？错误 Filter 会让正确文档被硬过滤掉，这类错误比召回不足更致命；</li>
+        <li><strong>Query Diversity</strong> —— Multi-Query 生成的多个 Query 是否真的产生互补的召回结果？如果各路召回高度重合，Multi-Query 只是白白多花了 N 倍成本。</li>
+      </ul>
+    </div>
+
+    <div class="note">一个容易被忽略的结论：<b>如果 Query Understanding 带来的 Recall 提升小于 3~5 个百分点，而 Latency 增加了 1 秒以上，多数企业场景下这笔交易是不划算的。</b>评估必须同时看质量和代价两端。</div>
+  </section>
+
+  <!-- ================= 二十一 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">21</span><h2>九个真实失败案例</h2></div>
+
+    <p>以下案例全部来自真实生产环境或架构评审中发现的问题。每个案例我都附上了对应的修复方向。</p>
+
+    <div class="fail">
+      <div class="f-title">失败 1 · Rewrite 改变了用户意图</div>
+      <p style="margin:0; font-size:14.5px;">用户问"为什么 RTC 会断线"（诊断原因），Rewrite 成"如何配置 RTC 重连"（配置操作）。检索命中的全是配置文档，根因分析文档被错过。</p>
+      <p class="f-fix"><b>修复：</b>Rewrite Prompt 中显式声明"不得改变问题的疑问类型和意图"，并建立 Intent Consistency 抽检机制。</p>
+    </div>
+    <div class="fail">
+      <div class="f-title">失败 2 · Expansion 引入大量不相关同义词</div>
+      <p style="margin:0; font-size:14.5px;">"连接失败"被扩展出"推流失败""播放卡顿""回声"等十余个变体，候选池被噪声淹没，Reranker 压力剧增，最终排序质量反而下降。</p>
+      <p class="f-fix"><b>修复：</b>限制扩展数量（通常 ≤5），扩展项需与原 Query 做语义相似度校验后再进入检索。</p>
+    </div>
+    <div class="fail">
+      <div class="f-title">失败 3 · Multi-Query 生成的是"换说法的同一个问题"</div>
+      <p style="margin:0; font-size:14.5px;">三个子 Query 召回结果重合度超过 90%，等于花了三倍成本做了一遍同样的事。</p>
+      <p class="f-fix"><b>修复：</b>Prompt 中要求子 Query 明确覆盖不同侧面（原因 / 排查 / 案例），并上线 Query Diversity 指标监控。</p>
+    </div>
+    <div class="fail">
+      <div class="f-title">失败 4 · Decomposition 拆得过细</div>
+      <p style="margin:0; font-size:14.5px;">一个两跳问题被拆成七个原子子问题，每个子问题的答案都太碎片化，生成阶段无法把它们组装成连贯回答。</p>
+      <p class="f-fix"><b>修复：</b>Decomposition 粒度以"能独立检索到一段完整证据"为下限，并限制最大子问题数。</p>
+    </div>
+    <div class="fail">
+      <div class="f-title">失败 5 · HyDE 幻觉出错误实体</div>
+      <p style="margin:0; font-size:14.5px;">假设文档中幻觉出一个不存在的配置参数，向量被拉向一片完全错误的知识区域，且全程无任何告警。</p>
+      <p class="f-fix"><b>修复：</b>HyDE 仅用于极短、低实体 Query；对含错误码、版本号等硬实体的 Query 强制关闭 HyDE。</p>
+    </div>
+    <div class="fail">
+      <div class="f-title">失败 6 · Query Router 判断错误</div>
+      <p style="margin:0; font-size:14.5px;">包含错别字的复杂排查 Query 被误判为"简单 Query"，跳过 Rewrite 直接检索，结果惨不忍睹。</p>
+      <p class="f-fix"><b>修复：</b>Router 输出置信度，低置信度时回退到更"重"的默认 Pipeline（fail-safe 到复杂路径，而不是简单路径）。</p>
+    </div>
+    <div class="fail">
+      <div class="f-title">失败 7 · Metadata Filter 提取错误</div>
+      <p style="margin:0; font-size:14.5px;">用户说"新版本"，系统错误提取为 version=4.6.3（实际是 4.6.2），正确的文档被硬过滤，召回为零。</p>
+      <p class="f-fix"><b>修复：</b>提取结果与知识库的实际枚举值做校验；无法确定时降级为软过滤（boost 而非 filter）。</p>
+    </div>
+    <div class="fail">
+      <div class="f-title">失败 8 · 所有 Query 强制 Rewrite</div>
+      <p style="margin:0; font-size:14.5px;">"什么是 RTC？"这样的简单 Query 也被送进 Rewrite，P99 延迟从 1.2s 涨到 2.8s，效果几乎没有变化。</p>
+      <p class="f-fix"><b>修复：</b>按 Query 特征做条件触发——这是 Adaptive Retrieval 的直接动机。</p>
+    </div>
+    <div class="fail">
+      <div class="f-title">失败 9 · 无法追踪"原始 Query → 最终 Query"的变换链</div>
+      <p style="margin:0; font-size:14.5px;">检索出问题后，团队争论了两天"到底是 Rewrite 改错了还是索引有问题"——因为没人记录中间变换。</p>
+      <p class="f-fix"><b>修复：</b>第 19 节的 Query Trace 持久化，作为所有 Query Transformation 的强制要求。</p>
+    </div>
+  </section>
+
+  <!-- ================= 二十二 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">22</span><h2>什么时候应该使用什么策略？</h2></div>
+
+    <p>把前文所有讨论收敛成一张决策表：</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>场景</th><th>典型 Query 特征</th><th>推荐策略</th></tr></thead>
+        <tbody>
+          <tr><td>简单事实 Query</td><td>"什么是 RTC？"</td><td>原始 Query / 基础 Hybrid</td></tr>
+          <tr><td>口语化 Query</td><td>"RTC 挂了"</td><td>Rewrite</td></tr>
+          <tr><td>多轮指代</td><td>"那 4.6.2 呢？"</td><td>Context-aware Rewrite</td></tr>
+          <tr><td>同义词 / 缩写</td><td>黑话与文档术语错位</td><td>Expansion / 同义词词典</td></tr>
+          <tr><td>多角度问题</td><td>"原因？解法？案例？"</td><td>Multi-Query</td></tr>
+          <tr><td>多实体比较</td><td>"比较 4.6.1 和 4.6.2"</td><td>Decomposition</td></tr>
+          <tr><td>极短语义 Query</td><td>"怎么解决？"</td><td>可考虑 HyDE（有风险）</td></tr>
+          <tr><td>含版本 / 平台 / 产品</td><td>"4.6.2 Android 的错误码"</td><td>Metadata Extraction + Filter</td></tr>
+          <tr><td>混合 Query 分布</td><td>整体流量</td><td>Query Routing + Adaptive Retrieval</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pull">实际系统中可以组合使用这些策略，但不要默认所有 Query 都执行全部步骤。<span class="sub">"默认最简、按需增强"是 Query Pipeline 设计的第一原则。</span></div>
+  </section>
+
+  <!-- ================= 二十三 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">23</span><h2>完整的企业级 Query Pipeline</h2></div>
+
+    <p>最后，给出整合了全部内容的端到端 Query Pipeline。它衔接第 8 篇的 Hybrid Retrieval + RRF + Reranker，是它们的"上游供给系统"：</p>
+
+    <figure class="fig">
+    <svg viewBox="0 0 780 640" xmlns="http://www.w3.org/2000/svg">
+      <rect x="310" y="12" width="160" height="44" rx="8" fill="#2b2f38"/>
+      <text x="390" y="39" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">User Query</text>
+      <line x1="390" y1="56" x2="390" y2="72" stroke="#4a5060" stroke-width="1.4" marker-end="url(#arr)"/>
+      <rect x="280" y="76" width="220" height="40" rx="8" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.3"/>
+      <text x="390" y="101" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2c5a7a">Conversation Context 合并</text>
+      <line x1="390" y1="116" x2="390" y2="132" stroke="#4a5060" stroke-width="1.4" marker-end="url(#arr)"/>
+      <rect x="270" y="136" width="240" height="44" rx="10" fill="#fdf8f5" stroke="#b04a2f" stroke-width="1.6"/>
+      <text x="390" y="163" text-anchor="middle" font-size="14" font-weight="700" fill="#b04a2f">Query Understanding</text>
+      <line x1="390" y1="180" x2="390" y2="196" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="170" y1="196" x2="610" y2="196" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="170" y1="196" x2="170" y2="212" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="390" y1="196" x2="390" y2="212" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="610" y1="196" x2="610" y2="212" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <rect x="100" y="216" width="140" height="44" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="170" y="243" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">Intent</text>
+      <rect x="320" y="216" width="140" height="44" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="390" y="243" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">Entities / Filter</text>
+      <rect x="540" y="216" width="140" height="44" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="610" y="243" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">Complexity</text>
+      <line x1="170" y1="260" x2="170" y2="278" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="610" y1="260" x2="610" y2="278" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="170" y1="278" x2="610" y2="278" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="390" y1="260" x2="390" y2="278" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <rect x="290" y="284" width="200" height="42" rx="10" fill="#2b2f38"/>
+      <text x="390" y="310" text-anchor="middle" font-size="13.5" font-weight="700" fill="#fff">Strategy Router</text>
+      <line x1="390" y1="326" x2="390" y2="342" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="200" y1="342" x2="580" y2="342" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="200" y1="342" x2="200" y2="358" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="390" y1="342" x2="390" y2="358" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="580" y1="342" x2="580" y2="358" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <rect x="130" y="362" width="140" height="44" rx="8" fill="#e9f2ec" stroke="#3a6b4f" stroke-width="1.3"/>
+      <text x="200" y="389" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a6b4f">Rewrite</text>
+      <rect x="320" y="362" width="140" height="44" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.3"/>
+      <text x="390" y="389" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1a1d23">Multi-Query</text>
+      <rect x="510" y="362" width="140" height="44" rx="8" fill="#e8f0f5" stroke="#2c5a7a" stroke-width="1.3"/>
+      <text x="580" y="389" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2c5a7a">Decompose</text>
+      <line x1="200" y1="406" x2="200" y2="424" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="580" y1="406" x2="580" y2="424" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="200" y1="424" x2="580" y2="424" stroke="#4a5060" stroke-width="1.2"/>
+      <line x1="390" y1="406" x2="390" y2="424" stroke="#4a5060" stroke-width="1.2" marker-end="url(#arr)"/>
+      <rect x="285" y="428" width="210" height="42" rx="8" fill="#fff" stroke="#b04a2f" stroke-width="1.5"/>
+      <text x="390" y="454" text-anchor="middle" font-size="13" font-weight="700" fill="#b04a2f">Metadata Filtering</text>
+      <line x1="390" y1="470" x2="390" y2="486" stroke="#4a5060" stroke-width="1.4" marker-end="url(#arr)"/>
+      <rect x="270" y="490" width="240" height="42" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="390" y="516" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1d23">Dense + Sparse Retrieval</text>
+      <line x1="390" y1="532" x2="390" y2="548" stroke="#4a5060" stroke-width="1.4" marker-end="url(#arr)"/>
+      <rect x="330" y="552" width="120" height="38" rx="8" fill="#fff" stroke="#e4e1da" stroke-width="1.5"/>
+      <text x="390" y="576" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1d23">RRF</text>
+      <line x1="390" y1="590" x2="390" y2="606" stroke="#4a5060" stroke-width="1.4" marker-end="url(#arr)"/>
+      <rect x="325" y="608" width="130" height="30" rx="8" fill="#2b2f38"/>
+      <text x="390" y="628" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">Reranker</text>
+    </svg>
+    <figcaption>FIG 23-1 · 端到端企业级 Query Pipeline（衔接第 8 篇的检索与重排链路）</figcaption>
+    </figure>
+
+    <div class="pull">Query Understanding 是 Retrieval 之前的"问题工程"。<span class="sub">Chunking 决定"知识怎么存"，Query Understanding 决定"问题怎么问"——两者共同决定了正确文档能不能相遇。</span></div>
+
+    <p>最后给出一个 Python 层面的 Query Transformation 骨架，展示各模块如何在代码中协作：</p>
+
+    <div class="code-card">
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="code-title">query_transformation.py</span></div>
+      <pre><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+
+<span class="kw">class</span> <span class="fn">QueryTransformer</span>:
+    <span class="st">"""企业级 Query Transformation 编排器。
+    核心原则：默认最简，按需增强，全程可观测。"""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, llm, router):
+        self.llm = llm
+        self.router = router          <span class="cm"># Query Router：决定策略组合</span>
+        self.trace = []               <span class="cm"># 强制记录变换链（失败案例 9 的教训）</span>
+
+    <span class="kw">def</span> <span class="fn">transform</span>(self, query: <span class="fn">str</span>, history: <span class="fn">list</span>) -> <span class="st">"TransformedQuery"</span>:
+        plan = self.router.route(query, history)
+        self.trace.append((<span class="st">"original"</span>, query))
+
+        current = query
+        <span class="cm"># 1) 多轮对话 → Standalone Query（仅当 router 判定存在上下文依赖）</span>
+        <span class="kw">if</span> plan.needs_condensation <span class="kw">and</span> history:
+            current = self.llm.rewrite_with_context(current, history)
+            self.trace.append((<span class="st">"standalone_rewrite"</span>, current))
+
+        <span class="cm"># 2) 结构化提取：语义不变，只加约束</span>
+        filters = self.llm.extract_filters(current)
+        filters = self.validate_against_schema(filters)  <span class="cm"># 防失败案例 7</span>
+
+        <span class="cm"># 3) 按策略生成检索 Query 集合 —— 三选一，而非全做</span>
+        <span class="kw">if</span> plan.strategy == <span class="st">"decompose"</span>:
+            queries = self.llm.decompose(current)          <span class="cm"># 子问题，缺一不可</span>
+        <span class="kw">elif</span> plan.strategy == <span class="st">"multi_query"</span>:
+            queries = self.llm.multi_query(current, max_n=<span class="nu">3</span>)
+            queries = self.dedup_and_check_diversity(queries)  <span class="cm"># 防失败案例 3</span>
+        <span class="kw">elif</span> plan.strategy == <span class="st">"expand"</span>:
+            queries = self.llm.expand(current, max_n=<span class="nu">5</span>)   <span class="cm"># 防失败案例 2</span>
+        <span class="kw">else</span>:
+            queries = [current]                            <span class="cm"># 默认最简</span>
+
+        <span class="kw">return</span> TransformedQuery(queries=queries, filters=filters,
+                                trace=self.trace)
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="fn">TransformedQuery</span>:
+    queries: <span class="fn">list</span>
+    filters: <span class="fn">dict</span>
+    trace: <span class="fn">list</span> = field(default_factory=<span class="fn">list</span>)</pre>
+    </div>
+  </section>
+
+  <!-- ================= 二十四 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">24</span><h2>最终核心认知</h2></div>
+
+    <p>整篇文章可以浓缩成一条思考链。面对任何用户输入，一个成熟的企业 RAG 系统应该依次回答这些问题：</p>
+
+    <div class="card card-blue">
+      <div class="card-label">Query 思考链</div>
+      <ol style="padding-left:22px; font-size:15px; color:var(--ink-soft); line-height:2.3;">
+        <li><strong>What does the user mean?</strong> —— 用户真正想问什么？</li>
+        <li><strong>What entities are involved?</strong> —— 涉及哪些产品、版本、错误码？</li>
+        <li><strong>What constraints exist?</strong> —— 存在哪些结构化过滤条件？</li>
+        <li><strong>What retrieval strategy should be used?</strong> —— 该用哪种检索策略？</li>
+        <li><strong>What query should actually be searched?</strong> —— 真正应该拿去搜索的是什么？</li>
+        <li><strong>Retrieval.</strong> —— 然后才开始检索。</li>
+      </ol>
+    </div>
+
+    <div class="pull">Query Understanding 的价值，不是把 Query 变复杂，而是让系统更准确地理解"用户真正想找什么"。<span class="sub">一个成熟的企业 RAG，不应该只有一个固定 Retrieval Pipeline，而应该能够根据 Query 特征选择合适的检索策略。</span></div>
+
+    <p>回到开篇那个 RTC 连接失败的案例。经过本文的完整处理，那条口语化的长句最终变成了：一个 Standalone Query、一组 Metadata Filter、以及一个由 Router 决定的 Hybrid 检索策略——<strong>用户没有改一个字，但系统"听懂"了。</strong></p>
+  </section>
+
+  <!-- ================= Ending ================= -->
+  <div class="ending">
+    <div class="kicker" style="color:#e0a83a;">Next · Series 10</div>
+    <h2>检索正确，答案为什么仍然错误？</h2>
+    <p>即使 Query Understanding、Hybrid Retrieval、RRF、Reranker 全部做对，问题依然存在：</p>
+    <div class="next-card">
+      <div class="k">下一篇 · Context Engineering</div>
+      <h3>检索正确，答案为什么仍然错误？Context Engineering 深度解析</h3>
+      <p>最终交给 LLM 的 Context，到底应该放什么？又应该以什么顺序、什么结构放进去？当候选池里同时出现相互矛盾的文档、过时的版本说明、与用户平台无关的内容时，再好的 Reranker 也救不了生成质量——因为问题已经不在检索，而在 Context 的组织方式。</p>
+    </div>
+  </div>
+
+  <nav class="series-nav">
+    <a href="#">← 上一篇 · 08 Reranker：候选重排与精排</a>
+    <a href="#">下一篇 · 10 Context Engineering →</a>
+  </nav>
+
+</div>
+</body>
+</html>
