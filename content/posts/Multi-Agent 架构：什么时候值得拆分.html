@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent 架构：什么时候值得拆分 · Production Agent Architecture (3/5)</title>
+<style>
+  :root{
+    --ink:#1a1d23;
+    --ink-soft:#4a4f58;
+    --ink-faint:#8a8f99;
+    --paper:#fcfbf7;
+    --card:#ffffff;
+    --line:#e6e2d8;
+    --accent:#2f5d8a;
+    --accent-soft:#eaf1f7;
+    --warn:#a05a2c;
+    --warn-soft:#faf1e8;
+    --good:#2e6e4e;
+    --good-soft:#e9f3ed;
+    --bad:#9c3a3a;
+    --bad-soft:#f9ecec;
+    --code-bg:#f4f2ec;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",Georgia,serif;
+    --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    --mono:"SF Mono","JetBrains Mono",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16.5px;
+    line-height:1.9;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:0 24px 120px;}
+
+  /* ---------- Hero ---------- */
+  header.hero{
+    max-width:820px;margin:0 auto;padding:72px 24px 40px;
+  }
+  .series-tag{
+    display:inline-block;font-size:12.5px;letter-spacing:.14em;
+    color:var(--accent);border:1px solid var(--accent);
+    padding:4px 14px;border-radius:99px;margin-bottom:28px;
+    font-family:var(--sans);
+  }
+  h1.title{
+    font-family:var(--serif);font-weight:700;
+    font-size:40px;line-height:1.35;letter-spacing:.01em;
+    margin-bottom:20px;
+  }
+  .subtitle{
+    font-size:17px;color:var(--ink-soft);max-width:620px;margin-bottom:36px;
+  }
+  .meta-row{
+    display:flex;gap:28px;flex-wrap:wrap;
+    font-size:13.5px;color:var(--ink-faint);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:14px 0;
+  }
+  .meta-row span b{color:var(--ink-soft);font-weight:600;}
+  .series-chain{
+    margin-top:22px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    font-size:13.5px;color:var(--ink-faint);
+  }
+  .series-chain .done{color:var(--ink-soft);}
+  .series-chain .cur{
+    color:var(--accent);font-weight:600;
+    background:var(--accent-soft);padding:2px 10px;border-radius:6px;
+  }
+  .series-chain .arrow{color:var(--line);}
+
+  /* ---------- TOC ---------- */
+  nav.toc{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:26px 30px;margin:44px 0 0;
+  }
+  nav.toc h4{
+    font-size:12.5px;letter-spacing:.18em;color:var(--ink-faint);
+    margin-bottom:14px;font-weight:600;
+  }
+  nav.toc ol{list-style:none;columns:2;column-gap:40px;}
+  nav.toc li{font-size:14px;margin-bottom:8px;break-inside:avoid;}
+  nav.toc li a{color:var(--ink-soft);text-decoration:none;}
+  nav.toc li a:hover{color:var(--accent);}
+  nav.toc li a .n{color:var(--ink-faint);margin-right:8px;font-family:var(--mono);font-size:12.5px;}
+
+  /* ---------- Headings ---------- */
+  section{margin-top:88px;}
+  .sec-no{
+    font-family:var(--mono);font-size:13px;color:var(--accent);
+    letter-spacing:.12em;margin-bottom:6px;display:block;
+  }
+  h2{
+    font-family:var(--serif);font-size:27px;font-weight:700;
+    line-height:1.5;margin-bottom:26px;
+  }
+  h3{
+    font-family:var(--serif);font-size:19.5px;font-weight:700;
+    margin:44px 0 16px;
+  }
+  h3 .hn{color:var(--ink-faint);font-family:var(--mono);font-size:14px;font-weight:400;margin-right:8px;}
+  p{margin-bottom:20px;color:var(--ink);text-align:justify;}
+  p.lead{font-size:17.5px;color:var(--ink-soft);}
+  strong{font-weight:650;}
+  em{font-style:normal;background:linear-gradient(transparent 62%,#f3e3b3 62%);padding:0 2px;}
+
+  /* ---------- Quote blocks ---------- */
+  blockquote.key{
+    border-left:3px solid var(--accent);
+    background:var(--accent-soft);
+    border-radius:0 12px 12px 0;
+    padding:22px 28px;margin:32px 0;
+    font-family:var(--serif);font-size:17.5px;line-height:1.8;color:var(--ink);
+  }
+  blockquote.key .src{display:block;margin-top:10px;font-size:13px;color:var(--ink-faint);font-family:var(--sans);}
+  blockquote.q{
+    border-left:3px solid var(--line);
+    padding:6px 22px;margin:26px 0;color:var(--ink-soft);
+    font-family:var(--serif);font-size:16px;
+  }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:28px 32px;margin:32px 0;
+  }
+  .card h5{
+    font-size:13px;letter-spacing:.14em;color:var(--ink-faint);
+    margin-bottom:14px;font-weight:600;
+  }
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:32px 0;}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:32px 0;}
+  @media (max-width:720px){.grid-2,.grid-4{grid-template-columns:1fr;}}
+
+  .cond-card{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:20px 22px;
+  }
+  .cond-card .no{
+    font-family:var(--mono);font-size:12px;color:var(--accent);
+    display:block;margin-bottom:6px;
+  }
+  .cond-card h6{font-family:var(--serif);font-size:16px;margin-bottom:8px;}
+  .cond-card p{font-size:14px;line-height:1.75;color:var(--ink-soft);margin:0;text-align:left;}
+
+  /* ---------- Stat cards ---------- */
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:36px 0;}
+  @media (max-width:720px){.stat-row{grid-template-columns:1fr;}}
+  .stat{
+    border:1px solid var(--line);border-radius:12px;background:var(--card);
+    padding:22px 20px;text-align:center;
+  }
+  .stat .big{
+    font-family:var(--serif);font-size:32px;font-weight:700;line-height:1.2;
+  }
+  .stat .big.plus{color:var(--good);}
+  .stat .big.minus{color:var(--bad);}
+  .stat .lbl{font-size:13px;color:var(--ink-faint);margin-top:8px;line-height:1.6;}
+  .stat-row.total{grid-template-columns:1fr;}
+  .stat.total{background:var(--ink);border-color:var(--ink);}
+  .stat.total .big{color:#fff;font-size:24px;}
+  .stat.total .lbl{color:#b9bdc6;}
+
+  /* ---------- Tables ---------- */
+  .tbl-wrap{overflow-x:auto;margin:32px 0;}
+  table{
+    width:100%;border-collapse:collapse;font-size:14.5px;
+    background:var(--card);border-radius:12px;overflow:hidden;
+    border:1px solid var(--line);
+  }
+  thead th{
+    background:var(--ink);color:#fff;font-weight:600;
+    padding:12px 18px;text-align:left;font-size:13.5px;letter-spacing:.04em;
+  }
+  tbody td{padding:12px 18px;border-top:1px solid var(--line);vertical-align:top;}
+  tbody tr:nth-child(even){background:#faf9f5;}
+  td.dim{color:var(--ink-faint);font-weight:600;white-space:nowrap;}
+  .yes{color:var(--good);font-weight:600;}
+  .no{color:var(--bad);font-weight:600;}
+  .mid{color:var(--warn);font-weight:600;}
+
+  /* ---------- Code ---------- */
+  pre{
+    background:var(--code-bg);border:1px solid var(--line);
+    border-radius:12px;padding:24px 26px;margin:28px 0;
+    overflow-x:auto;
+  }
+  pre code{
+    font-family:var(--mono);font-size:13.5px;line-height:1.8;color:var(--ink);
+  }
+  code.inline{
+    font-family:var(--mono);font-size:.86em;
+    background:var(--code-bg);border:1px solid var(--line);
+    border-radius:5px;padding:1px 6px;color:var(--accent);
+  }
+  .code-caption{
+    font-size:12.5px;color:var(--ink-faint);margin-top:-18px;margin-bottom:28px;
+    text-align:right;font-family:var(--mono);
+  }
+
+  /* ---------- ASCII / text blocks ---------- */
+  pre.txt{
+    background:transparent;border:none;border-left:3px solid var(--line);
+    border-radius:0;padding:10px 24px;
+  }
+  pre.txt code{color:var(--ink-soft);}
+
+  /* ---------- Figures ---------- */
+  figure{
+    margin:40px 0;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;
+    padding:28px 20px 18px;
+  }
+  figure svg{display:block;width:100%;height:auto;}
+  figcaption{
+    text-align:center;font-size:13px;color:var(--ink-faint);
+    margin-top:16px;padding-bottom:4px;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600;}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:12px;padding:20px 26px;margin:30px 0;font-size:15px;line-height:1.85;
+  }
+  .callout .tag{
+    display:inline-block;font-size:11.5px;letter-spacing:.12em;font-weight:700;
+    padding:2px 10px;border-radius:99px;margin-bottom:10px;
+  }
+  .callout.warn{background:var(--warn-soft);border:1px solid #ecd9c4;}
+  .callout.warn .tag{background:var(--warn);color:#fff;}
+  .callout.good{background:var(--good-soft);border:1px solid #cfe3d7;}
+  .callout.good .tag{background:var(--good);color:#fff;}
+  .callout.bad{background:var(--bad-soft);border:1px solid #ecd0d0;}
+  .callout.bad .tag{background:var(--bad);color:#fff;}
+  .callout p{margin-bottom:8px;}
+  .callout p:last-child{margin-bottom:0;}
+
+  /* ---------- Anti-pattern cards ---------- */
+  .ap-card{
+    border:1px solid var(--line);border-left:4px solid var(--bad);
+    border-radius:0 12px 12px 0;background:var(--card);
+    padding:24px 28px;margin:28px 0;
+  }
+  .ap-card h6{
+    font-family:var(--serif);font-size:17px;margin-bottom:10px;
+  }
+  .ap-card .ap-tag{
+    font-family:var(--mono);font-size:12px;color:var(--bad);
+    display:block;margin-bottom:4px;
+  }
+  .ap-card p{font-size:14.5px;margin-bottom:10px;text-align:left;color:var(--ink-soft);}
+  .ap-card p:last-child{margin-bottom:0;}
+
+  /* ---------- Principles ---------- */
+  .principle{
+    display:flex;gap:20px;align-items:flex-start;
+    border-bottom:1px solid var(--line);padding:22px 4px;
+  }
+  .principle:last-child{border-bottom:none;}
+  .principle .pn{
+    font-family:var(--mono);font-size:13px;color:var(--accent);
+    background:var(--accent-soft);border-radius:8px;
+    min-width:44px;height:32px;display:flex;align-items:center;justify-content:center;
+    font-weight:700;flex-shrink:0;margin-top:3px;
+  }
+  .principle .pt{
+    font-family:var(--serif);font-size:16.5px;font-weight:700;line-height:1.7;
+  }
+  .principle .pd{font-size:13.5px;color:var(--ink-faint);margin-top:4px;line-height:1.7;}
+
+  /* ---------- Decision-tree flow ---------- */
+  .flow-line{
+    font-family:var(--mono);font-size:14px;line-height:2;
+    background:var(--card);border:1px dashed var(--line);border-radius:12px;
+    padding:22px 28px;margin:30px 0;color:var(--ink-soft);overflow-x:auto;
+  }
+
+  /* ---------- Footer ---------- */
+  footer.end{
+    margin-top:100px;padding-top:36px;border-top:1px solid var(--line);
+  }
+  .final-quote{
+    font-family:var(--serif);font-size:22px;line-height:1.9;font-weight:700;
+    text-align:center;padding:40px 20px;color:var(--ink);
+  }
+  .next-hint{
+    text-align:center;font-size:13.5px;color:var(--ink-faint);margin-top:24px;
+  }
+  .next-hint b{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="series-tag">PRODUCTION AGENT ARCHITECTURE · 03</span>
+  <h1 class="title">Multi-Agent 架构：<br>什么时候值得拆分</h1>
+  <p class="subtitle">Multi-Agent 不是为了增加 Agent 数量，而是为了隔离复杂性。一个 Agent 是否应该拆成多个，不由“任务看起来很复杂”决定，而由是否存在清晰、稳定、可验证的职责边界决定。</p>
+  <div class="meta-row">
+    <span><b>系列</b>：Production Agent Architecture</span>
+    <span><b>定位</b>：架构决策 · 第 3 篇</span>
+    <span><b>面向</b>：Agent 系统架构师 / 技术负责人</span>
+  </div>
+  <div class="series-chain">
+    <span class="done">① Workflow vs Agent：什么时候不应该使用 Agent</span>
+    <span class="arrow">→</span>
+    <span class="done">② 生产级 Agent 系统设计：单 Agent 何时够用</span>
+    <span class="arrow">→</span>
+    <span class="cur">③ Multi-Agent 架构：什么时候值得拆分</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h4>CONTENTS</h4>
+  <ol>
+    <li><a href="#s1"><span class="n">01</span>为什么 Multi-Agent 容易被过度设计</a></li>
+    <li><a href="#s2"><span class="n">02</span>Multi-Agent 真正解决的是什么</a></li>
+    <li><a href="#s3"><span class="n">03</span>第一原则：职责边界</a></li>
+    <li><a href="#s4"><span class="n">04</span>什么样的边界才是有效的</a></li>
+    <li><a href="#s5"><span class="n">05</span>Tool、Workflow、Agent：拆成什么</a></li>
+    <li><a href="#s6"><span class="n">06</span>第二原则：Context Isolation</a></li>
+    <li><a href="#s7"><span class="n">07</span>第三原则：模型隔离</a></li>
+    <li><a href="#s8"><span class="n">08</span>第四原则：权限隔离</a></li>
+    <li><a href="#s9"><span class="n">09</span>第五原则：并行执行</a></li>
+    <li><a href="#s10"><span class="n">10</span>第六原则：独立演进</a></li>
+    <li><a href="#s11"><span class="n">11</span>第七原则：故障隔离</a></li>
+    <li><a href="#s12"><span class="n">12</span>什么情况下不值得拆</a></li>
+    <li><a href="#s13"><span class="n">13</span>核心 Trade-off：Coordination Cost</a></li>
+    <li><a href="#s14"><span class="n">14</span>Agent 之间的三种基本协作模型</a></li>
+    <li><a href="#s15"><span class="n">15</span>案例：企业级深度研究 Agent</a></li>
+    <li><a href="#s16"><span class="n">16</span>拆分决策评分模型</a></li>
+    <li><a href="#s17"><span class="n">17</span>Multi-Agent 决策树</a></li>
+    <li><a href="#s18"><span class="n">18</span>三个危险信号</a></li>
+    <li><a href="#s19"><span class="n">19</span>八条生产级原则</a></li>
+    <li><a href="#s20"><span class="n">20</span>结论</a></li>
+  </ol>
+</nav>
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <span class="sec-no">SECTION 01</span>
+  <h2>为什么 Multi-Agent 很容易被过度设计</h2>
+
+  <p>先看一个典型的架构图，你可能在不同团队的方案评审中见过它的变体：</p>
+
+  <figure>
+    <svg viewBox="0 0 720 150" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a8f99"/>
+        </marker>
+      </defs>
+      <g font-family="PingFang SC, sans-serif" font-size="13">
+        <rect x="12" y="55" width="72" height="40" rx="8" fill="#eaf1f7" stroke="#2f5d8a" stroke-width="1.5" transform="rotate(-1 48 75)"/>
+        <text x="48" y="79" text-anchor="middle" fill="#1a1d23">User</text>
+        <line x1="86" y1="75" x2="122" y2="75" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar)"/>
+        <rect x="124" y="52" width="94" height="46" rx="10" fill="#fff" stroke="#2f5d8a" stroke-width="2" transform="rotate(1 171 75)"/>
+        <text x="171" y="79" text-anchor="middle" fill="#1a1d23">Planner</text>
+        <line x1="220" y1="75" x2="256" y2="75" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar)"/>
+        <rect x="258" y="52" width="94" height="46" rx="10" fill="#fff" stroke="#2f5d8a" stroke-width="2" transform="rotate(-1 305 75)"/>
+        <text x="305" y="79" text-anchor="middle" fill="#1a1d23">Research</text>
+        <line x1="354" y1="75" x2="390" y2="75" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar)"/>
+        <rect x="392" y="52" width="80" height="46" rx="10" fill="#fff" stroke="#2f5d8a" stroke-width="2" transform="rotate(1 432 75)"/>
+        <text x="432" y="79" text-anchor="middle" fill="#1a1d23">Search</text>
+        <line x1="474" y1="75" x2="500" y2="75" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar)"/>
+        <rect x="502" y="52" width="84" height="46" rx="10" fill="#fff" stroke="#2f5d8a" stroke-width="2" transform="rotate(-1 544 75)"/>
+        <text x="544" y="79" text-anchor="middle" fill="#1a1d23">Analysis</text>
+        <line x1="588" y1="75" x2="604" y2="75" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar)"/>
+        <rect x="606" y="52" width="76" height="46" rx="10" fill="#fff" stroke="#2f5d8a" stroke-width="2" transform="rotate(1 644 75)"/>
+        <text x="644" y="79" text-anchor="middle" fill="#1a1d23">Writer</text>
+      </g>
+    </svg>
+    <figcaption><b>图 1</b> · 一个“看起来很专业”的 Agent 链条</figcaption>
+  </figure>
+
+  <p>七层节点，每个都有名字，每个名字后面都跟着一个 LLM 调用。评审会上很少有人说它不好——因为它<strong>看起来</strong>符合“职责单一”的直觉。</p>
+
+  <p>但只要追问四个问题，这个架构就会开始动摇：</p>
+
+  <blockquote class="q">
+    <p>Search Agent 为什么不能只是一个 Tool？</p>
+    <p>Writer Agent 为什么不能只是一个 Prompt 模板？</p>
+    <p>Reviewer Agent 为什么不能只是 Workflow 中的一个校验步骤？</p>
+    <p>Planner Agent 是否真的需要独立存在，还是一个 Router 就够了？</p>
+  </blockquote>
+
+  <p>如果这些问题都答不出来，那么它不是 Multi-Agent Architecture，而是 <strong>Agent 数量堆砌</strong>。</p>
+
+  <blockquote class="key">
+    拆分本身不是价值，<strong>拆分所解决的问题</strong>才是价值。
+    <span class="src">—— 本文的核心命题，也是全文所有判断的出发点</span>
+  </blockquote>
+
+  <p>承接系列前两篇的结论：第一篇回答了“这个任务需不需要 Agent”——流程可预定义就用 Workflow；第二篇回答了“需要 Agent 后，一个够不够”——优先 Single Agent + Tools。本文回答第三个问题：<strong>当 Single Agent 开始出现复杂度问题，什么时候真正值得拆？</strong></p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <span class="sec-no">SECTION 02</span>
+  <h2>Multi-Agent 真正解决的是什么</h2>
+
+  <p>回答“什么时候拆”之前，先回答“为什么一个 Agent 会开始失控”。</p>
+
+  <p>一个健康的 Single Agent，本质是一个<strong>受控的决策空间</strong>：它接收 Context，调用 Tools，遵循 Policies，产出 Decision。</p>
+
+  <figure>
+    <svg viewBox="0 0 720 190" xmlns="http://www.w3.org/2000/svg">
+      <g font-family="PingFang SC, sans-serif" font-size="13">
+        <rect x="290" y="14" width="140" height="46" rx="10" fill="#eaf1f7" stroke="#2f5d8a" stroke-width="2" transform="rotate(-1 360 37)"/>
+        <text x="360" y="42" text-anchor="middle" fill="#1a1d23" font-weight="600">Single Agent</text>
+        <line x1="300" y1="62" x2="170" y2="98" stroke="#8a8f99" stroke-width="1.5"/>
+        <line x1="360" y1="62" x2="360" y2="98" stroke="#8a8f99" stroke-width="1.5"/>
+        <line x1="420" y1="62" x2="550" y2="98" stroke="#8a8f99" stroke-width="1.5"/>
+        <rect x="96" y="100" width="120" height="42" rx="8" fill="#fff" stroke="#c9c4b6" stroke-width="1.5" transform="rotate(-1.5 156 121)"/>
+        <text x="156" y="125" text-anchor="middle" fill="#4a4f58">Tools</text>
+        <rect x="300" y="100" width="120" height="42" rx="8" fill="#fff" stroke="#c9c4b6" stroke-width="1.5"/>
+        <text x="360" y="125" text-anchor="middle" fill="#4a4f58">Context</text>
+        <rect x="500" y="100" width="120" height="42" rx="8" fill="#fff" stroke="#c9c4b6" stroke-width="1.5" transform="rotate(1.5 560 121)"/>
+        <text x="560" y="125" text-anchor="middle" fill="#4a4f58">Policies</text>
+        <line x1="156" y1="144" x2="330" y2="168" stroke="#8a8f99" stroke-width="1.5"/>
+        <line x1="360" y1="144" x2="360" y2="164" stroke="#8a8f99" stroke-width="1.5"/>
+        <line x1="560" y1="144" x2="390" y2="168" stroke="#8a8f99" stroke-width="1.5"/>
+        <rect x="280" y="140" width="160" height="36" rx="18" fill="#2e6e4e" transform="rotate(-0.5 360 158)"/>
+        <text x="360" y="163" text-anchor="middle" fill="#fff" font-size="13.5" font-weight="600">Decision</text>
+      </g>
+    </svg>
+    <figcaption><b>图 2</b> · Single Agent：一个集中但受控的决策空间</figcaption>
+  </figure>
+
+  <p>问题在于，系统会持续增长。每接一个新需求，团队的默认动作往往是：加 Prompt、加 Tool、加 Context、加 Memory、加 Policy。增长到某一天，你会得到这个：</p>
+
+  <figure>
+    <svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg">
+      <g font-family="PingFang SC, sans-serif" font-size="13">
+        <rect x="240" y="16" width="240" height="56" rx="12" fill="#f9ecec" stroke="#9c3a3a" stroke-width="2" transform="rotate(-0.8 360 44)"/>
+        <text x="360" y="40" text-anchor="middle" fill="#9c3a3a" font-weight="700" font-size="15">God Agent</text>
+        <text x="360" y="60" text-anchor="middle" fill="#9c3a3a" font-size="11.5">一个决策主体 · 承担所有职责</text>
+        <line x1="290" y1="74" x2="120" y2="130" stroke="#c9a0a0" stroke-width="1.5"/>
+        <line x1="330" y1="74" x2="255" y2="130" stroke="#c9a0a0" stroke-width="1.5"/>
+        <line x1="390" y1="74" x2="465" y2="130" stroke="#c9a0a0" stroke-width="1.5"/>
+        <line x1="430" y1="74" x2="600" y2="130" stroke="#c9a0a0" stroke-width="1.5"/>
+        <rect x="46" y="132" width="120" height="42" rx="8" fill="#fff" stroke="#c9c4b6" stroke-width="1.5" transform="rotate(-2 106 153)"/>
+        <text x="106" y="157" text-anchor="middle" fill="#4a4f58">Research</text>
+        <rect x="196" y="132" width="120" height="42" rx="8" fill="#fff" stroke="#c9c4b6" stroke-width="1.5" transform="rotate(-1 256 153)"/>
+        <text x="256" y="157" text-anchor="middle" fill="#4a4f58">Support</text>
+        <rect x="346" y="132" width="110" height="42" rx="8" fill="#fff" stroke="#c9c4b6" stroke-width="1.5"/>
+        <text x="401" y="157" text-anchor="middle" fill="#4a4f58">Risk</text>
+        <rect x="486" y="132" width="110" height="42" rx="8" fill="#fff" stroke="#c9c4b6" stroke-width="1.5" transform="rotate(1 541 153)"/>
+        <text x="541" y="157" text-anchor="middle" fill="#4a4f58">Coding</text>
+        <rect x="620" y="132" width="90" height="42" rx="8" fill="#fff" stroke="#c9c4b6" stroke-width="1.5" transform="rotate(2 665 153)"/>
+        <text x="665" y="157" text-anchor="middle" fill="#4a4f58">Analysis</text>
+        <text x="360" y="212" text-anchor="middle" fill="#8a8f99" font-size="12.5">问题不是 Agent 不够智能，而是一个决策主体承担了过多不同的职责</text>
+      </g>
+    </svg>
+    <figcaption><b>图 3</b> · God Agent：失控的集中式决策空间</figcaption>
+  </figure>
+
+  <p>到了这个阶段，很多团队的第一反应是“模型不够强，换个更大的”。但真正的问题不是模型能力不足，而是：</p>
+
+  <blockquote class="key">
+    Multi-Agent 的第一价值：<strong>把一个过大的决策空间，拆成多个受控的决策空间。</strong>
+    <span class="src">注意措辞——是“拆决策空间”，不是“增加 Agent 数量”</span>
+  </blockquote>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <span class="sec-no">SECTION 03</span>
+  <h2>第一原则：职责边界</h2>
+
+  <p class="lead">这是全文最重要的一节。绝大多数错误的 Multi-Agent 拆分，都发生在这一步。</p>
+
+  <p>不要因为“Research Agent 听起来很专业”就创建 Research Agent。创建任何一个 Agent 之前，必须回答一个问题：</p>
+
+  <blockquote class="key">
+    <strong>这个 Agent 是否拥有独立的目标？</strong>
+    <span class="src">如果它的目标和相邻 Agent 完全一致，它就不是 Agent，只是另一个 Prompt</span>
+  </blockquote>
+
+  <p>举一个成立的例子：</p>
+
+  <div class="grid-2">
+    <div class="cond-card">
+      <span class="no">AGENT A</span>
+      <h6>Research Agent</h6>
+      <p><strong>Goal：</strong>尽可能完整地收集事实和证据。<br><br>它关心覆盖率、来源可信度、遗漏风险。允许它多花时间、多花 Token 去把事情查全。</p>
+    </div>
+    <div class="cond-card">
+      <span class="no">AGENT B</span>
+      <h6>Analysis Agent</h6>
+      <p><strong>Goal：</strong>基于已有证据形成判断。<br><br>它关心推理链质量、结论是否被证据支撑。它不应该再花 Token 去搜索，而是专注于判断。</p>
+    </div>
+  </div>
+
+  <p>这两个 Agent 的目标<strong>本质不同，甚至存在张力</strong>——Research 追求“多”，Analysis 追求“准”。把它们放在一个 Agent 里，你需要在一条 Prompt 里同时约束两种互相冲突的行为模式；拆开之后，每个决策空间只服务一个目标。这就是值得拆的职责边界。</p>
+
+  <p>反过来，如果所谓的 Research Agent 和 Writer Agent 目标都是“帮用户完成任务”、输入输出和评价标准完全一样，那只是给同一段逻辑起了两个名字。</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <span class="sec-no">SECTION 04</span>
+  <h2>什么样的职责边界才是真正有效的</h2>
+
+  <p>“有独立目标”只是第一道筛选。一个<strong>真正有效的 Agent 边界</strong>，需要同时满足四个条件：</p>
+
+  <div class="grid-4">
+    <div class="cond-card">
+      <span class="no">COND 1</span>
+      <h6>独立目标</h6>
+      <p>Agent 有自己明确的 Objective，可以独立于其他 Agent 陈述出来。</p>
+    </div>
+    <div class="cond-card">
+      <span class="no">COND 2</span>
+      <h6>独立输入</h6>
+      <p>它需要的数据与其他 Agent 明显不同，不需要共享完整的上游 Context。</p>
+    </div>
+    <div class="cond-card">
+      <span class="no">COND 3</span>
+      <h6>独立输出</h6>
+      <p>它的产出可以被清晰定义，并且可以被程序或评审标准验证。</p>
+    </div>
+    <div class="cond-card">
+      <span class="no">COND 4</span>
+      <h6>独立评价标准</h6>
+      <p>不同 Agent 的 Success Criteria 不同，可以分开打分。</p>
+    </div>
+  </div>
+
+  <p>用研究场景验证一遍：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Agent</th><th>独立目标</th><th>独立输入</th><th>独立输出</th><th>独立评价标准</th></tr></thead>
+      <tbody>
+        <tr><td class="dim">Research Agent</td><td>收集证据</td><td>检索源、查询策略</td><td>事实清单 + 引用</td><td>Evidence Coverage</td></tr>
+        <tr><td class="dim">Analysis Agent</td><td>形成判断</td><td>证据清单</td><td>结论 + 推理链</td><td>Reasoning Quality</td></tr>
+        <tr><td class="dim">Writer Agent</td><td>组织表达</td><td>结论与结构要求</td><td>最终报告</td><td>Presentation Quality</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>四个条件都成立，这个边界就是天然的。<strong>如果四个条件中大部分都不存在，不建议拆 Agent</strong>——不管这个模块的名字听起来多像一个独立的“角色”。</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <span class="sec-no">SECTION 05</span>
+  <h2>Tool、Workflow、Agent：到底应该拆成什么</h2>
+
+  <p class="lead">发现了一个“职责边界”，下一步不是创建 Agent，而是先判断：这个职责属于哪一层？</p>
+
+  <div class="card">
+    <h5>ARCHITECTURE LADDER</h5>
+    <pre class="txt" style="margin:0;border:none;padding:4px 0;"><code>Capability（能力）      →  Tool          确定性调用，无决策
+Process   （流程）      →  Workflow      步骤可预先定义
+Decision  （决策）      →  Agent         下一步依赖动态判断</code></pre>
+  </div>
+
+  <p>三者的判据只有一个：<strong>这个环节里是否存在 LLM 需要做的动态决策</strong>。</p>
+
+  <h3><span class="hn">5.1</span>搜索 → 通常是 Tool</h3>
+  <p>调用一次 Search API，输入 query、返回结果。没有决策空间，没有多步规划。把它包装成 Agent，你只得到了一次额外的 LLM 调用和一层的失败概率。它应该是 <code class="inline">search(query) → results</code>。</p>
+
+  <h3><span class="hn">5.2</span>固定流程的分析 → 应该是 Workflow</h3>
+  <p>Load Data → Clean Data → Calculate → Validate。每一步做什么，工程师可以提前写死。这正是系列第一篇的结论：流程可以被提前定义的，优先 Workflow。给每一步套一个 Agent，只是把确定性问题伪装成决策问题。</p>
+
+  <h3><span class="hn">5.3</span>开放式研究 → 才可能需要 Agent</h3>
+  <p>Search → Read → Discover → Re-search → Compare → Re-plan。下一步行动取决于上一步的发现，无法提前画完流程图。这里才存在真正的决策空间，才值得引入 Agent。</p>
+
+  <div class="callout warn">
+    <span class="tag">RULE</span>
+    <p><strong>不是所有职责都值得成为 Agent。</strong>一个实用的自检：如果你能把这个“Agent”的行为画成一张不含分支判断的流程图，它就是 Workflow；如果你连 LLM 都不需要，它就是 Tool。</p>
+  </div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <span class="sec-no">SECTION 06</span>
+  <h2>第二原则：Context Isolation</h2>
+
+  <p>职责边界解决“谁做什么”，Context 边界解决“谁知道什么”。这是生产级 Multi-Agent 最常被低估的拆分理由。</p>
+
+  <p>Single Agent 的 Context 是一份<strong>单一大上下文</strong>：</p>
+
+  <figure>
+    <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <g font-family="PingFang SC, sans-serif" font-size="13.5">
+        <!-- left: polluted -->
+        <rect x="60" y="16" width="250" height="252" rx="12" fill="#f9ecec" stroke="#9c3a3a" stroke-width="1.5" stroke-dasharray="6 4" transform="rotate(-0.6 185 142)"/>
+        <text x="185" y="46" text-anchor="middle" fill="#9c3a3a" font-weight="700" font-size="14.5">Huge Context</text>
+        <g font-size="12.5" fill="#7a4a4a">
+          <rect x="86" y="64" width="198" height="30" rx="6" fill="#fff" stroke="#e0c4c4"/><text x="100" y="84">Customer Data</text>
+          <rect x="86" y="102" width="198" height="30" rx="6" fill="#fff" stroke="#e0c4c4"/><text x="100" y="122">Product Data</text>
+          <rect x="86" y="140" width="198" height="30" rx="6" fill="#fff" stroke="#e0c4c4"/><text x="100" y="160">Research Data</text>
+          <rect x="86" y="178" width="198" height="30" rx="6" fill="#fff" stroke="#e0c4c4"/><text x="100" y="198">Policies</text>
+          <rect x="86" y="216" width="198" height="30" rx="6" fill="#fff" stroke="#e0c4c4"/><text x="100" y="236">History · Tools · Instructions</text>
+        </g>
+        <!-- arrow -->
+        <line x1="330" y1="142" x2="390" y2="142" stroke="#8a8f99" stroke-width="1.5"/>
+        <text x="360" y="128" text-anchor="middle" font-size="11.5" fill="#9c3a3a">污染</text>
+        <!-- right: isolated -->
+        <text x="548" y="36" text-anchor="middle" font-weight="700" font-size="14.5" fill="#2e6e4e">Isolated Contexts</text>
+        <rect x="420" y="52" width="256" height="58" rx="10" fill="#e9f3ed" stroke="#2e6e4e" stroke-width="1.5" transform="rotate(-0.8 548 81)"/>
+        <text x="548" y="78" text-anchor="middle" fill="#2e6e4e" font-weight="600">Research Agent</text>
+        <text x="548" y="98" text-anchor="middle" font-size="11.5" fill="#4a7a5e">↳ 只看 Research Context</text>
+        <rect x="420" y="126" width="256" height="58" rx="10" fill="#eaf1f7" stroke="#2f5d8a" stroke-width="1.5" transform="rotate(0.8 548 155)"/>
+        <text x="548" y="152" text-anchor="middle" fill="#2f5d8a" font-weight="600">Customer Agent</text>
+        <text x="548" y="172" text-anchor="middle" font-size="11.5" fill="#4a6a8a">↳ 只看 Customer Context</text>
+        <rect x="420" y="200" width="256" height="58" rx="10" fill="#faf1e8" stroke="#a05a2c" stroke-width="1.5" transform="rotate(-0.6 548 229)"/>
+        <text x="548" y="226" text-anchor="middle" fill="#a05a2c" font-weight="600">Risk Agent</text>
+        <text x="548" y="246" text-anchor="middle" font-size="11.5" fill="#a9744a">↳ 只看 Risk Context</text>
+      </g>
+    </svg>
+    <figcaption><b>图 4</b> · Context Pollution 与 Context Isolation 的对比</figcaption>
+  </figure>
+
+  <p>随着系统增长，大 Context 会带来四类问题：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>问题</th><th>机制</th><th>典型症状</th></tr></thead>
+      <tbody>
+        <tr><td class="dim">推理质量下降</td><td>Context Pollution：无关信息干扰注意力</td><td>客服 Agent 回答里混入风控口径</td></tr>
+        <tr><td class="dim">Token 成本膨胀</td><td>每次调用都携带全量上下文</td><td>简单查询也付出完整 Context 的费用</td></tr>
+        <tr><td class="dim">Prompt 管理失控</td><td>一份 Prompt 服务所有职责</td><td>任何修改都可能影响其他职责的表现</td></tr>
+        <tr><td class="dim">安全边界模糊</td><td>所有数据对所有逻辑可见</td><td>低权限场景意外读到高权限数据</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <blockquote class="key">
+    <strong>Context Isolation 本身就是一种架构价值</strong>——即使不谈智能，仅凭它对成本、质量和安全的改善，就已经构成拆分理由。
+    <span class="src">但它有边界条件，见下</span>
+  </blockquote>
+
+  <div class="callout warn">
+    <span class="tag">BOUNDARY</span>
+    <p><strong>不是 Context 大就一定要拆。</strong>只有当不同职责真正需要<em>不同的</em>上下文，并且隔离能明显改善推理质量、Token 成本、Prompt 管理或安全边界之一时，才值得拆。如果几个“Agent”处理任务时需要的是同一份完整 Context，拆开只会强迫你在 Agent 之间反复传递这份 Context——隔离没有发生，传递成本却真实发生了（详见第 18 节的 Shared Context Hell）。</p>
+  </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <span class="sec-no">SECTION 07</span>
+  <h2>第三原则：不同模型能力</h2>
+
+  <p>当系统中同时存在多种模型时，模型差异本身会成为一条天然的拆分边界。</p>
+
+  <p>生产环境常见的模型池：</p>
+
+  <div class="grid-4">
+    <div class="cond-card"><span class="no">MODEL A</span><h6>Small Model</h6><p style="font-size:13.5px;">分类、抽取、格式化。便宜、快。</p></div>
+    <div class="cond-card"><span class="no">MODEL B</span><h6>Reasoning Model</h6><p style="font-size:13.5px;">多步推理、研究、规划。贵、慢。</p></div>
+    <div class="cond-card"><span class="no">MODEL C</span><h6>Coding Model</h6><p style="font-size:13.5px;">代码生成与修复，针对代码语料特化。</p></div>
+    <div class="cond-card"><span class="no">MODEL D</span><h6>Vision Model</h6><p style="font-size:13.5px;">图表、截图、文档影像理解。</p></div>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a8f99"/>
+        </marker>
+      </defs>
+      <g font-family="PingFang SC, sans-serif" font-size="13">
+        <rect x="280" y="14" width="160" height="44" rx="22" fill="#eaf1f7" stroke="#2f5d8a" stroke-width="2"/>
+        <text x="360" y="41" text-anchor="middle" fill="#1a1d23" font-weight="600">Router</text>
+        <line x1="300" y1="60" x2="140" y2="110" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <line x1="340" y1="60" x2="290" y2="110" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <line x1="390" y1="60" x2="435" y2="110" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <line x1="425" y1="60" x2="580" y2="110" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <rect x="62" y="112" width="160" height="72" rx="10" fill="#fff" stroke="#2e6e4e" stroke-width="1.8" transform="rotate(-1.2 142 148)"/>
+        <text x="142" y="140" text-anchor="middle" fill="#2e6e4e" font-weight="600">Classification Agent</text>
+        <text x="142" y="162" text-anchor="middle" font-size="11.5" fill="#8a8f99">Small Model</text>
+        <rect x="216" y="112" width="160" height="72" rx="10" fill="#fff" stroke="#7a4a9c" stroke-width="1.8" transform="rotate(0.8 296 148)"/>
+        <text x="296" y="140" text-anchor="middle" fill="#7a4a9c" font-weight="600">Research Agent</text>
+        <text x="296" y="162" text-anchor="middle" font-size="11.5" fill="#8a8f99">Reasoning Model</text>
+        <rect x="384" y="112" width="150" height="72" rx="10" fill="#fff" stroke="#a05a2c" stroke-width="1.8" transform="rotate(-0.8 459 148)"/>
+        <text x="459" y="140" text-anchor="middle" fill="#a05a2c" font-weight="600">Coding Agent</text>
+        <text x="459" y="162" text-anchor="middle" font-size="11.5" fill="#8a8f99">Coding Model</text>
+        <rect x="546" y="112" width="140" height="72" rx="10" fill="#fff" stroke="#2f5d8a" stroke-width="1.8" transform="rotate(1.2 616 148)"/>
+        <text x="616" y="140" text-anchor="middle" fill="#2f5d8a" font-weight="600">Vision Agent</text>
+        <text x="616" y="162" text-anchor="middle" font-size="11.5" fill="#8a8f99">Vision Model</text>
+      </g>
+    </svg>
+    <figcaption><b>图 5</b> · 模型隔离：按任务特性路由到最合适的模型</figcaption>
+  </figure>
+
+  <p>这里的拆分目的不是“Agent 越多越好”，而是<strong>让不同任务使用最合适的模型</strong>。四维收益需要同时评估：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>混合模型 Multi-Agent</th><th>全用旗舰模型的 Single Agent</th></tr></thead>
+      <tbody>
+        <tr><td class="dim">Cost</td><td class="yes">分类任务用小模型，成本大幅下降</td><td class="no">所有任务都支付旗舰模型价格</td></tr>
+        <tr><td class="dim">Quality</td><td class="mid">各任务用各自最优模型，但需逐个评测</td><td class="mid">旗舰模型通才，专精任务可能不如专用模型</td></tr>
+        <tr><td class="dim">Latency</td><td class="yes">简单任务走小模型，尾延迟可控</td><td class="mid">简单任务被复杂任务的推理时间拖累</td></tr>
+        <tr><td class="dim">演进</td><td class="yes">模型可按 Agent 独立升级</td><td class="no">换模型 = 全系统回归测试</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>注意：如果你只有一个够用的模型、所有任务对模型的要求一致，这条原则不构成拆分理由。模型隔离只在<strong>模型差异真实存在且带来可量化的成本/质量收益</strong>时成立。</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <span class="sec-no">SECTION 08</span>
+  <h2>第四原则：权限隔离</h2>
+
+  <p class="lead">企业级系统里，权限边界可能是所有拆分理由中最“硬”的一条。</p>
+
+  <p>考虑一个电商客服系统中的三种操作：</p>
+
+  <pre><code>Research Agent      →  Read Only          只读知识库
+Order Agent         →  Read / Modify      可查询和修改订单
+Payment Agent       →  Payment Permission 可触发退款/支付</code></pre>
+  <div class="code-caption">Agent Boundary = Permission Boundary</div>
+
+  <p>如果所有 Tool 都暴露给一个 God Agent，会发生什么：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>风险</th><th>机制</th></tr></thead>
+      <tbody>
+        <tr><td class="dim">权限过大</td><td>低风险对话路径上，模型始终持有高危工具（如退款）</td></tr>
+        <tr><td class="dim">Tool Misuse</td><td>Tool 越多，模型选错工具的概率越高，且错误后果不可控</td></tr>
+        <tr><td class="dim">Security Risk</td><td>Prompt Injection 一旦得手，攻击面 = 全部工具的并集</td></tr>
+        <tr><td class="dim">Audit Difficulty</td><td>审计时无法回答“谁在什么权限范围内做了这个操作”</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout good">
+    <span class="tag">PATTERN</span>
+    <p><strong>Agent Boundary = Permission Boundary。</strong>每个 Agent 只持有其职责所需的最小工具集，高危操作被物理隔离在独立 Agent 内，审计日志天然按权限域分组。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">BOUNDARY</span>
+    <p><strong>Agent 拆分不是唯一安全方案，更不是充分方案。</strong>拆分只收窄了模型的选择空间，真正的安全闭环仍然需要：Policy Engine（策略引擎做最终裁决）、Authorization（工具层鉴权）、Validation（参数校验）、Audit（操作审计）、Human Approval（高危操作人工确认）。Agent 边界是纵深防御的一层，不是替代品。</p>
+  </div>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <span class="sec-no">SECTION 09</span>
+  <h2>第五原则：并行执行</h2>
+
+  <p>这是 Multi-Agent 最直观、最容易量化的性能收益——前提是任务真的相互独立。</p>
+
+  <figure>
+    <svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a8f99"/>
+        </marker>
+      </defs>
+      <g font-family="PingFang SC, sans-serif" font-size="13">
+        <rect x="265" y="12" width="190" height="42" rx="21" fill="#eaf1f7" stroke="#2f5d8a" stroke-width="2"/>
+        <text x="360" y="38" text-anchor="middle" fill="#1a1d23" font-weight="600">Research Task</text>
+        <line x1="310" y1="56" x2="150" y2="102" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar3)"/>
+        <line x1="360" y1="56" x2="360" y2="100" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar3)"/>
+        <line x1="410" y1="56" x2="570" y2="102" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar3)"/>
+        <rect x="62" y="104" width="170" height="66" rx="10" fill="#fff" stroke="#2e6e4e" stroke-width="1.8" transform="rotate(-1 147 137)"/>
+        <text x="147" y="132" text-anchor="middle" fill="#2e6e4e" font-weight="600">Industry Agent</text>
+        <text x="147" y="152" text-anchor="middle" font-size="11" fill="#8a8f99">T₁</text>
+        <rect x="278" y="104" width="164" height="66" rx="10" fill="#fff" stroke="#7a4a9c" stroke-width="1.8"/>
+        <text x="360" y="132" text-anchor="middle" fill="#7a4a9c" font-weight="600">Competitor Agent</text>
+        <text x="360" y="152" text-anchor="middle" font-size="11" fill="#8a8f99">T₂（并行）</text>
+        <rect x="488" y="104" width="170" height="66" rx="10" fill="#fff" stroke="#a05a2c" stroke-width="1.8" transform="rotate(1 573 137)"/>
+        <text x="573" y="132" text-anchor="middle" fill="#a05a2c" font-weight="600">Finance Agent</text>
+        <text x="573" y="152" text-anchor="middle" font-size="11" fill="#8a8f99">T₃</text>
+        <line x1="147" y1="172" x2="322" y2="212" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar3)"/>
+        <line x1="360" y1="172" x2="360" y2="208" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar3)"/>
+        <line x1="573" y1="172" x2="398" y2="212" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar3)"/>
+        <rect x="255" y="194" width="210" height="42" rx="21" fill="#2e6e4e" transform="rotate(-0.5 360 215)"/>
+        <text x="360" y="220" text-anchor="middle" fill="#fff" font-weight="600" font-size="13.5">Synthesizer</text>
+        <text x="640" y="220" text-anchor="middle" font-family="SF Mono, monospace" font-size="12.5" fill="#2e6e4e">T ≈ max(T₁,T₂,T₃)</text>
+      </g>
+    </svg>
+    <figcaption><b>图 6</b> · 独立任务的并行扇出与汇聚</figcaption>
+  </figure>
+
+  <p>当三个子任务相互独立时，总耗时从串行加和变成并行取最大：</p>
+
+  <pre><code>串行：T_total ≈ T₁ + T₂ + T₃          （例如 90s）
+并行：T_total ≈ max(T₁, T₂, T₃)       （例如 40s）</code></pre>
+  <div class="code-caption">Parallel fan-out：收益 = 任务独立性 × 单任务耗时</div>
+
+  <div class="callout warn">
+    <span class="tag">BOUNDARY</span>
+    <p><strong>并行不是免费午餐。</strong>获得 <code class="inline">max()</code> 之前，你需要先支付：</p>
+    <p>· <strong>Coordination</strong>——谁决定扇出哪些任务？<br>
+       · <strong>Synchronization</strong>——汇聚点要等所有分支，最慢的分支决定整体（Head-of-line blocking）。<br>
+       · <strong>Result merging</strong>——不同 Agent 对同一事实给出矛盾结论怎么办？<br>
+       · <strong>Failure handling</strong>——一个分支失败，是整体失败、重试，还是接受部分结果？<br>
+       · <strong>Partial results</strong>——超时后，两份子报告 + 一份缺失，比一份完整但延迟三倍的好吗？</p>
+    <p>如果任务之间有数据依赖（B 需要 A 的结论），并行不成立，强行拆分只剩协调成本。</p>
+  </div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <span class="sec-no">SECTION 10</span>
+  <h2>第六原则：独立演进</h2>
+
+  <p>前六条原则都来自技术侧，这一条来自<strong>组织侧</strong>。</p>
+
+  <p>当不同能力由不同团队维护时——Research 团队维护研究能力、客服团队维护问答能力、风控团队维护风控能力——Single Agent 意味着：</p>
+
+  <pre><code>One Prompt        一次修改影响所有团队
+One Release       所有团队共享同一个发布节奏
+One Evaluation    所有团队共用同一套评测集
+One Failure Domain  一个团队的改动可以让所有人一起故障</code></pre>
+
+  <p>这本质上是<strong>康威定律在 Agent 系统上的投影</strong>。Multi-Agent 允许每个团队独立持有自己的 Prompt 版本、评测集和发布节奏：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>Single Agent</th><th>Multi-Agent</th></tr></thead>
+      <tbody>
+        <tr><td class="dim">Prompt 变更</td><td class="no">全系统回归</td><td class="yes">仅本 Agent 回归</td></tr>
+        <tr><td class="dim">评测集</td><td class="no">一份混合评测集，信号互相污染</td><td class="yes">每个 Agent 独立评测集</td></tr>
+        <tr><td class="dim">发布节奏</td><td class="no">锁步发布</td><td class="yes">独立版本、独立回滚</td></tr>
+        <tr><td class="dim">责任归属</td><td class="mid">故障定位后仍难归因到团队</td><td class="yes">Agent 边界即团队边界</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <blockquote class="key">
+    <strong>组织边界也可能成为 Agent 边界。</strong>
+    <span class="src">但需要警惕反面：不要为了组织结构而过度 Agent 化。如果两个团队维护的其实是同一段逻辑、共用同一份 Context 和评测标准，拆开的收益是政治性的，不是架构性的</span>
+  </blockquote>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <span class="sec-no">SECTION 11</span>
+  <h2>第七原则：故障隔离</h2>
+
+  <p>生产系统中容易被忽略的价值：Multi-Agent 可以建立<strong>Failure Boundary（故障边界）</strong>。</p>
+
+  <p>Single Agent 中，任何一个环节的不可恢复失败，通常意味着整个请求失败。而拆分后，失败可以被降级处理：</p>
+
+  <pre><code>Research Agent 失败
+    ↓
+Fallback：切换备用检索源重试
+    ↓
+仍失败 → Partial Result（标注"行业数据缺失"）
+    ↓
+Synthesizer 基于部分结果出报告，
+并显式声明覆盖范围</code></pre>
+
+  <p>“一份 80% 覆盖但按时交付、且诚实标注缺失的报告”，在很多业务里优于“等一份 100% 覆盖但随时可能整体失败的报告”。Failure Boundary 让降级成为架构能力，而不是临场发挥。</p>
+
+  <div class="callout warn">
+    <span class="tag">TRADE-OFF</span>
+    <p><strong>但必须直面反面：Agent 数量增加，故障节点同步增加。</strong>Single Agent 的故障面是一个 LLM 调用链；N 个 Agent 的故障面是 N 条调用链 + 它们之间的所有协调点。Failure Boundary 带来的是“故障的可隔离性”，不是“故障的减少”——</p>
+    <pre class="txt" style="margin:10px 0;"><code>More Agents = More Isolation + More Failure Surface</code></pre>
+    <p>只有当你真的为每个 Agent 设计了 Retry、Timeout、Fallback 策略时，故障隔离才成立；否则拆分只是让系统以更难调试的方式失败。</p>
+  </div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <span class="sec-no">SECTION 12</span>
+  <h2>关键问题：什么情况下不值得拆</h2>
+
+  <p class="lead">如果说第 3–11 节回答了“什么时候值得拆”，这一节回答同样重要的问题：哪些常见的拆分理由是伪命题。</p>
+
+  <h3><span class="hn">12.1</span>反例一：“Prompt 太长，所以拆 Agent”</h3>
+  <div class="card" style="border-left:4px solid var(--bad);">
+    <p><strong>为什么不成立：</strong>Prompt 太长是<strong>信息组织问题</strong>，不是决策主体问题。先尝试更便宜的手段：</p>
+    <pre class="txt" style="margin:12px 0;"><code>Prompt 模块化     →  拆分成可组合的指令段
+Tool 描述优化     →  压缩 Tool Schema，删掉冗余说明
+Context Pruning   →  只保留与当前任务相关的历史
+Retrieval         →  按需注入，而不是全量预置</code></pre>
+    <p><strong>什么时候才成立：</strong>Prompt 长的根因是<strong>职责混杂</strong>——同一段 Prompt 里写着两套互相冲突的行为规则、需要两套互斥的 Context。这时 Prompt 模块化解决不了问题，因为冲突本身就在一个决策主体内，拆分才是对的。判断标准回到第 4 节：四个边界条件是否成立，而不是字数。</p>
+  </div>
+
+  <h3><span class="hn">12.2</span>反例二：“Tool 太多，所以一个 Tool 一个 Agent”</h3>
+  <div class="card" style="border-left:4px solid var(--bad);">
+    <p><strong>为什么不成立：</strong>“20 个 Tools → 20 个 Agents”是把<strong>工具组织问题</strong>升级成了<strong>系统架构问题</strong>。Tool 数量本身有更轻的解法：</p>
+    <pre class="txt" style="margin:12px 0;"><code>Tool Router          →  先路由到工具组，再选具体工具
+Tool Grouping        →  按领域分组，每组一个命名空间
+Dynamic Tool Loading →  按任务阶段动态注入工具集</code></pre>
+    <p><strong>什么时候才成立：</strong>当 Tool 的分组恰好对应<strong>权限边界</strong>（见第 8 节）或<strong>模型边界</strong>（见第 7 节）时——例如“支付类工具必须与对话类工具物理隔离”。这时拆分的理由是权限和模型，而不是工具数量。数量本身从来不是理由。</p>
+  </div>
+
+  <h3><span class="hn">12.3</span>反例三：“任务很复杂，所以必须 Multi-Agent”</h3>
+  <div class="card" style="border-left:4px solid var(--bad);">
+    <p><strong>为什么不成立：</strong>这是最流行也最危险的推理。复杂有两种：一种是<strong>决策复杂</strong>（下一步依赖动态判断），一种是<strong>流程复杂</strong>（步骤多但可预先定义）。后者是 Workflow 的问题域——</p>
+    <pre class="txt" style="margin:12px 0;"><code>Step 1 Agent → Step 2 Agent → Step 3 Agent
+                ✘ 错误答案
+
+Step 1 → Step 2 → Step 3   （State Machine / Workflow）
+                ✓ 正确答案</code></pre>
+    <p>系列第一篇的结论在这里完全适用：能被工程师提前定义的流程，不该由 Agent 的 Token 去重新“决策”一遍。<strong>什么时候才成立：</strong>复杂度体现在多个<strong>彼此独立、需要不同能力、可并行推进的决策空间</strong>上——即本文第 3–11 节的边界真实存在时。复杂度是拆分的线索，天然边界才是拆分的依据。</p>
+  </div>
+
+  <h3><span class="hn">12.4</span>反例四：“想体现角色专业性”</h3>
+  <div class="card" style="border-left:4px solid var(--bad);">
+    <p>Research Agent / Writer Agent / Reviewer Agent，如果它们：<strong>Context 一样、Model 一样、Goal 一样、Evaluation 一样</strong>——那么你只是给同一段逻辑起了三个名字。这时用 Prompt 模板 + 输出校验就能覆盖全部需求。四个“一样”里出现任何一个“不一样”，再回到第 4 节重新评估。</p>
+  </div>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <span class="sec-no">SECTION 13</span>
+  <h2>Multi-Agent 最大的代价：Coordination Cost</h2>
+
+  <p class="lead">前面所有收益都不是免费的。评估拆分时，成本侧必须和收益侧放上天平，而且要用同样的精度。</p>
+
+  <p>Single Agent 的执行路径是一条直线；Multi-Agent 把直线变成了一张图：</p>
+
+  <div class="grid-2">
+    <div class="card" style="margin:0;">
+      <h5>SINGLE AGENT 执行路径</h5>
+      <pre class="txt" style="margin:0;border:none;padding:4px 0;"><code>Agent
+ ↓
+Tool
+ ↓
+Result</code></pre>
+      <p style="font-size:13.5px;color:var(--ink-faint);margin:12px 0 0;">一次决策主体，一次上下文，一条故障链。</p>
+    </div>
+    <div class="card" style="margin:0;">
+      <h5>MULTI-AGENT 执行路径</h5>
+      <pre class="txt" style="margin:0;border:none;padding:4px 0;"><code>Agent A
+ ↓  Message
+Agent B
+ ↓  Message
+Agent C
+ ↓  Synthesis
+Result</code></pre>
+      <p style="font-size:13.5px;color:var(--ink-faint);margin:12px 0 0;">每一次箭头，都是新增的成本项。</p>
+    </div>
+  </div>
+
+  <p>每一跳新增的成本项：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>成本项</th><th>具体含义</th><th>被低估的程度</th></tr></thead>
+      <tbody>
+        <tr><td class="dim">Message Passing</td><td>Agent 间通信的序列化、Schema 设计、版本兼容</td><td>通常被低估 10 倍</td></tr>
+        <tr><td class="dim">State Sync</td><td>哪个 Agent 持有真相？冲突以谁为准？</td><td>几乎总被低估</td></tr>
+        <tr><td class="dim">Context Transfer</td><td>下游 Agent 需要多少上游 Context？传多传少都出错</td><td>Token 成本的主要来源</td></tr>
+        <tr><td class="dim">Result Validation</td><td>上游输出的格式/质量校验，失败后重试策略</td><td>Debug 时间的主要来源</td></tr>
+        <tr><td class="dim">Error Handling</td><td>每个协调点的超时、重试、降级</td><td>故障面随跳数相乘</td></tr>
+        <tr><td class="dim">Routing</td><td>“下一个该谁上”本身成为一个新的决策问题</td><td>Router 自己也会出错</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <blockquote class="key">
+    <strong>Multi-Agent 的系统复杂度不是随 Agent 数量线性增长的。</strong>
+    <span class="src">
+      System Complexity ≈ Σ Agent Complexity + Coordination Complexity + State Complexity + Evaluation Complexity
+    </span>
+  </blockquote>
+
+  <p>其中 Coordination Complexity 大致随交互边数增长——3 个 Agent 串成一条链是 2 条边，3 个 Agent 两两自由通信是 3 条边加状态一致性问题。这就是为什么<strong>通信模式本身需要被架构约束</strong>（第 14 节），而不是放任 Agent 自由对话。</p>
+
+  <p>Evaluation 也同步变难：Single Agent 只需评价“最终结果好不好”；Multi-Agent 需要同时评价每个 Agent 的独立指标（第 4 节的四个条件此时成为资产）<em>加上</em>系统级端到端指标，而两者的归因关系并不总是清晰。</p>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <span class="sec-no">SECTION 14</span>
+  <h2>Agent 之间的三种基本协作模型</h2>
+
+  <p>本文不展开通信协议与消息 Schema——那属于后续文章《Multi-Agent 协作与通信》。这里只建立最小的心智模型：Agent 拆开之后，协调关系基本落入三种模式。</p>
+
+  <figure>
+    <svg viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a8f99"/>
+        </marker>
+      </defs>
+      <g font-family="PingFang SC, sans-serif" font-size="13">
+        <!-- Handoff -->
+        <text x="115" y="28" text-anchor="middle" font-weight="700" fill="#2f5d8a" font-size="14">Handoff</text>
+        <rect x="35" y="60" width="80" height="44" rx="10" fill="#eaf1f7" stroke="#2f5d8a" stroke-width="2" transform="rotate(-1 75 82)"/>
+        <text x="75" y="86" text-anchor="middle">Agent A</text>
+        <line x1="118" y1="82" x2="150" y2="82" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar4)"/>
+        <rect x="154" y="60" width="80" height="44" rx="10" fill="#fff" stroke="#2f5d8a" stroke-width="2" transform="rotate(1 194 82)"/>
+        <text x="194" y="86" text-anchor="middle">Agent B</text>
+        <text x="134" y="132" text-anchor="middle" font-size="11.5" fill="#8a8f99">控制权移交，一次一跳</text>
+
+        <!-- Supervisor -->
+        <text x="420" y="28" text-anchor="middle" font-weight="700" fill="#7a4a9c" font-size="14">Supervisor</text>
+        <rect x="360" y="42" width="120" height="42" rx="21" fill="#f3ecf9" stroke="#7a4a9c" stroke-width="2"/>
+        <text x="420" y="68" text-anchor="middle" fill="#7a4a9c" font-weight="600">Supervisor</text>
+        <line x1="385" y1="86" x2="330" y2="128" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar4)"/>
+        <line x1="420" y1="86" x2="420" y2="126" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar4)"/>
+        <line x1="455" y1="86" x2="510" y2="128" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar4)"/>
+        <rect x="286" y="132" width="72" height="40" rx="9" fill="#fff" stroke="#7a4a9c" stroke-width="1.8" transform="rotate(-1.5 322 152)"/>
+        <text x="322" y="156" text-anchor="middle">A</text>
+        <rect x="384" y="132" width="72" height="40" rx="9" fill="#fff" stroke="#7a4a9c" stroke-width="1.8"/>
+        <text x="420" y="156" text-anchor="middle">B</text>
+        <rect x="482" y="132" width="72" height="40" rx="9" fill="#fff" stroke="#7a4a9c" stroke-width="1.8" transform="rotate(1.5 518 152)"/>
+        <text x="518" y="156" text-anchor="middle">C</text>
+        <text x="420" y="200" text-anchor="middle" font-size="11.5" fill="#8a8f99">中心调度，决定下一步派给谁</text>
+
+        <!-- Shared State -->
+        <text x="620" y="28" text-anchor="middle" font-weight="700" fill="#a05a2c" font-size="14">Shared State</text>
+        <rect x="560" y="46" width="66" height="36" rx="8" fill="#fff" stroke="#a05a2c" stroke-width="1.8" transform="rotate(-2 593 64)"/>
+        <text x="593" y="69" text-anchor="middle" font-size="12.5">Agent A</text>
+        <rect x="636" y="46" width="66" height="36" rx="8" fill="#fff" stroke="#a05a2c" stroke-width="1.8" transform="rotate(2 669 64)"/>
+        <text x="669" y="69" text-anchor="middle" font-size="12.5">Agent C</text>
+        <rect x="596" y="96" width="70" height="36" rx="8" fill="#fff" stroke="#a05a2c" stroke-width="1.8"/>
+        <text x="631" y="119" text-anchor="middle" font-size="12.5">Agent B</text>
+        <ellipse cx="632" cy="180" rx="86" ry="30" fill="#faf1e8" stroke="#a05a2c" stroke-width="2" stroke-dasharray="7 4"/>
+        <text x="632" y="185" text-anchor="middle" fill="#a05a2c" font-weight="600" font-size="12.5">Shared State</text>
+        <line x1="593" y1="84" x2="608" y2="152" stroke="#c9a884" stroke-width="1.3" marker-end="url(#ar4)"/>
+        <line x1="669" y1="84" x2="656" y2="152" stroke="#c9a884" stroke-width="1.3" marker-end="url(#ar4)"/>
+        <line x1="631" y1="134" x2="631" y2="148" stroke="#c9a884" stroke-width="1.3" marker-end="url(#ar4)"/>
+      </g>
+    </svg>
+    <figcaption><b>图 7</b> · 三种基本协作模型（详细通信协议留待后续文章）</figcaption>
+  </figure>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>模式</th><th>协调方式</th><th>适用</th><th>注意</th></tr></thead>
+      <tbody>
+        <tr><td class="dim">Handoff</td><td>控制权在 Agent 间移交</td><td>线性场景：售前 → 交付 → 售后</td><td>移交链过长时延迟累积</td></tr>
+        <tr><td class="dim">Supervisor</td><td>中心调度器决定派发</td><td>任务可分解、需要全局编排</td><td>Supervisor 本身是新的故障点和瓶颈</td></tr>
+        <tr><td class="dim">Shared State</td><td>通过共享状态读写协作</td><td>并行 Agent 需要沉淀共同事实</td><td>并发写冲突、状态一致性</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>本文只需要记住一件事：<strong>无论选哪种模式，只要 Agent 拆分了，协调成本就必然发生。</strong>模式选择的本质，是决定这份成本以什么形状分布。</p>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <span class="sec-no">SECTION 15</span>
+  <h2>完整案例：企业级深度研究 Agent</h2>
+
+  <p class="lead">用一个真实需求的演进过程，把前面所有原则串起来。</p>
+
+  <h3><span class="hn">15.1</span>第一版：Single Agent 足够</h3>
+
+  <p>需求：“研究某个行业，输出一份行业研究报告。”</p>
+
+  <pre><code>User
+ ↓
+Research Agent        ← 一个决策空间：规划查询 → 检索 → 阅读 → 撰写
+ ↓
+Search Tools + RAG
+ ↓
+Report</code></pre>
+  <div class="code-caption">V1 · 职责单一，Context 统一，无权限差异——Single Agent 是正确答案</div>
+
+  <p>此时不要拆。任务有决策空间（研究路径无法预先定义），但决策空间只有一个。</p>
+
+  <h3><span class="hn">15.2</span>第二版：需求增长，Single Agent 开始失控</h3>
+
+  <p>半年后，需求演化为：行业趋势、竞品分析、企业工商信息、财务数据、政策研究、新闻追踪、数据图表。Single Agent 开始出现可观测的症状：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>症状</th><th>对应第几节的原则</th></tr></thead>
+      <tbody>
+        <tr><td>Prompt 膨胀：七种研究各自的行为规范写在一条 Prompt 里，互相干扰</td><td>职责隔离（§3）</td></tr>
+        <tr><td>Context 污染：财务 Agent 不需要政策全文，却背着全部检索历史推理</td><td>Context Isolation（§6）</td></tr>
+        <tr><td>Tool 泛滥：60+ 工具，错误调用率上升</td><td>能力专业化（§5）</td></tr>
+        <tr><td>策略差异：财务数据需要精确查询（结构化 API），新闻需要模糊检索（语义搜索）</td><td>模型/能力差异（§7）</td></tr>
+        <tr><td>时延不可接受：三个独立子课题本可以并行，却被串成 6 分钟</td><td>并行执行（§9）</td></tr>
+        <tr><td>评测失焦：无法单独回答“竞品分析做得好不好”</td><td>独立评价（§4）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>注意：这些症状指向的不是“该上 Multi-Agent 了”，而是<strong>系统中已经出现了天然边界</strong>——行业、竞品、财务三个子领域，恰好满足第 4 节的四个条件：独立目标（各自的研究范式不同）、独立输入（不同的数据源）、独立输出（各自的子报告）、独立评价（各自的覆盖率指标）。</p>
+
+  <h3><span class="hn">15.3</span>第三版：拆分后的架构</h3>
+
+  <figure>
+    <svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a8f99"/>
+        </marker>
+      </defs>
+      <g font-family="PingFang SC, sans-serif" font-size="13">
+        <rect x="272" y="10" width="176" height="44" rx="22" fill="#f3ecf9" stroke="#7a4a9c" stroke-width="2"/>
+        <text x="360" y="37" text-anchor="middle" fill="#7a4a9c" font-weight="700">Supervisor</text>
+        <line x1="310" y1="56" x2="150" y2="106" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <line x1="360" y1="56" x2="360" y2="104" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <line x1="410" y1="56" x2="570" y2="106" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <rect x="56" y="108" width="180" height="70" rx="10" fill="#e9f3ed" stroke="#2e6e4e" stroke-width="1.8" transform="rotate(-1 146 143)"/>
+        <text x="146" y="136" text-anchor="middle" fill="#2e6e4e" font-weight="600">Industry Agent</text>
+        <text x="146" y="158" text-anchor="middle" font-size="11" fill="#6a8a76">行业数据库 · 趋势检索 · 并行</text>
+        <rect x="272" y="108" width="176" height="70" rx="10" fill="#eaf1f7" stroke="#2f5d8a" stroke-width="1.8"/>
+        <text x="360" y="136" text-anchor="middle" fill="#2f5d8a" font-weight="600">Competitor Agent</text>
+        <text x="360" y="158" text-anchor="middle" font-size="11" fill="#6a82a0">竞品信源 · 语义搜索 · 并行</text>
+        <rect x="486" y="108" width="180" height="70" rx="10" fill="#faf1e8" stroke="#a05a2c" stroke-width="1.8" transform="rotate(1 576 143)"/>
+        <text x="576" y="136" text-anchor="middle" fill="#a05a2c" font-weight="600">Finance Agent</text>
+        <text x="576" y="158" text-anchor="middle" font-size="11" fill="#a9744a">结构化 API · 精确查询 · 并行</text>
+        <line x1="146" y1="180" x2="322" y2="232" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <line x1="360" y1="180" x2="360" y2="228" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <line x1="576" y1="180" x2="398" y2="232" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <rect x="262" y="234" width="196" height="46" rx="10" fill="#fff" stroke="#c9c4b6" stroke-width="1.8" transform="rotate(-0.6 360 257)"/>
+        <text x="360" y="254" text-anchor="middle" fill="#4a4f58" font-weight="600">Synthesis Agent</text>
+        <text x="360" y="271" text-anchor="middle" font-size="10.5" fill="#8a8f99">仅编排与综合，不做检索决策</text>
+        <line x1="360" y1="282" x2="360" y2="302" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar5)"/>
+        <rect x="296" y="304" width="128" height="32" rx="16" fill="#2e6e4e"/>
+        <text x="360" y="325" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="600">Final Report</text>
+      </g>
+    </svg>
+    <figcaption><b>图 8</b> · V3：研究系统的 Multi-Agent 架构</figcaption>
+  </figure>
+
+  <h3><span class="hn">15.4</span>逐项验证：为什么这一次值得拆</h3>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>收益项</th><th>本案例中的具体体现</th><th>成立？</th></tr></thead>
+      <tbody>
+        <tr><td class="dim">职责隔离</td><td>三个子领域各有独立研究范式与行为规范</td><td class="yes">✓</td></tr>
+        <tr><td class="dim">Context 隔离</td><td>财务 Agent 只携带结构化查询结果，Context 缩减约 70%</td><td class="yes">✓</td></tr>
+        <tr><td class="dim">并行执行</td><td>三路研究扇出，端到端延迟从串行加和降为取最大</td><td class="yes">✓</td></tr>
+        <tr><td class="dim">模型差异</td><td>财务走精确查询（小模型 + 结构化调用），趋势研究走推理模型</td><td class="yes">✓</td></tr>
+        <tr><td class="dim">独立评价</td><td>三份子报告各有独立评测集，可分别归因优化</td><td class="yes">✓</td></tr>
+        <tr><td class="dim">故障隔离</td><td>Finance Agent 超时 → 报告标注“财务章节缺失”降级交付</td><td class="yes">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>同样注意 Synthesis Agent 的画法：它被刻意画成<strong>细边框</strong>——它只做综合与编排，不做检索决策。如果 Synthesis 的逻辑可以固化（拼接、去重、格式化），它甚至应该是 Workflow 而不是 Agent。这个案例里保留它，是因为综合阶段确实存在动态决策（发现子报告矛盾时决定追问哪一路）。<strong>架构图里每一个 Agent 都必须经得起这样的追问。</strong></p>
+
+  <div class="callout good">
+    <span class="tag">CASE CONCLUSION</span>
+    <p>V1 不拆是对的，V3 拆也是对的。<strong>变的是需求的复杂度，不变的是判断方法：先找天然边界，再算 Value &gt; Cost。</strong></p>
+  </div>
+</section>
+
+<!-- ============ 16 ============ -->
+<section id="s16">
+  <span class="sec-no">SECTION 16</span>
+  <h2>拆分决策评分模型</h2>
+
+  <p>把前文的原则压缩成一个可以在架构评审会上直接使用的评分框架。它不是严格的数学公式，而是<strong>帮助团队结构化讨论的工具</strong>——重点不是算出精确分数，而是强迫讨论覆盖每一个维度。</p>
+
+  <div class="stat-row">
+    <div class="stat"><div class="big plus">+2</div><div class="lbl">职责独立<br>各有明确 Objective</div></div>
+    <div class="stat"><div class="big plus">+2</div><div class="lbl">Context 独立<br>所需上下文显著不同</div></div>
+    <div class="stat"><div class="big plus">+2</div><div class="lbl">模型独立<br>不同任务适合不同模型</div></div>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><div class="big plus">+2</div><div class="lbl">权限独立<br>工具集需物理隔离</div></div>
+    <div class="stat"><div class="big plus">+2</div><div class="lbl">可并行执行<br>子任务真正相互独立</div></div>
+    <div class="stat"><div class="big plus">+1</div><div class="lbl">独立演进<br>不同团队各自维护</div></div>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><div class="big plus">+1</div><div class="lbl">独立评价<br>Success Criteria 可分离</div></div>
+    <div class="stat"><div class="big plus">+1</div><div class="lbl">故障隔离<br>需要降级与部分结果</div></div>
+    <div class="stat" style="visibility:hidden;"></div>
+  </div>
+
+  <div class="card" style="text-align:center;border-color:var(--line);background:var(--card);">
+    <h5 style="margin-bottom:18px;">减去协调成本</h5>
+    <div class="stat-row" style="margin:0;grid-template-columns:repeat(3,1fr);">
+      <div class="stat" style="border:none;padding:8px;"><div class="big minus">−2</div><div class="lbl">协调复杂度高</div></div>
+      <div class="stat" style="border:none;padding:8px;"><div class="big minus">−2</div><div class="lbl">通信频繁</div></div>
+      <div class="stat" style="border:none;padding:8px;"><div class="big minus">−2</div><div class="lbl">强状态共享</div></div>
+    </div>
+    <div class="stat-row" style="margin:0;grid-template-columns:repeat(3,1fr);">
+      <div class="stat" style="border:none;padding:8px;"><div class="big minus">−2</div><div class="lbl">延迟敏感</div></div>
+      <div class="stat" style="border:none;padding:8px;"><div class="big minus">−2</div><div class="lbl">成本敏感</div></div>
+      <div class="stat" style="border:none;padding:8px;"><div class="big minus">−3</div><div class="lbl">任务高度耦合</div></div>
+    </div>
+  </div>
+
+  <div class="stat-row total">
+    <div class="stat total">
+      <div class="big">拆分收益 − 拆分成本 &gt; 0 ⟺ 建议拆分</div>
+      <div class="lbl">正分不等于必须拆，只说明拆分<strong style="color:#dfe3ea;">有正的架构期望收益</strong>；零分或负分，保持 Single Agent</div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">DISCLAIMER</span>
+    <p>再次强调：<strong>评分模型是讨论工具，不是决策机器。</strong>它的价值在于让团队在评审时逐项过一遍“收益是否真实存在、成本是否被低估”，避免“感觉拆了更专业”式的拍板。</p>
+  </div>
+</section>
+
+<!-- ============ 17 ============ -->
+<section id="s17">
+  <span class="sec-no">SECTION 17</span>
+  <h2>Multi-Agent 决策树</h2>
+
+  <p>评分模型之外，再给出一棵可以逐步执行的决策树：</p>
+
+  <figure>
+    <svg viewBox="0 0 760 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a8f99"/>
+        </marker>
+      </defs>
+      <g font-family="PingFang SC, sans-serif" font-size="13.5">
+        <rect x="270" y="14" width="220" height="44" rx="22" fill="#eaf1f7" stroke="#2f5d8a" stroke-width="2"/>
+        <text x="380" y="41" text-anchor="middle" fill="#1a1d23" font-weight="600">Single Agent 开始复杂</text>
+
+        <line x1="380" y1="58" x2="380" y2="86" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <rect x="280" y="90" width="200" height="40" rx="10" fill="#fff" stroke="#c9c4b6" stroke-width="1.8"/>
+        <text x="380" y="115" text-anchor="middle" fill="#4a4f58">是否存在独立职责？</text>
+
+        <line x1="280" y1="130" x2="150" y2="168" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <line x1="380" y1="130" x2="380" y2="168" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <text x="205" y="146" text-anchor="middle" font-size="11.5" fill="#9c3a3a" font-weight="600">No</text>
+
+        <rect x="42" y="172" width="216" height="58" rx="10" fill="#e9f3ed" stroke="#2e6e4e" stroke-width="1.8" transform="rotate(-0.8 150 201)"/>
+        <text x="150" y="196" text-anchor="middle" fill="#2e6e4e" font-weight="600">优化 Single Agent</text>
+        <text x="150" y="217" text-anchor="middle" font-size="11" fill="#6a8a76">Prompt 模块化 / Tool 分组 / Retrieval</text>
+
+        <text x="380" y="156" text-anchor="middle" font-size="11.5" fill="#2e6e4e" font-weight="600">Yes</text>
+        <rect x="290" y="172" width="180" height="40" rx="10" fill="#fff" stroke="#c9c4b6" stroke-width="1.8"/>
+        <text x="380" y="197" text-anchor="middle" fill="#4a4f58">是否存在独立 Context？</text>
+
+        <line x1="380" y1="212" x2="380" y2="240" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <text x="408" y="232" font-size="11.5" fill="#8a8f99">继续评估 ↓（Context 独立为强信号）</text>
+
+        <rect x="290" y="244" width="180" height="40" rx="10" fill="#fff" stroke="#c9c4b6" stroke-width="1.8"/>
+        <text x="380" y="269" text-anchor="middle" fill="#4a4f58">是否可独立执行？</text>
+
+        <line x1="470" y1="264" x2="590" y2="292" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <line x1="380" y1="284" x2="380" y2="316" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <text x="540" y="276" font-size="11.5" fill="#9c3a3a" font-weight="600">No → 评估协调成本</text>
+
+        <rect x="290" y="320" width="180" height="46" rx="10" fill="#fff" stroke="#c9c4b6" stroke-width="1.8"/>
+        <text x="380" y="338" text-anchor="middle" fill="#4a4f58">需要不同模型 / 权限？</text>
+        <text x="380" y="356" text-anchor="middle" font-size="11" fill="#8a8f99">（任一为强拆分信号）</text>
+
+        <line x1="470" y1="343" x2="588" y2="368" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <line x1="380" y1="366" x2="380" y2="396" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <text x="536" y="352" font-size="11.5" fill="#2e6e4e" font-weight="600">Yes → 强烈考虑拆分</text>
+
+        <rect x="290" y="400" width="180" height="48" rx="10" fill="#fff" stroke="#c9c4b6" stroke-width="1.8"/>
+        <text x="380" y="419" text-anchor="middle" fill="#4a4f58">拆分收益 &gt; 协调成本？</text>
+        <text x="380" y="438" text-anchor="middle" font-size="11" fill="#8a8f99">（§16 评分模型）</text>
+
+        <line x1="290" y1="424" x2="170" y2="478" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <line x1="470" y1="424" x2="590" y2="478" stroke="#8a8f99" stroke-width="1.5" marker-end="url(#ar6)"/>
+        <text x="212" y="448" font-size="12" fill="#9c3a3a" font-weight="600">No</text>
+        <text x="548" y="448" font-size="12" fill="#2e6e4e" font-weight="600">Yes</text>
+
+        <rect x="52" y="482" width="216" height="56" rx="10" fill="#e9f3ed" stroke="#2e6e4e" stroke-width="2" transform="rotate(-0.8 160 510)"/>
+        <text x="160" y="506" text-anchor="middle" fill="#2e6e4e" font-weight="700">保持 Single Agent</text>
+        <text x="160" y="526" text-anchor="middle" font-size="11" fill="#6a8a76">这是多数情况下的正确答案</text>
+
+        <rect x="486" y="482" width="216" height="56" rx="10" fill="#f3ecf9" stroke="#7a4a9c" stroke-width="2" transform="rotate(0.8 594 510)"/>
+        <text x="594" y="506" text-anchor="middle" fill="#7a4a9c" font-weight="700">Multi-Agent</text>
+        <text x="594" y="526" text-anchor="middle" font-size="11" fill="#8a6ba0">为协调成本做好显式设计</text>
+
+        <text x="380" y="590" text-anchor="middle" font-size="13.5" fill="#4a4f58" font-family="Noto Serif SC, serif" font-style="italic">拆分不是因为 Agent 很复杂，而是因为系统中已经存在天然边界</text>
+      </g>
+    </svg>
+    <figcaption><b>图 9</b> · 从 Single Agent 到 Multi-Agent 的完整决策树</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 18 ============ -->
+<section id="s18">
+  <span class="sec-no">SECTION 18</span>
+  <h2>Multi-Agent 的三个危险信号</h2>
+
+  <p class="lead">即使按决策树走到了 Multi-Agent，也要在运行中持续监测这三个反模式。它们一旦出现，通常意味着边界设计出了问题。</p>
+
+  <div class="ap-card">
+    <span class="ap-tag">ANTI-PATTERN 01</span>
+    <h6>Agent Explosion（Agent 爆炸）</h6>
+    <p>1 个需求 → 拆出 10 个 Agent → 半年后 20 个。每个 Agent 只完成一个很小的动作，系统图变成毛线团。</p>
+    <p><strong>诊断：</strong>如果某个“Agent”的行为可以用一张无分支的流程图描述，它应该是 Workflow；如果它连决策都没有，它应该是 Tool。<strong>数量从来不是专业度的证明。</strong></p>
+  </div>
+
+  <div class="ap-card">
+    <span class="ap-tag">ANTI-PATTERN 02</span>
+    <h6>Chatty Agents（喋喋不休的 Agent）</h6>
+    <p>A → B → A → B → C → A → B……Agent 之间高频往返通信。结果：Token 爆炸、延迟爆炸、一次失败的 Trace 长到没人读完，Debug 变成考古。</p>
+    <p><strong>诊断：</strong>频繁通信说明职责被切在了错误的层面——本该在一个决策空间内完成的多步推理，被强行分散到多个主体之间。<strong>Agent 边界可能设计错误，合并比优化通信协议更有效。</strong></p>
+  </div>
+
+  <div class="ap-card">
+    <span class="ap-tag">ANTI-PATTERN 03</span>
+    <h6>Shared Context Hell（共享上下文地狱）</h6>
+    <p>名义上拆成了 Agent A / B / C，实际上三者共享同一份巨大 Context，所有数据对所有 Agent 可见。</p>
+    <p><strong>诊断：</strong>你没有获得 Context Isolation，只获得了额外的调用开销——<strong>你只是把一个 God Agent 拆成了几个函数。</strong>回到第 6 节：隔离必须真实发生，否则拆分的核心理由不成立。</p>
+  </div>
+</section>
+
+<!-- ============ 19 ============ -->
+<section id="s19">
+  <span class="sec-no">SECTION 19</span>
+  <h2>八条生产级原则</h2>
+
+  <p>把全文压缩成可以直接贴在架构评审文档首页的八条：</p>
+
+  <div class="card">
+    <div class="principle">
+      <span class="pn">01</span>
+      <div><div class="pt">先问职责是否独立，而不是先问能不能拆。</div><div class="pd">“可以拆”和“应该拆”之间隔着第 4 节的四个条件。</div></div>
+    </div>
+    <div class="principle">
+      <span class="pn">02</span>
+      <div><div class="pt">Tool 解决能力扩展，Workflow 解决流程控制，Agent 解决动态决策。</div><div class="pd">三层各归其位，是避免 Agent Explosion 的根本方法。</div></div>
+    </div>
+    <div class="principle">
+      <span class="pn">03</span>
+      <div><div class="pt">Context Isolation 是拆 Agent 的重要理由。</div><div class="pd">但隔离必须真实发生——共享大 Context 的多 Agent 是伪拆分。</div></div>
+    </div>
+    <div class="principle">
+      <span class="pn">04</span>
+      <div><div class="pt">Permission Boundary 可以成为 Agent Boundary。</div><div class="pd">同时记住：拆分只是纵深防御的一层，Policy Engine、鉴权与审计不可省略。</div></div>
+    </div>
+    <div class="principle">
+      <span class="pn">05</span>
+      <div><div class="pt">能够并行执行的独立任务，是 Multi-Agent 的高价值场景。</div><div class="pd">前提是任务真正独立，且你已设计好同步、合并与部分结果的策略。</div></div>
+    </div>
+    <div class="principle">
+      <span class="pn">06</span>
+      <div><div class="pt">不同模型能力可以成为 Agent 拆分边界。</div><div class="pd">目的是让每个任务用最合适的模型，收益要按 Cost / Quality / Latency 分别验证。</div></div>
+    </div>
+    <div class="principle">
+      <span class="pn">07</span>
+      <div><div class="pt">Multi-Agent 引入的协调成本必须被显式计算。</div><div class="pd">通信、状态同步、Context 传递、失败处理——低估协调成本是 Multi-Agent 项目失败的首要原因。</div></div>
+    </div>
+    <div class="principle">
+      <span class="pn">08</span>
+      <div><div class="pt">如果拆分不能降低复杂度，就不要拆。</div><div class="pd">复杂度的守恒与转移：拆分把 Agent 内复杂度转化为 Agent 间复杂度，只有后者更可控时，拆分才有意义。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 20 ============ -->
+<section id="s20">
+  <span class="sec-no">SECTION 20</span>
+  <h2>结论</h2>
+
+  <p>不要用“Multi-Agent 更先进”作为结论。正确的决策路径始终是：</p>
+
+  <div class="flow-line">
+Single Agent<br>
+&nbsp;&nbsp;↓ 复杂度增加<br>
+&nbsp;&nbsp;系统中出现天然边界？（§3–§11）<br>
+&nbsp;&nbsp;&nbsp;&nbsp;├── No&nbsp;&nbsp;→ 优化 Single Agent（多数情况的最优解）<br>
+&nbsp;&nbsp;&nbsp;&nbsp;└── Yes → 拆分收益 是否 &gt; 协调成本（§13、§16）<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── No&nbsp;&nbsp;→ 保持 Single Agent<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── Yes → Multi-Agent（并显式设计协调机制）
+  </div>
+
+  <blockquote class="key" style="margin-top:36px;">
+    Multi-Agent 的价值不是把一个 Agent 变成很多 Agent，而是<strong>把一个不可控的复杂系统，拆成多个可以独立理解、独立评估、独立演进的决策单元</strong>。
+  </blockquote>
+
+  <div class="final-quote">
+    “真正成熟的 Multi-Agent 架构，<br>不是‘拆得足够细’，而是‘每一次拆分都有理由’。”
+  </div>
+
+  <footer class="end">
+    <p class="next-hint">系列下一篇 · <b>《Multi-Agent 协作与通信：Agent 之间如何共享状态》</b><br>Handoff / Supervisor / Shared State 的工程实现、消息 Schema 设计与一致性策略</p>
+  </footer>
+</section>
+
+</div>
+</body>
+</html>

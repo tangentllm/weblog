@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生产级 Agent 系统设计：单 Agent 何时够用</title>
+<style>
+  :root {
+    --ink: #1c2333;
+    --ink-soft: #4a5568;
+    --ink-mute: #8492a6;
+    --paper: #fcfcfa;
+    --card: #ffffff;
+    --line: #e5e9f0;
+    --accent: #1e4e8c;
+    --accent-soft: #eef3fa;
+    --accent-line: #c9d9ee;
+    --good: #1d7a53;
+    --good-soft: #ecf7f1;
+    --bad: #b0483a;
+    --bad-soft: #faf0ee;
+    --warn: #a07414;
+    --warn-soft: #fbf5e8;
+    --code-bg: #f5f7fa;
+    --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", Georgia, serif;
+    --sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "PingFang SC", monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.85;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== Hero ===== */
+  .hero {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 88px 32px 48px;
+    border-bottom: 1px solid var(--line);
+  }
+  .hero .kicker {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: 40px;
+    line-height: 1.35;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin-bottom: 22px;
+  }
+  .hero .subtitle {
+    font-size: 18px;
+    color: var(--ink-soft);
+    margin-bottom: 32px;
+    max-width: 640px;
+  }
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .hero-meta span {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-mute);
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 999px;
+    padding: 4px 14px;
+  }
+
+  /* ===== Layout ===== */
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 24px 32px 120px;
+  }
+
+  /* ===== TOC ===== */
+  .toc-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 26px 30px;
+    margin: 36px 0 56px;
+  }
+  .toc-card h2 {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    color: var(--ink-mute);
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .toc-card ol {
+    list-style: none;
+    columns: 2;
+    column-gap: 48px;
+  }
+  .toc-card li { margin: 6px 0; break-inside: avoid; }
+  .toc-card a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 14.5px;
+    display: flex;
+    gap: 10px;
+  }
+  .toc-card a:hover { color: var(--accent); }
+  .toc-card .no {
+    font-family: var(--mono);
+    color: var(--ink-mute);
+    font-size: 12.5px;
+    padding-top: 2px;
+  }
+
+  /* ===== Sections ===== */
+  section { margin-bottom: 88px; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+  .sec-no {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+  }
+  h2.sec-title {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  h3 {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 700;
+    margin: 44px 0 14px;
+    padding-left: 14px;
+    border-left: 3px solid var(--accent);
+    line-height: 1.5;
+  }
+  p { margin: 16px 0; color: var(--ink); }
+  .muted { color: var(--ink-soft); }
+  strong { font-weight: 600; }
+  em { font-style: normal; color: var(--accent); }
+
+  /* ===== Pull quote ===== */
+  blockquote {
+    margin: 34px 0;
+    padding: 22px 28px;
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    font-family: var(--serif);
+    font-size: 17.5px;
+    line-height: 1.8;
+    color: var(--ink);
+  }
+  blockquote p { margin: 0; }
+
+  /* ===== Plain text flow diagram ===== */
+  .flow {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.75;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 26px;
+    margin: 22px 0;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--ink-soft);
+  }
+
+  /* ===== Code block ===== */
+  pre.code {
+    background: #1c2333;
+    color: #dbe2ef;
+    border-radius: 10px;
+    padding: 24px 26px;
+    margin: 26px 0;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.8;
+    position: relative;
+  }
+  pre.code .lang {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 11px;
+    color: #7c8aa5;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  pre.code .kw { color: #8ab8e8; }
+  pre.code .fn { color: #e8c88a; }
+  pre.code .str { color: #a3d9a5; }
+  pre.code .cm { color: #6b7a94; font-style: italic; }
+
+  /* ===== Figures ===== */
+  figure {
+    margin: 36px 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 30px 24px 18px;
+  }
+  figcaption {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-mute);
+    margin-top: 16px;
+    font-family: var(--sans);
+  }
+  figcaption b { color: var(--ink-soft); font-weight: 600; }
+  svg { display: block; width: 100%; height: auto; }
+
+  /* SVG shared styles */
+  .dg-box { fill: #ffffff; stroke: #9fb4d0; stroke-width: 1.4; rx: 8; }
+  .dg-accent { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.6; }
+  .dg-good { fill: var(--good-soft); stroke: var(--good); stroke-width: 1.6; }
+  .dg-bad { fill: var(--bad-soft); stroke: var(--bad); stroke-width: 1.6; }
+  .dg-warn { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.6; }
+  .dg-ghost { fill: #f4f6f9; stroke: #d4dbe5; stroke-width: 1.2; }
+  .dg-t { font-family: var(--sans); font-size: 13px; fill: var(--ink); text-anchor: middle; font-weight: 500; }
+  .dg-t-sm { font-family: var(--sans); font-size: 11.5px; fill: var(--ink-soft); text-anchor: middle; }
+  .dg-t-mono { font-family: var(--mono); font-size: 11px; fill: var(--ink-mute); text-anchor: middle; }
+  .dg-sub { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-mute); text-anchor: middle; }
+  .dg-line { stroke: #8fa3bd; stroke-width: 1.5; fill: none; }
+  .dg-dash { stroke: #b8c4d4; stroke-width: 1.3; fill: none; stroke-dasharray: 5 4; }
+  .dg-zone { fill: #f8fafc; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 6 4; rx: 12; }
+  .dg-note { font-family: var(--sans); font-size: 12px; fill: var(--ink-mute); }
+
+  /* ===== Cards ===== */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+    margin: 30px 0;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .card .c-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .card .c-title { font-weight: 600; font-size: 15.5px; margin-bottom: 6px; }
+  .card .c-desc { font-size: 13.5px; color: var(--ink-soft); line-height: 1.7; }
+
+  /* Signal cards */
+  .signal { border-top: 3px solid var(--accent); }
+  .signal.bad { border-top-color: var(--bad); }
+  .signal.good { border-top-color: var(--good); }
+
+  /* ===== Stat cards ===== */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin: 30px 0;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 20px;
+    text-align: left;
+  }
+  .stat .s-value {
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.2;
+  }
+  .stat .s-value small { font-size: 15px; font-weight: 600; color: var(--ink-mute); }
+  .stat .s-label { font-size: 13px; color: var(--ink-soft); margin-top: 6px; }
+  .stat.warn .s-value { color: var(--bad); }
+
+  /* ===== Tables ===== */
+  .tbl-wrap { overflow-x: auto; margin: 30px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 14px;
+  }
+  thead th {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 18px;
+    font-size: 13.5px;
+    letter-spacing: 0.02em;
+  }
+  tbody td {
+    padding: 12px 18px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-soft);
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody td:first-child { color: var(--ink); font-weight: 500; }
+  .yes { color: var(--accent); font-weight: 600; }
+  .no-c { color: var(--good); font-weight: 600; }
+  .verdict {
+    background: var(--warn-soft) !important;
+    color: var(--warn) !important;
+    font-weight: 600;
+  }
+
+  /* ===== Score model ===== */
+  .score-box {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 26px 30px;
+    margin: 30px 0;
+  }
+  .score-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: 14.5px;
+  }
+  .score-item:last-of-type { border-bottom: none; }
+  .score-badge {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 6px;
+    padding: 2px 10px;
+  }
+  .score-scale {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-top: 22px;
+  }
+  .score-band {
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+  .score-band .band {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .band-green { background: var(--good-soft); color: var(--good); }
+  .band-yellow { background: var(--warn-soft); color: var(--warn); }
+  .band-red { background: var(--bad-soft); color: var(--bad); }
+  .score-band span { color: var(--ink-soft); display: block; }
+
+  /* ===== Checklist list ===== */
+  ul.plain { margin: 14px 0 14px 22px; }
+  ul.plain li { margin: 7px 0; color: var(--ink-soft); }
+  ul.plain li::marker { color: var(--accent); }
+
+  /* ===== Final decision flow ===== */
+  .final-flow {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 26px 30px;
+    margin: 28px 0;
+    white-space: pre;
+    overflow-x: auto;
+    line-height: 1.9;
+    color: var(--ink-soft);
+  }
+  .final-flow b { color: var(--accent); font-weight: 600; }
+
+  /* ===== Footer ===== */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 44px 32px 60px;
+    text-align: center;
+    color: var(--ink-mute);
+    font-size: 13px;
+  }
+  footer .fin {
+    font-family: var(--serif);
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 620px;
+    margin: 0 auto 18px;
+    line-height: 1.9;
+  }
+
+  @media (max-width: 640px) {
+    .hero { padding: 56px 20px 36px; }
+    .hero h1 { font-size: 30px; }
+    .wrap { padding: 20px 20px 80px; }
+    .toc-card ol { columns: 1; }
+    h2.sec-title { font-size: 23px; }
+    .flow, .final-flow { font-size: 11.5px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="kicker">AI Engineering · Agent Architecture</div>
+  <h1>生产级 Agent 系统设计：<br>单 Agent 何时够用</h1>
+  <p class="subtitle">Agent 架构设计的核心问题，从来不是"我能拆多少个 Agent"，而是"我是否有足够的理由拆 Agent"。本文给出一套可解释、可落地、可用于架构评审的 Agent 拆分方法论。</p>
+  <div class="hero-meta">
+    <span>2026-09-10</span>
+    <span>约 7000 字</span>
+    <span>阅读 25 min</span>
+    <span>Single Agent</span>
+    <span>Multi-Agent</span>
+    <span>Architecture Decision</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ================= TOC ================= -->
+  <nav class="toc-card">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#s1"><span class="no">01</span>为什么系统一开始就做复杂了</a></li>
+      <li><a href="#s2"><span class="no">02</span>什么才是 Single Agent</a></li>
+      <li><a href="#s3"><span class="no">03</span>Single Agent 适合什么问题</a></li>
+      <li><a href="#s4"><span class="no">04</span>关键判断：Tools ≠ Agents</a></li>
+      <li><a href="#s5"><span class="no">05</span>单 Agent 失控的五个信号</a></li>
+      <li><a href="#s6"><span class="no">06</span>何时真正该考虑 Multi-Agent</a></li>
+      <li><a href="#s7"><span class="no">07</span>不要为了拆而拆</a></li>
+      <li><a href="#s8"><span class="no">08</span>渐进式演进路线</a></li>
+      <li><a href="#s9"><span class="no">09</span>案例：电商智能客服</a></li>
+      <li><a href="#s10"><span class="no">10</span>架构决策 Checklist</a></li>
+      <li><a href="#s11"><span class="no">11</span>生产环境的度量指标</a></li>
+      <li><a href="#s12"><span class="no">12</span>最终结论</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================= 01 ================= -->
+  <section id="s1">
+    <div class="sec-head"><span class="sec-no">01</span><h2 class="sec-title">为什么很多 Agent 系统一开始就做复杂了？</h2></div>
+
+    <p>先看一个真实感很强的场景。产品经理提了一个需求：</p>
+
+    <blockquote><p>用户："帮我分析一下最近新能源汽车行业的市场情况，并给出投资建议。"</p></blockquote>
+
+    <p>开发团队开会，很快画出了这样一张架构图：</p>
+
+    <div class="flow">Planner Agent
+    ↓
+Research Agent
+    ↓
+Search Agent
+    ↓
+Data Agent
+    ↓
+Analysis Agent
+    ↓
+Writer Agent</div>
+
+    <p>六个 Agent，链路清晰，每个都有"专家"身份。评审时大家频频点头：这很 Agentic。但有一个问题很少被认真问过：</p>
+
+    <blockquote><p><strong>这个问题真的需要 6 个 Agent 吗？</strong></p></blockquote>
+
+    <p>事实上，一个 Agent 挂上几个 Tools，大概率就能把这个任务做到可用水平。因此真正的问题不是"Multi-Agent 能不能做"——它能做，只是更贵、更慢、更难调试。真正的问题是：</p>
+
+    <blockquote><p>引入 Multi-Agent 之后，<strong>到底解决了什么单 Agent 无法很好解决的问题？</strong></p></blockquote>
+
+    <p>如果这个问题答不上来，那么引入 Multi-Agent 的唯一收益就是架构图看起来更先进。而代价——延迟、Token 成本、故障面、调试难度、评估复杂度——全都要在生产环境里真实支付。</p>
+
+    <figure>
+      <svg viewBox="0 0 760 330" role="img" aria-label="过度设计 vs 合理设计对比">
+        <!-- Left zone: over-engineered -->
+        <rect x="14" y="14" width="340" height="300" class="dg-zone"/>
+        <text x="184" y="42" class="dg-t" style="fill:var(--bad);font-weight:600">方案 A：6 Agent 串行链</text>
+        <!-- chain -->
+        <g>
+          <rect x="122" y="56" width="124" height="30" rx="7" class="dg-bad"/>
+          <text x="184" y="76" class="dg-t" style="font-size:12px">Planner Agent</text>
+          <line x1="184" y1="86" x2="184" y2="98" class="dg-line" marker-end="url(#arrB)"/>
+          <rect x="122" y="99" width="124" height="30" rx="7" class="dg-bad"/>
+          <text x="184" y="119" class="dg-t" style="font-size:12px">Research Agent</text>
+          <line x1="184" y1="129" x2="184" y2="141" class="dg-line" marker-end="url(#arrB)"/>
+          <rect x="122" y="142" width="124" height="30" rx="7" class="dg-bad"/>
+          <text x="184" y="162" class="dg-t" style="font-size:12px">Search Agent</text>
+          <line x1="184" y1="172" x2="184" y2="184" class="dg-line" marker-end="url(#arrB)"/>
+          <rect x="122" y="185" width="124" height="30" rx="7" class="dg-bad"/>
+          <text x="184" y="205" class="dg-t" style="font-size:12px">Data Agent</text>
+          <line x1="184" y1="215" x2="184" y2="227" class="dg-line" marker-end="url(#arrB)"/>
+          <rect x="122" y="228" width="124" height="30" rx="7" class="dg-bad"/>
+          <text x="184" y="248" class="dg-t" style="font-size:12px">Analysis Agent</text>
+          <line x1="184" y1="258" x2="184" y2="270" class="dg-line" marker-end="url(#arrB)"/>
+          <rect x="122" y="271" width="124" height="30" rx="7" class="dg-bad"/>
+          <text x="184" y="291" class="dg-t" style="font-size:12px">Writer Agent</text>
+        </g>
+        <text x="184" y="322" class="dg-sub" style="fill:var(--bad)">6+ 次 LLM 调用 · 延迟相加 · 故障面相乘</text>
+
+        <!-- Right zone: reasonable -->
+        <rect x="404" y="14" width="342" height="300" class="dg-zone"/>
+        <text x="575" y="42" class="dg-t" style="fill:var(--good);font-weight:600">方案 B：1 Agent + 4 Tools</text>
+        <rect x="513" y="60" width="124" height="32" rx="7" class="dg-ghost"/>
+        <text x="575" y="81" class="dg-t" style="font-size:12px">User</text>
+        <line x1="575" y1="92" x2="575" y2="110" class="dg-line" marker-end="url(#arrA)"/>
+        <rect x="513" y="111" width="124" height="34" rx="7" class="dg-good"/>
+        <text x="575" y="133" class="dg-t" style="font-size:12px">Agent</text>
+        <!-- tool branches -->
+        <line x1="575" y1="145" x2="575" y2="170" class="dg-line"/>
+        <line x1="470" y1="170" x2="680" y2="170" class="dg-line"/>
+        <line x1="470" y1="170" x2="470" y2="186" class="dg-line" marker-end="url(#arrG)"/>
+        <line x1="540" y1="170" x2="540" y2="186" class="dg-line" marker-end="url(#arrG)"/>
+        <line x1="610" y1="170" x2="610" y2="186" class="dg-line" marker-end="url(#arrG)"/>
+        <line x1="680" y1="170" x2="680" y2="186" class="dg-line" marker-end="url(#arrG)"/>
+        <rect x="410" y="187" width="120" height="30" rx="7" class="dg-box"/>
+        <text x="470" y="207" class="dg-t" style="font-size:12px">Search Tool</text>
+        <rect x="484" y="187" width="112" height="30" rx="7" class="dg-box"/>
+        <text x="540" y="207" class="dg-t" style="font-size:12px">DB Tool</text>
+        <rect x="556" y="187" width="108" height="30" rx="7" class="dg-box"/>
+        <text x="610" y="207" class="dg-t" style="font-size:12px">Calc Tool</text>
+        <rect x="624" y="187" width="112" height="30" rx="7" class="dg-box"/>
+        <text x="680" y="207" class="dg-t" style="font-size:11.5px">Report Tool</text>
+        <text x="575" y="262" class="dg-note" text-anchor="middle" style="font-size:12.5px;fill:var(--good)">单循环 · 共享上下文 · 易归因</text>
+        <text x="575" y="322" class="dg-sub" style="fill:var(--good)">能力用 Tool 扩展，而非 Agent 堆叠</text>
+
+        <defs>
+          <marker id="arrB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#8fa3bd"/>
+          </marker>
+          <marker id="arrA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#1d7a53"/>
+          </marker>
+          <marker id="arrG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#1d7a53"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption><b>图 1</b> · 同一需求，两种架构。右侧在成本、延迟、可调试性上全面占优，除非存在明确的拆分理由。</figcaption>
+    </figure>
+
+    <p>本文的目的，是给出一套可以在架构评审中实际使用的判断方法：<em>什么时候一个 Agent 就够了，什么信号出现时才应该拆分。</em></p>
+  </section>
+
+  <!-- ================= 02 ================= -->
+  <section id="s2">
+    <div class="sec-head"><span class="sec-no">02</span><h2 class="sec-title">先定义：什么才是 Single Agent？</h2></div>
+
+    <p>很多人对 Single Agent 的理解是"一个简单的 LLM 循环"。这是错误的起点。从架构角度看，一个生产级 Single Agent 是这样的：</p>
+
+    <figure>
+      <svg viewBox="0 0 760 360" role="img" aria-label="Single Agent 架构图">
+        <rect x="310" y="16" width="140" height="36" rx="8" class="dg-ghost"/>
+        <text x="380" y="39" class="dg-t">User</text>
+        <line x1="380" y1="52" x2="380" y2="76" class="dg-line" marker-end="url(#arr2)"/>
+
+        <!-- Agent container -->
+        <rect x="200" y="78" width="360" height="140" rx="12" class="dg-accent"/>
+        <text x="380" y="106" class="dg-t" style="font-weight:700">Agent Core</text>
+        <g>
+          <rect x="222" y="122" width="96" height="34" rx="7" fill="#fff" stroke="#c9d9ee"/>
+          <text x="270" y="144" class="dg-t" style="font-size:12px">Reasoning</text>
+          <rect x="332" y="122" width="96" height="34" rx="7" fill="#fff" stroke="#c9d9ee"/>
+          <text x="380" y="144" class="dg-t" style="font-size:12px">Planning</text>
+          <rect x="442" y="122" width="96" height="34" rx="7" fill="#fff" stroke="#c9d9ee"/>
+          <text x="490" y="144" class="dg-t" style="font-size:12px">Memory</text>
+          <rect x="277" y="168" width="96" height="34" rx="7" fill="#fff" stroke="#c9d9ee"/>
+          <text x="325" y="190" class="dg-t" style="font-size:12px">State</text>
+          <rect x="387" y="168" width="96" height="34" rx="7" fill="#fff" stroke="#c9d9ee"/>
+          <text x="435" y="190" class="dg-t" style="font-size:12px">Guardrails</text>
+        </g>
+        <text x="380" y="266" class="dg-note" text-anchor="middle">ReAct 循环 · Tool Calling · Retry · 评估</text>
+        <line x1="380" y1="218" x2="380" y2="282" class="dg-line" marker-end="url(#arr2)"/>
+
+        <!-- Tools -->
+        <rect x="70" y="284" width="620" height="62" rx="10" class="dg-zone"/>
+        <text x="380" y="278" class="dg-note" text-anchor="middle"> </text>
+        <g>
+          <rect x="88" y="300" width="100" height="32" rx="7" class="dg-box"/>
+          <text x="138" y="321" class="dg-t" style="font-size:12px">Search</text>
+          <rect x="212" y="300" width="100" height="32" rx="7" class="dg-box"/>
+          <text x="262" y="321" class="dg-t" style="font-size:12px">RAG</text>
+          <rect x="336" y="300" width="100" height="32" rx="7" class="dg-box"/>
+          <text x="386" y="321" class="dg-t" style="font-size:12px">Database</text>
+          <rect x="460" y="300" width="100" height="32" rx="7" class="dg-box"/>
+          <text x="510" y="321" class="dg-t" style="font-size:12px">API</text>
+          <rect x="584" y="300" width="100" height="32" rx="7" class="dg-box"/>
+          <text x="634" y="321" class="dg-t" style="font-size:12px">Code</text>
+        </g>
+
+        <defs>
+          <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#1e4e8c"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption><b>图 2</b> · 生产级 Single Agent：Reasoning / Planning / State / Memory / Guardrails + 多工具，本身就是一个完整的工程体系。</figcaption>
+    </figure>
+
+    <p>必须强调一个事实：</p>
+
+    <blockquote><p><strong>Single Agent ≠ 简单系统。</strong></p></blockquote>
+
+    <p>一个单 Agent 系统完全可以同时具备：多工具、RAG、长期 Memory、Planning、状态机、重试策略、输入输出 Guardrails、离线评估体系、完整的 Observability。这些能力没有任何一项"必须"通过拆分 Agent 来获得。</p>
+
+    <p>因此，判断系统中 Agent 数量的正确依据不是"这个系统有多少能力"，而是：</p>
+
+    <blockquote><p>这些能力<strong>是否需要被隔离</strong>？——职责、上下文、权限、模型、故障边界。如果不需要隔离，所有能力都可以挂在一个 Agent 上；如果需要隔离，才是拆分 Agent 的开始。</p></blockquote>
+  </section>
+
+  <!-- ================= 03 ================= -->
+  <section id="s3">
+    <div class="sec-head"><span class="sec-no">03</span><h2 class="sec-title">Single Agent 真正适合解决什么问题？</h2></div>
+
+    <p>以下四类场景，Single Agent 通常是正确答案，而且不是"勉强够用"，而是<em>最优解</em>。</p>
+
+    <h3>3.1 工具数量有限且目标一致</h3>
+    <div class="flow">Agent
+ ├── Search
+ ├── RAG
+ ├── Database
+ └── Calculator</div>
+    <p>四个工具功能不同，但服务于同一个任务目标。模型的 Tool Selection 负担很轻（通常 10 个以内的工具，主流模型的选择准确率都足够高），Tool Description 的上下文开销可以忽略。这种情况下增加一个 Tool 的成本远低于增加一个 Agent。</p>
+
+    <h3>3.2 任务目标单一</h3>
+    <blockquote><p>"查询客户订单并判断是否满足退款条件。"</p></blockquote>
+    <p>这是一个边界清晰、可完整描述的业务目标。没有多角色博弈，没有多阶段异构处理，没有职责冲突。一个 Agent 端到端处理，意味着状态在同一个 Context 里流转，没有序列化损耗，没有中间结果的信息丢失。</p>
+
+    <h3>3.3 决策链相对短</h3>
+    <div class="flow">理解请求 → 查询数据 → 调用工具 → 生成答案</div>
+    <p>如果任务的决策路径基本是线性的，拆分 Agent 只会引入额外的调度开销和错误传播点。<strong>Agent 化不等于智能化</strong>——把一条线性链路拆成五个 Agent，每个 Agent 做的事情并没有变多，只是中间多了四次 LLM 调用。</p>
+
+    <h3>3.4 不存在明显的专业边界</h3>
+    <div class="flow">用户问题
+   ↓
+客服 Agent
+   ├── 查询订单
+   ├── 查询物流
+   ├── 查询优惠
+   └── 创建售后</div>
+    <p>查询订单和查询物流用的是不同的 API，但它们属于同一个业务域——Customer Service Domain。共享同一套语气规范、同一套用户上下文、同一套售后政策。没有任何一个能力需要"独立的决策主体"，所以一个 Agent 足够。</p>
+  </section>
+
+  <!-- ================= 04 ================= -->
+  <section id="s4">
+    <div class="sec-head"><span class="sec-no">04</span><h2 class="sec-title">一个关键判断：Tools ≠ Agents</h2></div>
+
+    <p>这是全文最重要的概念区分之一。</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th style="width:22%"></th><th>Tools</th><th>Agents</th></tr></thead>
+        <tbody>
+          <tr><td>解决的问题</td><td><span class="yes">能力扩展</span></td><td><span class="yes">决策主体 / 职责边界扩展</span></td></tr>
+          <tr><td>谁做决策</td><td>Agent</td><td>各 Agent 自己</td></tr>
+          <tr><td>上下文</td><td>共享</td><td>隔离</td></tr>
+          <tr><td>生命周期</td><td>随调用生灭</td><td>独立</td></tr>
+          <tr><td>失败归属</td><td>Tool 返回错误，Agent 处理</td><td>Agent 本身是失败域</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>举个例子，查天气：</p>
+
+    <div class="flow">Agent
+ └── Weather Tool        ✅ 正确</div>
+
+    <p>并不意味着需要：</p>
+
+    <div class="flow">Weather Agent → Search Agent → Decision Agent   ❌ 过度设计</div>
+
+    <p>天气查询没有独立目标、没有独立策略、没有独立上下文需求——它只是 Agent 的一次能力调用。那么什么时候一个能力值得"Agent 化"？当它开始具备以下特征时：</p>
+
+    <div class="card-grid">
+      <div class="card signal"><div class="c-label">信号 1</div><div class="c-title">独立决策</div><div class="c-desc">它需要自己判断下一步做什么，而不是被上游完全指定。</div></div>
+      <div class="card signal"><div class="c-label">信号 2</div><div class="c-title">独立上下文</div><div class="c-desc">它需要一套与主任务不同的信息集合。</div></div>
+      <div class="card signal"><div class="c-label">信号 3</div><div class="c-title">独立目标</div><div class="c-desc">它的成功标准和主任务不同。</div></div>
+      <div class="card signal"><div class="c-label">信号 4</div><div class="c-title">独立策略</div><div class="c-desc">它有自己的 Prompt、自己的重试逻辑、自己的评估方式。</div></div>
+    </div>
+
+    <blockquote><p><strong>如果只是"调用不同能力"，优先使用 Tool；如果已经出现"不同决策主体"，才考虑 Agent。</strong></p></blockquote>
+  </section>
+
+  <!-- ================= 05 ================= -->
+  <section id="s5">
+    <div class="sec-head"><span class="sec-no">05</span><h2 class="sec-title">Single Agent 开始失控的信号</h2></div>
+
+    <p>"任务复杂就上 Multi-Agent"是一种偷懒的表述。复杂度失控有具体的、可观察的工程信号。以下五个信号，出现得越多，拆分的理由越充分。</p>
+
+    <h3>5.1 Prompt 开始变成"上帝 Prompt"</h3>
+    <div class="flow">你是一名资深客服专家，同时你也是：
+- SQL 专家，能编写和分析查询
+- 法律专家，熟悉消费者保护法规
+- 金融专家，理解支付与风控
+- 搜索专家，精通信息检索
+- 数据分析专家 / 销售专家 / 风控专家 ...</div>
+    <p>当 System Prompt 超过几千字、充斥着大量"当遇到 X 情况时你应该……"的条件分支时，问题已经不只是难维护：</p>
+    <ul class="plain">
+      <li>指令之间开始<strong>互相冲突</strong>（销售话术 vs 风控红线）；</li>
+      <li>模型对中间部分的指令<strong>遵循度下降</strong>；</li>
+      <li>任何一处修改都可能<strong>回归破坏</strong>另一处行为，且没有测试能兜住。</li>
+    </ul>
+    <p>上帝 Prompt 是职责混杂的最直接信号。</p>
+
+    <h3>5.2 Tool 数量快速增长</h3>
+    <div class="flow">Agent
+ ├── Search    ├── CRM       ├── Payment     ├── Logistics
+ ├── SQL       ├── ERP       ├── Refund      ├── Recommendation
+ └── Risk ...</div>
+    <p>当工具超过 20~30 个，Tool Selection 本身成为新的故障源：</p>
+    <ul class="plain">
+      <li><strong>Tool description 膨胀</strong>：每个工具的描述都要几百字，全部塞进 System Prompt，Context 开销急剧上升；</li>
+      <li><strong>Tool collision</strong>：<code style="font-family:var(--mono);font-size:13px;background:var(--code-bg);padding:1px 6px;border-radius:4px">query_order</code> 和 <code style="font-family:var(--mono);font-size:13px;background:var(--code-bg);padding:1px 6px;border-radius:4px">search_order</code> 语义高度重叠，模型开始选错；</li>
+      <li><strong>错误选择的连锁反应</strong>：调错工具 → 返回无关数据 → 污染后续推理 → 最终答案错误，而且 Debug 时很难定位是"选错工具"还是"推理错误"。</li>
+    </ul>
+    <p>注意：Tool 过多的第一解法通常不是拆 Agent，而是<em>引入 Router 或工具分组</em>（后文详述）。</p>
+
+    <h3>5.3 Context 开始污染</h3>
+    <div class="flow">研究类任务需要：               客服任务需要：
+  研究资料 / 搜索结果            用户信息 / 订单
+  论文 / 行业数据                物流 / 售后政策</div>
+    <p>如果它们共享同一个 Context，会发生什么：</p>
+    <ul class="plain">
+      <li><strong>Token 成本线性上涨</strong>：每次调用都背着全部历史；</li>
+      <li><strong>注意力稀释</strong>：模型在几万 Token 里找相关信息，推理稳定性下降；</li>
+      <li><strong>互相干扰</strong>：上一轮研究的结论"泄漏"进客服回答，产生幻觉。</li>
+    </ul>
+    <p>当不同任务的信息集合几乎不重叠、且都很大时，<strong>Context Isolation 是 Multi-Agent 最实在的价值之一</strong>——它不是理念，是直接的成本和准确率收益。</p>
+
+    <h3>5.4 不同任务需要不同模型</h3>
+    <div class="flow">简单意图分类   → 小模型（快、便宜）
+复杂推理       → Reasoning Model
+代码生成       → Coding Model
+图片理解       → Vision Model</div>
+    <p>如果一个 Agent 强行承担全部任务，架构上就锁死了 <code style="font-family:var(--mono);font-size:13px;background:var(--code-bg);padding:1px 6px;border-radius:4px">One Agent → One Model</code>：分类任务用 Reasoning Model，成本高 10 倍，延迟高 5 倍，能力浪费；复杂推理用小模型，质量不达标。当不同子任务的模型需求出现明显分化时，自然的架构是 Router + 分模型的专项 Agent。</p>
+
+    <h3>5.5 权限边界开始出现</h3>
+    <div class="flow">Research Agent          → 只读数据
+Customer Service Agent  → 可以修改订单
+Payment Agent           → 可以执行支付</div>
+    <p>这是生产系统中最容易被忽视、又最致命的信号。如果这些能力全挂在一个 Agent 上，那么：Prompt 注入的一次成功、一次 Tool Selection 的错误、一次模型幻觉，都可能直接触发高危操作。权限粒度只能做到"这个 Agent 有权限调用支付工具"，而无法做到"支付决策必须经过独立的审查流程"。</p>
+
+    <p>此时 Multi-Agent 的价值不再是能力或性能，而是<em>安全边界</em>：每个 Agent 拥有最小权限集合，高危操作被隔离在独立的、审计更严格的 Agent 中。</p>
+  </section>
+
+  <!-- ================= 06 ================= -->
+  <section id="s6">
+    <div class="sec-head"><span class="sec-no">06</span><h2 class="sec-title">什么时候真正应该考虑 Multi-Agent？</h2></div>
+
+    <p>把上面的信号收敛成一个判断模型：</p>
+
+    <div class="flow">Multi-Agent Value
+=
+Complexity Isolation          （职责隔离）
++ Context Isolation           （上下文隔离）
++ Capability Specialization   （专业能力隔离）
++ Permission Isolation        （权限隔离）
++ Parallelism                 （并行协作）
++ Independent Evolution       （独立演进）</div>
+
+    <p>只有当这些项中有<strong>多项真实成立</strong>时，Multi-Agent 的引入成本才划算。逐项说明：</p>
+
+    <h3>6.1 职责真的不同</h3>
+    <p>Research Agent、Analysis Agent、Writer Agent 的拆分之所以成立，不是因为名字看起来专业，而是因为三者：<strong>目标不同</strong>（找全信息 vs 得出结论 vs 表达清晰）、<strong>上下文不同</strong>（原始资料 vs 中间分析 vs 写作规范）、<strong>评价标准不同</strong>（召回率 vs 逻辑严谨性 vs 可读性）。用不同的标准评估、用不同的 Prompt 约束、用不同的数据集测试——这才是"职责不同"的实质。</p>
+
+    <h3>6.2 上下文必须隔离</h3>
+    <div class="flow">Research Context → Research Agent → 结构化研究结果
+Analysis Context → Analysis Agent → 分析结论</div>
+    <p>每个 Agent 只持有自己需要的信息，通过<strong>明确的中间产物</strong>（而非共享历史）传递。收益是：每个 Context 更小更聚焦、Token 成本可控、推理更稳定、且中间产物可以被单独缓存和评估。代价也要诚实说明：<em>信息压缩损耗</em>。上游 Agent 传给下游的摘要可能丢失关键细节，这是 Context Isolation 的固有 Trade-off，需要靠设计良好的中间数据结构来缓解。</p>
+
+    <h3>6.3 可以并行执行</h3>
+    <p>这是 Multi-Agent 最容易量化的价值。</p>
+
+    <figure>
+      <svg viewBox="0 0 760 330" role="img" aria-label="Multi-Agent 并行执行">
+        <rect x="320" y="16" width="150" height="34" rx="8" class="dg-ghost"/>
+        <text x="395" y="38" class="dg-t" style="font-size:12.5px">User Request</text>
+        <line x1="395" y1="50" x2="395" y2="70" class="dg-line" marker-end="url(#arr3)"/>
+
+        <rect x="325" y="71" width="140" height="34" rx="8" class="dg-accent"/>
+        <text x="395" y="93" class="dg-t" style="font-size:12.5px">Orchestrator</text>
+
+        <!-- fan out -->
+        <line x1="395" y1="105" x2="395" y2="122" class="dg-line"/>
+        <line x1="150" y1="122" x2="640" y2="122" class="dg-line"/>
+        <line x1="150" y1="122" x2="150" y2="142" class="dg-line" marker-end="url(#arr3)"/>
+        <line x1="395" y1="122" x2="395" y2="142" class="dg-line" marker-end="url(#arr3)"/>
+        <line x1="640" y1="122" x2="640" y2="142" class="dg-line" marker-end="url(#arr3)"/>
+        <text x="265" y="116" class="dg-note" style="fill:var(--good)">并行 fan-out</text>
+
+        <rect x="85" y="143" width="130" height="52" rx="8" class="dg-box"/>
+        <text x="150" y="165" class="dg-t" style="font-size:12.5px">Agent A</text>
+        <text x="150" y="183" class="dg-sub">行业研究</text>
+
+        <rect x="330" y="143" width="130" height="52" rx="8" class="dg-box"/>
+        <text x="395" y="165" class="dg-t" style="font-size:12.5px">Agent B</text>
+        <text x="395" y="183" class="dg-sub">竞品分析</text>
+
+        <rect x="575" y="143" width="130" height="52" rx="8" class="dg-box"/>
+        <text x="640" y="165" class="dg-t" style="font-size:12.5px">Agent C</text>
+        <text x="640" y="183" class="dg-sub">财务分析</text>
+
+        <!-- fan in -->
+        <line x1="150" y1="195" x2="150" y2="222" class="dg-line"/>
+        <line x1="395" y1="195" x2="395" y2="222" class="dg-line"/>
+        <line x1="640" y1="195" x2="640" y2="222" class="dg-line"/>
+        <line x1="150" y1="222" x2="640" y2="222" class="dg-line"/>
+        <line x1="395" y1="222" x2="395" y2="240" class="dg-line" marker-end="url(#arr3)"/>
+
+        <rect x="325" y="241" width="140" height="34" rx="8" class="dg-warn"/>
+        <text x="395" y="263" class="dg-t" style="font-size:12.5px">Synthesizer</text>
+        <line x1="395" y1="275" x2="395" y2="293" class="dg-line" marker-end="url(#arr3)"/>
+        <rect x="318" y="294" width="154" height="30" rx="8" class="dg-ghost"/>
+        <text x="395" y="314" class="dg-t" style="font-size:12.5px">Final Report</text>
+
+        <defs>
+          <marker id="arr3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#1e4e8c"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption><b>图 3</b> · Multi-Agent 并行执行。三个子任务互相独立，串行需要 3 × T，并行约 T + 汇总时间。</figcaption>
+    </figure>
+
+    <p>三个子任务互相独立，串行需要 3 × T，并行只需要约 T + 汇总时间。此时 Multi-Agent 不是"角色拆分"，而是 <strong>Execution Parallelism</strong>——它直接兑换成 P95 延迟的下降。反过来，如果子任务之间存在严格依赖（B 需要 A 的完整输出才能开始），并行的收益归零，只剩调度开销。</p>
+
+    <h3>6.4 Agent 需要独立演进</h3>
+    <p>Research Agent 和 Customer Service Agent 可能由不同团队维护，迭代节奏完全不同。如果耦合在一个"God Agent"里：</p>
+    <ul class="plain">
+      <li><strong>Prompt 冲突</strong>：两个团队改同一个 Prompt，互相覆盖；</li>
+      <li><strong>发布风险</strong>：客服逻辑的一次修改可能弄坏研究能力，回归测试范围爆炸；</li>
+      <li><strong>版本耦合</strong>：想单独回滚客服能力，做不到。</li>
+    </ul>
+    <p>当"谁来维护"成为问题时，Agent 边界就应该和团队边界对齐——这和微服务拆分中的康威定律是同一个逻辑。</p>
+  </section>
+
+  <!-- ================= 07 ================= -->
+  <section id="s7">
+    <div class="sec-head"><span class="sec-no">07</span><h2 class="sec-title">不要为了 Multi-Agent 而 Multi-Agent</h2></div>
+
+    <p>反面案例值得单独一节。</p>
+
+    <div class="flow">User
+ ↓
+Planner Agent → Research Agent → Search Agent
+                     ↓
+       Analysis Agent → Writer Agent → Reviewer Agent</div>
+
+    <p>七个 Agent，串成一条链。看起来非常"Agentic"，实际支付的成本：</p>
+
+    <div class="stat-grid">
+      <div class="stat warn"><div class="s-value">7<small>×</small></div><div class="s-label">一次任务的 LLM 调用次数，延迟逐跳相加</div></div>
+      <div class="stat warn"><div class="s-value">7<small>份</small></div><div class="s-label">独立 System Prompt，Token 成本成倍增长</div></div>
+      <div class="stat warn"><div class="s-value">6<small>个</small></div><div class="s-label">跨 Agent 传递点，每一跳都是失败点</div></div>
+      <div class="stat warn"><div class="s-value">7<small>套</small></div><div class="s-label">需要独立维护的 Prompt、评估集与降级策略</div></div>
+    </div>
+
+    <p>更糟的情况是出现这样的调用链：</p>
+
+    <div class="flow">Agent A → Agent B → Agent C → Agent D → ...</div>
+
+    <p>当系统出错时，没有人能直接回答：</p>
+
+    <blockquote><p><strong>到底是哪一个 Agent 做错了？</strong></p></blockquote>
+
+    <p>是 A 传给 B 的信息就错了？还是 B 的推理错了？还是 C 用错了 B 的输出？每多一层 Agent，归因成本就上升一截。所以请记住这条原则：</p>
+
+    <blockquote><p><strong>Agent 数量本身不是架构能力，能够控制复杂度才是。</strong></p></blockquote>
+  </section>
+
+  <!-- ================= 08 ================= -->
+  <section id="s8">
+    <div class="sec-head"><span class="sec-no">08</span><h2 class="sec-title">渐进式演进路线：从 LLM 到 Multi-Agent</h2></div>
+
+    <p>正确的做法不是"项目启动时选择架构"，而是<strong>让架构随复杂度生长</strong>：</p>
+
+    <figure>
+      <svg viewBox="0 0 760 240" role="img" aria-label="Agent 架构演进路线">
+        <!-- Row 1: L0 - L3 -->
+        <g>
+          <rect x="14"  y="30" width="168" height="64" rx="9" class="dg-ghost"/>
+          <text x="98"  y="56" class="dg-t-mono">LEVEL 0</text>
+          <text x="98"  y="78" class="dg-t" style="font-size:12.5px">普通 LLM</text>
+
+          <line x1="182" y1="62" x2="206" y2="62" class="dg-line" marker-end="url(#arr4)"/>
+
+          <rect x="208" y="30" width="168" height="64" rx="9" class="dg-ghost"/>
+          <text x="292" y="56" class="dg-t-mono">LEVEL 1</text>
+          <text x="292" y="78" class="dg-t" style="font-size:12.5px">LLM + Prompt</text>
+
+          <line x1="376" y1="62" x2="400" y2="62" class="dg-line" marker-end="url(#arr4)"/>
+
+          <rect x="402" y="30" width="168" height="64" rx="9" class="dg-box"/>
+          <text x="486" y="56" class="dg-t-mono">LEVEL 2</text>
+          <text x="486" y="78" class="dg-t" style="font-size:12.5px">LLM + Tools</text>
+
+          <line x1="570" y1="62" x2="594" y2="62" class="dg-line" marker-end="url(#arr4)"/>
+
+          <rect x="596" y="30" width="150" height="64" rx="9" class="dg-accent"/>
+          <text x="671" y="56" class="dg-t-mono" style="fill:var(--accent)">LEVEL 3</text>
+          <text x="671" y="78" class="dg-t" style="font-size:12.5px">Single Agent</text>
+        </g>
+
+        <!-- connector down -->
+        <line x1="671" y1="94" x2="671" y2="120" class="dg-line"/>
+        <line x1="98" y1="120" x2="671" y2="120" class="dg-line"/>
+        <line x1="98" y1="120" x2="98" y2="142" class="dg-line" marker-end="url(#arr4)"/>
+
+        <!-- Row 2: L4 - L6 -->
+        <g>
+          <rect x="14" y="143" width="168" height="64" rx="9" class="dg-good"/>
+          <text x="98" y="169" class="dg-t-mono" style="fill:var(--good)">LEVEL 4</text>
+          <text x="98" y="191" class="dg-t" style="font-size:12px">Single Agent + Workflow</text>
+
+          <line x1="182" y1="175" x2="206" y2="175" class="dg-line" marker-end="url(#arr4)"/>
+
+          <rect x="208" y="143" width="264" height="64" rx="9" class="dg-warn"/>
+          <text x="340" y="169" class="dg-t-mono" style="fill:var(--warn)">LEVEL 5</text>
+          <text x="340" y="191" class="dg-t" style="font-size:12px">Router + Specialized Agents</text>
+
+          <line x1="472" y1="175" x2="496" y2="175" class="dg-line" marker-end="url(#arr4)"/>
+
+          <rect x="498" y="143" width="248" height="64" rx="9" class="dg-bad"/>
+          <text x="622" y="169" class="dg-t-mono" style="fill:var(--bad)">LEVEL 6</text>
+          <text x="622" y="191" class="dg-t" style="font-size:12px">Multi-Agent System</text>
+        </g>
+
+        <text x="380" y="230" class="dg-note" text-anchor="middle">每一级都应有明确的触发条件，而不是默认选择</text>
+
+        <defs>
+          <marker id="arr4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#1e4e8c"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption><b>图 4</b> · Single Agent → Multi-Agent 演进路线。Multi-Agent 应该是复杂度增长后的结果，而不是项目启动时的默认选择。</figcaption>
+    </figure>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th style="width:14%">Level</th><th style="width:34%">形态</th><th>何时进入</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>纯 LLM</td><td>起点</td></tr>
+          <tr><td>1</td><td>Prompt 工程</td><td>需要稳定的输出格式 / 角色约束</td></tr>
+          <tr><td>2</td><td>LLM + Tools</td><td>需要外部数据或执行能力</td></tr>
+          <tr><td>3</td><td>Single Agent</td><td>任务需要多步自主决策（ReAct 循环）</td></tr>
+          <tr><td>4</td><td>+ Workflow</td><td>流程中出现了必须确定的步骤（不信任模型自主规划的关键路径）</td></tr>
+          <tr><td>5</td><td>Router + 专项 Agent</td><td>Tool 数量失控 / 模型需求分化 / 权限需要分组</td></tr>
+          <tr><td>6</td><td>Multi-Agent System</td><td>出现上下文隔离、并行、独立演进、故障隔离的复合需求</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>两点说明：</p>
+    <ul class="plain">
+      <li><strong>Level 4 常被跳过，但它是性价比最高的一级。</strong>很多被拿去做 Multi-Agent 的场景，其实一个"Agent 处理模糊性 + Workflow 固化关键路径"的混合结构就够了。确定性流程用 Workflow，不确定性决策用 Agent。</li>
+      <li><strong>Level 5 是 Level 6 的前置。</strong>大多数声称"需要 Multi-Agent"的系统，真正需要的是 Router + 几个专项 Agent。完整的 Multi-Agent（Agent 之间有协商、有动态协作）只在极少数场景下才有必要。</li>
+    </ul>
+
+    <h3>参考实现：三个层级的架构伪代码</h3>
+
+    <pre class="code"><span class="lang">Single Agent · Tool Calling</span><span class="cm"># Level 2-3：一个 Agent + 多个 Tools，单循环即可</span>
+<span class="kw">agent</span> = Agent(
+    model=<span class="str">"qwen-max"</span>,
+    system_prompt=SERVICE_PROMPT,          <span class="cm"># 一个业务域，一份 Prompt</span>
+    tools=[search, query_db, refund_tool],
+    max_iterations=<span class="fn">8</span>,
+)
+
+<span class="kw">while</span> <span class="kw">not</span> agent.finished:
+    action = agent.next_action(user_msg)   <span class="cm"># ReAct: 推理 + 选择工具</span>
+    result  = action.tool.execute(action.args)
+    agent.observe(result)                  <span class="cm"># 结果写回同一 Context</span></pre>
+
+    <pre class="code"><span class="lang">Router + Specialized Agents</span><span class="cm"># Level 5：小模型做分发，专项 Agent 各司其职</span>
+<span class="kw">def</span> <span class="fn">handle</span>(user_msg):
+    intent = router_model.classify(user_msg)   <span class="cm"># 小模型，低成本低延迟</span>
+
+    <span class="kw">match</span> intent:
+        <span class="kw">case</span> <span class="str">"after_sale"</span>:  <span class="kw">return</span> customer_agent.run(user_msg)   <span class="cm"># 可写工单</span>
+        <span class="kw">case</span> <span class="str">"recommend"</span>:   <span class="kw">return</span> rec_agent.run(user_msg)        <span class="cm"># 只读用户画像</span>
+        <span class="kw">case</span> <span class="str">"risk"</span>:        <span class="kw">return</span> risk_agent.run(user_msg)       <span class="cm"># 只读 + 独立审计</span></pre>
+
+    <pre class="code"><span class="lang">Multi-Agent Orchestration</span><span class="cm"># Level 6：独立子任务并行执行，汇总生成最终产出</span>
+<span class="kw">async def</span> <span class="fn">research_report</span>(topic):
+    <span class="cm"># 三个上下文完全隔离的 Agent 并行执行</span>
+    industry, competitor, finance = <span class="kw">await</span> asyncio.gather(
+        industry_agent.run(topic),      <span class="cm"># 独立 Context：行业资料</span>
+        competitor_agent.run(topic),    <span class="cm"># 独立 Context：竞品数据</span>
+        finance_agent.run(topic),       <span class="cm"># 独立 Context：财务数据</span>
+    )
+    <span class="cm"># 汇总器只消费结构化中间产物，不共享原始历史</span>
+    <span class="kw">return</span> synthesizer.run(industry, competitor, finance)</pre>
+  </section>
+
+  <!-- ================= 09 ================= -->
+  <section id="s9">
+    <div class="sec-head"><span class="sec-no">09</span><h2 class="sec-title">一个贯穿全文的案例：电商智能客服 Agent</h2></div>
+
+    <p>用一条真实的演进路径，展示"系统复杂度如何一步步逼迫架构变化"。</p>
+
+    <h3>V1：Single Agent 足够</h3>
+
+    <figure>
+      <svg viewBox="0 0 760 210" role="img" aria-label="客服 Agent V1">
+        <rect x="320" y="14" width="120" height="32" rx="8" class="dg-ghost"/>
+        <text x="380" y="35" class="dg-t" style="font-size:12.5px">User</text>
+        <line x1="380" y1="46" x2="380" y2="66" class="dg-line" marker-end="url(#arr5)"/>
+
+        <rect x="295" y="67" width="170" height="40" rx="9" class="dg-good"/>
+        <text x="380" y="92" class="dg-t" style="font-size:12.5px">Customer Service Agent</text>
+
+        <line x1="380" y1="107" x2="380" y2="126" class="dg-line"/>
+        <line x1="130" y1="126" x2="630" y2="126" class="dg-line"/>
+        <line x1="130" y1="126" x2="130" y2="144" class="dg-line" marker-end="url(#arr5)"/>
+        <line x1="255" y1="126" x2="255" y2="144" class="dg-line" marker-end="url(#arr5)"/>
+        <line x1="380" y1="126" x2="380" y2="144" class="dg-line" marker-end="url(#arr5)"/>
+        <line x1="505" y1="126" x2="505" y2="144" class="dg-line" marker-end="url(#arr5)"/>
+        <line x1="630" y1="126" x2="630" y2="144" class="dg-line" marker-end="url(#arr5)"/>
+
+        <rect x="72" y="145" width="116" height="34" rx="7" class="dg-box"/>
+        <text x="130" y="167" class="dg-t" style="font-size:11.5px">订单查询</text>
+        <rect x="199" y="145" width="112" height="34" rx="7" class="dg-box"/>
+        <text x="255" y="167" class="dg-t" style="font-size:11.5px">物流查询</text>
+        <rect x="326" y="145" width="108" height="34" rx="7" class="dg-box"/>
+        <text x="380" y="167" class="dg-t" style="font-size:11.5px">退款</text>
+        <rect x="451" y="145" width="108" height="34" rx="7" class="dg-box"/>
+        <text x="505" y="167" class="dg-t" style="font-size:11.5px">优惠券</text>
+        <rect x="576" y="145" width="108" height="34" rx="7" class="dg-box"/>
+        <text x="630" y="167" class="dg-t" style="font-size:11.5px">商品搜索</text>
+
+        <text x="380" y="202" class="dg-sub">5 个工具 · 单一业务域 · 目标一致 · Single Agent 是最优解</text>
+
+        <defs>
+          <marker id="arr5" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#1d7a53"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption><b>图 5 · V1</b> · 5 个工具、目标一致、决策链短。此时任何拆分都是负收益，正确的投入是写好 Tool Description、建评估集、接 Trace。</figcaption>
+    </figure>
+
+    <h3>V2：功能持续堆叠，信号开始出现</h3>
+
+    <p>业务方不断提需求：加商品推荐、加售前咨询、加售后纠纷、加风控审核、加营销活动、加支付协助、加数据分析……一年后，这个 Agent 变成了"God Agent"：</p>
+
+    <figure>
+      <svg viewBox="0 0 760 250" role="img" aria-label="God Agent 反面案例">
+        <rect x="320" y="14" width="120" height="32" rx="8" class="dg-ghost"/>
+        <text x="380" y="35" class="dg-t" style="font-size:12.5px">User</text>
+        <line x1="380" y1="46" x2="380" y2="62" class="dg-line" marker-end="url(#arr6)"/>
+
+        <rect x="180" y="63" width="400" height="66" rx="10" class="dg-bad"/>
+        <text x="380" y="90" class="dg-t" style="font-weight:700;fill:var(--bad)">God Agent</text>
+        <text x="380" y="112" class="dg-sub" style="fill:var(--bad)">System Prompt: 12000+ tokens · Tools: 38 个 · 5+ 职责混杂</text>
+
+        <line x1="380" y1="129" x2="380" y2="150" class="dg-line"/>
+        <line x1="100" y1="150" x2="660" y2="150" class="dg-line"/>
+        <line x1="100" y1="150" x2="100" y2="168" class="dg-line" marker-end="url(#arr6)"/>
+        <line x1="240" y1="150" x2="240" y2="168" class="dg-line" marker-end="url(#arr6)"/>
+        <line x1="380" y1="150" x2="380" y2="168" class="dg-line" marker-end="url(#arr6)"/>
+        <line x1="520" y1="150" x2="520" y2="168" class="dg-line" marker-end="url(#arr6)"/>
+        <line x1="660" y1="150" x2="660" y2="168" class="dg-line" marker-end="url(#arr6)"/>
+
+        <rect x="45"  y="169" width="110" height="34" rx="7" class="dg-box"/>
+        <text x="100" y="191" class="dg-t" style="font-size:11.5px">订单/物流/售后</text>
+        <rect x="186" y="169" width="108" height="34" rx="7" class="dg-box"/>
+        <text x="240" y="191" class="dg-t" style="font-size:11.5px">推荐/营销</text>
+        <rect x="326" y="169" width="108" height="34" rx="7" class="dg-box"/>
+        <text x="380" y="191" class="dg-t" style="font-size:11.5px">支付/退款</text>
+        <rect x="466" y="169" width="108" height="34" rx="7" class="dg-box"/>
+        <text x="520" y="191" class="dg-t" style="font-size:11.5px">风控/合规</text>
+        <rect x="606" y="169" width="108" height="34" rx="7" class="dg-box"/>
+        <text x="660" y="191" class="dg-t" style="font-size:11.5px">数据分析</text>
+
+        <text x="380" y="236" class="dg-sub" style="fill:var(--bad)">5 个失控信号全部命中 → 拆分不再是技术品味问题，而是被复杂度逼出来的</text>
+
+        <defs>
+          <marker id="arr6" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#b0483a"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption><b>图 6 · V2</b> · God Agent：Prompt 失控、Tool 冲突、Context 污染、模型错配、权限风险同时出现。</figcaption>
+    </figure>
+
+    <p>对照第 5 节的信号清单：<em>上帝 Prompt ✅ · Tool 失控 ✅ · Context 污染 ✅ · 模型分化 ✅ · 权限问题 ✅</em>。五个信号全部命中。</p>
+
+    <h3>V3：Router + Specialized Agents</h3>
+
+    <figure>
+      <svg viewBox="0 0 760 340" role="img" aria-label="Router 加专项 Agent 架构">
+        <rect x="320" y="14" width="120" height="32" rx="8" class="dg-ghost"/>
+        <text x="380" y="35" class="dg-t" style="font-size:12.5px">User</text>
+        <line x1="380" y1="46" x2="380" y2="64" class="dg-line" marker-end="url(#arr7)"/>
+
+        <rect x="325" y="65" width="110" height="36" rx="9" class="dg-accent"/>
+        <text x="380" y="88" class="dg-t" style="font-size:12.5px">Router</text>
+        <text x="530" y="88" class="dg-note">小模型分类 · 低成本</text>
+
+        <line x1="380" y1="101" x2="380" y2="118" class="dg-line"/>
+        <line x1="150" y1="118" x2="610" y2="118" class="dg-line"/>
+        <line x1="150" y1="118" x2="150" y2="136" class="dg-line" marker-end="url(#arr7)"/>
+        <line x1="380" y1="118" x2="380" y2="136" class="dg-line" marker-end="url(#arr7)"/>
+        <line x1="610" y1="118" x2="610" y2="136" class="dg-line" marker-end="url(#arr7)"/>
+
+        <!-- Customer Agent -->
+        <rect x="60" y="137" width="180" height="72" rx="9" class="dg-good"/>
+        <text x="150" y="161" class="dg-t" style="font-size:12.5px">Customer Agent</text>
+        <text x="150" y="180" class="dg-sub">读：订单/物流</text>
+        <text x="150" y="196" class="dg-sub">写：售后工单</text>
+
+        <!-- Rec Agent -->
+        <rect x="290" y="137" width="180" height="72" rx="9" class="dg-box"/>
+        <text x="380" y="161" class="dg-t" style="font-size:12.5px">Recommendation Agent</text>
+        <text x="380" y="180" class="dg-sub">读：浏览/购买历史</text>
+        <text x="380" y="196" class="dg-sub">独立迭代推荐策略</text>
+
+        <!-- Risk Agent -->
+        <rect x="520" y="137" width="180" height="72" rx="9" class="dg-warn"/>
+        <text x="610" y="161" class="dg-t" style="font-size:12.5px">Risk Agent</text>
+        <text x="610" y="180" class="dg-sub">只读 + 独立审计日志</text>
+        <text x="610" y="196" class="dg-sub">失败默认拒绝</text>
+
+        <!-- assemble -->
+        <line x1="150" y1="209" x2="150" y2="236" class="dg-line"/>
+        <line x1="380" y1="209" x2="380" y2="236" class="dg-line"/>
+        <line x1="610" y1="209" x2="610" y2="236" class="dg-line"/>
+        <line x1="150" y1="236" x2="610" y2="236" class="dg-line"/>
+        <line x1="380" y1="236" x2="380" y2="254" class="dg-line" marker-end="url(#arr7)"/>
+
+        <rect x="305" y="255" width="150" height="36" rx="9" class="dg-box"/>
+        <text x="380" y="278" class="dg-t" style="font-size:12.5px">Response Assembler</text>
+        <line x1="380" y1="291" x2="380" y2="304" class="dg-line" marker-end="url(#arr7)"/>
+        <rect x="308" y="305" width="144" height="30" rx="8" class="dg-ghost"/>
+        <text x="380" y="325" class="dg-t" style="font-size:12px">Final Response</text>
+
+        <defs>
+          <marker id="arr7" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#1e4e8c"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption><b>图 7 · V3</b> · Router 分发 + 专项 Agent。注意：这依然不是"完整 Multi-Agent"——Agent 之间没有协商协作。</figcaption>
+    </figure>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th style="width:34%">拆分决策</th><th>拆分依据（而不是拆分结果）</th></tr></thead>
+        <tbody>
+          <tr><td>Customer Agent 独立</td><td>高频主链路，独享会话上下文，可用小模型降本</td></tr>
+          <tr><td>Recommendation Agent 独立</td><td>上下文完全不同（用户行为 vs 会话历史），可独立迭代推荐策略</td></tr>
+          <tr><td>Risk Agent 独立</td><td><span class="yes">权限隔离</span>：只读、独立审计、失败时默认拒绝而非默认放行</td></tr>
+          <tr><td>Router 用小模型</td><td>意图分类不需要旗舰模型，P95 延迟反而下降</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>这个结构恰好说明：<strong>多数生产系统的终点是 Level 5，而不是 Level 6。</strong>真正的 Multi-Agent（含并行研究 + 汇总）在这个系统里只出现在一个场景：大促期间"批量分析十万条客服会话并产出改进报告"——任务天然可并行、上下文天然隔离，此时上并行 Agent 是因为收益可以算清楚。</p>
+  </section>
+
+  <!-- ================= 10 ================= -->
+  <section id="s10">
+    <div class="sec-head"><span class="sec-no">10</span><h2 class="sec-title">架构决策 Checklist</h2></div>
+
+    <p>以下表格可以直接用于架构评审。</p>
+
+    <h3>10.1 Single Agent vs Multi-Agent</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th style="width:20%">维度</th><th>Single Agent</th><th>Multi-Agent</th></tr></thead>
+        <tbody>
+          <tr><td>延迟</td><td>低（单循环）</td><td>高（调度 + 多跳调用），除非并行</td></tr>
+          <tr><td>Token 成本</td><td>低</td><td>高（每个 Agent 独立 System Prompt）</td></tr>
+          <tr><td>调试难度</td><td>单 Trace，易归因</td><td>需跨 Agent Trace 串联</td></tr>
+          <tr><td>失败面</td><td>集中、可控</td><td>每一跳都是失败点</td></tr>
+          <tr><td>上下文</td><td>共享，可能污染</td><td>隔离，聚焦，但有传递损耗</td></tr>
+          <tr><td>职责边界</td><td>模糊，靠 Prompt 区分</td><td>清晰，可用独立评估集</td></tr>
+          <tr><td>权限控制</td><td>粗粒度</td><td>可做安全边界</td></tr>
+          <tr><td>演进速度</td><td>一处修改全局回归</td><td>各 Agent 独立迭代</td></tr>
+          <tr><td>适用阶段</td><td>复杂度早期</td><td>复杂度被证明失控之后</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>10.2 拆分条件 Checklist</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>问题</th><th style="width:17%">Yes</th><th style="width:17%">No</th></tr></thead>
+        <tbody>
+          <tr><td>是否存在多个明显不同的业务目标（不同成功标准）？</td><td class="yes">考虑拆分</td><td class="no-c">Single Agent</td></tr>
+          <tr><td>不同子任务是否需要不同的上下文集合？</td><td class="yes">考虑拆分</td><td class="no-c">Single Agent</td></tr>
+          <tr><td>不同子任务是否需要不同的模型？</td><td class="yes">考虑拆分</td><td class="no-c">Single Agent</td></tr>
+          <tr><td>是否存在权限 / 合规隔离需求？</td><td class="yes">考虑拆分</td><td class="no-c">Single Agent</td></tr>
+          <tr><td>是否存在互相独立、可并行的子任务？</td><td class="yes">考虑拆分</td><td class="no-c">Single Agent</td></tr>
+          <tr><td>Tool 是否已超过 20 个且出现选择错误？</td><td class="yes">考虑 Router</td><td class="no-c">Single Agent</td></tr>
+          <tr><td>Prompt 是否已难以单人维护、修改频繁引发回归？</td><td class="yes">考虑职责拆分</td><td class="no-c">Single Agent</td></tr>
+          <tr><td>是否需要不同团队独立维护、独立发布？</td><td class="yes">考虑拆分</td><td class="no-c">Single Agent</td></tr>
+          <tr><td><strong>Multi-Agent 是否真正降低整体复杂度？</strong></td><td class="verdict">可以拆</td><td class="verdict">不要拆</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <blockquote><p>最后一行是<strong>否决项</strong>：即使上面全部打勾，如果拆分后状态传递、编排、评估的整体复杂度反而超过单 Agent，就不要拆。</p></blockquote>
+
+    <h3>10.3 简单评分模型</h3>
+    <div class="score-box">
+      <div class="score-item"><span>职责隔离需求</span><span class="score-badge">+2</span></div>
+      <div class="score-item"><span>上下文隔离需求</span><span class="score-badge">+2</span></div>
+      <div class="score-item"><span>模型分化需求</span><span class="score-badge">+2</span></div>
+      <div class="score-item"><span>权限隔离需求</span><span class="score-badge">+2</span></div>
+      <div class="score-item"><span>可并行执行</span><span class="score-badge">+2</span></div>
+      <div class="score-item"><span>独立演进 / 多团队</span><span class="score-badge">+1</span></div>
+      <div class="score-item"><span>Tool 数量过多</span><span class="score-badge">+1</span></div>
+      <div class="score-item"><span>Prompt 失控</span><span class="score-badge">+1</span></div>
+
+      <div class="score-scale">
+        <div class="score-band band-green"><div class="band">0 ~ 3</div><span>Single Agent</span></div>
+        <div class="score-band band-yellow"><div class="band">4 ~ 6</div><span>Single Agent + Workflow / Router</span></div>
+        <div class="score-band band-red"><div class="band">7+</div><span>认真评估 Multi-Agent</span></div>
+      </div>
+    </div>
+
+    <p class="muted">必须说明：这不是严格的数学模型，而是架构讨论工具。它的作用是迫使团队在评审时逐项论证"为什么加分"，而不是凭感觉说"任务很复杂，上 Multi-Agent 吧"。</p>
+  </section>
+
+  <!-- ================= 11 ================= -->
+  <section id="s11">
+    <div class="sec-head"><span class="sec-no">11</span><h2 class="sec-title">生产环境真正需要关注的指标</h2></div>
+
+    <p>架构决策不能停留在图上。无论单 Agent 还是 Multi-Agent，都应该用同一套指标衡量，让架构选择可以用数据验证。</p>
+
+    <div class="card-grid">
+      <div class="card signal">
+        <div class="c-label">Reliability</div>
+        <div class="c-title">可靠性</div>
+        <div class="c-desc">Task Success Rate · Tool Call Success Rate（含参数校验失败）· Agent Failure Rate（死循环、放弃、超时）</div>
+      </div>
+      <div class="card signal">
+        <div class="c-label">Quality</div>
+        <div class="c-title">质量</div>
+        <div class="c-desc">Answer Accuracy（基于标注评估集）· Groundedness · Task Completion Rate（用户目标真正达成）</div>
+      </div>
+      <div class="card signal">
+        <div class="c-label">Performance</div>
+        <div class="c-title">性能</div>
+        <div class="c-desc">P50 / P95 Latency（Multi-Agent 尤其要看 P95）· TTFT · Tool Execution Latency（区分模型与工具延迟）</div>
+      </div>
+      <div class="card signal">
+        <div class="c-label">Complexity</div>
+        <div class="c-title">复杂度</div>
+        <div class="c-desc">Agent 数量 · Tool 数量 · Prompt 数量 · State 数量 · Workflow Branch 数量</div>
+      </div>
+    </div>
+
+    <h3>成本指标：最诚实的那个</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="s-value">Token<small> / Task</small></div><div class="s-label">单任务 Token 消耗</div></div>
+      <div class="stat"><div class="s-value">Calls<small> / Task</small></div><div class="s-label">单任务 LLM 调用次数，Multi-Agent 的天然劣势项</div></div>
+      <div class="stat warn"><div class="s-value">Cost<small> / Success</small></div><div class="s-label">成功任务的成本——失败重试也是钱</div></div>
+    </div>
+
+    <p><strong>Cost / Successful Task 是最诚实的成本指标</strong>：一次任务失败后重试两次才成功，它的真实成本是三次任务之和。Multi-Agent 架构若提升了成功率但让单次成本翻了三倍，净收益可能是负的——只有这个指标能揭示这一点。</p>
+
+    <p>Complexity 指标不直接体现质量，但和<strong>维护成本</strong>强相关。架构评审时应该要求：每一次架构升级（比如从 V2 到 V3），上述指标都要有 before / after 对比。</p>
+
+    <blockquote><p><strong>生产级 Agent 架构最终应该用业务指标和工程指标证明，而不是用 Agent 数量证明。</strong></p></blockquote>
+  </section>
+
+  <!-- ================= 12 ================= -->
+  <section id="s12">
+    <div class="sec-head"><span class="sec-no">12</span><h2 class="sec-title">最终结论</h2></div>
+
+    <p>回到开头的问题：什么时候一个 Agent 就够了？一条清晰的决策路径：</p>
+
+    <div class="final-flow"><b>问题简单</b>
+    ↓
+Single Agent
+
+<b>问题开始复杂</b>
+    ↓
+Single Agent + Tools
+
+<b>任务出现固定流程、关键路径不容有失</b>
+    ↓
+Workflow（确定性部分）
+
+<b>职责 / Context / Model / Permission 开始分裂</b>
+    ↓
+Router + Specialized Agents
+
+<b>需要并行协作 / 独立演进 / 故障隔离，且可被明确论证</b>
+    ↓
+Multi-Agent</div>
+
+    <p>贯穿全文的三句话：</p>
+
+    <ul class="plain">
+      <li><strong>Multi-Agent 不是 Single Agent 的自然升级路线</strong>，而是为了隔离复杂性、职责和故障边界而引入的架构手段——和微服务、和进程隔离，是同一类决策逻辑。</li>
+      <li><strong>Tools 解决能力扩展，Agents 解决决策主体扩展。</strong>只是需要"调用不同能力"时，永远先考虑 Tool；只有出现"不同决策主体"的证据时，才考虑 Agent。</li>
+      <li><strong>每一次拆分都要能回答：它解决了什么单 Agent 无法解决的问题？付出的是什么代价？</strong>答不出第一个问题不要拆，答不出第二个问题也不要拆。</li>
+    </ul>
+
+  </section>
+
+</div>
+
+<footer>
+  <p class="fin">"生产级 Agent 系统的高级，不是拥有更多 Agent，<br>而是用尽可能少的 Agent，构建出足够可靠、可控、可演进的系统。"</p>
+  <p>AI Engineering Notes · Agent Architecture Series</p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Memory：短期记忆、长期记忆与状态管理</title>
+<style>
+  :root {
+    --ink: #1f2933;
+    --ink-soft: #3e4c59;
+    --ink-mute: #7b8794;
+    --paper: #faf9f7;
+    --card: #ffffff;
+    --accent: #1a5276;
+    --accent-soft: #eaf2f8;
+    --accent-line: #2980b9;
+    --warm: #a04000;
+    --warm-soft: #fef5ec;
+    --green: #1e6b52;
+    --green-soft: #e8f4ef;
+    --border: #d9e0e7;
+    --code-bg: #f4f6f8;
+    --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+    --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", "Fira Code", Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.85;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Layout ---------- */
+  .page { max-width: 860px; margin: 0 auto; padding: 0 28px 120px; }
+
+  /* ---------- Header ---------- */
+  header.hero { padding: 72px 0 48px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .kicker {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 3px;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 18px;
+  }
+  h1.title {
+    font-family: var(--serif); font-size: 38px; font-weight: 700;
+    line-height: 1.35; color: var(--ink); letter-spacing: 0.5px; margin-bottom: 20px;
+  }
+  .subtitle { font-size: 17px; color: var(--ink-soft); max-width: 640px; }
+  .meta { margin-top: 28px; display: flex; gap: 28px; flex-wrap: wrap; font-size: 13px; color: var(--ink-mute); }
+  .meta span b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---------- Abstract ---------- */
+  .abstract {
+    background: var(--card); border-left: 4px solid var(--accent);
+    padding: 26px 30px; margin: 40px 0; border-radius: 0 8px 8px 0;
+    box-shadow: 0 1px 4px rgba(31,41,51,.05);
+  }
+  .abstract .label { font-family: var(--serif); font-weight: 700; font-size: 15px; color: var(--accent); margin-bottom: 10px; }
+  .abstract p { font-size: 15px; color: var(--ink-soft); }
+  .abstract strong { color: var(--ink); }
+
+  /* ---------- TOC ---------- */
+  nav.toc {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 26px 30px; margin: 40px 0 56px;
+  }
+  nav.toc .toc-title { font-family: var(--serif); font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+  nav.toc ol { list-style: none; counter-reset: toc; columns: 2; column-gap: 40px; }
+  nav.toc li { counter-increment: toc; margin-bottom: 7px; break-inside: avoid; }
+  nav.toc li::before {
+    content: counter(toc, decimal-leading-zero); font-family: var(--mono);
+    font-size: 11px; color: var(--accent); margin-right: 10px;
+  }
+  nav.toc a { color: var(--ink-soft); text-decoration: none; font-size: 14px; transition: color .15s; }
+  nav.toc a:hover { color: var(--accent); }
+
+  /* ---------- Section ---------- */
+  section { margin: 72px 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+  .sec-num {
+    font-family: var(--mono); font-size: 13px; color: var(--accent);
+    letter-spacing: 1px; border: 1px solid var(--accent-line);
+    padding: 2px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  h2 {
+    font-family: var(--serif); font-size: 26px; font-weight: 700; line-height: 1.4;
+  }
+  .sec-rule { height: 2px; background: linear-gradient(to right, var(--accent), transparent 70%); margin: 14px 0 26px; }
+  h3 { font-family: var(--serif); font-size: 19px; font-weight: 700; margin: 36px 0 14px; color: var(--ink); }
+  h3 .h3-tag { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 400; margin-right: 8px; }
+  p { margin: 14px 0; color: var(--ink-soft); }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  em { color: var(--accent); font-style: normal; font-weight: 500; }
+
+  ul.plain { margin: 14px 0 14px 6px; list-style: none; }
+  ul.plain li { padding-left: 22px; position: relative; margin-bottom: 8px; color: var(--ink-soft); }
+  ul.plain li::before { content: "—"; position: absolute; left: 0; color: var(--accent-line); font-weight: 700; }
+  ol.steps { margin: 14px 0 14px 22px; color: var(--ink-soft); }
+  ol.steps li { margin-bottom: 8px; }
+
+  /* ---------- Quote / Key point cards ---------- */
+  .keypoint {
+    background: var(--accent-soft); border: 1px solid #cfe0ee; border-radius: 10px;
+    padding: 20px 26px; margin: 28px 0; font-size: 15px;
+  }
+  .keypoint .kp-label { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+  .keypoint p { margin: 0; color: var(--ink); }
+  .warn { background: var(--warm-soft); border-color: #f0d9c4; }
+  .warn .kp-label { color: var(--warm); }
+
+  .formula {
+    background: var(--card); border: 1px dashed var(--accent-line); border-radius: 8px;
+    padding: 18px 24px; margin: 24px 0; text-align: center;
+    font-family: var(--mono); font-size: 14.5px; color: var(--ink); line-height: 1.9;
+    overflow-x: auto;
+  }
+  .formula .f-note { font-family: var(--sans); font-size: 13px; color: var(--ink-mute); margin-top: 6px; }
+
+  /* ---------- Figure ---------- */
+  figure.fig { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 30px 24px 20px; margin: 32px 0; box-shadow: 0 1px 5px rgba(31,41,51,.04); }
+  figure.fig svg { width: 100%; height: auto; display: block; }
+  figcaption { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 13px; color: var(--ink-mute); text-align: center; }
+  figcaption b { color: var(--ink-soft); font-family: var(--serif); }
+
+  /* ---------- Tables ---------- */
+  .table-wrap { overflow-x: auto; margin: 28px 0; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(31,41,51,.04); background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 640px; }
+  thead th {
+    background: var(--accent); color: #fff; font-weight: 600; text-align: left;
+    padding: 12px 16px; font-family: var(--serif); letter-spacing: .5px; white-space: nowrap;
+  }
+  tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); color: var(--ink-soft); vertical-align: top; }
+  tbody tr:nth-child(even) { background: #f7fafc; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td:first-child { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .td-key { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .yes { color: var(--green); font-weight: 700; }
+  .no2 { color: var(--ink-mute); }
+
+  /* ---------- Code ---------- */
+  pre.code {
+    background: #22313f; color: #dbe4ec; border-radius: 10px; padding: 22px 26px;
+    margin: 24px 0; overflow-x: auto; font-family: var(--mono); font-size: 13px;
+    line-height: 1.75; box-shadow: 0 2px 8px rgba(31,41,51,.12);
+  }
+  pre.code .c { color: #7d93a8; font-style: italic; }
+  pre.code .k { color: #7ec7e8; }
+  pre.code .s { color: #f2c98a; }
+  pre.code .n { color: #a9dc76; }
+  pre.code .f { color: #ffd479; }
+  .code-caption { font-size: 12.5px; color: var(--ink-mute); font-family: var(--mono); margin: -16px 0 24px; text-align: right; }
+  .code-tag {
+    display: inline-block; font-family: var(--mono); font-size: 11px; color: #a9c4d8;
+    background: #2e4152; border-radius: 4px 4px 0 0; padding: 3px 10px; margin-left: 4px;
+  }
+
+  /* ---------- Stat cards ---------- */
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin: 28px 0; }
+  .stat {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px 18px; text-align: center;
+  }
+  .stat .s-arrow { font-size: 26px; font-weight: 700; line-height: 1; margin-bottom: 10px; }
+  .stat .s-name { font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+  .stat .s-desc { font-size: 11.5px; color: var(--ink-mute); margin-top: 4px; }
+  .up { color: var(--warm); }
+  .down { color: var(--green); }
+
+  /* ---------- Case study cards ---------- */
+  .case {
+    background: linear-gradient(135deg, #f6f9fc 0%, #fdfdfd 100%);
+    border: 1px solid var(--border); border-radius: 12px; padding: 26px 30px; margin: 26px 0;
+  }
+  .case .case-label { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 12px; }
+  .case .case-title { font-family: var(--serif); font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+  .case p { font-size: 14.5px; }
+
+  .dialog { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 20px 0; background: var(--card); }
+  .dialog .d-row { display: flex; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--border); align-items: flex-start; }
+  .dialog .d-row:last-child { border-bottom: none; }
+  .dialog .d-who { font-family: var(--mono); font-size: 11px; padding: 3px 10px; border-radius: 999px; white-space: nowrap; margin-top: 3px; }
+  .d-user .d-who { background: var(--accent-soft); color: var(--accent); }
+  .d-agent .d-who { background: var(--green-soft); color: var(--green); }
+  .d-sys .d-who { background: #edeef0; color: var(--ink-mute); }
+  .dialog .d-text { font-size: 14px; color: var(--ink-soft); }
+  .dialog .d-text code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; }
+
+  /* ---------- Checklist ---------- */
+  .checklist { display: grid; gap: 14px; margin: 28px 0; }
+  .check-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 22px 26px; }
+  .check-card .cc-title { font-family: var(--serif); font-weight: 700; font-size: 15.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .check-card .cc-title::before { content: "☑"; color: var(--green); font-size: 16px; }
+  .check-card ul { list-style: none; }
+  .check-card li { font-size: 13.5px; color: var(--ink-soft); padding-left: 20px; position: relative; margin-bottom: 6px; }
+  .check-card li::before { content: "☐"; position: absolute; left: 0; color: var(--accent-line); }
+
+  /* ---------- Conclusion ---------- */
+  .conclusion {
+    background: var(--ink); color: #e6ebef; border-radius: 12px;
+    padding: 36px 40px; margin: 56px 0 0;
+  }
+  .conclusion .cl-label { font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: #8fb4d0; margin-bottom: 14px; text-transform: uppercase; }
+  .conclusion p { color: #c7d1da; font-size: 15.5px; }
+  .conclusion .final {
+    font-family: var(--serif); font-size: 20px; color: #fff; line-height: 1.7;
+    border-top: 1px solid #3a4a58; margin-top: 22px; padding-top: 22px;
+  }
+  footer.site { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--ink-mute); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+  @media (max-width: 640px) {
+    h1.title { font-size: 28px; }
+    nav.toc ol { columns: 1; }
+    section { margin: 56px 0; }
+    .conclusion { padding: 28px 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="hero">
+  <div class="kicker">Agent Engineering · Series 04</div>
+  <h1 class="title">Agent Memory：短期记忆、长期记忆与状态管理</h1>
+  <p class="subtitle">当 Agent 开始跨任务、跨 Session 持续运行时，一个被严重低估的问题浮出水面：它如何管理过去的信息？本文讨论 Memory 与 Context、State、History、RAG 的边界，以及生产级的 Memory 生命周期设计。</p>
+  <div class="meta">
+    <span><b>读者对象</b> 有 LLM / RAG / Agent 开发经验的工程师与架构师</span>
+    <span><b>前置阅读</b> Workflow vs Agent · Single Agent · Multi-Agent 拆分</span>
+    <span><b>关键词</b> Memory · Context Engineering · Information Lifecycle</span>
+  </div>
+</header>
+
+<div class="abstract">
+  <div class="label">Abstract</div>
+  <p><strong>Agent Memory 不是“保存更多历史”，而是让 Agent 在未来的决策中，能够以可控的成本重新获得真正有价值的过去信息。</strong>本文建立 Context / State / Memory 的概念边界，给出 Memory 写入策略、生命周期、存储与检索的工程框架，并以电商客服 Agent 为例，完整推演一个生产级 Memory 系统的决策路径。核心结论：Memory 的本质不是 Storage，而是 <strong>Context Engineering + Information Lifecycle Management</strong>。</p>
+</div>
+
+<nav class="toc">
+  <div class="toc-title">目录</div>
+  <ol>
+    <li><a href="#s01">为什么 Agent 需要 Memory</a></li>
+    <li><a href="#s02">Context Window 为什么不等于 Memory</a></li>
+    <li><a href="#s03">Short-term Memory</a></li>
+    <li><a href="#s04">Long-term Memory</a></li>
+    <li><a href="#s05">什么信息值得被记住</a></li>
+    <li><a href="#s06">Memory Lifecycle</a></li>
+    <li><a href="#s07">Memory Storage 设计</a></li>
+    <li><a href="#s08">Memory Retrieval</a></li>
+    <li><a href="#s09">Memory 与 RAG 的区别</a></li>
+    <li><a href="#s10">Memory 与 State 到底有什么区别</a></li>
+    <li><a href="#s11">Memory 与 Multi-Agent</a></li>
+    <li><a href="#s12">生产级架构</a></li>
+    <li><a href="#s13">典型失败模式</a></li>
+    <li><a href="#s14">什么时候不需要 Long-term Memory</a></li>
+    <li><a href="#s15">完整案例：电商客服 Agent</a></li>
+    <li><a href="#s16">工程决策清单</a></li>
+    <li><a href="#s17">总结</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════════════════ 01 ═══════════════════ -->
+<section id="s01">
+  <div class="sec-head"><span class="sec-num">01</span><h2>为什么 Agent 需要 Memory</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>从一个具体场景开始。</p>
+
+  <p>用户第一次告诉 Agent：<em>“我是一名后端开发，主要使用 Python 和 Go。”</em>几天后，用户回来问：<em>“帮我设计一个 Agent 服务。”</em></p>
+
+  <p>如果 Agent 完全不知道过去的信息，它必须重新询问：“你主要使用什么语言？”这不是智能，是失忆。用户视角下，这是同一个人在同一段关系里对话——Agent 视角下，这是两个陌生人。</p>
+
+  <div class="keypoint">
+    <div class="kp-label">Core Problem</div>
+    <p>Agent 如何在一次对话之外保持<strong>连续性</strong>？无 Memory 的 Agent 每次都从零开始；有 Memory 的 Agent 在 Request 与 LLM 之间插入 Memory Retrieval 与 Context Assembly，并在 Response 之后完成 Memory Update。</p>
+  </div>
+
+  <p>到这里，一个危险的直觉会出现：<strong>“所以把所有历史对话保存下来就行了。”</strong></p>
+
+  <p>这个直觉是错的，而且是生产事故的常见起点。反例立刻可以列出：</p>
+
+  <ul class="plain">
+    <li>历史越多，Context 越大，无关信息比例上升，<strong>Token 成本线性增长</strong>；</li>
+    <li>检索噪声增加，长 Context 中间的信息会被模型忽略（“lost in the middle”）；</li>
+    <li>旧信息可能已经失效——用户三个月前的技术栈和今天未必一致；</li>
+    <li>错误信息可能被<strong>永久记住</strong>，并在未来的每一次检索中污染决策；</li>
+    <li>Memory Retrieval 本身引入额外延迟与失败点。</li>
+  </ul>
+
+  <div class="warn keypoint">
+    <div class="kp-label">Reframe</div>
+    <p>Memory 的问题不是“记不记”，而是<strong>记什么、什么时候记、什么时候取、什么时候忘</strong>。这四个决策任何一个做错，Memory 都会从资产变成负债。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ 02 ═══════════════════ -->
+<section id="s02">
+  <div class="sec-head"><span class="sec-num">02</span><h2>Context Window 为什么不等于 Memory</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>上下文窗口在变大——128K、1M token 逐渐成为标配。于是另一个直觉出现了：“窗口够大，把历史全部塞进去，就是 Memory 了。”</p>
+
+  <p>这个等式不成立，原因在<strong>生命周期</strong>：</p>
+
+  <div class="formula">
+    Context Window = 模型<strong>当前请求</strong>能够看到的信息范围<br>
+    Memory = 系统<strong>过去保存</strong>并能够在未来<strong>重新取回</strong>的信息
+  </div>
+
+  <p>Context 是一次性的：请求结束即消失。Memory 是持久的：跨越请求、跨越会话、跨越任务。两者之间靠一条管道连接——信息从 Storage 经过 Retrieval，才能进入 Context：</p>
+
+  <div class="formula">
+    Storage → Retrieve → Select → Compress → Inject → Context → LLM → Decision
+    <div class="f-note">Memory 中的信息只有经过这四步加工，才可能被模型看到</div>
+  </div>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Context / State / Memory 关系图">
+      <defs>
+        <marker id="ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
+        </marker>
+      </defs>
+      <!-- Agent -->
+      <rect x="380" y="18" width="140" height="46" rx="10" fill="#1a5276"/>
+      <text x="450" y="47" text-anchor="middle" fill="#fff" font-size="17" font-weight="bold" font-family="sans-serif">Agent</text>
+      <!-- three branches -->
+      <line x1="450" y1="64" x2="175" y2="112" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar1)"/>
+      <line x1="450" y1="64" x2="450" y2="112" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar1)"/>
+      <line x1="450" y1="64" x2="725" y2="112" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar1)"/>
+      <!-- Context -->
+      <rect x="80" y="118" width="190" height="88" rx="10" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5"/>
+      <text x="175" y="150" text-anchor="middle" font-size="16" font-weight="bold" fill="#1a5276" font-family="sans-serif">Context</text>
+      <text x="175" y="174" text-anchor="middle" font-size="12" fill="#3e4c59" font-family="sans-serif">当前输入</text>
+      <text x="175" y="192" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif">System Prompt · 输入 · 检索结果</text>
+      <!-- State -->
+      <rect x="355" y="118" width="190" height="88" rx="10" fill="#e8f4ef" stroke="#1e6b52" stroke-width="1.5"/>
+      <text x="450" y="150" text-anchor="middle" font-size="16" font-weight="bold" fill="#1e6b52" font-family="sans-serif">State</text>
+      <text x="450" y="174" text-anchor="middle" font-size="12" fill="#3e4c59" font-family="sans-serif">当前状态</text>
+      <text x="450" y="192" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif">step · 变量 · 任务进度</text>
+      <!-- Memory -->
+      <rect x="630" y="118" width="190" height="88" rx="10" fill="#fef5ec" stroke="#a04000" stroke-width="1.5"/>
+      <text x="725" y="150" text-anchor="middle" font-size="16" font-weight="bold" fill="#a04000" font-family="sans-serif">Memory</text>
+      <text x="725" y="174" text-anchor="middle" font-size="12" fill="#3e4c59" font-family="sans-serif">过去经验</text>
+      <text x="725" y="192" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif">偏好 · 事件 · 稳定事实</text>
+      <!-- converge to decision -->
+      <line x1="175" y1="206" x2="400" y2="258" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar1)"/>
+      <line x1="450" y1="206" x2="450" y2="258" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar1)"/>
+      <line x1="725" y1="206" x2="500" y2="258" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar1)"/>
+      <!-- Decision -->
+      <rect x="360" y="264" width="180" height="50" rx="25" fill="#f4f6f8" stroke="#52606d" stroke-width="1.5"/>
+      <text x="450" y="295" text-anchor="middle" font-size="15" font-weight="bold" fill="#1f2933" font-family="sans-serif">Decision</text>
+      <line x1="450" y1="314" x2="450" y2="352" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar1)"/>
+      <!-- Action -->
+      <rect x="378" y="356" width="144" height="38" rx="19" fill="#1f2933"/>
+      <text x="450" y="381" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff" font-family="sans-serif">Action</text>
+    </svg>
+    <figcaption><b>图 1</b> · Context / State / Memory 三者共同支撑 Agent 的决策，但它们回答的是三个不同的问题，生命周期也不同。三者最终汇入同一个 Decision，这正是混淆发生的根源。</figcaption>
+  </figure>
+
+  <p>因此，一个准确的表述是：<strong>Context 是 Memory 的一个消费结果。</strong>说“Context 越大等于 Memory 越好”，等于说“餐桌越大等于仓库越好”——餐桌上的菜来自仓库，但仓库的价值在于选菜、保鲜和补货，而不在于把所有存货一次性端上桌。</p>
+</section>
+
+<!-- ═══════════════════ 03 ═══════════════════ -->
+<section id="s03">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Short-term Memory</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>第一个常见错误是把 Short-term Memory 等同于 Conversation History。历史消息只是短期记忆的一部分——而且往往是最不结构化、最占 Token 的那部分。</p>
+
+  <p>短期记忆更准确的定义是：<strong>当前任务 / 会话范围内，对推进任务有直接价值的信息集合。</strong>它可以结构化地拆为：</p>
+
+  <ul class="plain">
+    <li><strong>Recent Messages</strong> —— 最近几轮对话的原文；</li>
+    <li><strong>Working Memory</strong> —— 任务过程中的关键中间信息（目标、约束、已做的决策）；</li>
+    <li><strong>Current Goal / Plan</strong> —— 当前任务目标与执行计划；</li>
+    <li><strong>Intermediate Results</strong> —— 中间计算结果、工具返回的摘要；</li>
+    <li><strong>Temporary Variables</strong> —— 临时变量；</li>
+    <li><strong>Current Decisions</strong> —— 本次会话中已经确认的选择。</li>
+  </ul>
+
+  <p>其中 Working Memory 是最容易被忽略、也最值得投入的部分。一个典型形态：</p>
+
+  <pre class="code"><span class="code-tag">working_memory.json</span>
+{
+  <span class="s">"goal"</span>: <span class="s">"设计电商客服 Agent"</span>,
+  <span class="s">"constraints"</span>: [<span class="s">"支持退款"</span>, <span class="s">"支持订单查询"</span>],
+  <span class="s">"current_step"</span>: <span class="s">"tool_selection"</span>,
+  <span class="s">"selected_tool"</span>: <span class="s">"query_order"</span>
+}</pre>
+
+  <p>注意 Working Memory 和 State 的关系：<strong>Task State（“Intent Detection → Order Query → Refund Confirmation → Complete”）更接近系统运行状态，而不是 Memory。</strong>它是引擎的仪表盘，不是司机的经验。两者的边界我们会在第 10 节专门讨论。</p>
+
+  <p>短期记忆的工程要点是<strong>压缩</strong>：会话变长时，将早期对话滚动摘要为 Compact Summary，保留事实与决策，丢弃寒暄与冗余。这不是可选项——不做压缩的长会话，成本和准确率都会持续劣化。</p>
+</section>
+
+<!-- ═══════════════════ 04 ═══════════════════ -->
+<section id="s04">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Long-term Memory</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>长期记忆解决的问题只有一个：<strong>跨 Session 保留仍然具有未来价值的信息。</strong>按认知科学的分类迁移到工程上，可以拆为四类：</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="短期与长期记忆分类图">
+      <defs>
+        <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
+        </marker>
+      </defs>
+      <!-- Root -->
+      <rect x="370" y="16" width="160" height="44" rx="10" fill="#1f2933"/>
+      <text x="450" y="44" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold" font-family="sans-serif">Agent Memory</text>
+      <line x1="450" y1="60" x2="225" y2="102" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar2)"/>
+      <line x1="450" y1="60" x2="675" y2="102" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar2)"/>
+      <!-- Short-term -->
+      <rect x="70" y="108" width="310" height="52" rx="10" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.6"/>
+      <text x="225" y="131" text-anchor="middle" font-size="15" font-weight="bold" fill="#1a5276" font-family="sans-serif">Short-term Memory</text>
+      <text x="225" y="150" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif">生命周期：当前任务 / 会话</text>
+      <g font-family="sans-serif" font-size="12" fill="#3e4c59">
+        <rect x="70" y="184" width="146" height="34" rx="7" fill="#fff" stroke="#b9d3e8" stroke-width="1.2"/>
+        <text x="143" y="206" text-anchor="middle">Recent Messages</text>
+        <rect x="234" y="184" width="146" height="34" rx="7" fill="#fff" stroke="#b9d3e8" stroke-width="1.2"/>
+        <text x="307" y="206" text-anchor="middle">Working Memory</text>
+        <rect x="70" y="230" width="146" height="34" rx="7" fill="#fff" stroke="#b9d3e8" stroke-width="1.2"/>
+        <text x="143" y="252" text-anchor="middle">Current Goal / Plan</text>
+        <rect x="234" y="230" width="146" height="34" rx="7" fill="#fff" stroke="#b9d3e8" stroke-width="1.2"/>
+        <text x="307" y="252" text-anchor="middle">Intermediate Results</text>
+        <rect x="70" y="276" width="146" height="34" rx="7" fill="#fff" stroke="#b9d3e8" stroke-width="1.2"/>
+        <text x="143" y="298" text-anchor="middle">Tool Results / Temp Vars</text>
+        <rect x="234" y="276" width="146" height="34" rx="7" fill="#fff" stroke="#b9d3e8" stroke-width="1.2"/>
+        <text x="307" y="298" text-anchor="middle">Current Decisions</text>
+      </g>
+      <!-- Long-term -->
+      <rect x="520" y="108" width="310" height="52" rx="10" fill="#fef5ec" stroke="#a04000" stroke-width="1.6"/>
+      <text x="675" y="131" text-anchor="middle" font-size="15" font-weight="bold" fill="#a04000" font-family="sans-serif">Long-term Memory</text>
+      <text x="675" y="150" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif">生命周期：跨 Session / 跨任务</text>
+      <g font-family="sans-serif" font-size="12" fill="#3e4c59">
+        <rect x="520" y="184" width="310" height="66" rx="8" fill="#fff" stroke="#e8c9a8" stroke-width="1.2"/>
+        <text x="540" y="208" font-weight="bold" fill="#a04000">Semantic · 稳定事实</text>
+        <text x="540" y="228" font-size="11" fill="#7b8794">「用户主要使用 Python」</text>
+        <rect x="520" y="262" width="310" height="66" rx="8" fill="#fff" stroke="#e8c9a8" stroke-width="1.2"/>
+        <text x="540" y="286" font-weight="bold" fill="#a04000">Episodic · 历史事件</text>
+        <text x="540" y="306" font-size="11" fill="#7b8794">「用户曾设计过电商客服 Agent」</text>
+        <rect x="520" y="340" width="310" height="66" rx="8" fill="#fff" stroke="#e8c9a8" stroke-width="1.2"/>
+        <text x="540" y="364" font-weight="bold" fill="#a04000">Preference · 用户偏好</text>
+        <text x="540" y="384" font-size="11" fill="#7b8794">「偏好简洁、偏工程实践的回答」</text>
+        <rect x="520" y="418" width="310" height="66" rx="8" fill="#fff" stroke="#e8c9a8" stroke-width="1.2"/>
+        <text x="540" y="442" font-weight="bold" fill="#a04000">Behavioral · 行为模式</text>
+        <text x="540" y="462" font-size="11" fill="#7b8794">「经常先要架构，再要代码」</text>
+      </g>
+      <!-- storage hint -->
+      <rect x="70" y="490" width="760" height="48" rx="8" fill="#f4f6f8" stroke="#d9e0e7" stroke-width="1" stroke-dasharray="5 4"/>
+      <text x="450" y="511" text-anchor="middle" font-size="12" fill="#52606d" font-family="sans-serif">左侧通常随会话结束销毁或归档 · 右侧必须显式管理写入、更新与遗忘</text>
+      <text x="450" y="529" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif">关键差异不在“存哪里”，而在“谁负责决定它的生死”</text>
+    </svg>
+    <figcaption><b>图 2</b> · 短期记忆与长期记忆的分类结构。注意底部注释：短期记忆随会话自然终结，长期记忆没有自然终点——因此遗忘机制是长期记忆的<strong>必需品</strong>而非奢侈品。</figcaption>
+  </figure>
+
+  <p>一个必须马上泼的冷水：<strong>不是所有历史事件都应该升级为长期 Memory。</strong>“用户上个月问过天气”是 Episodic Candidate，但它的 Future Utility 接近于零。判断标准我们在下一节展开。</p>
+</section>
+
+<!-- ═══════════════════ 05 ═══════════════════ -->
+<section id="s05">
+  <div class="sec-head"><span class="sec-num">05</span><h2>什么信息值得被记住：Memory Write Policy</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>Memory 系统的第一个决策点不是检索，而是<strong>写入</strong>。写入策略错误的代价是延迟性的——当下看不出来，两周后以检索噪声的形式还回来。</p>
+
+  <p>一个候选信息要经过这样的评估链才能落库：</p>
+
+  <div class="formula">
+    Memory Candidate → Importance → Future Utility → Stability → Privacy / Risk → Write
+  </div>
+
+  <p>可以把它压缩为一个工程判断框架（不是严格数学模型，是启发式）：</p>
+
+  <div class="formula">
+    Memory Value = Future Utility × Stability × Relevance − Risk − Storage / Retrieval Cost
+    <div class="f-note">任何一项为负或接近零，都不应该写入</div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>核心问题</th><th>正例</th><th>反例</th></tr></thead>
+      <tbody>
+        <tr><td>Future Utility</td><td>未来决策真的会用到吗？</td><td>用户技术栈偏好</td><td>一次性的闲聊内容</td></tr>
+        <tr><td>Stability</td><td>这条信息会很快失效吗？</td><td>用户职业身份</td><td>“用户今天心情不错”</td></tr>
+        <tr><td>Relevance</td><td>与用户 / 任务的长期上下文相关吗？</td><td>长期项目背景</td><td>无关的时事讨论</td></tr>
+        <tr><td>Risk</td><td>包含隐私、敏感或权限越界信息吗？</td><td>—</td><td>用户口述的手机号、身份证号</td></tr>
+        <tr><td>Cost</td><td>存储与未来检索的代价是否超过价值？</td><td>—</td><td>低价值的大段原始对话</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>据此，值得长期保存的典型信息：<strong>用户长期偏好、稳定个人信息、长期项目背景、明确的用户习惯、重要历史决策、经用户确认的事实。</strong></p>
+
+  <p>不应该长期保存的：<strong>一次性闲聊、临时状态、已失效信息、低价值工具结果、大量原始对话、未经用户确认的模型推断。</strong></p>
+
+  <div class="warn keypoint">
+    <div class="kp-label">Critical Rule</div>
+    <p><strong>模型推断 ≠ 用户事实。</strong>用户说“我最近经常使用 Go”，这是候选 Memory；模型由此推断“用户永远喜欢 Go”并写入——这不是记忆，是偏见固化。凡是模型推断出的结论，要么不写入，要么必须打上 <code>inferred=true</code> 与更低的 confidence 标签。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ 06 ═══════════════════ -->
+<section id="s06">
+  <div class="sec-head"><span class="sec-num">06</span><h2>Memory Lifecycle：全文最核心的工程部分</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>把 Memory 当作一个数据库表来设计，和当作一个<strong>生命周期系统</strong>来设计，是两种完全不同的工程。后者才是生产级的形态：</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 960 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Memory 生命周期图">
+      <defs>
+        <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
+        </marker>
+        <marker id="ar3d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#a04000"/>
+        </marker>
+      </defs>
+      <!-- Row 1: 5 stages -->
+      <g font-family="sans-serif" font-size="13" font-weight="bold">
+        <rect x="10"  y="60" width="150" height="46" rx="9" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.4"/><text x="85"  y="88" text-anchor="middle" fill="#1a5276">Observe</text>
+        <rect x="200" y="60" width="150" height="46" rx="9" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.4"/><text x="275" y="88" text-anchor="middle" fill="#1a5276">Extract</text>
+        <rect x="390" y="60" width="150" height="46" rx="9" fill="#e8f4ef" stroke="#1e6b52" stroke-width="1.4"/><text x="465" y="88" text-anchor="middle" fill="#1e6b52">Evaluate</text>
+        <rect x="580" y="60" width="150" height="46" rx="9" fill="#e8f4ef" stroke="#1e6b52" stroke-width="1.4"/><text x="655" y="88" text-anchor="middle" fill="#1e6b52">Write</text>
+        <rect x="770" y="60" width="150" height="46" rx="9" fill="#e8f4ef" stroke="#1e6b52" stroke-width="1.4"/><text x="845" y="88" text-anchor="middle" fill="#1e6b52">Store</text>
+      </g>
+      <g stroke="#52606d" stroke-width="1.8">
+        <line x1="160" y1="83" x2="196" y2="83" marker-end="url(#ar3)"/>
+        <line x1="350" y1="83" x2="386" y2="83" marker-end="url(#ar3)"/>
+        <line x1="540" y1="83" x2="576" y2="83" marker-end="url(#ar3)"/>
+        <line x1="730" y1="83" x2="766" y2="83" marker-end="url(#ar3)"/>
+      </g>
+      <!-- wrap arrow -->
+      <path d="M 920 106 L 920 140 L 85 140 L 85 150" fill="none" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar3)"/>
+      <!-- Row 2: 4 stages -->
+      <g font-family="sans-serif" font-size="13" font-weight="bold">
+        <rect x="10"  y="154" width="150" height="46" rx="9" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.4"/><text x="85" text-anchor="middle" y="182" fill="#1a5276">Retrieve</text>
+        <rect x="200" y="154" width="150" height="46" rx="9" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.4"/><text x="275" text-anchor="middle" y="182" fill="#1a5276">Use</text>
+        <rect x="390" y="154" width="150" height="46" rx="9" fill="#fdeef0" stroke="#c0392b" stroke-width="1.4"/><text x="465" y="182" text-anchor="middle" fill="#c0392b">Update</text>
+        <rect x="580" y="154" width="150" height="46" rx="9" fill="#fdeef0" stroke="#c0392b" stroke-width="1.4"/><text x="655" y="182" text-anchor="middle" fill="#c0392b">Decay / Delete</text>
+      </g>
+      <g stroke="#52606d" stroke-width="1.8">
+        <line x1="160" y1="177" x2="196" y2="177" marker-end="url(#ar3)"/>
+        <line x1="350" y1="177" x2="386" y2="177" marker-end="url(#ar3)"/>
+        <line x1="540" y1="177" x2="576" y2="177" marker-end="url(#ar3)"/>
+      </g>
+      <!-- phase labels -->
+      <text x="465" y="34" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif" letter-spacing="2">WRITE PATH（写入链路）</text>
+      <text x="375" y="230" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif" letter-spacing="2">READ &amp; MAINTENANCE PATH（读取与维护链路）</text>
+      <!-- feedback arrow: Update -> Store -->
+      <path d="M 465 200 L 465 262 L 845 262 L 845 110" fill="none" stroke="#a04000" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#ar3d)"/>
+      <text x="655" y="254" text-anchor="middle" font-size="11" fill="#a04000" font-family="sans-serif">Update 触发冲突覆盖 / 重新写入，而非追加</text>
+    </svg>
+    <figcaption><b>图 3</b> · Memory 完整生命周期。上方为写入链路（蓝色→绿色），下方为读取与维护链路（蓝色→红色）。红色虚线是多数实现缺失的一环：Update 与 Delete 不是异常分支，而是生命周期的一等公民。</figcaption>
+  </figure>
+
+  <h3><span class="h3-tag">6.1</span>Observe 与 Extract</h3>
+  <p>从 User Message、Tool Result、Agent Action、Task Outcome 中发现潜在 Memory。Extract 阶段把非结构化信息转为结构化条目：</p>
+
+  <pre class="code"><span class="code-tag">memory_candidate.json</span>
+{
+  <span class="s">"memory"</span>: <span class="s">"用户偏好简洁的技术回答"</span>,
+  <span class="s">"type"</span>: <span class="s">"preference"</span>,
+  <span class="s">"source"</span>: <span class="s">"conversation"</span>,
+  <span class="s">"confidence"</span>: <span class="n">0.91</span>
+}</pre>
+
+  <h3><span class="h3-tag">6.2</span>Evaluate：写入前的守门人</h3>
+  <p>回答五个问题：是否值得记？是否稳定？是否可信？是否敏感？是否已经存在（去重与合并）？这一步通常由一次独立的 LLM 调用或规则引擎完成——它是 Memory 系统里 ROI 最高的组件。</p>
+
+  <h3><span class="h3-tag">6.3</span>Update：冲突覆盖，而不是追加</h3>
+  <p>旧信息：<em>用户使用 Python</em>。新信息：<em>用户现在主要使用 Go</em>。错误的实现是两条都存，让 LLM 在检索时自己猜。正确的实现是带时间与来源元数据的版本化覆盖：</p>
+
+  <pre class="code"><span class="code-tag">memory_record.json</span>
+{
+  <span class="s">"memory"</span>: <span class="s">"用户主要开发语言"</span>,
+  <span class="s">"value"</span>: <span class="s">"Go"</span>,
+  <span class="s">"valid_from"</span>: <span class="s">"2026-03-01"</span>,
+  <span class="s">"valid_to"</span>: <span class="k">null</span>,
+  <span class="s">"supersedes"</span>: <span class="s">"mem_0a3f…"</span>,
+  <span class="s">"confidence"</span>: <span class="n">0.88</span>,
+  <span class="s">"source"</span>: <span class="s">"user_statement"</span>
+}</pre>
+
+  <h3><span class="h3-tag">6.4</span>Forget：为什么删除是必需品</h3>
+  <p>Memory 不衰减的系统必然熵增。遗忘机制至少包括：TTL（低稳定性信息自动过期）、用户主动删除（合规要求，不可妥协）、低价值淘汰（长期未被检索命中的条目降权或归档）、冲突覆盖（见 6.3）、定期压缩（同类事件聚合为摘要）。</p>
+
+  <div class="keypoint">
+    <div class="kp-label">Design Principle</div>
+    <p>一个只增不减的 Memory 系统不是一个“更聪明的 Agent”，而是一个<strong>随时间线性变差的知识库</strong>。设计遗忘机制的优先级，应当高于设计写入机制。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ 07 ═══════════════════ -->
+<section id="s07">
+  <div class="sec-head"><span class="sec-num">07</span><h2>Memory Storage 应该怎么设计</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>存储选型应从<strong>数据形态</strong>出发，而不是从产品出发：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Storage</th><th>适合的数据形态</th><th>典型 Memory 用法</th></tr></thead>
+      <tbody>
+        <tr><td>Redis</td><td>Session / State / 高频短期数据</td><td>Working Memory、会话级缓存、TTL 自然对齐</td></tr>
+        <tr><td>SQL</td><td>强结构化 Memory</td><td>用户画像、版本化事实、审计日志</td></tr>
+        <tr><td>Document DB</td><td>半结构化 Memory</td><td>事件记录、 episodic 条目</td></tr>
+        <tr><td>Vector DB</td><td>语义检索</td><td>Memory 的 Embedding 索引层</td></tr>
+        <tr><td>Graph DB</td><td>实体与关系</td><td>用户—项目—偏好之间的关联网络</td></tr>
+        <tr><td>Object Storage</td><td>原始历史数据</td><td>冷归档、回溯审计、重放</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>生产级 Memory 通常<strong>不是一个数据库，而是多个存储层的组合</strong>：Session 层（Redis）+ State 层（SQL）+ Long-term 层（Vector + SQL 双写，语义索引与结构化元数据分离）。</p>
+
+  <div class="warn keypoint">
+    <div class="kp-label">Common Mistake</div>
+    <p><strong>Vector DB ≠ Memory。</strong>Vector DB 只解决“语义相似检索”这一个环节，它不负责写入决策、冲突更新、权限控制与生命周期。把 Vector DB 当作 Memory 系统，等于把文件系统当作图书馆。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ 08 ═══════════════════ -->
+<section id="s08">
+  <div class="sec-head"><span class="sec-num">08</span><h2>Memory Retrieval：不是全部塞进 Context</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>检索阶段的错误比写入阶段更常见，因为它的失败是即时的：检索到什么，Context 就是什么。</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Memory 检索管线图">
+      <defs>
+        <marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
+        </marker>
+      </defs>
+      <!-- main pipeline (vertical, left-ish) -->
+      <g font-family="sans-serif" font-size="14" font-weight="bold">
+        <rect x="140" y="20" width="260" height="44" rx="22" fill="#1f2933"/>
+        <text x="270" y="48" text-anchor="middle" fill="#fff">Current Query + State</text>
+        <rect x="140" y="94" width="260" height="44" rx="10" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5"/>
+        <text x="270" y="122" text-anchor="middle" fill="#1a5276">Memory Retrieval</text>
+        <rect x="140" y="168" width="260" height="44" rx="10" fill="#fff" stroke="#b9d3e8" stroke-width="1.4"/>
+        <text x="270" y="190" text-anchor="middle" fill="#3e4c59" font-size="13">Candidate Memories</text>
+        <text x="270" y="206" text-anchor="middle" fill="#9aa5b1" font-size="11" font-weight="400">（可能数百条）</text>
+        <rect x="140" y="242" width="260" height="44" rx="10" fill="#e8f4ef" stroke="#1e6b52" stroke-width="1.5"/>
+        <text x="270" y="270" text-anchor="middle" fill="#1e6b52">Filtering</text>
+        <rect x="140" y="316" width="260" height="44" rx="10" fill="#e8f4ef" stroke="#1e6b52" stroke-width="1.5"/>
+        <text x="270" y="344" text-anchor="middle" fill="#1e6b52">Ranking</text>
+        <rect x="140" y="390" width="260" height="44" rx="10" fill="#fef5ec" stroke="#a04000" stroke-width="1.5"/>
+        <text x="270" y="418" text-anchor="middle" fill="#a04000">Compression</text>
+        <rect x="140" y="464" width="260" height="44" rx="22" fill="#1a5276"/>
+        <text x="270" y="492" text-anchor="middle" fill="#fff">Inject into Context</text>
+      </g>
+      <g stroke="#52606d" stroke-width="1.8">
+        <line x1="270" y1="64" x2="270" y2="90" marker-end="url(#ar4)"/>
+        <line x1="270" y1="138" x2="270" y2="164" marker-end="url(#ar4)"/>
+        <line x1="270" y1="212" x2="270" y2="238" marker-end="url(#ar4)"/>
+        <line x1="270" y1="286" x2="270" y2="312" marker-end="url(#ar4)"/>
+        <line x1="270" y1="360" x2="270" y2="386" marker-end="url(#ar4)"/>
+        <line x1="270" y1="434" x2="270" y2="460" marker-end="url(#ar4)"/>
+      </g>
+      <!-- side panel: ranking factors -->
+      <rect x="560" y="300" width="300" height="210" rx="10" fill="#fff" stroke="#cfe0ee" stroke-width="1.4"/>
+      <text x="710" y="330" text-anchor="middle" font-size="13" font-weight="bold" fill="#1a5276" font-family="sans-serif">Ranking Signals</text>
+      <g font-family="sans-serif" font-size="12" fill="#3e4c59">
+        <rect x="585" y="345" width="250" height="24" rx="5" fill="#f7fafc"/><text x="597" y="362">α · Semantic Similarity</text>
+        <rect x="585" y="377" width="250" height="24" rx="5" fill="#f7fafc"/><text x="597" y="394">β · Recency</text>
+        <rect x="585" y="409" width="250" height="24" rx="5" fill="#f7fafc"/><text x="597" y="426">γ · Importance</text>
+        <rect x="585" y="441" width="250" height="24" rx="5" fill="#f7fafc"/><text x="597" y="458">δ · Task / User Relevance</text>
+        <rect x="585" y="473" width="250" height="24" rx="5" fill="#f7fafc"/><text x="597" y="490">ε · Confidence</text>
+      </g>
+      <line x1="400" y1="338" x2="556" y2="380" stroke="#9aa5b1" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#ar4)"/>
+      <!-- filter annotations -->
+      <g font-family="sans-serif" font-size="11" fill="#7b8794">
+        <text x="420" y="180">→ 权限过滤 / 去重 / TTL 过滤</text>
+        <text x="420" y="254">→ Top-K + 阈值截断</text>
+        <text x="420" y="428">→ 摘要化 / 去冲突 / 预算控制</text>
+      </g>
+    </svg>
+    <figcaption><b>图 4</b> · Memory Retrieval Pipeline。检索不是一个相似度查询，而是一条带过滤、排序、压缩的流水线。右侧是 Ranking 的五个信号维度——相似度只是其中之一。</figcaption>
+  </figure>
+
+  <p>一个简化的排序模型：</p>
+
+  <div class="formula">
+    Score = α·Similarity + β·Recency + γ·Importance + δ·Relevance + ε·Confidence
+    <div class="f-note">系数需要按场景调优；Recency 对 Preference 类 Memory 的权重应低于 Semantic 类</div>
+  </div>
+
+  <div class="keypoint">
+    <div class="kp-label">Key Insight</div>
+    <p><strong>相似度最高的 Memory，不一定是最应该注入 Context 的 Memory。</strong>一条六个月前与 Query 高度相似的过时偏好，价值低于一条昨天写入的中等相关事实。纯 Similarity 排序的 Memory 系统，天然偏好“旧而泛”的信息。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ 09 ═══════════════════ -->
+<section id="s09">
+  <div class="sec-head"><span class="sec-num">09</span><h2>Memory 与 RAG 的区别</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>这是实践中最容易混淆的一对概念。先给边界：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>RAG</th><th>Memory</th></tr></thead>
+      <tbody>
+        <tr><td>来源</td><td>外部知识（文档、知识库）</td><td>Agent / User 的交互历史</td></tr>
+        <tr><td>目标</td><td>获取知识</td><td>保持连续性</td></tr>
+        <tr><td>数据</td><td>文档</td><td>用户事实、事件、偏好</td></tr>
+        <tr><td>更新</td><td>随文档更新（批处理）</td><td>随交互持续更新（在线）</td></tr>
+        <tr><td>检索模式</td><td>Query → Knowledge</td><td>Context → Relevant Memory</td></tr>
+        <tr><td>生命周期</td><td>文档生命周期</td><td>用户生命周期</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>一句话版本：<strong>RAG 回答“外部知识在哪里”，Memory 回答“关于这个用户/这个任务，过去发生了什么”。</strong>文档不会因为一次对话而改变，用户偏好会——这是两者在更新语义上的本质差异，也是 RAG 系统通常无需考虑冲突覆盖与衰减，而 Memory 系统必须考虑的原因。</p>
+
+  <p>但必须同时指出：<strong>两者在工程实现上高度共享基础设施</strong>——Embedding 模型、Vector DB、Reranker 往往是同一套。因此合理的架构视角是：它们是同一个 Context Engineering 框架下的两个数据源分支，而不是两套独立技术栈。</p>
+
+  <div class="keypoint">
+    <div class="kp-label">Architecture View</div>
+    <p>Context Engineering 之下：RAG 分支对接 External Knowledge（文档生命周期、离线更新），Memory 分支对接 User History（用户生命周期、在线更新、有遗忘机制）。共享的是检索基础设施，不同的是<strong>信息生命周期管理</strong>。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ 10 ═══════════════════ -->
+<section id="s10">
+  <div class="sec-head"><span class="sec-num">10</span><h2>Memory 与 State 到底有什么区别</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>这是另一对高频混淆概念。用电商客服 Agent 的同一时刻对比：</p>
+
+  <pre class="code"><span class="code-tag">task_state.json — 这是 State</span>
+{
+  <span class="s">"order_id"</span>: <span class="s">"123456"</span>,
+  <span class="s">"intent"</span>: <span class="s">"refund"</span>,
+  <span class="s">"refund_reason"</span>: <span class="s">"damaged"</span>,
+  <span class="s">"confirmation_required"</span>: <span class="k">true</span>,
+  <span class="s">"current_step"</span>: <span class="s">"await_user_confirmation"</span>
+}</pre>
+
+  <div class="case">
+    <div class="case-label">Contrast</div>
+    <div class="case-title">同一时刻的 Memory 视角</div>
+    <p>“用户过去多次因为商品破损申请退款，偏好快速处理。”——这条信息不在任何当前任务的结构里，它跨任务存在，服务于未来的每一次交互。它是 Memory。</p>
+  </div>
+
+  <div class="formula">
+    State = 现在发生到哪里了？（What is happening now?）<br>
+    Memory = 过去发生过什么，而且未来可能有用？（What happened before that matters later?）
+  </div>
+
+  <p>更精确的分界线是<strong>生命周期归属</strong>：State 属于某个任务实例——任务完成即销毁（订单退款确认后，上面那个 JSON 没有存在意义）；Memory 跨任务存在——用户对破损退款的偏好在下一次购买时仍然有效。</p>
+
+  <p>两者也有交互：State 的<strong>终态</strong>是 Memory 的候选来源。任务成功完成的 outcome（“退款在 2 分钟内完成，用户满意”）可以被 Observe → Extract → Evaluate 后升级为 Episodic Memory。但这是写入策略的决策，不是自动过程。</p>
+</section>
+
+<!-- ═══════════════════ 11 ═══════════════════ -->
+<section id="s11">
+  <div class="sec-head"><span class="sec-num">11</span><h2>Memory 与 Multi-Agent</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>沿用本系列前文关于 Multi-Agent 拆分的结论：当系统拆出多个 Agent 后，Memory 出现了一个新的架构问题——<strong>共享还是隔离？</strong>三种模式各有代价：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模式</th><th>优点</th><th>问题</th></tr></thead>
+      <tbody>
+        <tr><td>Shared Memory</td><td>信息共享充分，协作简单</td><td>Context Pollution、权限模糊、Agent 之间互相污染检索池</td></tr>
+        <tr><td>Private Memory</td><td>上下文隔离，职责清晰，检索噪声可控</td><td>信息重复存储、跨 Agent 协作成本上升</td></tr>
+        <tr><td>Hybrid（生产系统更常见）</td><td>全局事实统一，专有经验隔离</td><td>需要维护全局 / 私有的写入路由与权限模型</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Hybrid 模式的典型分层：</p>
+
+  <ul class="plain">
+    <li><strong>Global Memory</strong> —— User Profile、Shared Facts、Important Events（所有 Agent 可按权限读取）；</li>
+    <li><strong>Private Memory</strong> —— Planner Memory（任务分解的经验）、Researcher Memory（检索质量的自适应调整）、Customer Service Memory（客诉处理的模式）。</li>
+  </ul>
+
+  <div class="keypoint">
+    <div class="kp-label">Design Principle</div>
+    <p><strong>Memory 的共享边界，本质上就是 Agent 的权限与职责边界。</strong>一个能读到 Researcher 全部私有 Memory 的 Planner，和一个能越权调度的 Manager 没有区别。这条原则与前一篇文章中“按职责拆分 Agent”的结论是对偶的：职责怎么拆，Memory 就怎么隔离。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ 12 ═══════════════════ -->
+<section id="s12">
+  <div class="sec-head"><span class="sec-num">12</span><h2>生产级 Agent Memory 架构</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>把前文的组件装配成一个完整架构：</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 920 680" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="生产级 Agent Memory 架构图">
+      <defs>
+        <marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
+        </marker>
+        <marker id="ar5w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#a04000"/>
+        </marker>
+      </defs>
+
+      <!-- User -->
+      <rect x="390" y="16" width="140" height="42" rx="21" fill="#1f2933"/>
+      <text x="460" y="43" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold" font-family="sans-serif">User</text>
+      <line x1="460" y1="58" x2="460" y2="88" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar5)"/>
+
+      <!-- Agent -->
+      <rect x="380" y="92" width="160" height="40" rx="9" fill="#1a5276"/>
+      <text x="460" y="118" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold" font-family="sans-serif">Agent Runtime</text>
+
+      <!-- context sources (left) -->
+      <g font-family="sans-serif" font-size="12" fill="#3e4c59">
+        <rect x="30"  y="188" width="180" height="40" rx="8" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.3"/><text x="120" y="213" text-anchor="middle">Conversation History</text>
+        <rect x="30"  y="240" width="180" height="40" rx="8" fill="#e8f4ef" stroke="#1e6b52" stroke-width="1.3"/><text x="120" y="259" text-anchor="middle">State</text><text x="120" y="274" text-anchor="middle" font-size="10" fill="#7b8794">Redis / SQL</text>
+        <rect x="30"  y="292" width="180" height="40" rx="8" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.3"/><text x="120" y="317" text-anchor="middle">Short-term Memory</text>
+        <rect x="30"  y="344" width="180" height="40" rx="8" fill="#f4f6f8" stroke="#7b8794" stroke-width="1.3"/><text x="120" y="363" text-anchor="middle">RAG</text><text x="120" y="378" text-anchor="middle" font-size="10" fill="#7b8794">External Knowledge</text>
+      </g>
+
+      <!-- Retriever + Long-term (right) -->
+      <rect x="620" y="200" width="170" height="44" rx="9" fill="#fef5ec" stroke="#a04000" stroke-width="1.4"/>
+      <text x="705" y="219" text-anchor="middle" font-size="13" font-weight="bold" fill="#a04000" font-family="sans-serif">Retriever</text>
+      <text x="705" y="236" text-anchor="middle" font-size="10" fill="#7b8794" font-family="sans-serif">Filter · Rank · Compress</text>
+      <rect x="600" y="300" width="210" height="84" rx="10" fill="#fff" stroke="#e8c9a8" stroke-width="1.5"/>
+      <text x="705" y="328" text-anchor="middle" font-size="13" font-weight="bold" fill="#a04000" font-family="sans-serif">Long-term Memory</text>
+      <text x="705" y="348" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif">Vector DB（语义索引）</text>
+      <text x="705" y="366" text-anchor="middle" font-size="11" fill="#7b8794" font-family="sans-serif">SQL（结构化元数据 / 版本）</text>
+      <line x1="705" y1="244" x2="705" y2="296" stroke="#a04000" stroke-width="1.6" marker-end="url(#ar5w)"/>
+
+      <!-- Context Builder -->
+      <rect x="300" y="252" width="230" height="52" rx="11" fill="#1f2933"/>
+      <text x="415" y="275" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold" font-family="sans-serif">Context Builder</text>
+      <text x="415" y="293" text-anchor="middle" fill="#9aa5b1" font-size="10.5" font-family="sans-serif">组装 + 预算控制 + 冲突消解</text>
+
+      <!-- arrows: agent -> builder ; sources -> builder ; retriever -> builder -->
+      <path d="M 460 132 L 460 248" fill="none" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar5)"/>
+      <line x1="210" y1="208" x2="296" y2="264" stroke="#52606d" stroke-width="1.5" marker-end="url(#ar5)"/>
+      <line x1="210" y1="260" x2="296" y2="272" stroke="#52606d" stroke-width="1.5" marker-end="url(#ar5)"/>
+      <line x1="210" y1="312" x2="296" y2="280" stroke="#52606d" stroke-width="1.5" marker-end="url(#ar5)"/>
+      <line x1="210" y1="364" x2="296" y2="290" stroke="#52606d" stroke-width="1.5" marker-end="url(#ar5)"/>
+      <line x1="616" y1="248" x2="534" y2="272" stroke="#a04000" stroke-width="1.5" marker-end="url(#ar5w)"/>
+
+      <!-- LLM -->
+      <line x1="415" y1="304" x2="415" y2="392" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar5)"/>
+      <rect x="345" y="396" width="140" height="44" rx="22" fill="#1a5276"/>
+      <text x="415" y="424" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold" font-family="sans-serif">LLM</text>
+
+      <!-- Tools -->
+      <line x1="415" y1="440" x2="415" y2="476" stroke="#52606d" stroke-width="1.8" marker-end="url(#ar5)"/>
+      <rect x="345" y="480" width="140" height="44" rx="9" fill="#e8f4ef" stroke="#1e6b52" stroke-width="1.4"/>
+      <text x="415" y="508" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e6b52" font-family="sans-serif">Tools / Action</text>
+
+      <!-- Outcome -> Memory pipeline -->
+      <path d="M 415 524 L 415 552" fill="none" stroke="#a04000" stroke-width="1.6" marker-end="url(#ar5w)"/>
+      <rect x="300" y="556" width="230" height="40" rx="9" fill="#fef5ec" stroke="#a04000" stroke-width="1.4"/>
+      <text x="415" y="581" text-anchor="middle" font-size="13" font-weight="bold" fill="#a04000" font-family="sans-serif">Memory Writer → Evaluator</text>
+      <path d="M 530 576 L 700 576 L 700 388" fill="none" stroke="#a04000" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#ar5w)"/>
+      <text x="620" y="640" text-anchor="middle" font-size="11" fill="#a04000" font-family="sans-serif">写入链路：Observe → Extract → Evaluate → Write / Update / Forget</text>
+
+      <!-- policy note -->
+      <rect x="30" y="600" width="220" height="58" rx="8" fill="#f4f6f8" stroke="#d9e0e7" stroke-width="1" stroke-dasharray="5 4"/>
+      <text x="140" y="624" text-anchor="middle" font-size="11" fill="#52606d" font-family="sans-serif">Policy Layer：权限 · 预算 · 遗忘策略</text>
+      <text x="140" y="642" text-anchor="middle" font-size="11" fill="#52606d" font-family="sans-serif">Observability：检索命中 · 注入效果审计</text>
+    </svg>
+    <figcaption><b>图 5</b> · 生产级 Agent Memory 架构。关键设计：Memory 不直接连接 LLM——中间隔着 Retriever（过滤 / 排序 / 压缩）与 Context Builder（预算控制 / 冲突消解）。橙色链路是写入侧，虚线表示异步写入。</figcaption>
+  </figure>
+
+  <p>用伪代码表达这个主循环（框架无关）：</p>
+
+  <pre class="code"><span class="code-tag">agent_loop.py</span>
+<span class="k">def</span> <span class="f">run_agent</span>(user_input):
+
+    state = <span class="f">load_state</span>()
+
+    memories = <span class="f">retrieve_memory</span>(          <span class="c"># 检索决策</span>
+        query=user_input,
+        user_id=state.user_id
+    )
+
+    context = <span class="f">build_context</span>(             <span class="c"># Context Engineering</span>
+        input=user_input,
+        state=state,
+        memories=memories
+    )
+
+    result = agent.<span class="f">run</span>(context)
+
+    state = <span class="f">update_state</span>(state, result)
+
+    candidates = <span class="f">extract_memory_candidates</span>(  <span class="c"># 写入决策</span>
+        user_input, result
+    )
+
+    memories = <span class="f">evaluate_memories</span>(candidates)
+
+    <span class="f">save_memory</span>(memories)
+    <span class="f">save_state</span>(state)
+
+    <span class="k">return</span> result</pre>
+
+  <div class="keypoint">
+    <div class="kp-label">Where the Difficulty Is</div>
+    <p>真正困难的部分不是 <code>save_memory()</code>——那是五行数据库代码。困难的是 <code>evaluate_memories()</code> 与 <code>retrieve_memory()</code>。Memory 系统的核心不是存储，而是<strong>写入决策 + 检索决策 + 生命周期管理</strong>。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ 13 ═══════════════════ -->
+<section id="s13">
+  <div class="sec-head"><span class="sec-num">13</span><h2>Memory 的典型失败模式</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>以下六种失败模式，在生产环境中的出现频率依次递减，但危害不减：</p>
+
+  <h3><span class="h3-tag">F1</span>Everything Memory</h3>
+  <p>什么都保存。这是“Memory 越多越智能”直觉的直接产物：</p>
+
+  <div class="stat-row">
+    <div class="stat"><div class="s-arrow up">↑</div><div class="s-name">Memory 总量</div><div class="s-desc">线性增长，无上限</div></div>
+    <div class="stat"><div class="s-arrow up">↑</div><div class="s-name">检索噪声</div><div class="s-desc">无关召回比例上升</div></div>
+    <div class="stat"><div class="s-arrow up">↑</div><div class="s-name">Token 成本</div><div class="s-desc">注入量随库膨胀</div></div>
+    <div class="stat"><div class="s-arrow down">↓</div><div class="s-name">决策准确率</div><div class="s-desc">噪声稀释有效信号</div></div>
+  </div>
+
+  <h3><span class="h3-tag">F2</span>Memory Pollution</h3>
+  <p>错误信息被写入 Memory（模型幻觉、推断当事实、对话误解）。之后<strong>每一次检索都会重新注入这条错误</strong>——错误被系统性地放大，而不是一次性出现。防御手段：写入必须经过 Evaluate；推断类信息标记 <code>inferred</code> 且降低 confidence；关键事实建议经用户确认后升级。</p>
+
+  <h3><span class="h3-tag">F3</span>Stale Memory</h3>
+  <p>旧信息没有更新：用户已从 Python 转向 Go，Memory 仍在回答 Python。防御手段：版本化字段（<code>valid_from / valid_to</code>）、低 Stability 条目设置 TTL、检索时 Recency 参与排序。</p>
+
+  <h3><span class="h3-tag">F4</span>Memory Retrieval Failure</h3>
+  <p>真正重要的 Memory 存在，但没有被召回。这是最隐蔽的失败——系统“看起来正常”，只是持续地不够聪明。需要通过检索命中率（recall@k）的离线评测来发现，仅靠线上观察很难定位。</p>
+
+  <h3><span class="h3-tag">F5</span>Memory Over-injection</h3>
+  <p>检索到了太多 Memory：相关的 + 无关的 + 过时的 + 互相冲突的，一起进入 Context。模型面对矛盾信息时倾向折中或随机采信，<strong>注入越多，判断越差</strong>。防御手段：注入预算（token budget）、Top-K 硬截断、冲突消解在 Context Builder 完成，而不是留给 LLM。</p>
+
+  <h3><span class="h3-tag">F6</span>Memory Security</h3>
+  <p>Memory 中积累的恰恰是最敏感的数据：用户隐私、企业内部信息、权限边界信息、历史行为轨迹。安全设计是一条完整链路：</p>
+
+  <div class="formula">
+    Memory → Access Control → Data Isolation → Retention Policy → Deletion → Audit
+  </div>
+
+  <p>其中 Deletion（用户主动删除权，合规上不可妥协）要求存储层支持物理删除——这直接排除了某些只做软删除的存储方案。多租户场景下，Data Isolation 必须在存储层强制（而非仅在检索层过滤），否则一条跨租户的检索 bug 就是数据泄露事故。</p>
+</section>
+
+<!-- ═══════════════════ 14 ═══════════════════ -->
+<section id="s14">
+  <div class="sec-head"><span class="sec-num">14</span><h2>什么时候不需要 Long-term Memory</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>为了避免本文被误读为“所有 Agent 都应该上 Memory”，这一节专门给出反例。以下场景通常<strong>完全不需要 Long-term Memory</strong>：</p>
+
+  <ul class="plain">
+    <li>Stateless API Agent（请求间本就无依赖）；</li>
+    <li>一次性任务（生成一份报告、跑一次数据分析）；</li>
+    <li>临时 Workflow（会话结束即整体销毁）；</li>
+    <li>用户不需要跨会话连续性（匿名工具型产品）；</li>
+    <li>所有必要信息都来自 RAG（纯知识问答场景）；</li>
+    <li>State 本身已经足够（单任务、短生命周期的客服工单）。</li>
+  </ul>
+
+  <p>判断流程：</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="是否需要 Long-term Memory 的决策流程">
+      <defs>
+        <marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
+        </marker>
+      </defs>
+      <g font-family="sans-serif" font-size="13">
+        <rect x="330" y="20" width="240" height="46" rx="23" fill="#1f2933"/>
+        <text x="450" y="49" text-anchor="middle" fill="#fff" font-weight="bold">需要跨 Session 连续性？</text>
+
+        <rect x="60" y="110" width="250" height="46" rx="10" fill="#e8f4ef" stroke="#1e6b52" stroke-width="1.5"/>
+        <text x="185" y="130" text-anchor="middle" fill="#1e6b52" font-weight="bold">不需要 Long-term Memory</text>
+        <text x="185" y="148" text-anchor="middle" fill="#7b8794" font-size="11">State / 短期记忆即可</text>
+        <line x1="350" y1="66" x2="205" y2="106" stroke="#52606d" stroke-width="1.6" marker-end="url(#ar6)"/>
+        <text x="255" y="80" font-size="11" fill="#7b8794">No</text>
+
+        <rect x="360" y="110" width="180" height="46" rx="10" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5"/>
+        <text x="450" y="130" text-anchor="middle" fill="#1a5276" font-weight="bold">未来信息有价值？</text>
+        <text x="450" y="148" text-anchor="middle" fill="#7b8794" font-size="11">Future Utility 评估</text>
+        <line x1="450" y1="66" x2="450" y2="106" stroke="#52606d" stroke-width="1.6" marker-end="url(#ar6)"/>
+        <text x="465" y="92" font-size="11" fill="#7b8794">Yes</text>
+
+        <rect x="590" y="110" width="250" height="46" rx="10" fill="#fef5ec" stroke="#a04000" stroke-width="1.5"/>
+        <text x="715" y="130" text-anchor="middle" fill="#a04000" font-weight="bold">不一定需要 Memory</text>
+        <text x="715" y="148" text-anchor="middle" fill="#7b8794" font-size="11">价值 &lt; 存储 + 检索成本</text>
+        <line x1="540" y1="133" x2="586" y2="133" stroke="#52606d" stroke-width="1.6" marker-end="url(#ar6)"/>
+        <text x="563" y="122" font-size="11" fill="#7b8794">No</text>
+
+        <rect x="360" y="190" width="180" height="44" rx="22" fill="#1a5276"/>
+        <text x="450" y="218" text-anchor="middle" fill="#fff" font-weight="bold">设计 Memory</text>
+        <line x1="450" y1="156" x2="450" y2="186" stroke="#52606d" stroke-width="1.6" marker-end="url(#ar6)"/>
+        <text x="465" y="176" font-size="11" fill="#7b8794">Yes</text>
+      </g>
+    </svg>
+    <figcaption><b>图 6</b> · Long-term Memory 的引入决策。两道门槛：先问“是否需要连续性”，再问“连续性是否真的有未来价值”。第二个问题往往被跳过，导致大量低价值 Memory 系统上线。</figcaption>
+  </figure>
+</section>
+
+<!-- ═══════════════════ 15 ═══════════════════ -->
+<section id="s15">
+  <div class="sec-head"><span class="sec-num">15</span><h2>完整案例：电商智能客服 Agent</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>用一个贯穿案例，把前文所有概念落到同一条时间线上。</p>
+
+  <div class="case">
+    <div class="case-label">Session 1 · 当天</div>
+    <div class="case-title">订单查询与退款</div>
+    <div class="dialog">
+      <div class="d-row d-user"><span class="d-who">USER</span><div class="d-text">帮我查一下订单。</div></div>
+      <div class="d-row d-sys"><span class="d-who">AGENT</span><div class="d-text">Order Query → Tool Call → Order Result（<code>order_id=123456</code>，商品：玻璃杯 x2，状态：已签收）。<strong>这是 Tool Result 与 State。</strong></div></div>
+      <div class="d-row d-user"><span class="d-who">USER</span><div class="d-text">这个商品坏了，我要退款。</div></div>
+      <div class="d-row d-sys"><span class="d-who">AGENT</span><div class="d-text">写入 <code>task_state</code>：<code>intent=refund</code>，<code>reason=damaged</code>，<code>step=await_confirmation</code>。<strong>这是当前 Task State。</strong>同时 Memory Writer 提取候选：『用户因商品破损申请退款（order 123456）』→ Evaluate 判定 Future Utility 低（单次事件）→ <strong>降级为短期记录，不写长期</strong>。</div></div>
+      <div class="d-row d-user"><span class="d-who">USER</span><div class="d-text">好，确认退款。以后这种事别让我重复填信息，直接处理。</div></div>
+      <div class="d-row d-sys"><span class="d-who">AGENT</span><div class="d-text">用户<strong>显式表达</strong>了偏好 → Extract：<code>type=preference</code>，『偏好快速退款处理，减少重复确认』，<code>confidence=0.95</code>，<code>source=user_statement</code> → <strong>写入 Long-term Memory</strong>。</div></div>
+    </div>
+  </div>
+
+  <div class="case">
+    <div class="case-label">Session 2 · 三个月后</div>
+    <div class="case-title">同类商品再次购买</div>
+    <div class="dialog">
+      <div class="d-row d-user"><span class="d-who">USER</span><div class="d-text">我上周买的杯子有一个裂了。</div></div>
+      <div class="d-row d-sys"><span class="d-who">AGENT</span><div class="d-text">检索阶段命中两条 Long-term Memory：<br>① Episodic：『用户曾购买玻璃杯类商品』（Recency 加权）；<br>② Preference：『偏好快速退款，减少确认环节』（Importance 加权）。<br>同时 RAG 召回：玻璃制品破损的官方退换政策。<br>Context Builder 组装：<strong>Current Query + Current State + Relevant Memory + RAG</strong>。</div></div>
+      <div class="d-row d-sys"><span class="d-who">AGENT</span><div class="d-text">决策：跳过多轮信息确认，直接基于历史订单定位本次订单，一次性提交退款申请，仅在政策要求处请求单点确认。用户无需重复填写任何信息。</div></div>
+      <div class="d-row d-sys"><span class="d-who">AGENT</span><div class="d-text">会话结束后 Memory Update：Episodic 条目『购买玻璃杯』更新频次与时间戳；若三次同类事件发生，Evaluate 可将『用户经常购买易碎品』聚合为一条 Semantic Memory（<strong>压缩而非追加</strong>）。</div></div>
+    </div>
+  </div>
+
+  <p>这个案例中所有角色的对照：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>信息</th><th>所属层</th><th>生命周期</th><th>为什么</th></tr></thead>
+      <tbody>
+        <tr><td><code>order_id=123456</code></td><td>State</td><td>当前任务</td><td>任务结束即失效，无跨会话价值</td></tr>
+        <tr><td>退款意图与执行步骤</td><td>State</td><td>当前任务</td><td>流程位置信息，仪表盘性质</td></tr>
+        <tr><td>Tool 返回的订单详情</td><td>Tool Result → 短期</td><td>请求 / 任务</td><td>已摘要进 Working Memory，原文可弃</td></tr>
+        <tr><td>『偏好快速退款』</td><td>Long-term（Preference）</td><td>用户生命周期</td><td>显式表达、高稳定性、明确未来价值</td></tr>
+        <tr><td>『曾购买玻璃杯』</td><td>Long-term（Episodic）</td><td>中期</td><td>多次事件后可聚合压缩</td></tr>
+        <tr><td>玻璃制品退换政策</td><td>RAG</td><td>文档生命周期</td><td>外部知识，与用户无关，离线更新</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>注意 Session 1 中那次<strong>被拒绝的写入</strong>（“单次破损事件，Future Utility 低”）——它和被接受的那条偏好写入同样重要。一个健康的 Memory 系统，拒绝写入的频率应当显著高于接受写入的频率。</p>
+</section>
+
+<!-- ═══════════════════ 16 ═══════════════════ -->
+<section id="s16">
+  <div class="sec-head"><span class="sec-num">16</span><h2>工程决策清单</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>先给一张跨概念决策速查表（注意：实际系统存在交叉存储，关键是<strong>明确生命周期与使用语义</strong>，而非把表当绝对规则）：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>信息</th><th>Short-term</th><th>Long-term</th><th>State</th><th>RAG</th></tr></thead>
+      <tbody>
+        <tr><td>最近对话</td><td class="yes">✓</td><td class="no2">—</td><td class="no2">—</td><td class="no2">—</td></tr>
+        <tr><td>当前订单号</td><td class="no2">—</td><td class="no2">—</td><td class="yes">✓</td><td class="no2">—</td></tr>
+        <tr><td>当前 Agent Step</td><td class="no2">—</td><td class="no2">—</td><td class="yes">✓</td><td class="no2">—</td></tr>
+        <tr><td>用户长期偏好</td><td class="no2">—</td><td class="yes">✓</td><td class="no2">—</td><td class="no2">—</td></tr>
+        <tr><td>企业产品文档</td><td class="no2">—</td><td class="no2">—</td><td class="no2">—</td><td class="yes">✓</td></tr>
+        <tr><td>当前工具结果</td><td class="yes">✓</td><td class="no2">—</td><td class="yes">✓</td><td class="no2">—</td></tr>
+        <tr><td>历史重要事件</td><td class="no2">—</td><td class="yes">✓</td><td class="no2">—</td><td class="no2">—</td></tr>
+        <tr><td>当前任务目标</td><td class="yes">✓</td><td class="no2">—</td><td class="yes">✓</td><td class="no2">—</td></tr>
+        <tr><td>外部知识</td><td class="no2">—</td><td class="no2">—</td><td class="no2">—</td><td class="yes">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>然后是两份可直接使用的 Checklist：</p>
+
+  <div class="checklist">
+    <div class="check-card">
+      <div class="cc-title">是否需要 Memory？（引入前的判断）</div>
+      <ul>
+        <li>是否需要跨 Session 的连续性？</li>
+        <li>是否存在稳定的用户信息，值得跨会话保留？</li>
+        <li>是否存在长期项目上下文（数周 / 数月）？</li>
+        <li>是否存在历史经验，可以帮助未来决策？</li>
+        <li>这些信息的未来价值，是否明确大于存储 + 检索成本？</li>
+      </ul>
+    </div>
+    <div class="check-card">
+      <div class="cc-title">如果需要：设计与运维清单</div>
+      <ul>
+        <li>哪些信息进入 Short-term？滚动摘要策略是什么？</li>
+        <li>哪些信息进入 Long-term？写入评估链（Importance / Utility / Stability / Risk）如何实现？</li>
+        <li>State 如何管理？任务终态如何作为 Memory 候选来源？</li>
+        <li>Memory 如何写入？推断类信息是否标记 <code>inferred</code> 与低 confidence？</li>
+        <li>Memory 如何检索？排序信号（相似度 / 时近性 / 重要性 / 相关性 / 置信度）的权重如何定？</li>
+        <li>冲突信息如何更新？是否有 <code>valid_from / valid_to / supersedes</code>？</li>
+        <li>如何过期？TTL、低价值淘汰、定期压缩的策略分别是什么？</li>
+        <li>如何删除？是否支持用户主动删除与物理删除（合规）？</li>
+        <li>如何控制权限？多租户隔离是在存储层还是仅在检索层？</li>
+        <li>如何评估 Memory 是否真正提升 Agent 效果（离线 recall@k + 在线 A/B）？</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 17 ═══════════════════ -->
+<section id="s17">
+  <div class="sec-head"><span class="sec-num">17</span><h2>总结</h2></div>
+  <div class="sec-rule"></div>
+
+  <p>回到全文的四条边界：</p>
+
+  <div class="formula">
+    Context ≠ Memory &nbsp;·&nbsp; State ≠ Memory &nbsp;·&nbsp; History ≠ Memory &nbsp;·&nbsp; RAG ≠ Memory
+  </div>
+
+  <ul class="plain">
+    <li><strong>Context</strong> 回答“模型当前需要知道什么”——它是 Memory 的消费结果，不是 Memory 本身；</li>
+    <li><strong>State</strong> 回答“当前任务进行到哪里”——它随任务生灭，不跨生命周期；</li>
+    <li><strong>History</strong> 是原始素材——未经提取、评估与压缩的历史，只会带来噪声与成本；</li>
+    <li><strong>RAG</strong> 回答“外部知识在哪里”——它与 Memory 共享检索基础设施，但生命周期语义完全不同。</li>
+  </ul>
+
+  <p>Memory 回答的是另一个问题：<strong>未来 Agent 是否应该重新看到这些信息，以及以什么形式看到。</strong>这个问题由一条完整的生命周期支撑——Observe、Extract、Evaluate、Write、Retrieve、Update、Forget——其中写入决策与遗忘机制，比存储本身重要得多。</p>
+
+  <div class="conclusion">
+    <div class="cl-label">Final Takeaway</div>
+    <p>Memory 的本质不是 Storage，而是 Context Engineering 加上 Information Lifecycle Management。评估一个 Memory 系统的标准，不是它记住了多少，而是它在每一次决策时注入的信息的<strong>信噪比</strong>，以及它对错误、过时与敏感信息的<strong>处置速度</strong>。</p>
+    <p class="final">成熟的 Agent Memory，不是让 Agent 记住更多，而是让它在正确的时间记住正确的信息，并且能够知道什么时候应该忘记。</p>
+  </div>
+
+  <footer class="site">
+    <span>Agent Engineering 系列 · 04 / Memory &amp; State</span>
+    <span>下一篇：Memory Retrieval 算法细节与 Memory Evaluation</span>
+  </footer>
+</section>
+
+</div>
+</body>
+</html>

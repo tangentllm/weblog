@@ -1,9 +1,9 @@
----
+﻿---
 title: 多轮对话上下文管理：滑动窗口、摘要压缩与检索注入三种实现
 slug: multi-turn-context-management-three-approaches
 date: 2025-09-28
 readTime: 18 分钟
-category: 智能体
+category: 智能体跟多agent
 tags: Agent, 上下文管理, RAG, LangChain, 对话记忆
 cover: ./content/assets/posts/covers/multi-turn-context-management.svg
 excerpt: 在有限 context window 下，多轮对话上下文管理靠滑动窗口、摘要压缩与检索注入三种方案。含对比表、ContextBuilder 模板与 Agent 工具膨胀踩坑。

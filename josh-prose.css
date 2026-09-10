@@ -2001,6 +2001,19 @@ html.josh-site.dark .josh-prose .josh-html-magazine :is(
   .tbl-wrap,
   .lead-quote,
   .pain,
+  .principle,
+  .flow,
+  .final-flow,
+  .score-box,
+  .cond-card,
+  .ap-card,
+  .check-card,
+  .dialog,
+  .toc-card,
+  .toc-box,
+  .badge,
+  .motto,
+  figure.fig,
   table
 ),
 html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
@@ -2027,6 +2040,19 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
   .tbl-wrap,
   .lead-quote,
   .pain,
+  .principle,
+  .flow,
+  .final-flow,
+  .score-box,
+  .cond-card,
+  .ap-card,
+  .check-card,
+  .dialog,
+  .toc-card,
+  .toc-box,
+  .badge,
+  .motto,
+  figure.fig,
   table
 ) {
   background: color-mix(in srgb, var(--josh-color-cloud-300) 72%, var(--josh-color-background)) !important;
@@ -2224,9 +2250,24 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .pill.inf
 }
 
 /* Captions / meta: brighter mute for dark readability */
-html.josh-site.dark .josh-prose .josh-html-magazine :is(.fig-cap, .flow-caption, figcaption, .byline, .meta, .subtitle, .deck, .lead-deck),
-html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(.fig-cap, .flow-caption, figcaption, .byline, .meta, .subtitle, .deck, .lead-deck) {
+html.josh-site.dark .josh-prose .josh-html-magazine :is(.fig-cap, .flow-caption, figcaption, .byline, .meta, .subtitle, .deck, .lead-deck, .lede, .muted, .meta-row, .hero-meta),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(.fig-cap, .flow-caption, figcaption, .byline, .meta, .subtitle, .deck, .lead-deck, .lede, .muted, .meta-row, .hero-meta) {
   color: color-mix(in srgb, var(--josh-color-text) 78%, var(--josh-color-gray-500)) !important;
+}
+
+/* Accent/links that drafts keep as deep ink hues — lift for dark bg */
+html.josh-site.dark .josh-prose .josh-html-magazine :is(a, em, .hl, .bl),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(a, em, .hl, .bl) {
+  color: color-mix(
+    in srgb,
+    var(--accent, var(--rust, var(--blue, var(--josh-color-primary)))) 42%,
+    #ffffff
+  ) !important;
+}
+
+html.josh-site.dark .josh-prose .josh-html-magazine :is(.band-green, .band-yellow, .band-red),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(.band-green, .band-yellow, .band-red) {
+  border-color: color-mix(in srgb, var(--josh-color-text) 14%, transparent);
 }
 
 /*
@@ -2254,6 +2295,22 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .josh-mag
   padding: 14px 16px;
   box-shadow: none;
   color: #1a1f2e;
+  /* Diagrams keep light-paper tokens so fill:var(--ink) stays dark-on-white. */
+  --ink: #1a1f2e !important;
+  --ink-soft: #4a5568 !important;
+  --ink-mute: #6b7280 !important;
+  --ink-faint: #8492a6 !important;
+  --soft: #6b675e !important;
+  --paper: #fdfcf9 !important;
+  --card: #ffffff !important;
+  --line: #e5e9f0 !important;
+  --border: #e5e9f0 !important;
+  --dia-fill: #fffdf7 !important;
+  --neutral-bg: #f1efe7 !important;
+  --grid: #efeae0 !important;
+  --wire: #8a8577 !important;
+  --svg-line: #55503f !important;
+  --code-bg: #f5f7fa !important;
 }
 
 html.josh-site.dark .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='light'] svg,

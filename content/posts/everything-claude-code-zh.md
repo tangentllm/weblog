@@ -1,9 +1,9 @@
----
+﻿---
 title: Everything Claude Code 中文版 - 完整使用教程
 slug: everything-claude-code-zh-guide
 date: 2025-03-22
 readTime: 35 分钟
-category: 智能体
+category: 智能体跟多agent
 tags: Claude Code, MCP, Skill, Agent, Function Calling
 cover: ./content/assets/posts/covers/everything-claude-code.svg
 excerpt: 从安装配置到代理、技能、钩子、规则与 MCP 的完整实践指南。

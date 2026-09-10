@@ -1,9 +1,9 @@
----
+﻿---
 title: 深入理解 MCP — Model Context Protocol 完全技术指南
 slug: mcp-kw-guide
 date: 2025-05-10
 readTime: 20 分钟
-category: 智能体
+category: 智能体跟多agent
 tags: MCP, Agent, Protocol, Anthropic
 cover: ./content/assets/posts/covers/mcp-kw.svg
 pinned: true

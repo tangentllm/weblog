@@ -252,7 +252,7 @@ const JOSH_CATEGORY_COLORS = {
   '模型架构': '#c8daf8',
   '微调与对齐': '#dcc8f8',
   'RAG 与检索': '#b8ecd8',
-  '智能体': '#c8f0e0',
+  '智能体跟多agent': '#c8f0e0',
   '评测与质量': '#e8d4f8',
   '多模态': '#ffe0b8',
   '论文解读': '#f4c0dc',
@@ -530,6 +530,8 @@ function joshNormalizeHeadingText(text) {
 const JOSH_HTML_MAGAZINE_SCOPE = '.josh-prose .josh-html-magazine';
 
 function joshBuildHtmlMagazineIsolationCss(scope = JOSH_HTML_MAGAZINE_SCOPE) {
+  const softMix = (token, fallback) =>
+    `color-mix(in srgb,var(${token},${fallback}) 22%,var(--josh-color-background))!important`;
   return [
     `${scope}{`,
     'max-width:100%;',
@@ -546,15 +548,34 @@ function joshBuildHtmlMagazineIsolationCss(scope = JOSH_HTML_MAGAZINE_SCOPE) {
     '--ink-soft:var(--josh-color-gray-700)!important;',
     '--ink-mute:var(--josh-color-gray-500)!important;',
     '--ink-faint:var(--josh-color-gray-500)!important;',
+    '--soft:var(--josh-color-gray-700)!important;',
     '--text:var(--josh-color-text)!important;',
     '--text-muted:var(--josh-color-gray-500)!important;',
     '--fg:var(--josh-color-text)!important;',
     '--line:color-mix(in srgb,var(--josh-color-text) 16%,transparent)!important;',
     '--line-soft:color-mix(in srgb,var(--josh-color-text) 10%,transparent)!important;',
+    '--soft-line:color-mix(in srgb,var(--josh-color-text) 22%,transparent)!important;',
     '--rule:color-mix(in srgb,var(--josh-color-text) 16%,transparent)!important;',
+    '--grid:color-mix(in srgb,var(--josh-color-cloud-300) 35%,var(--josh-color-background))!important;',
     '--card:color-mix(in srgb,var(--josh-color-cloud-300) 55%,var(--josh-color-background))!important;',
+    '--neutral-bg:color-mix(in srgb,var(--josh-color-cloud-300) 40%,var(--josh-color-background))!important;',
+    '--dia-fill:color-mix(in srgb,var(--josh-color-cloud-300) 28%,var(--josh-color-background))!important;',
+    `--rust-bg:${softMix('--rust', '#A23E2B')};`,
+    `--blue-bg:${softMix('--blue', '#2E5E76')};`,
+    `--amber-bg:${softMix('--amber', '#B07C2A')};`,
+    `--good-soft:${softMix('--good', '#1d7a53')};`,
+    `--warm-soft:${softMix('--warm', '#a04000')};`,
+    '--accent-line:color-mix(in srgb,var(--accent,var(--josh-color-primary)) 35%,transparent)!important;',
+    '--tbl-head:color-mix(in srgb,var(--josh-color-cloud-300) 45%,var(--josh-color-background))!important;',
+    '--tbl-stripe:color-mix(in srgb,var(--josh-color-cloud-300) 28%,var(--josh-color-background))!important;',
+    '--tbl-line:color-mix(in srgb,var(--josh-color-text) 12%,transparent)!important;',
+    '--inline-code-bg:color-mix(in srgb,var(--josh-color-cloud-300) 55%,var(--josh-color-background))!important;',
+    '--inline-code-ink:var(--josh-color-text)!important;',
     '--code-bg:var(--josh-color-code-bg)!important;',
+    '--code-head:color-mix(in srgb,var(--josh-color-cloud-300) 35%,var(--josh-color-code-bg))!important;',
     '--code-ink:var(--josh-syntax-txt)!important;',
+    '--wire:color-mix(in srgb,var(--josh-color-text) 45%,transparent)!important;',
+    '--svg-line:color-mix(in srgb,var(--josh-color-text) 55%,transparent)!important;',
     '}',
     `${scope} .page,`,
     `${scope} .wrap,`,
@@ -701,6 +722,27 @@ function joshStripCssComments(css) {
   return String(css || '').replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
+function joshRewriteMagazineDarkThemeSelector(selector, scope = JOSH_HTML_MAGAZINE_SCOPE) {
+  const s = String(selector || '').trim();
+  if (!s) return s;
+  // Magazine drafts ship :root[data-theme="dark"] / html[data-theme="dark"].
+  // Josh dark mode uses html.josh-site.dark — rewrite so draft dark tokens apply.
+  const darkAttr = /^(?::root|html)\[data-theme=["']dark["']\](.*)$/i.exec(s);
+  if (darkAttr) {
+    const rest = darkAttr[1] || '';
+    const scopedRest = rest
+      ? (rest.startsWith(' ') || rest.startsWith(':') || rest.startsWith('.') || rest.startsWith('[')
+        ? `${scope}${rest}`
+        : `${scope} ${rest}`)
+      : scope;
+    return [
+      `html.josh-site.dark ${scopedRest}`,
+      `html.josh-site[data-color-mode='dark'] ${scopedRest}`,
+    ].join(', ');
+  }
+  return null;
+}
+
 function joshScopeSelectorList(selectorGroup, scope = JOSH_HTML_MAGAZINE_SCOPE) {
   return selectorGroup
     .split(',')
@@ -719,6 +761,8 @@ function joshScopeSelectorList(selectorGroup, scope = JOSH_HTML_MAGAZINE_SCOPE) 
       ) {
         return s;
       }
+      const darkRewrite = joshRewriteMagazineDarkThemeSelector(s, scope);
+      if (darkRewrite) return darkRewrite;
       if (s.startsWith(':root')) return `${scope}${s.slice(5)}`;
       if (/^html\b/.test(s)) return `${scope}${s.replace(/^html\b/, '')}`;
       if (/^body\b/.test(s)) return `${scope}${s.replace(/^body\b/, '')}`;
@@ -2343,7 +2387,7 @@ const JOSH_ABOUT_SIDE_LINKS = [
 
 const JOSH_ABOUT_JOB_CATEGORY_LINKS = [
   { label: '生产 RAG 与检索链路', category: 'RAG 与检索' },
-  { label: '智能体与工具调用', category: '智能体' },
+  { label: '智能体跟多agent', category: '智能体跟多agent' },
   { label: '原理与手写实现', category: '基础原理' },
   { label: '微调、对齐与训练', category: '微调与对齐' },
 ];

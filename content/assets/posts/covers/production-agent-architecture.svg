@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="paaBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1c2333"/>
+      <stop offset="55%" stop-color="#1e4e8c"/>
+      <stop offset="100%" stop-color="#2E5E76"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#paaBg)"/>
+  <g opacity="0.22" stroke="#eaf1f5" stroke-width="1.6" fill="none">
+    <circle cx="420" cy="240" r="48"/>
+    <circle cx="600" cy="240" r="48"/>
+    <circle cx="780" cy="240" r="48"/>
+    <path d="M468 240h84M648 240h84"/>
+    <rect x="510" y="360" width="180" height="56" rx="10"/>
+    <path d="M600 288v72"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle" fill="#faf9f6">
+    <text x="600" y="430" font-size="34" font-weight="800">Production Agent Architecture</text>
+    <text x="600" y="478" font-size="20" fill="#e4eef1" font-weight="500">Workflow � Single Agent � Multi-Agent � Memory</text>
+  </g>
+</svg>

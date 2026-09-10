@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workflow vs Agent：什么时候不应该使用 Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   主题变量 —— 亮色（默认）
+   ============================================================ */
+:root{
+  --paper:#FAF8F3; --card:#FFFFFF; --ink:#22201B; --soft:#6B675E;
+  --line:#E4DFD3; --grid:#EFEAE0;
+  --rust:#A23E2B; --rust-bg:#F9EDE8;
+  --blue:#2E5E76; --blue-bg:#EAF1F5;
+  --amber:#B07C2A; --amber-bg:#FBF3E2;
+  --code-bg:#26231E; --code-head:#312D26; --code-ink:#E8E4DA;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",Georgia,"Times New Roman",serif;
+  --sans:"Noto Sans SC","PingFang SC","Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Consolas,monospace;
+  /* SVG 专用 */
+  --wire:#8A8577; --svg-line:#55503F; --soft-line:#98937F;
+  --neutral-bg:#F1EFE7; --dia-fill:#FFFDF7;
+  --shadow:0 1px 0 rgba(0,0,0,.03);
+  --code-shadow:0 10px 28px -14px rgba(40,32,20,.45);
+  --tbl-head:#EFEAE0; --tbl-stripe:#FBF9F4; --tbl-line:#F0ECE2;
+  --inline-code-bg:#F1EDE2; --inline-code-ink:#5A4A22;
+}
+/* ============================================================
+   主题变量 —— 暗色
+   ============================================================ */
+:root[data-theme="dark"]{
+  --paper:#161310; --card:#1F1C16; --ink:#E7E1D4; --soft:#A29A89;
+  --line:#38342A; --grid:#26231C;
+  --rust:#CE6E52; --rust-bg:#2C1F19;
+  --blue:#8FB8CC; --blue-bg:#1C2830;
+  --amber:#D2A24E; --amber-bg:#2A2415;
+  --code-bg:#191712; --code-head:#242018; --code-ink:#DDD8CC;
+  --wire:#7A7566; --svg-line:#8C8574; --soft-line:#5C574A;
+  --neutral-bg:#262319; --dia-fill:#25221B;
+  --shadow:0 1px 0 rgba(0,0,0,.35);
+  --code-shadow:0 10px 28px -14px rgba(0,0,0,.7);
+  --tbl-head:#29251C; --tbl-stripe:#221F18; --tbl-line:#332F25;
+  --inline-code-bg:#2B271E; --inline-code-ink:#C8B380;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;color-scheme:light}
+:root[data-theme="dark"] html{color-scheme:dark}
+html[data-theme="dark"]{color-scheme:dark}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--serif); font-size:17px; line-height:1.92;
+  -webkit-font-smoothing:antialiased;
+  transition:background .25s,color .25s;
+}
+::selection{background:var(--rust-bg);color:var(--ink)}
+
+/* ---------- 进度条 ---------- */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;
+  background:linear-gradient(90deg,var(--blue),var(--rust));z-index:99;transition:width .1s}
+
+/* ---------- 主题切换 ---------- */
+.theme-btn{position:fixed;top:20px;right:22px;z-index:98;width:42px;height:42px;
+  border-radius:50%;border:1px solid var(--line);background:var(--card);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);
+  transition:transform .2s,background .25s}
+.theme-btn:hover{transform:rotate(18deg) scale(1.06)}
+.theme-btn svg{width:20px;height:20px;fill:none;stroke:var(--soft);stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.theme-btn .moon{display:none}
+:root[data-theme="dark"] .theme-btn .sun{display:none}
+:root[data-theme="dark"] .theme-btn .moon{display:block}
+
+/* ---------- 版式骨架（单栏） ---------- */
+.masthead{max-width:860px;margin:0 auto;padding:64px 28px 36px}
+.layout{max-width:860px;margin:0 auto;padding:0 28px 80px}
+
+/* ---------- 报头 ---------- */
+.kicker{font-family:var(--sans);font-size:12px;letter-spacing:.32em;
+  text-transform:uppercase;color:var(--rust);font-weight:700;margin-bottom:18px}
+h1{font-size:clamp(1.9rem,4.2vw,2.75rem);line-height:1.35;font-weight:700;letter-spacing:.01em}
+.subtitle{margin-top:16px;font-size:1.08rem;color:var(--soft);line-height:1.8}
+.meta{margin-top:28px;padding-top:20px;border-top:3px double var(--line);
+  display:flex;flex-wrap:wrap;gap:8px 26px;align-items:center;
+  font-family:var(--sans);font-size:13px;color:var(--soft)}
+.meta .dot{width:4px;height:4px;border-radius:50%;background:var(--line)}
+.tag{font-family:var(--sans);font-size:11.5px;padding:3px 11px;border:1px solid var(--line);
+  border-radius:99px;color:var(--soft);letter-spacing:.05em;background:var(--card)}
+
+/* ---------- 顶部目录 ---------- */
+.toc-box{margin:0 0 34px;font-family:var(--sans)}
+.toc-box summary{cursor:pointer;font-size:13px;color:var(--soft);padding:11px 18px;
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  list-style:none;display:flex;justify-content:space-between;align-items:center}
+.toc-box summary::-webkit-details-marker{display:none}
+.toc-box summary::after{content:"▾";color:var(--soft);transition:transform .2s}
+.toc-box[open] summary::after{transform:rotate(180deg)}
+.toc-box ol{list-style:none;padding:16px 22px;background:var(--card);
+  border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;
+  columns:2;column-gap:40px}
+.toc-box a{display:block;color:var(--soft);text-decoration:none;font-size:12.5px;
+  padding:4px 0;break-inside:avoid}
+.toc-box a:hover{color:var(--rust)}
+@media (max-width:560px){.toc-box ol{columns:1}}
+
+/* ---------- 正文节奏 ---------- */
+section{padding:38px 0 8px}
+section + section{border-top:1px solid var(--line)}
+.sec-no{font-family:var(--sans);font-size:12px;letter-spacing:.28em;color:var(--rust);
+  font-weight:700;margin-bottom:10px}
+h2{font-size:1.52rem;font-weight:700;line-height:1.5;margin-bottom:20px;letter-spacing:.01em}
+h3{font-family:var(--sans);font-size:1.02rem;font-weight:700;margin:30px 0 12px;color:var(--ink)}
+p{margin:0 0 18px}
+p code, li code, td code{font-family:var(--mono);font-size:.82em;
+  background:var(--inline-code-bg);padding:2px 6px;border-radius:5px;
+  color:var(--inline-code-ink)}
+a{color:var(--blue)}
+strong{font-weight:700}
+em{color:var(--rust);font-style:normal;font-weight:600}
+ul.plain{margin:0 0 18px 26px;line-height:2}
+.lede{font-size:1.12rem;color:var(--soft);line-height:2;padding-left:2px}
+
+/* ---------- 原则 / 金句块 ---------- */
+.principle{margin:30px 0;padding:18px 26px;background:var(--card);
+  border:1px solid var(--line);border-left:4px solid var(--rust);border-radius:0 12px 12px 0;
+  font-size:1.14rem;line-height:1.9;color:var(--ink);box-shadow:var(--shadow)}
+.principle.blue{border-left-color:var(--blue)}
+.motto{margin:34px auto 40px;max-width:640px;text-align:center;
+  font-size:1.18rem;line-height:2;padding:26px 20px}
+.motto::before,.motto::after{content:"";display:block;width:60px;height:1px;
+  background:var(--line);margin:0 auto}
+.motto::before{margin-bottom:18px}.motto::after{margin-top:18px}
+
+/* ---------- 提示框 ---------- */
+.callout{margin:24px 0;padding:16px 22px;border-radius:12px;font-size:.95rem;line-height:1.9}
+.callout b{font-family:var(--sans)}
+.callout.note{background:var(--blue-bg);border:1px solid var(--line)}
+.callout.warn{background:var(--amber-bg);border:1px solid var(--line)}
+:root[data-theme="dark"] .callout.note{color:#B9D2DE}
+:root[data-theme="dark"] .callout.warn{color:#DEC98F}
+
+/* ---------- 流程文本 ---------- */
+.flow{font-family:var(--mono);font-size:13px;line-height:1.75;color:var(--soft);
+  background:var(--neutral-bg);border:1px dashed var(--soft-line);border-radius:10px;
+  padding:18px 22px;overflow-x:auto;margin:22px 0;white-space:pre}
+.flow .hl{color:var(--rust);font-weight:600}
+.flow .bl{color:var(--blue);font-weight:600}
+
+/* ---------- 代码卡片 ---------- */
+.code{margin:24px 0;border-radius:12px;overflow:hidden;background:var(--code-bg);
+  box-shadow:var(--code-shadow)}
+.code-head{display:flex;align-items:center;gap:8px;padding:10px 16px;
+  background:var(--code-head);border-bottom:1px solid var(--line)}
+.code-head .dots{display:flex;gap:6px}
+.code-head .dots i{width:10px;height:10px;border-radius:50%;background:#4C463A}
+.code-head .lang{margin-left:auto;font-family:var(--mono);font-size:11px;
+  color:#9A937F;letter-spacing:.12em}
+.code pre{padding:18px 22px;overflow-x:auto;
+  font-family:var(--mono);font-size:13.5px;line-height:1.78;color:var(--code-ink)}
+.code .c{color:#8C9A72;font-style:italic}
+.code .s{color:#DDA45C}
+.code .k{color:#CE7E63}
+.code .f{color:#9FBCD6}
+.code .n{color:#D9C489}
+.code-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0}
+@media (max-width:760px){.code-grid{grid-template-columns:1fr}}
+
+/* ---------- 图表 ---------- */
+figure.fig{margin:30px 0;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:22px 18px 14px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto}
+figcaption{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);
+  font-family:var(--sans);font-size:12.5px;color:var(--soft);line-height:1.7}
+figcaption b{color:var(--rust);font-family:var(--mono);font-weight:500;margin-right:8px}
+
+/* SVG 通用（全部走变量，自动适配暗色） */
+svg text{font-family:var(--sans)}
+.t-n{font-size:13px;font-weight:600;fill:var(--ink)}
+.t-s{font-size:10.5px;fill:var(--soft)}
+.t-y{font-size:11px;font-weight:700;fill:var(--rust)}
+.t-b{font-size:11px;font-weight:700;fill:var(--blue)}
+.t-an{font-size:11px;fill:var(--blue);font-style:italic}
+.t-ar{font-size:11px;fill:var(--rust);font-style:italic}
+.t-cap{font-size:10.5px;letter-spacing:.2em;fill:var(--soft);font-weight:700}
+.bx{fill:var(--card);stroke:var(--svg-line);stroke-width:1.5}
+.bx-b{fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5}
+.bx-r{fill:var(--rust-bg);stroke:var(--rust);stroke-width:1.5}
+.bx-g{fill:var(--neutral-bg);stroke:var(--soft-line);stroke-width:1.4}
+.bx-d{fill:var(--neutral-bg);stroke:var(--soft-line);stroke-width:1.4;stroke-dasharray:6 4}
+.dia{fill:var(--dia-fill);stroke:var(--svg-line);stroke-width:1.5}
+.layer-ag{fill:var(--rust-bg);stroke:var(--rust);stroke-width:1.5}
+.layer-wf{fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5}
+.layer-infra{fill:var(--neutral-bg);stroke:var(--soft-line);stroke-width:1.4}
+.wire{stroke:var(--wire);stroke-width:1.6;fill:none;stroke-linecap:round}
+.wire-r{stroke:var(--rust);stroke-width:1.6;fill:none;stroke-dasharray:5 4;stroke-linecap:round}
+.wire-b{stroke:var(--blue);stroke-width:1.6;fill:none;stroke-linecap:round}
+svg pattern path{stroke:var(--grid)}          /* 网格纸底纹 */
+marker path{stroke:var(--wire)}                /* 箭头（覆盖行内属性） */
+marker path.mkr{stroke:var(--rust)}            /* 赭色箭头 */
+.dot-a{fill:#2E5E76}.dot-b{fill:#3F6E7D}.dot-c{fill:#6F6B5A}.dot-d{fill:#94523C}.dot-e{fill:#A23E2B}
+:root[data-theme="dark"] .dot-a{fill:#7FB0C6}
+:root[data-theme="dark"] .dot-b{fill:#6E96A8}
+:root[data-theme="dark"] .dot-c{fill:#6B6656}
+:root[data-theme="dark"] .dot-d{fill:#B06045}
+:root[data-theme="dark"] .dot-e{fill:#CE6E52}
+
+/* ---------- 统计卡片 ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin:26px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:20px 20px 16px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.stat::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px;
+  background:linear-gradient(90deg,var(--rust) 0 34%,var(--line) 34%)}
+.stat .num{font-family:var(--serif);font-size:2rem;font-weight:700;color:var(--rust);line-height:1.1}
+.stat .num small{font-size:1rem;font-weight:600}
+.stat .lbl{font-family:var(--sans);font-size:12.5px;font-weight:700;color:var(--ink);margin:8px 0 4px}
+.stat .note{font-family:var(--sans);font-size:11.5px;color:var(--soft);line-height:1.6}
+.stat.blue::before{background:linear-gradient(90deg,var(--blue) 0 34%,var(--line) 34%)}
+.stat.blue .num{color:var(--blue)}
+
+/* ---------- 表格 ---------- */
+.tbl-wrap{margin:26px 0;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  background:var(--card);box-shadow:var(--shadow)}
+table.tbl{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:13.5px}
+.tbl th{background:var(--tbl-head);color:var(--ink);font-weight:700;text-align:left;
+  padding:12px 18px;border-bottom:2px solid var(--line);letter-spacing:.04em}
+.tbl td{padding:11px 18px;border-bottom:1px solid var(--tbl-line);color:var(--soft);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:nth-child(even){background:var(--tbl-stripe)}
+.tbl .yes{color:var(--blue);font-weight:700}
+.tbl .no{color:var(--rust);font-weight:700}
+
+/* ---------- 评分卡 ---------- */
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:26px 0}
+@media (max-width:720px){.score-grid{grid-template-columns:1fr}}
+.score-card{border-radius:14px;padding:20px 22px;background:var(--card);
+  border:1px solid var(--line);box-shadow:var(--shadow)}
+.score-card h4{font-family:var(--sans);font-size:13px;letter-spacing:.06em;margin-bottom:14px}
+.score-card.plus h4{color:var(--blue)}
+.score-card.minus h4{color:var(--rust)}
+.score-card ul{list-style:none}
+.score-card li{display:flex;align-items:baseline;gap:10px;padding:7px 0;
+  border-bottom:1px dashed var(--line);font-family:var(--sans);font-size:13px;color:var(--ink)}
+.score-card li:last-child{border-bottom:none}
+.badge{font-family:var(--mono);font-size:11px;font-weight:600;flex:none;
+  padding:1px 8px;border-radius:6px}
+.badge.p{background:var(--blue-bg);color:var(--blue)}
+.badge.m{background:var(--rust-bg);color:var(--rust)}
+.score-card li span{color:var(--soft);font-size:11.5px}
+
+/* ---------- 清单卡 ---------- */
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:26px 0}
+@media (max-width:720px){.check-grid{grid-template-columns:1fr}}
+.check-card{border-radius:14px;background:var(--card);border:1px solid var(--line);
+  padding:20px 22px;box-shadow:var(--shadow)}
+.check-card.a{border-top:4px solid var(--blue)}
+.check-card.b{border-top:4px solid var(--rust)}
+.check-card h4{font-family:var(--sans);font-size:13px;margin-bottom:4px}
+.check-card.a h4{color:var(--blue)}
+.check-card.b h4{color:var(--rust)}
+.check-card .sub{font-family:var(--sans);font-size:11.5px;color:var(--soft);margin-bottom:12px}
+.check-card ul{list-style:none}
+.check-card li{border-bottom:1px dashed var(--line)}
+.check-card li:last-child{border-bottom:none}
+.check-card label{display:flex;align-items:center;gap:10px;padding:7px 2px;
+  font-family:var(--sans);font-size:13.5px;color:var(--ink);cursor:pointer}
+.check-card input{appearance:none;width:15px;height:15px;flex:none;border:1.6px solid var(--soft-line);
+  border-radius:4px;cursor:pointer;position:relative;transition:all .15s;background:var(--card)}
+.check-card input:checked{background:var(--rust);border-color:var(--rust)}
+.check-card.a input:checked{background:var(--blue);border-color:var(--blue)}
+.check-card input:checked::after{content:"✓";position:absolute;inset:0;display:flex;
+  align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700}
+.check-count{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:12px;color:var(--soft)}
+.check-count b{color:var(--rust);font-size:14px}
+.check-card.a .check-count b{color:var(--blue)}
+
+/* ---------- 对照文字块 ---------- */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0}
+@media (max-width:720px){.vs{grid-template-columns:1fr}}
+.vs .col{border-radius:12px;padding:16px 20px;font-size:.95rem;
+  border:1px solid var(--line)}
+.vs .col.wf{background:var(--blue-bg)}
+.vs .col.ag{background:var(--rust-bg)}
+.vs .col h5{font-family:var(--sans);font-size:12px;letter-spacing:.15em;margin-bottom:8px}
+.vs .col.wf h5{color:var(--blue)}
+.vs .col.ag h5{color:var(--rust)}
+
+/* ---------- 页脚 ---------- */
+footer{border-top:3px double var(--line);margin-top:60px;padding-top:28px;
+  font-family:var(--sans);font-size:12.5px;color:var(--soft);line-height:2}
+footer .colophon{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<button class="theme-btn" id="themeBtn" title="切换深浅色" aria-label="切换深浅色">
+  <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg>
+  <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 7 7 0 0 0 20 14.5z"/></svg>
+</button>
+
+<!-- ============ 报头 ============ -->
+<header class="masthead">
+  <div class="kicker">AI Engineering · Agent Architecture · Production</div>
+  <h1>Workflow vs Agent：<br>什么时候不应该使用 Agent</h1>
+  <p class="subtitle">Agent 不是 Workflow 的升级版。二者解决的是不同类型的问题——<b>Workflow 定义路径，Agent 决定路径</b>。本文从生产系统架构的角度，建立一套可以用于真实项目架构评审的判断方法。</p>
+  <div class="meta">
+    <span>2026-09-10</span><span class="dot"></span>
+    <span>约 30 分钟阅读</span><span class="dot"></span>
+    <span class="tag">Agent Architecture</span><span class="tag">Workflow</span><span class="tag">Decision Framework</span>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- ============ 顶部目录 ============ -->
+<details class="toc-box">
+  <summary>目录 / Contents</summary>
+  <ol>
+    <li><a href="#s1">开篇：为什么都想做成 Agent</a></li>
+    <li><a href="#s2">Workflow 到底是什么</a></li>
+    <li><a href="#s3">Agent 到底多了什么</a></li>
+    <li><a href="#s4">谁应该拥有决策权</a></li>
+    <li><a href="#s5">不该用之一：确定性流程</a></li>
+    <li><a href="#s6">之二：固定 Pipeline</a></li>
+    <li><a href="#s7">之三：固定规则 + LLM</a></li>
+    <li><a href="#s8">之四：延迟敏感</a></li>
+    <li><a href="#s9">之五：成本敏感</a></li>
+    <li><a href="#s10">之六：高风险操作</a></li>
+    <li><a href="#s11">什么时候应该用 Agent</a></li>
+    <li><a href="#s12">不要二选一</a></li>
+    <li><a href="#s13">Core + Edge 架构原则</a></li>
+    <li><a href="#s14">贯穿案例：电商客服</a></li>
+    <li><a href="#s15">决策树</a></li>
+    <li><a href="#s16">必要性评分模型</a></li>
+    <li><a href="#s17">Agent 的真实成本</a></li>
+    <li><a href="#s18">"不可预测"辨析</a></li>
+    <li><a href="#s19">Production Checklist</a></li>
+    <li><a href="#s20">结论</a></li>
+  </ol>
+</details>
+
+<article>
+
+<!-- ============ 01 ============ -->
+<section id="s1">
+  <div class="sec-no">01 · 开篇</div>
+  <h2>为什么现在什么都想做成 Agent</h2>
+  <p class="lede">过去一年，我参与了大量 LLM 应用的架构评审。一个越来越明显的现象是：很多团队在系统设计的第一天就决定"我们要做一个 Agent"，然后再反过来找理由。这不是技术选型问题，而是架构判断问题。</p>
+  <p>从一个真实场景开始。某团队的需求：用户上传一份合同，系统提取关键字段（甲乙方、金额、签署日期、条款摘要），生成结构化结果。他们的第一版设计是：</p>
+  <div class="flow">User
+ ↓
+<span class="hl">Agent</span>
+ ↓
+读取文件 → 提取字段 → 检查结果 → 生成 JSON</div>
+  <p>看起来很合理，很"智能"。但仔细分析这个任务：</p>
+  <ul class="plain">
+    <li>处理步骤是什么？——解析、提取、校验、输出。</li>
+    <li>步骤之间有分支吗？——校验失败就重试，没有其他分支。</li>
+    <li>下一步取决于上一步的<b>内容发现</b>吗？——不。第二步永远是提取字段，无论第一步结果如何。</li>
+  </ul>
+  <p>也就是说，工程师在写代码之前就已经知道完整的执行路径。那么——</p>
+  <div class="principle">如果下一步路径本身就是已知的，为什么要让 LLM 决定路径？</div>
+  <p>这个任务合理的架构是：</p>
+  <div class="flow">Document
+ ↓
+<span class="bl">LLM Extraction</span>（一次调用，Structured Output）
+ ↓
+Schema Validation（程序校验）
+ ↓
+Result / Retry</div>
+  <p>这是 Workflow。它更便宜、更快、更可测试，且失败时你知道该从哪里重试。这个案例暴露了一个普遍倾向：<b>把"用了 LLM"等同于"需要 Agent"，把"Agent"当作系统先进性的标志</b>。后文将系统性地拆解这个问题。</p>
+</section>
+
+<!-- ============ 02 ============ -->
+<section id="s2">
+  <div class="sec-no">02 · 概念澄清</div>
+  <h2>Workflow 到底是什么</h2>
+  <p>先纠正一个浅层定义：Workflow 不是"一系列 API 调用"。从系统架构角度，它的准确定义是：</p>
+  <div class="principle blue">Workflow 是由工程师<b>预先定义</b>执行路径、状态转换和条件分支的程序化执行系统。</div>
+
+  <figure class="fig">
+    <svg viewBox="0 0 860 252" role="img" aria-label="Workflow 执行模型">
+      <defs>
+        <pattern id="g1" width="22" height="22" patternUnits="userSpaceOnUse">
+          <path d="M22 0H0V22" fill="none" stroke="#EFEAE0" stroke-width="1"/>
+        </pattern>
+        <marker id="a1" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0.5,1 L9,5 L0.5,9" fill="none" stroke="#8A8577" stroke-width="1.7" stroke-linecap="round"/>
+        </marker>
+        <marker id="a1r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path class="mkr" d="M0.5,1 L9,5 L0.5,9" fill="none" stroke="#A23E2B" stroke-width="1.6" stroke-linecap="round"/>
+        </marker>
+        <filter id="rf1" x="-4%" y="-8%" width="108%" height="118%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="7" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/>
+        </filter>
+      </defs>
+      <rect width="860" height="252" fill="url(#g1)" rx="10"/>
+      <g filter="url(#rf1)">
+        <rect class="bx-d" x="30" y="92" width="96" height="48" rx="9"/>
+        <rect class="bx" x="162" y="92" width="90" height="48" rx="9"/>
+        <rect class="bx" x="288" y="92" width="100" height="48" rx="9"/>
+        <rect class="bx-b" x="424" y="92" width="132" height="48" rx="9"/>
+        <polygon class="dia" points="640,78 712,116 640,154 568,116"/>
+        <rect class="bx" x="744" y="92" width="96" height="48" rx="9"/>
+        <rect class="bx-r" x="560" y="186" width="160" height="42" rx="9"/>
+        <path class="wire" d="M126,116 L158,116" marker-end="url(#a1)"/>
+        <path class="wire" d="M252,116 L284,116" marker-end="url(#a1)"/>
+        <path class="wire" d="M388,116 L420,116" marker-end="url(#a1)"/>
+        <path class="wire" d="M556,116 L564,116" marker-end="url(#a1)"/>
+        <path class="wire" d="M712,116 L740,116" marker-end="url(#a1)"/>
+        <path class="wire-r" d="M640,154 L640,207 L726,207" marker-end="url(#a1r)"/>
+        <path class="wire-r" d="M560,207 L496,207 L496,144" marker-end="url(#a1r)"/>
+        <text class="t-y" x="612" y="200" font-size="11">Fail</text>
+      </g>
+      <text class="t-n" x="78" y="120" text-anchor="middle">Input</text>
+      <text class="t-n" x="207" y="120" text-anchor="middle">Parse</text>
+      <text class="t-n" x="338" y="113" text-anchor="middle">Retrieve</text>
+      <text class="t-s" x="338" y="129" text-anchor="middle">RAG</text>
+      <text class="t-n" x="490" y="113" text-anchor="middle">LLM Processing</text>
+      <text class="t-s" x="490" y="129" text-anchor="middle">能力组件</text>
+      <text class="t-n" x="640" y="121" text-anchor="middle" font-size="12">Validation</text>
+      <text class="t-y" x="640" y="90" text-anchor="middle" font-size="11">程序校验</text>
+      <text class="t-n" x="792" y="120" text-anchor="middle">Output</text>
+      <text class="t-y" x="640" y="212" text-anchor="middle" font-size="12">Retry / Fallback</text>
+      <text class="t-an" x="380" y="40">每个状态转移由代码显式定义 ——"Program decides"</text>
+      <path d="M540,44 C500,50 480,60 470,86" fill="none" stroke="var(--blue)" stroke-width="1.2" stroke-dasharray="3 4" marker-end="url(#a1)"/>
+    </svg>
+    <figcaption><b>图 1</b>Workflow 的执行模型：路径、分支、重试全部由程序预先定义。LLM 可以作为其中一个能力组件存在（蓝色节点），但下一步走向不归它管。</figcaption>
+  </figure>
+
+  <p>对应的伪代码：</p>
+  <div class="code">
+    <div class="code-head"><div class="dots"><i></i><i></i><i></i></div><span class="lang">PYTHON</span></div>
+    <pre><span class="k">def</span> <span class="f">document_pipeline</span>(doc):
+    text = <span class="f">parse</span>(doc)
+    context = <span class="f">retrieve</span>(text)
+    result = <span class="f">llm_extract</span>(text, context)      <span class="c"># LLM 在这里，但路径不归它管</span>
+    <span class="k">if not</span> <span class="f">validate</span>(result):
+        result = <span class="f">llm_extract</span>(text, context, hint=result.errors)
+        <span class="k">if not</span> <span class="f">validate</span>(result):
+            <span class="k">return</span> <span class="f">fallback_to_manual</span>(result)
+    <span class="k">return</span> <span class="f">save</span>(result)</pre>
+  </div>
+
+  <p>注意：<b>Workflow 并不意味着系统没有 AI</b>。一个 Workflow 完全可以包含 LLM、RAG、Embedding、OCR、Tool Calling、Vision Model。它的架构特性来自<b>谁来决定下一步</b>，而不是<b>用了什么组件</b>。因此必须建立一个关键区分：</p>
+  <div class="callout note"><b>AI ≠ Agent。</b>&nbsp;系统里有没有 LLM，和系统是不是 Agent，是两个完全独立的问题。Workflow 的架构特性：路径基本确定、状态显式、分支显式、错误处理显式、Retry 与超时可控、结果可预测、容易测试。</div>
+</section>
+
+<!-- ============ 03 ============ -->
+<section id="s3">
+  <div class="sec-no">03 · 关键差异</div>
+  <h2>Agent 到底多了什么</h2>
+  <p>这一节不重新科普 Agent，只讨论 Workflow 和 Agent 之间的那一个关键差异。先看控制流的对照：</p>
+  <div class="code-grid">
+    <div class="code">
+      <div class="code-head"><div class="dots"><i></i><i></i><i></i></div><span class="lang">WORKFLOW</span></div>
+      <pre><span class="c"># 程序决定下一步</span>
+<span class="k">if</span> condition:
+    <span class="f">call_tool_A</span>()
+<span class="k">else</span>:
+    <span class="f">call_tool_B</span>()</pre>
+    </div>
+    <div class="code">
+      <div class="code-head"><div class="dots"><i></i><i></i><i></i></div><span class="lang">AGENT</span></div>
+      <pre><span class="c"># 模型决定下一步</span>
+<span class="k">while not</span> finished:
+    observation = <span class="f">observe</span>()
+    action = agent.<span class="f">decide</span>(observation)
+    result = <span class="f">execute</span>(action)</pre>
+    </div>
+  </div>
+
+  <figure class="fig">
+    <svg viewBox="0 0 860 300" role="img" aria-label="Agent 决策循环">
+      <defs>
+        <pattern id="g2" width="22" height="22" patternUnits="userSpaceOnUse">
+          <path d="M22 0H0V22" fill="none" stroke="#EFEAE0" stroke-width="1"/>
+        </pattern>
+        <marker id="a2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0.5,1 L9,5 L0.5,9" fill="none" stroke="#8A8577" stroke-width="1.7" stroke-linecap="round"/>
+        </marker>
+        <marker id="a2r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path class="mkr" d="M0.5,1 L9,5 L0.5,9" fill="none" stroke="#A23E2B" stroke-width="1.7" stroke-linecap="round"/>
+        </marker>
+        <filter id="rf2" x="-4%" y="-8%" width="108%" height="118%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="13" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/>
+        </filter>
+      </defs>
+      <rect width="860" height="300" fill="url(#g2)" rx="10"/>
+      <g filter="url(#rf2)">
+        <rect x="170" y="56" width="470" height="200" rx="26" fill="none" stroke="var(--rust)" stroke-width="1.4" stroke-dasharray="7 6"/>
+        <rect class="bx" x="26" y="120" width="110" height="46" rx="9"/>
+        <rect class="bx-r" x="216" y="78" width="150" height="48" rx="9"/>
+        <rect class="bx-r" x="456" y="78" width="130" height="48" rx="9"/>
+        <rect class="bx-r" x="456" y="188" width="150" height="48" rx="9"/>
+        <rect class="bx-r" x="216" y="188" width="130" height="48" rx="9"/>
+        <rect class="bx" x="706" y="78" width="126" height="48" rx="9"/>
+        <path class="wire" d="M136,143 L206,120" marker-end="url(#a2)"/>
+        <path class="wire" d="M366,102 L452,102" marker-end="url(#a2)"/>
+        <path class="wire" d="M536,126 L540,184" marker-end="url(#a2)"/>
+        <path class="wire" d="M456,212 L350,212" marker-end="url(#a2)"/>
+        <path class="wire" d="M276,188 L272,130" marker-end="url(#a2)"/>
+        <path class="wire-r" d="M586,102 L702,102" marker-end="url(#a2r)"/>
+        <path d="M405,156 m-40,0 a40,26 0 1,0 80,0 a40,26 0 1,0 -80,0" fill="none" stroke="var(--rust)" stroke-width="1.2"/>
+        <path d="M418,178 C416,168 412,160 406,152" fill="none" stroke="var(--rust)" stroke-width="1.4" stroke-linecap="round" marker-end="url(#a2r)"/>
+      </g>
+      <text class="t-n" x="81" y="141" text-anchor="middle" font-size="12">Goal</text>
+      <text class="t-s" x="81" y="157" text-anchor="middle">目标</text>
+      <text class="t-y" x="291" y="99" text-anchor="middle" font-size="12">Observe</text>
+      <text class="t-s" x="291" y="115" text-anchor="middle">观察环境</text>
+      <text class="t-y" x="521" y="99" text-anchor="middle" font-size="12">Reason</text>
+      <text class="t-s" x="521" y="115" text-anchor="middle">推理 · 判断</text>
+      <text class="t-y" x="531" y="209" text-anchor="middle" font-size="12">Decide → Act</text>
+      <text class="t-s" x="531" y="225" text-anchor="middle">选择工具 · 执行</text>
+      <text class="t-y" x="281" y="209" text-anchor="middle" font-size="12">Execute</text>
+      <text class="t-s" x="281" y="225" text-anchor="middle">观察结果</text>
+      <text class="t-y" x="405" y="146" text-anchor="middle" font-size="12">循环</text>
+      <text class="t-n" x="769" y="99" text-anchor="middle" font-size="12">Final Answer</text>
+      <text class="t-s" x="769" y="115" text-anchor="middle">判断完成时退出</text>
+      <text class="t-cap" x="186" y="48">AGENT LOOP · 决策权：模型</text>
+      <text class="t-ar" x="610" y="170">下一步走向由模型</text>
+      <text class="t-ar" x="610" y="186">在运行时判断</text>
+      <text class="t-cap" x="405" y="284" text-anchor="middle">MODEL DECIDES</text>
+    </svg>
+    <figcaption><b>图 2</b>Agent 的决策循环：Observe → Reason → Decide → Act → 再 Observe。每一步的走向由模型在运行时决定——这是它与 Workflow 的唯一本质差异，也是全部额外复杂度的来源。</figcaption>
+  </figure>
+
+  <p>抽象成一行：</p>
+  <div class="vs">
+    <div class="col wf"><h5>WORKFLOW</h5>Program decides —— 程序决定下一步</div>
+    <div class="col ag"><h5>AGENT</h5>Model decides —— 模型决定下一步</div>
+  </div>
+  <p>Agent 在架构上多出来的东西只有一个，但它是本质性的：<b>"下一步做什么"的决策权，从代码转移到了模型</b>。这个转移是有代价的，而且代价不小（第 17 节展开）。这里先建立全文最重要的架构问题：</p>
+  <div class="principle">不要问"这个系统<b>能不能</b>做成 Agent"，而要问"这个系统是否<b>需要</b>把下一步行动的决策权交给模型"。几乎所有系统都能做成 Agent，问题在于是否值得。</div>
+</section>
+
+<!-- ============ 04 ============ -->
+<section id="s4">
+  <div class="sec-no">04 · 核心判断</div>
+  <h2>决策权应该交给谁</h2>
+  <p>把上面的问题变成一个可直接使用的判断标准：</p>
+  <div class="principle blue">下一步行动是否可以被工程师提前定义？<br>—— 是 → 优先 Workflow；否，需要根据环境动态决定 → 才开始考虑 Agent。</div>
+  <p>用两个场景对照。</p>
+  <h3>场景 A：订单退款</h3>
+  <div class="flow">查询订单 ↓ 判断订单状态 ↓ 匹配退款规则 ↓ 执行退款 ↓ 发送通知</div>
+  <p>每一步的下一步都是确定的。退款规则可能有几十条，但那是<b>数据</b>层面的复杂度，不是<b>路径</b>层面的动态性。用规则引擎 + Workflow 处理，路径完全确定。</p>
+  <h3>场景 B：深度研究</h3>
+  <p>用户说："帮我研究一下 AI Agent 市场，找出值得关注的创业公司。"系统可能需要：</p>
+  <div class="flow">搜索 ↓ 阅读 ↓ <span class="bl">发现新线索</span> ↓ 继续搜索 ↓ 比较 ↓
+<span class="bl">发现信息缺口</span> ↓ 换角度调查 ↓ 形成结论</div>
+  <p>下一步做什么，取决于上一步<b>发现了什么</b>。你无法在代码里写死"第三步之后必然要搜索融资数据"——也许第三步发现这家公司已经倒闭了，也许发现了一个更值得关注的方向。这种任务里，决策权交给模型才开始产生价值。接下来，我们把"不应该使用 Agent"的场景系统化。</p>
+</section>
+
+<!-- ============ 05 ============ -->
+<section id="s5">
+  <div class="sec-no">05 · 反面场景 一</div>
+  <h2>确定性业务流程</h2>
+  <p>适用范围：支付、退款、订单处理、审批流、数据同步、ETL、定时任务、文件处理、通知流程。以订单支付为例：</p>
+  <div class="flow">支付成功 ↓ 更新订单状态 ↓ 扣减库存 ↓ 生成发票 ↓ 发送通知</div>
+  <p>不要设计成 <code>Order Agent</code>，然后每一轮问模型"你觉得下一步应该做什么"。原因不需要玄学解释，全部是工程常识：</p>
+  <div class="stats">
+    <div class="stat"><div class="num">A→B</div><div class="lbl">可测试性</div><div class="note">可以直接写 State A → State B 的单元测试，不需要评估"轨迹是否合理"。</div></div>
+    <div class="stat"><div class="num">Step<sub style="font-size:.6em">N</sub></div><div class="lbl">可恢复性</div><div class="note">失败后知道从哪个状态继续重试；Agent 失败时你需要先还原它"当时想干什么"。</div></div>
+    <div class="stat blue"><div class="num">100%</div><div class="lbl">可审计性</div><div class="note">资金相关流程每一步都有明确记录，供合规审计定位。</div></div>
+    <div class="stat blue"><div class="num">0</div><div class="lbl">模型侧操作风险</div><div class="note">模型错误不会直接变成资金操作错误。</div></div>
+  </div>
+  <div class="callout warn"><b>边界条件辨析：</b>有人会问——业务流程中会出现意外情况（库存不足、风控拦截），这不也是"不确定性"吗？注意区分：<b>业务异常是可枚举的</b>。库存不足走库存不足的分支，风控拦截走人工审核的分支。可枚举的分支属于状态机的转移边，属于 Workflow 的领地，不能据此推导出"需要 Agent"。</div>
+  <div class="principle">确定性业务流程应该尽可能保持确定性。</div>
+</section>
+
+<!-- ============ 06 ============ -->
+<section id="s6">
+  <div class="sec-no">06 · 反面场景 二</div>
+  <h2>固定的数据处理 Pipeline</h2>
+  <p>典型如：</p>
+  <div class="flow">PDF ↓ OCR ↓ Text Cleaning ↓ Chunking ↓ Embedding ↓ Vector DB</div>
+  <p>即使中间嵌入了 LLM，例如 <code>Document → LLM Metadata Extraction → Validation → Storage</code>，它仍然不是 Agent，也不应该是：整条链路的拓扑在部署时已经固定，LLM 只是作为一个"能力组件"被调用——输入是什么、输出校验什么、失败怎么办，全部由程序定义。</p>
+  <div class="principle blue">是否使用 LLM，不是判断 Agent 的标准；是否需要动态决策，才是。<br>一个 Pipeline 里有十个 LLM 调用点，它依然是 Workflow；一个系统只有一个工具、只有一轮决策循环，它也可能是 Agent。判断依据永远是：<b>下一步走向由谁决定</b>。</div>
+</section>
+
+<!-- ============ 07 ============ -->
+<section id="s7">
+  <div class="sec-no">07 · 反面场景 三</div>
+  <h2>固定规则 + LLM 的路由模式</h2>
+  <p>这是企业 LLM 应用中最高频、也最容易被过度设计的一类：客服消息进来，判断意图，根据意图执行对应流程。</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 860 366" role="img" aria-label="LLM 负责理解、Workflow 负责执行的路由架构">
+      <defs>
+        <pattern id="g3" width="22" height="22" patternUnits="userSpaceOnUse">
+          <path d="M22 0H0V22" fill="none" stroke="#EFEAE0" stroke-width="1"/>
+        </pattern>
+        <marker id="a3" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0.5,1 L9,5 L0.5,9" fill="none" stroke="#8A8577" stroke-width="1.7" stroke-linecap="round"/>
+        </marker>
+        <filter id="rf3" x="-4%" y="-8%" width="108%" height="118%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="23" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/>
+        </filter>
+      </defs>
+      <rect width="860" height="366" fill="url(#g3)" rx="10"/>
+      <g filter="url(#rf3)">
+        <rect class="bx-d" x="26" y="150" width="94" height="48" rx="9"/>
+        <rect class="bx-b" x="166" y="150" width="158" height="48" rx="9"/>
+        <rect class="bx" x="380" y="150" width="98" height="48" rx="9"/>
+        <rect class="bx" x="548" y="36" width="216" height="46" rx="9"/>
+        <rect class="bx" x="548" y="106" width="216" height="46" rx="9"/>
+        <rect class="bx-r" x="548" y="176" width="216" height="46" rx="9"/>
+        <rect class="bx" x="548" y="246" width="216" height="46" rx="9"/>
+        <rect class="bx" x="590" y="308" width="164" height="44" rx="9"/>
+        <path class="wire" d="M120,174 L162,174" marker-end="url(#a3)"/>
+        <path class="wire" d="M324,174 L376,174" marker-end="url(#a3)"/>
+        <path class="wire" d="M478,162 C510,140 520,80 544,60" marker-end="url(#a3)"/>
+        <path class="wire" d="M478,172 C510,150 516,130 544,128" marker-end="url(#a3)"/>
+        <path class="wire" d="M478,178 L544,198" marker-end="url(#a3)"/>
+        <path class="wire" d="M478,188 C510,210 516,258 544,268" marker-end="url(#a3)"/>
+        <path class="wire" d="M656,82 L666,104" marker-end="url(#a3)"/>
+        <path class="wire" d="M656,152 L666,174" marker-end="url(#a3)"/>
+        <path class="wire" d="M656,222 L666,244" marker-end="url(#a3)"/>
+        <path class="wire" d="M588,292 C580,300 584,308 596,316" fill="none" marker-end="url(#a3)"/>
+        <path class="wire" d="M764,292 C770,300 766,308 752,316" fill="none" marker-end="url(#a3)"/>
+      </g>
+      <text class="t-n" x="73" y="179" text-anchor="middle" font-size="12">User</text>
+      <text class="t-n" x="245" y="169" text-anchor="middle">LLM 意图分类</text>
+      <text class="t-s" x="245" y="186" text-anchor="middle">Structured Output</text>
+      <text class="t-n" x="429" y="169" text-anchor="middle">Router</text>
+      <text class="t-s" x="429" y="186" text-anchor="middle">程序路由</text>
+      <text class="t-n" x="656" y="64" text-anchor="middle">Refund Workflow</text>
+      <text class="t-n" x="656" y="134" text-anchor="middle">Logistics Workflow</text>
+      <text class="t-y" x="656" y="204" text-anchor="middle">Product Agent（探索类）</text>
+      <text class="t-n" x="656" y="274" text-anchor="middle">Complaint Workflow</text>
+      <text class="t-n" x="672" y="335" text-anchor="middle">Response</text>
+      <text class="t-cap" x="180" y="120">LLM 只负责"理解"</text>
+      <text class="t-cap" x="352" y="240">程序负责"执行"</text>
+    </svg>
+    <figcaption><b>图 3</b>LLM 负责理解、Workflow 负责执行：意图分类交给 LLM（结构化输出），路由与后续流程由程序控制。图中唯一保留 Agent 的位置，是真正开放式探索类任务（红色节点）。</figcaption>
+  </figure>
+
+  <div class="code">
+    <div class="code-head"><div class="dots"><i></i><i></i><i></i></div><span class="lang">PYTHON</span></div>
+    <pre>intent = llm.<span class="f">classify</span>(query, schema=INTENT_SCHEMA)   <span class="c"># LLM：理解</span>
+
+<span class="k">if</span> intent == <span class="s">"refund"</span>:            <span class="c"># 程序：路由与执行</span>
+    <span class="f">refund_workflow</span>(order_id)
+<span class="k">elif</span> intent == <span class="s">"logistics"</span>:
+    <span class="f">logistics_workflow</span>(order_id)
+<span class="k">elif</span> intent == <span class="s">"product"</span>:
+    <span class="f">product_workflow</span>(query)</pre>
+  </div>
+  <p>这里确实用了 LLM，甚至用了 Structured Output。但整个系统不是 Agent——LLM 只负责<b>理解</b>（把自然语言映射为枚举意图），路由决策和后续执行全部由程序控制。很多团队的错误演进路径是：先做 Intent Agent → Intent Agent 自己决定调用退款工具还是物流工具 → 工具调用出错率上升 → 无法定位是分类错了还是路由错了。而在 LLM Classification + 程序 Router 的架构里，这两类错误是天然分离、可以独立监控和评估的。</p>
+</section>
+
+<!-- ============ 08 ============ -->
+<section id="s8">
+  <div class="sec-no">08 · 反面场景 四</div>
+  <h2>对延迟极其敏感的场景</h2>
+  <p>Agent 的典型执行轨迹是 <code>LLM → Tool → LLM → Tool → LLM → …</code>，迭代次数动态，延迟随轮次累积。关键问题不是平均值，而是<b>分布</b>——P95 可能远高于均值，且难以给出硬性 SLA 承诺。</p>
+  <div class="stats">
+    <div class="stat"><div class="num">≈7<small>s</small></div><div class="lbl">Agent 最小延迟</div><div class="note">3 次 LLM 调用（每次 2s）+ 2 次工具调用（每次 0.5s）的保守估算。</div></div>
+    <div class="stat"><div class="num">N<small> 轮</small></div><div class="lbl">迭代不确定</div><div class="note">Agent 的循环次数取决于任务与模型表现，最坏情况无上界（除非强制 Max Iterations）。</div></div>
+    <div class="stat blue"><div class="num">可并行</div><div class="lbl">Workflow 结构优势</div><div class="note">固定调用次数 → 延迟上界可计算；独立工具调用可并发，而 Agent 的串行决策循环难以并行化。</div></div>
+  </div>
+  <p>对于实时客服首条响应、搜索联想建议、高频移动端 API、强 SLA 的在线服务，在引入 Agent 之前要认真问：<b>用户能接受 P95 多少秒？Agent 的最坏情况延迟是否在这个范围内？</b></p>
+  <div class="callout note"><b>边界条件：</b>延迟敏感不等于彻底排除 Agent。很多产品把 Agent 放在异步任务层（用户提交后离开，稍后收到通知），同步链路保持 Workflow——这是常见且合理的折中。真正不能接受的，是把不可控延迟的 Agent 放进同步链路。</div>
+</section>
+
+<!-- ============ 09 ============ -->
+<section id="s9">
+  <div class="sec-no">09 · 反面场景 五</div>
+  <h2>对成本高度敏感的场景</h2>
+  <p>Agent 的每一轮循环都在消耗 Token：Thought（输出）→ Tool Call → Observation（重新进入 Context）→ Thought → …。Context 随迭代增长，Token 消耗随轮次非线性上升：</p>
+  <div class="stats">
+    <div class="stat"><div class="num">10<small>万+</small></div><div class="lbl">失控循环的 Token 量</div><div class="note">一次陷入循环的 Agent 可能在单次会话里烧掉十万级 Token——这是真实的成本事故来源。</div></div>
+    <div class="stat"><div class="num">50<small>×</small></div><div class="lbl">单次成本波动倍数</div><div class="note">日百万级请求的系统，单次成本从 0.01 元波动到 0.5 元，就是每月数万到数十万元级别的差异。</div></div>
+    <div class="stat blue"><div class="num">5<small> 道</small></div><div class="lbl">必配护栏</div><div class="note">Token Budget · Max Iterations · Tool Call Limit · Timeout · 按租户的成本熔断。</div></div>
+  </div>
+  <div class="vs">
+    <div class="col wf"><h5>WORKFLOW</h5>固定调用次数 → <b>成本可预测</b>，可以提前做容量与预算规划。</div>
+    <div class="col ag"><h5>AGENT</h5>动态循环 → <b>成本波动，尾部可能失控</b>，护栏只能限制"失控"，不能消除"贵"。</div>
+  </div>
+  <p>注意：护栏解决的是"失控"，不是"贵"。如果 Workflow 版本已经能解决问题，多花的钱买不到对应价值。</p>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sec-no">10 · 反面场景 六</div>
+  <h2>高风险操作</h2>
+  <p>支付、删除数据、修改权限、发送正式法律文件、修改生产配置、执行金融操作——在这一类操作上引入 Agent 自主执行，问题不在能力，而在<b>责任与可归因性</b>。模型错误率哪怕只有 0.1%，在高风险操作上也是不可接受的，而且错误发生时你甚至难以归因：是 prompt 问题？上下文污染？还是工具返回误导了它？</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 860 240" role="img" aria-label="高风险操作的决策与执行分离">
+      <defs>
+        <pattern id="g4" width="22" height="22" patternUnits="userSpaceOnUse">
+          <path d="M22 0H0V22" fill="none" stroke="#EFEAE0" stroke-width="1"/>
+        </pattern>
+        <marker id="a4" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0.5,1 L9,5 L0.5,9" fill="none" stroke="#8A8577" stroke-width="1.7" stroke-linecap="round"/>
+        </marker>
+        <filter id="rf4" x="-4%" y="-8%" width="108%" height="118%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="31" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/>
+        </filter>
+      </defs>
+      <rect width="860" height="240" fill="url(#g4)" rx="10"/>
+      <g filter="url(#rf4)">
+        <rect class="bx-r" x="28" y="96" width="132" height="50" rx="9"/>
+        <rect class="bx" x="216" y="96" width="140" height="50" rx="9"/>
+        <rect class="bx" x="452" y="28" width="160" height="46" rx="9"/>
+        <rect class="bx" x="452" y="168" width="160" height="46" rx="9"/>
+        <rect class="bx-b" x="680" y="96" width="152" height="50" rx="9"/>
+        <path class="wire" d="M160,121 L212,121" marker-end="url(#a4)"/>
+        <path class="wire" d="M356,110 C396,80 416,60 448,52" marker-end="url(#a4)"/>
+        <path class="wire" d="M356,132 C396,162 416,182 448,190" marker-end="url(#a4)"/>
+        <path class="wire" d="M612,52 C660,60 680,84 700,100" marker-end="url(#a4)"/>
+        <path class="wire" d="M612,188 C660,180 680,158 700,142" marker-end="url(#a4)"/>
+      </g>
+      <text class="t-y" x="94" y="118" text-anchor="middle" font-size="12">Agent 提出行动</text>
+      <text class="t-s" x="94" y="136" text-anchor="middle">proposal，非执行</text>
+      <text class="t-n" x="286" y="118" text-anchor="middle" font-size="12">Policy 校验</text>
+      <text class="t-s" x="286" y="136" text-anchor="middle">阈值 · 白名单 · 风控</text>
+      <text class="t-b" x="532" y="49" text-anchor="middle" font-size="11.5">低风险 → 自动执行</text>
+      <text class="t-y" x="532" y="189" text-anchor="middle" font-size="11.5">高风险 → 人工审批</text>
+      <text class="t-s" x="532" y="207" text-anchor="middle">Human-in-the-loop</text>
+      <text class="t-n" x="756" y="118" text-anchor="middle" font-size="12">Execute</text>
+      <text class="t-s" x="756" y="136" text-anchor="middle">+ Audit Log</text>
+    </svg>
+    <figcaption><b>图 4</b>高风险操作的闸门：Agent 只负责提案，执行必须经过 Policy 校验与分级审批，全链路留痕。让 Agent 决策 ≠ 让 Agent 直接拥有执行权限。</figcaption>
+  </figure>
+
+  <p>需要落地的机制：<b>Permission Boundary</b>（工具按风险分级，Agent 只持有低风险工具的直接执行权）、<b>Policy Engine</b>（金额阈值、目标范围、租户白名单）、<b>Human-in-the-loop</b>（超阈值操作进入人工审批队列）、<b>Audit Log</b>（决策、提案、审批、执行全链路留痕）。</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sec-no">11 · 正面边界</div>
+  <h2>那么，什么时候应该使用 Agent</h2>
+  <p>以上六类反面场景勾勒出了边界。现在从正面定义 Agent 的适用条件。<b>"任务复杂"不是理由</b>——复杂任务可以拆解成多个 Workflow。Agent 的适用条件至少满足以下一条：</p>
+  <h3>11.1　下一步行动无法提前确定</h3>
+  <p>目标 → 搜索 → 发现信息 → 决定下一步 → 继续搜索 → 发现新问题 → 调整计划。路径本身是任务执行过程中"涌现"出来的，不是设计出来的。</p>
+  <h3>11.2　环境具有不确定性</h3>
+  <p>Web Research、开放式调研、故障排查、Coding Agent、数据分析、复杂调查。环境会给你惊喜和意外，需要 <code>Observe → Decide → Act → Observe</code> 的循环来应对。</p>
+  <h3>11.3　工具选择动态变化</h3>
+  <p>可选工具集里有搜索、数据库、代码解释器、浏览器、API、计算器——具体调用哪个，取决于当前掌握的信息和推理状态。如果工具调用顺序固定，那只是带工具的 Workflow。</p>
+  <h3>11.4　需要动态规划</h3>
+  <p>Goal → Plan → Execute → Evaluate → Re-plan。如果计划无法预先写死，执行中要根据评估结果重排计划，Agent 的价值才开始显现。</p>
+  <div class="callout note">这些条件的共性：它们描述的都是<b>"路径的动态性"，而不是"任务的难度"</b>。一个很简单的任务（查天气）不需要 Agent；一个很难但路径固定的任务（生成季度报表，逻辑复杂但步骤确定）同样不需要 Agent。</div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sec-no">12 · 组合视角</div>
+  <h2>不要把世界分成二选一</h2>
+  <p>到这里需要纠正一个可能形成的误区：这不是 Workflow <b>或</b> Agent 的选择，生产系统通常是三者的组合。图 3 已经给出了企业客服系统的例子——意图理解用 LLM、路由和退款物流用 Workflow、商品探索用 Agent。这往往比 <code>Everything → Agent</code> 更接近生产级设计：<b>每个子任务用最便宜、最可控的执行模型，Agent 只覆盖真正需要自主决策的那一块</b>。</p>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sec-no">13 · 架构原则</div>
+  <h2>Deterministic Core + Agentic Edge</h2>
+  <p>把上一节的思路提炼成一个可复用的分层架构原则：<b>核心业务流程尽可能保持确定性，把 Agent 放在真正需要自主决策的边缘。</b></p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 860 414" role="img" aria-label="Deterministic Core + Agentic Edge 分层架构">
+      <defs>
+        <pattern id="g5" width="22" height="22" patternUnits="userSpaceOnUse">
+          <path d="M22 0H0V22" fill="none" stroke="#EFEAE0" stroke-width="1"/>
+        </pattern>
+        <marker id="a5" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0.5,1 L9,5 L0.5,9" fill="none" stroke="#8A8577" stroke-width="1.7" stroke-linecap="round"/>
+        </marker>
+        <filter id="rf5" x="-4%" y="-8%" width="108%" height="118%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="41" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/>
+        </filter>
+      </defs>
+      <rect width="860" height="414" fill="url(#g5)" rx="10"/>
+      <g filter="url(#rf5)">
+        <rect class="bx-d" x="366" y="16" width="128" height="44" rx="9"/>
+        <rect class="layer-ag" x="62" y="86" width="736" height="92" rx="14"/>
+        <rect class="bx" x="98" y="112" width="150" height="44" rx="9"/>
+        <rect class="bx" x="282" y="112" width="140" height="44" rx="9"/>
+        <rect class="bx" x="456" y="112" width="150" height="44" rx="9"/>
+        <rect class="layer-wf" x="62" y="206" width="736" height="92" rx="14"/>
+        <rect class="bx" x="98" y="232" width="120" height="44" rx="9"/>
+        <rect class="bx" x="242" y="232" width="120" height="44" rx="9"/>
+        <rect class="bx" x="386" y="232" width="130" height="44" rx="9"/>
+        <rect class="bx" x="540" y="232" width="120" height="44" rx="9"/>
+        <rect class="layer-infra" x="62" y="326" width="736" height="60" rx="14"/>
+        <path class="wire" d="M430,60 L430,82" marker-end="url(#a5)"/>
+        <path class="wire" d="M430,178 L430,202" marker-end="url(#a5)"/>
+        <path class="wire" d="M430,298 L430,322" marker-end="url(#a5)"/>
+      </g>
+      <text class="t-n" x="430" y="44" text-anchor="middle">User</text>
+      <text class="t-cap" x="80" y="108" fill="var(--rust)">AGENTIC LAYER · 边缘</text>
+      <text class="t-n" x="173" y="139" text-anchor="middle" font-size="12">意图理解</text>
+      <text class="t-n" x="352" y="139" text-anchor="middle" font-size="12">探索 / 调研</text>
+      <text class="t-n" x="531" y="139" text-anchor="middle" font-size="12">推理与动态规划</text>
+      <text class="t-cap" x="80" y="228" fill="var(--blue)">WORKFLOW LAYER · 核心</text>
+      <text class="t-n" x="158" y="259" text-anchor="middle" font-size="12">业务规则</text>
+      <text class="t-n" x="302" y="259" text-anchor="middle" font-size="12">事务 Transactions</text>
+      <text class="t-n" x="451" y="259" text-anchor="middle" font-size="12">状态机</text>
+      <text class="t-n" x="600" y="259" text-anchor="middle" font-size="12">校验 Validation</text>
+      <text class="t-cap" x="80" y="348">INFRASTRUCTURE</text>
+      <text class="t-s" x="80" y="370">DB · Tools · APIs（受控接口，只暴露给 Workflow 层）</text>
+      <text class="t-ar" x="640" y="60">模型处理不确定性</text>
+      <text class="t-an" x="640" y="200">程序控制确定性</text>
+      <text class="t-an" x="640" y="318">Agent 只能触达受控执行面</text>
+    </svg>
+    <figcaption><b>图 5</b>Deterministic Core + Agentic Edge：Agent 层即使推理出错，它能触达的执行面也只限于 Workflow 层暴露的受控接口，而不是直接操作数据库与生产配置。让模型处理不确定性，让程序控制确定性。</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="sec-no">14 · 贯穿案例</div>
+  <h2>电商智能客服：三种执行模型的演进</h2>
+  <p>用一个案例把前面的判断串起来。注意它展示的不是"选 Workflow 还是选 Agent"，而是<b>同一个产品里不同子任务选择不同执行模型</b>。</p>
+  <h3>阶段一：简单查询</h3>
+  <p>"我的订单什么时候到？"——意图分类 = Logistics，进入 Logistics Workflow：查订单 → 查物流 → 生成回复。<b>不需要 Agent，路径完全确定。</b></p>
+  <h3>阶段二：复合请求</h3>
+  <p>"这件商品为什么还没到？如果今天还不到，能不能退款？另外别人同款便宜了 50 元，有没有价格保护？"——需要订单、物流、价格、售后政策、价格保护政策的组合。复杂度上去了，但依然可以用 <b>Workflow + LLM</b> 解决：LLM 负责把复合请求拆解为多个结构化子任务，程序负责编排查询，LLM 负责把多路结果综合成回复。<b>不需要 Agent——因为所有需要的查询在拆解完成的那一刻就全部可知了。</b></p>
+  <h3>阶段三：开放式探索</h3>
+  <p>"帮我找一款适合我孩子学习用的平板，预算 3000 左右，最好续航长一点，可以比较一下现在有哪些值得买的吗？"——下一步搜索什么、比较哪些维度、要不要换条件，取决于过程中发现了什么（比如某款阉割了护眼功能）。<b>这进入了 Agent 的适用范围。</b></p>
+  <div class="vs">
+    <div class="col wf"><h5>演进逻辑</h5>简单问题 → <b>Workflow</b><br>需要理解用户意图 → <b>LLM + Workflow</b></div>
+    <div class="col ag"><h5>AGENT 的进入时机</h5>开放式探索任务 → <b>Agent</b>（动态决策价值明确，且不处于强 SLA 同步链路）</div>
+  </div>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="sec-no">15 · 判断工具 一</div>
+  <h2>决策树</h2>
+  <p>把全文的判断逻辑压缩成一棵可以直接用于架构评审的决策树：</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 860 524" role="img" aria-label="Agent 使用决策树">
+      <defs>
+        <pattern id="g6" width="22" height="22" patternUnits="userSpaceOnUse">
+          <path d="M22 0H0V22" fill="none" stroke="#EFEAE0" stroke-width="1"/>
+        </pattern>
+        <marker id="a6" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0.5,1 L9,5 L0.5,9" fill="none" stroke="#8A8577" stroke-width="1.7" stroke-linecap="round"/>
+        </marker>
+        <filter id="rf6" x="-4%" y="-8%" width="108%" height="118%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="53" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2"/>
+        </filter>
+      </defs>
+      <rect width="860" height="524" fill="url(#g6)" rx="10"/>
+      <g filter="url(#rf6)">
+        <rect class="bx-d" x="368" y="12" width="124" height="40" rx="9"/>
+        <polygon class="dia" points="430,84 540,124 430,164 320,124"/>
+        <polygon class="dia" points="430,196 540,236 430,276 320,236"/>
+        <polygon class="dia" points="430,308 540,348 430,388 320,348"/>
+        <polygon class="dia" points="430,420 540,460 430,500 320,460"/>
+        <rect class="bx-b" x="40" y="96" width="180" height="56" rx="9"/>
+        <rect class="bx-b" x="40" y="208" width="180" height="56" rx="9"/>
+        <rect class="bx-b" x="40" y="320" width="180" height="56" rx="9"/>
+        <rect class="bx-r" x="628" y="368" width="200" height="48" rx="9"/>
+        <rect class="bx-r" x="606" y="432" width="236" height="68" rx="9"/>
+        <path class="wire" d="M430,52 L430,80" marker-end="url(#a6)"/>
+        <path class="wire" d="M320,124 L224,124" marker-end="url(#a6)"/>
+        <path class="wire" d="M430,164 L430,192" marker-end="url(#a6)"/>
+        <path class="wire" d="M320,236 L224,236" marker-end="url(#a6)"/>
+        <path class="wire" d="M430,276 L430,304" marker-end="url(#a6)"/>
+        <path class="wire" d="M320,348 L224,348" marker-end="url(#a6)"/>
+        <path class="wire" d="M430,388 L430,416" marker-end="url(#a6)"/>
+        <path class="wire" d="M540,452 C580,442 596,412 624,398" marker-end="url(#a6)"/>
+        <path class="wire" d="M430,500 C470,502 540,496 602,480" fill="none" marker-end="url(#a6)"/>
+      </g>
+      <text class="t-n" x="430" y="38" text-anchor="middle" font-size="12">任务开始</text>
+      <text class="t-n" x="430" y="121" text-anchor="middle" font-size="11.5">路径可以提前定义？</text>
+      <text class="t-n" x="430" y="233" text-anchor="middle" font-size="11.5">需要根据环境</text>
+      <text class="t-n" x="430" y="249" text-anchor="middle" font-size="11.5">动态决定下一步？</text>
+      <text class="t-n" x="430" y="345" text-anchor="middle" font-size="11.5">动态决策带来</text>
+      <text class="t-n" x="430" y="361" text-anchor="middle" font-size="11.5">明确价值？</text>
+      <text class="t-n" x="430" y="457" text-anchor="middle" font-size="11.5">涉及高风险操作？</text>
+      <text class="t-b" x="404" y="180" text-anchor="end" font-size="11">No</text>
+      <text class="t-y" x="446" y="180" font-size="11">Yes</text>
+      <text class="t-b" x="404" y="292" text-anchor="end" font-size="11">No</text>
+      <text class="t-y" x="446" y="292" font-size="11">Yes</text>
+      <text class="t-b" x="404" y="404" text-anchor="end" font-size="11">No</text>
+      <text class="t-y" x="446" y="404" font-size="11">Yes</text>
+      <text class="t-b" x="566" y="428" text-anchor="end" font-size="11">No</text>
+      <text class="t-y" x="556" y="478" font-size="11">Yes</text>
+      <text class="t-b" x="130" y="120" text-anchor="middle">Workflow / Code</text>
+      <text class="t-s" x="130" y="138" text-anchor="middle">80% 企业场景的正确答案</text>
+      <text class="t-b" x="130" y="232" text-anchor="middle">Workflow + LLM</text>
+      <text class="t-s" x="130" y="250" text-anchor="middle">LLM 理解 · 程序执行</text>
+      <text class="t-b" x="130" y="344" text-anchor="middle">优先 Workflow</text>
+      <text class="t-s" x="130" y="362" text-anchor="middle">加宽分支即可覆盖</text>
+      <text class="t-y" x="728" y="390" text-anchor="middle" font-size="14">Agent</text>
+      <text class="t-y" x="724" y="456" text-anchor="middle" font-size="11.5">Agent 提案 + Policy / 人工审批</text>
+      <text class="t-s" x="724" y="474" text-anchor="middle">+ 受控执行</text>
+    </svg>
+    <figcaption><b>图 6</b>Agent 使用决策树。注意第三层的问题不是"路径是否动态"，而是"动态决策是否带来<b>明确价值</b>"——有些任务路径有动态性但价值密度很低，动态决策节省的人力不值得覆盖其成本与风险，此时退回 Workflow 加宽分支即可。最后一道闸门：高风险操作必须走 Policy / 审批 / 受控执行通道。</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 16 ============ -->
+<section id="s16">
+  <div class="sec-no">16 · 判断工具 二</div>
+  <h2>Agent 必要性评分模型</h2>
+  <p>决策树适合定性判断。如果团队在架构评审中需要把讨论结构化，可以用一个简单的评分模型：</p>
+  <div class="score-grid">
+    <div class="score-card plus">
+      <h4>加分项（每项 +2）—— 路径动态性</h4>
+      <ul>
+        <li><span class="badge p">+2</span>动态决策<span>下一步依赖过程中的发现</span></li>
+        <li><span class="badge p">+2</span>环境不确定性<span>需要探索开放环境</span></li>
+        <li><span class="badge p">+2</span>动态工具选择<span>工具调用顺序无法预先确定</span></li>
+        <li><span class="badge p">+2</span>需要自主规划<span>Plan → Execute → Re-plan</span></li>
+        <li><span class="badge p">+2</span>任务目标开放<span>成功路径不唯一</span></li>
+      </ul>
+    </div>
+    <div class="score-card minus">
+      <h4>减分项 —— 生产约束</h4>
+      <ul>
+        <li><span class="badge m">−3</span>强确定性流程</li>
+        <li><span class="badge m">−2</span>强 SLA</li>
+        <li><span class="badge m">−2</span>高调用量</li>
+        <li><span class="badge m">−3</span>高风险操作</li>
+        <li><span class="badge m">−2</span>成本极敏感</li>
+      </ul>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th style="width:140px">Agent Necessity Score</th><th>架构建议</th></tr></thead>
+      <tbody>
+        <tr><td><b>≤ 0</b></td><td>Workflow</td></tr>
+        <tr><td><b>1 – 3</b></td><td>Workflow + LLM</td></tr>
+        <tr><td><b>4 – 6</b></td><td>值得认真评估 Agent（做 PoC 对比）</td></tr>
+        <tr><td><b>≥ 7</b></td><td>Agent 值得认真考虑</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout warn"><b>这不是数学定律，而是一种架构讨论工具。</b>分数本身不重要，重要的是它强迫团队逐项回答：Agent 到底增加了什么价值？每一分的依据是什么？实践中，多数团队填完这张表后会发现自己项目的分数远低于预期——因为"我们希望它更智能"这种模糊愿望，在这张表上得不了分。</div>
+</section>
+
+<!-- ============ 17 ============ -->
+<section id="s17">
+  <div class="sec-no">17 · 成本核算</div>
+  <h2>引入 Agent 的真实成本</h2>
+  <p>前面分散提到了成本，这里系统汇总。引入 Agent 不是免费的，账要算全：</p>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th style="width:110px">维度</th><th>Workflow</th><th>Agent</th></tr></thead>
+      <tbody>
+        <tr><td><b>决策主体</b></td><td class="yes">程序</td><td class="no">模型</td></tr>
+        <tr><td><b>执行路径</b></td><td>预定义</td><td>动态</td></tr>
+        <tr><td><b>可预测性</b></td><td class="yes">高</td><td>较低</td></tr>
+        <tr><td><b>成本</b></td><td>可预测（固定调用）</td><td>波动（动态循环）</td></tr>
+        <tr><td><b>延迟</b></td><td>可控（可计算上界）</td><td>难预测（P95 尾部重）</td></tr>
+        <tr><td><b>Debug</b></td><td>定位到步骤</td><td>需要还原决策轨迹</td></tr>
+        <tr><td><b>评估</b></td><td>Input → Expected Output</td><td>Goal → Acceptable Trajectory / Outcome</td></tr>
+        <tr><td><b>失败面</b></td><td>已枚举的分支</td><td>每个决策点都是潜在失败点</td></tr>
+        <tr><td><b>适合场景</b></td><td>确定性流程</td><td>开放性任务</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>失败面：从"有限可枚举"到"组合爆炸"</h3>
+  <p>Workflow 的失败点是你枚举过的分支（网络超时、校验失败、依赖不可用）。Agent 的失败面是<b>每一个模型决策点</b>——选错工具、错误解读观察结果、提前终止、无限循环。</p>
+  <h3>可观测性：Debug 的代差</h3>
+  <p>Workflow 出问题时看 trace：A → B → C，C 报错了，修 C。Agent 出问题时，你需要先回答"它当时为什么这么决定"——重放决策、检查 Context 里哪一条 Observation 误导了它。这需要为每个决策点记录完整的 Thought / Tool Call / Observation / State，观测成本显著高于 Workflow。</p>
+  <h3>评估：复杂一个数量级</h3>
+  <p>Workflow 可以直接测试 <code>Input → Expected Path</code>；Agent 的评估对象变成"从目标出发，哪些轨迹和结果是可接受的"——需要轨迹级评估与结果级评估的组合，评估集的构建和回归检测都复杂得多。</p>
+  <h3>可靠性：护栏是前置条件</h3>
+  <p>Max Iterations、Timeout、Loop Detection、预算熔断必须显式配置——否则一次失控循环就是一次事故。这些成本不是"Agent 不好的理由"，而是<b>为自主决策支付的对价</b>。判断标准始终是：这个任务带来的价值是否覆盖这份对价。</p>
+</section>
+
+<!-- ============ 18 ============ -->
+<section id="s18">
+  <div class="sec-no">18 · 概念辨析</div>
+  <h2>不要把"不可预测"误认为"需要 Agent"</h2>
+  <p>这是一个容易踩坑的混淆。LLM 的输出天然具有随机性，有团队据此推理："我们的系统有不可预测性，所以需要 Agent 的灵活性。"这混淆了两个不同层面的概率性：</p>
+  <div class="vs">
+    <div class="col wf"><h5>输出的概率性</h5>LLM 生成内容有随机性 —— 可以被工程手段收敛：Structured Output、Schema Validation、低 Temperature、校验重试、Fallback。系统在<b>路径层面依然是确定性的</b>。</div>
+    <div class="col ag"><h5>路径的动态性</h5>执行路径需要在运行时决定 —— 这才是 Agent 的领地。下一步做什么，必须在运行时根据环境决定。</div>
+  </div>
+  <div class="code">
+    <div class="code-head"><div class="dots"><i></i><i></i><i></i></div><span class="lang">PYTHON</span></div>
+    <pre><span class="c"># 输出概率性 → 用工程手段收敛，路径仍然由代码控制</span>
+result = <span class="f">llm_extract</span>(doc, schema=EXTRACT_SCHEMA, temperature=<span class="n">0</span>)
+<span class="k">while not</span> result.valid <span class="k">and</span> attempts &lt; <span class="n">3</span>:
+    result = <span class="f">llm_extract</span>(doc, schema=EXTRACT_SCHEMA, hint=result.errors)
+<span class="k">return</span> result <span class="k">if</span> result.valid <span class="k">else</span> <span class="f">escalate_to_human</span>()</pre>
+  </div>
+  <div class="principle">输出具有概率性 ≠ 系统需要 Agent。<br>真正需要 Agent 的判断依据只有一个：<b>执行路径本身具有动态性</b>。这个区分把大量"看起来需要 Agent"的场景（提取、分类、生成、摘要、改写）正确地归回 Workflow + LLM 的范畴。</div>
+</section>
+
+<!-- ============ 19 ============ -->
+<section id="s19">
+  <div class="sec-no">19 · 评审工具</div>
+  <h2>Production Checklist</h2>
+  <p>最后给出可直接用于架构评审的两份清单（可以现场勾选）：</p>
+  <div class="check-grid">
+    <div class="check-card a">
+      <h4>清单 A</h4>
+      <div class="sub">满足越多 → 越应该用 <b>Workflow</b></div>
+      <ul>
+        <li><label><input type="checkbox" data-set="a">流程可以提前定义</label></li>
+        <li><label><input type="checkbox" data-set="a">下一步可以通过规则确定</label></li>
+        <li><label><input type="checkbox" data-set="a">存在固定状态机</label></li>
+        <li><label><input type="checkbox" data-set="a">有强 SLA 要求</label></li>
+        <li><label><input type="checkbox" data-set="a">有严格审计要求</label></li>
+        <li><label><input type="checkbox" data-set="a">涉及高风险操作（资金 / 权限 / 数据删除）</label></li>
+        <li><label><input type="checkbox" data-set="a">需要可预测成本</label></li>
+        <li><label><input type="checkbox" data-set="a">请求量巨大（日百万级以上）</label></li>
+        <li><label><input type="checkbox" data-set="a">业务异常可以枚举归类</label></li>
+      </ul>
+      <div class="check-count">Yes：<b id="countA">0</b> / 9</div>
+    </div>
+    <div class="check-card b">
+      <h4>清单 B</h4>
+      <div class="sub">满足越多 → 越应该考虑 <b>Agent</b></div>
+      <ul>
+        <li><label><input type="checkbox" data-set="b">下一步行动无法提前定义</label></li>
+        <li><label><input type="checkbox" data-set="b">需要根据环境动态调整</label></li>
+        <li><label><input type="checkbox" data-set="b">工具选择取决于当前发现</label></li>
+        <li><label><input type="checkbox" data-set="b">需要自主规划与重规划</label></li>
+        <li><label><input type="checkbox" data-set="b">任务目标开放（成功路径不唯一）</label></li>
+        <li><label><input type="checkbox" data-set="b">需要探索未知信息</label></li>
+        <li><label><input type="checkbox" data-set="b">动态决策带来的价值明确且可量化</label></li>
+        <li><label><input type="checkbox" data-set="b">已配置 Guardrails（Max Iterations / Budget / Timeout）</label></li>
+      </ul>
+      <div class="check-count">Yes：<b id="countB">0</b> / 8 · 最后两项是前置条件而非可选项</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 20 ============ -->
+<section id="s20">
+  <div class="sec-no">20 · 结论</div>
+  <h2>决策权属于代码，还是属于模型</h2>
+  <p>回到开头的问题：什么时候不应该使用 Agent？当路径可以被工程师提前定义时——确定性业务流程、固定数据处理 Pipeline、规则 + LLM 的路由模式、强 SLA 的同步链路、成本敏感的高流量场景、高风险操作——不要把决策权交给模型。把全文的判断浓缩成两句话：</p>
+  <div class="principle">不要问"这个系统能不能做成 Agent"，而要问"这个系统是否需要 Agent 的自主决策能力"。</div>
+  <div class="principle blue">如果工程师能够提前定义路径，就让程序定义路径；如果路径必须根据环境动态决定，再把决策权交给 Agent。</div>
+
+  <figure class="fig">
+    <svg viewBox="0 0 860 176" role="img" aria-label="执行模型自主性谱系">
+      <defs>
+        <pattern id="g7" width="22" height="22" patternUnits="userSpaceOnUse">
+          <path d="M22 0H0V22" fill="none" stroke="#EFEAE0" stroke-width="1"/>
+        </pattern>
+        <linearGradient id="gr7" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="var(--blue)"/><stop offset="1" stop-color="var(--rust)"/>
+        </linearGradient>
+        <marker id="a7" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path class="mkr" d="M0.5,1 L9,5 L0.5,9" fill="none" stroke="#A23E2B" stroke-width="1.8" stroke-linecap="round"/>
+        </marker>
+        <filter id="rf7" x="-4%" y="-10%" width="108%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="61" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2"/>
+        </filter>
+      </defs>
+      <rect width="860" height="176" fill="url(#g7)" rx="10"/>
+      <g filter="url(#rf7)">
+        <path d="M60,92 L792,92" stroke="url(#gr7)" stroke-width="2.4" fill="none" marker-end="url(#a7)"/>
+        <circle class="dot-a" cx="110" cy="92" r="8"/>
+        <circle class="dot-b" cx="290" cy="92" r="8"/>
+        <circle class="dot-c" cx="470" cy="92" r="8"/>
+        <circle class="dot-d" cx="650" cy="92" r="8"/>
+        <circle class="dot-e" cx="790" cy="92" r="8"/>
+        <path d="M110,84 L110,52 M790,84 L790,52" stroke="var(--soft-line)" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <path d="M110,52 L790,52" stroke="var(--soft-line)" stroke-width="1.2" stroke-dasharray="3 4"/>
+      </g>
+      <text class="t-cap" x="110" y="42" text-anchor="middle">确定性</text>
+      <text class="t-cap" x="790" y="42" text-anchor="middle" fill="var(--rust)">更高自主性</text>
+      <text class="t-an" x="450" y="34" text-anchor="middle">不确定性 · 复杂度 · 成本 递增 →</text>
+      <text class="t-n" x="110" y="122" text-anchor="middle">Code</text>
+      <text class="t-n" x="290" y="122" text-anchor="middle">Workflow</text>
+      <text class="t-n" x="470" y="122" text-anchor="middle">Workflow + LLM</text>
+      <text class="t-n" x="650" y="122" text-anchor="middle">Agent</text>
+      <text class="t-n" x="790" y="122" text-anchor="middle">Multi-Agent</text>
+      <text class="t-s" x="110" y="142" text-anchor="middle">纯规则</text>
+      <text class="t-s" x="290" y="142" text-anchor="middle">预定义路径</text>
+      <text class="t-s" x="470" y="142" text-anchor="middle">LLM 理解 · 程序执行</text>
+      <text class="t-s" x="650" y="142" text-anchor="middle">模型决定路径</text>
+      <text class="t-s" x="790" y="142" text-anchor="middle">+ 协调与故障传播</text>
+      <text class="t-s" x="450" y="166" text-anchor="middle">越往右，不代表越先进，而代表系统承担了更多不确定性和复杂度</text>
+    </svg>
+    <figcaption><b>图 7</b>执行模型的自主性谱系。Multi-Agent 又在 Agent 之上叠加了 Agent 间协调、消息一致性、故障传播等一整层新问题——那是另一篇文章的主题，前提依然是先把单 Agent 的必要性论证清楚。</figcaption>
+  </figure>
+
+  <div class="motto">真正成熟的 Agent 架构，<br>不是让所有事情都交给 Agent，<br>而是知道<em>哪些事情绝对不应该交给 Agent</em>。</div>
+</section>
+
+<footer>
+  <div class="colophon">
+    <span>AI Engineering 系列 · Workflow / Agent / Decision Framework</span>
+    <span>© 2026 · 转载请注明出处</span>
+  </div>
+  <p style="margin-top:14px">欢迎讨论你正在做的系统：它落在决策树的哪个分支上？你是否遇到过"看起来需要 Agent、最后发现 Workflow + LLM 就够了"的案例？</p>
+</footer>
+
+</article>
+</div>
+
+<script>
+// ---------- 主题切换：默认跟随系统，可手动固定 ----------
+(function(){
+  const root = document.documentElement;
+  const saved = localStorage.getItem('theme');
+  const sysDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = saved === 'dark' || saved === 'light'
+    ? saved
+    : (sysDark ? 'dark' : 'light');
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', root.dataset.theme);
+  });
+})();
+
+// ---------- 阅读进度条 ----------
+const bar = document.getElementById('progress');
+addEventListener('scroll', () => {
+  const h = document.documentElement;
+  bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+}, {passive:true});
+
+// ---------- 清单实时计数 ----------
+const cA = document.getElementById('countA'), cB = document.getElementById('countB');
+document.querySelectorAll('.check-card input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    cA.textContent = document.querySelectorAll('[data-set="a"]:checked').length;
+    cB.textContent = document.querySelectorAll('[data-set="b"]:checked').length;
+  });
+});
+</script>
+</body>
+</html>

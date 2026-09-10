@@ -10,6 +10,25 @@ export function joshStripCssComments(css) {
   return String(css || '').replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
+export function joshRewriteMagazineDarkThemeSelector(selector, scope = JOSH_HTML_MAGAZINE_SCOPE) {
+  const s = String(selector || '').trim();
+  if (!s) return s;
+  const darkAttr = /^(?::root|html)\[data-theme=["']dark["']\](.*)$/i.exec(s);
+  if (darkAttr) {
+    const rest = darkAttr[1] || '';
+    const scopedRest = rest
+      ? (rest.startsWith(' ') || rest.startsWith(':') || rest.startsWith('.') || rest.startsWith('[')
+        ? `${scope}${rest}`
+        : `${scope} ${rest}`)
+      : scope;
+    return [
+      `html.josh-site.dark ${scopedRest}`,
+      `html.josh-site[data-color-mode='dark'] ${scopedRest}`,
+    ].join(', ');
+  }
+  return null;
+}
+
 export function joshScopeSelectorList(selectorGroup, scope = JOSH_HTML_MAGAZINE_SCOPE) {
   return selectorGroup
     .split(',')
@@ -22,6 +41,8 @@ export function joshScopeSelectorList(selectorGroup, scope = JOSH_HTML_MAGAZINE_
       if (s === scope || s.startsWith(`${scope} `) || s.startsWith(`${scope}:`) || s.startsWith(`${scope}.`) || s.startsWith(`${scope}[`)) {
         return s;
       }
+      const darkRewrite = joshRewriteMagazineDarkThemeSelector(s, scope);
+      if (darkRewrite) return darkRewrite;
       if (s.startsWith(':root')) return `${scope}${s.slice(5)}`;
       if (/^html\b/.test(s)) return `${scope}${s.replace(/^html\b/, '')}`;
       if (/^body\b/.test(s)) return `${scope}${s.replace(/^body\b/, '')}`;
@@ -156,6 +177,21 @@ const esc = SCOPE.replace(/\./g, '\\.');
   const scoped = joshScopeHtmlArticleCss('@keyframes fade{from{opacity:0} to{opacity:1}} .x{animation:fade 1s}', SCOPE);
   assert.match(scoped, /@keyframes fade\{from\{opacity:0\} to\{opacity:1\}\}/);
   assert.match(scoped, new RegExp(`${esc} \\.x\\{animation:fade 1s\\}`));
+}
+
+{
+  const scoped = joshScopeHtmlArticleCss(
+    ':root[data-theme="dark"]{--rust-bg:#2C1F19} :root[data-theme="dark"] .callout.note{color:#B9D2DE}',
+    SCOPE,
+  );
+  assert.match(
+    scoped,
+    /html\.josh-site\.dark .josh-prose \.josh-html-magazine, html\.josh-site\[data-color-mode='dark'\] .josh-prose \.josh-html-magazine\{--rust-bg:#2C1F19\}/,
+  );
+  assert.match(
+    scoped,
+    /html\.josh-site\.dark .josh-prose \.josh-html-magazine \.callout\.note, html\.josh-site\[data-color-mode='dark'\] .josh-prose \.josh-html-magazine \.callout\.note\{color:#B9D2DE\}/,
+  );
 }
 
 console.log('ok: joshScopeHtmlArticleCss');

@@ -105,6 +105,29 @@
     "seriesOrder": 15
   },
   {
+    "slug": "production-agent-04-agent-memory",
+    "title": "Agent Memory：短期记忆、长期记忆与状态管理",
+    "date": "2026-09-10T18:00:00+08:00",
+    "readTime": "28 分钟",
+    "category": "智能体跟多agent",
+    "tags": [
+      "Agent Memory",
+      "Memory",
+      "State",
+      "Context Engineering",
+      "Agent Architecture",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/production-agent-architecture.svg",
+    "excerpt": "当 Agent 跨任务、跨 Session 持续运行时，Memory 与 Context、State、RAG 的边界是什么？给出写入策略、生命周期与生产级 Memory 系统设计框架。",
+    "file": "./content/posts/production-agent-04-agent-memory.md",
+    "format": "html",
+    "htmlFile": "./content/posts/Agent Memory：短期记忆、长期记忆与状态管理.html",
+    "subtitle": "短期记忆、长期记忆与状态管理",
+    "series": "生产级 Agent 系统架构",
+    "seriesOrder": 4
+  },
+  {
     "slug": "enterprise-rag-14-failure-cases",
     "title": "企业级 RAG 架构设计与工程实践（十四）：为什么你的 RAG 上线之后效果变差了？10 个典型失败案例与系统化排障方法",
     "date": "2026-09-10T17:00:00+08:00",
@@ -124,6 +147,27 @@
     "subtitle": "典型失败案例与系统化排障",
     "series": "企业级 RAG 架构设计与工程实践",
     "seriesOrder": 14
+  },
+  {
+    "slug": "production-agent-03-multi-agent",
+    "title": "Multi-Agent 架构：什么时候值得拆分",
+    "date": "2026-09-10T17:00:00+08:00",
+    "readTime": "28 分钟",
+    "category": "智能体跟多agent",
+    "tags": [
+      "Multi-Agent",
+      "Agent",
+      "Agent Architecture",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/production-agent-architecture.svg",
+    "excerpt": "Multi-Agent 不是为了增加 Agent 数量，而是为了隔离复杂性。用职责边界、协作模型与决策树，判断什么时候真正值得拆。",
+    "file": "./content/posts/production-agent-03-multi-agent.md",
+    "format": "html",
+    "htmlFile": "./content/posts/Multi-Agent 架构：什么时候值得拆分.html",
+    "subtitle": "什么时候值得拆分",
+    "series": "生产级 Agent 系统架构",
+    "seriesOrder": 3
   },
   {
     "slug": "enterprise-rag-13-evaluation",
@@ -147,6 +191,28 @@
     "seriesOrder": 13
   },
   {
+    "slug": "production-agent-02-single-agent",
+    "title": "生产级 Agent 系统设计：单 Agent 何时够用",
+    "date": "2026-09-10T16:00:00+08:00",
+    "readTime": "25 分钟",
+    "category": "智能体跟多agent",
+    "tags": [
+      "Agent",
+      "Single Agent",
+      "Multi-Agent",
+      "Agent Architecture",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/production-agent-architecture.svg",
+    "excerpt": "Agent 架构的核心不是「能拆多少个」，而是「有没有足够理由拆」。给出可落地的单 Agent 边界与失控信号，以及何时才该考虑 Multi-Agent。",
+    "file": "./content/posts/production-agent-02-single-agent.md",
+    "format": "html",
+    "htmlFile": "./content/posts/《生产级 Agent 系统设计：单 Agent 何时够用》.html",
+    "subtitle": "单 Agent 何时够用",
+    "series": "生产级 Agent 系统架构",
+    "seriesOrder": 2
+  },
+  {
     "slug": "enterprise-rag-12-performance-cost",
     "title": "企业级 RAG 架构设计与工程实践（十二）：又快又便宜 — 性能与成本优化",
     "date": "2026-09-10T15:00:00+08:00",
@@ -166,6 +232,27 @@
     "subtitle": "性能与成本优化",
     "series": "企业级 RAG 架构设计与工程实践",
     "seriesOrder": 12
+  },
+  {
+    "slug": "production-agent-01-workflow-vs-agent",
+    "title": "Workflow vs Agent：什么时候不应该使用 Agent",
+    "date": "2026-09-10T15:00:00+08:00",
+    "readTime": "30 分钟",
+    "category": "智能体跟多agent",
+    "tags": [
+      "Agent",
+      "Workflow",
+      "Agent Architecture",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/production-agent-architecture.svg",
+    "excerpt": "Agent 不是 Workflow 的升级版。从生产架构评审出发，建立「下一步由谁决定」的判断方法，弄清什么时候不该做成 Agent。",
+    "file": "./content/posts/production-agent-01-workflow-vs-agent.md",
+    "format": "html",
+    "htmlFile": "./content/posts/Workflow vs Agent：什么时候不应该使用 Agent.html",
+    "subtitle": "什么时候不应该使用 Agent",
+    "series": "生产级 Agent 系统架构",
+    "seriesOrder": 1
   },
   {
     "slug": "enterprise-rag-11-permission-security",
@@ -530,7 +617,7 @@
     "title": "Claude Code 最佳实践：2026 年 10 倍生产力指南",
     "date": "2026-05-25",
     "readTime": "25 分钟",
-    "category": "智能体",
+    "category": "智能体跟多agent",
     "tags": [
       "Claude Code",
       "Agent",
@@ -599,7 +686,7 @@
     "title": "多轮对话上下文管理：滑动窗口、摘要压缩与检索注入三种实现",
     "date": "2025-09-28",
     "readTime": "18 分钟",
-    "category": "智能体",
+    "category": "智能体跟多agent",
     "tags": [
       "Agent",
       "上下文管理",
@@ -666,7 +753,7 @@
     "title": "深入理解 MCP — Model Context Protocol 完全技术指南",
     "date": "2025-05-10",
     "readTime": "20 分钟",
-    "category": "智能体",
+    "category": "智能体跟多agent",
     "tags": [
       "MCP",
       "Agent",
@@ -795,7 +882,7 @@
     "title": "Everything Claude Code 中文版 - 完整使用教程",
     "date": "2025-03-22",
     "readTime": "35 分钟",
-    "category": "智能体",
+    "category": "智能体跟多agent",
     "tags": [
       "Claude Code",
       "MCP",

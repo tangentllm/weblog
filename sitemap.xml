@@ -76,7 +76,21 @@
   </url>
 
   <url>
+    <loc>https://tangentllm.github.io/weblog/post/production-agent-04-agent-memory/</loc>
+    <lastmod>2026-09-10T18:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
     <loc>https://tangentllm.github.io/weblog/post/enterprise-rag-14-failure-cases/</loc>
+    <lastmod>2026-09-10T17:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://tangentllm.github.io/weblog/post/production-agent-03-multi-agent/</loc>
     <lastmod>2026-09-10T17:00:00+08:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
@@ -90,7 +104,21 @@
   </url>
 
   <url>
+    <loc>https://tangentllm.github.io/weblog/post/production-agent-02-single-agent/</loc>
+    <lastmod>2026-09-10T16:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
     <loc>https://tangentllm.github.io/weblog/post/enterprise-rag-12-performance-cost/</loc>
+    <lastmod>2026-09-10T15:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://tangentllm.github.io/weblog/post/production-agent-01-workflow-vs-agent/</loc>
     <lastmod>2026-09-10T15:00:00+08:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
