@@ -1,0 +1,103 @@
+<svg viewBox="0 0 860 560" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2B4C7E"></path>
+        </marker>
+        <marker id="arrInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#1B1B1B"></path>
+        </marker>
+      </defs>
+      
+
+      <!-- 触发源 -->
+      <rect class="bx" x="20" y="30" width="180" height="64" rx="3"></rect>
+      <text class="tag" x="36" y="50">TRIGGER</text>
+      <text class="bx-t" x="36" y="72" font-size="13">Git Commit / MR</text>
+      <text class="bx-s" x="36" y="86">CI Pipeline 触发评测</text>
+
+      <line class="flow" x1="200" y1="62" x2="252" y2="62"></line>
+
+      <!-- 核心三件套 -->
+      <rect class="bx-core" x="256" y="22" width="200" height="80" rx="3"></rect>
+      <text class="tag" x="272" y="42" fill="#8FA6C6">CORE · 01</text>
+      <text class="bx-t bx-t-w" x="272" y="66" font-size="14">Dataset Manager</text>
+      <text class="bx-s bx-s-w" x="272" y="84" font-size="10.5">版本化 Regression Dataset</text>
+      <text class="bx-s bx-s-w" x="272" y="96" font-size="10.5">加载 / 快照 / 分层抽样</text>
+
+      <rect class="bx-core" x="256" y="130" width="200" height="80" rx="3"></rect>
+      <text class="tag" x="272" y="150" fill="#8FA6C6">CORE · 02</text>
+      <text class="bx-t bx-t-w" x="272" y="174" font-size="14">Evaluator Engine</text>
+      <text class="bx-s bx-s-w" x="272" y="192" font-size="10.5">Retrieval 指标 + Judge 指标</text>
+      <text class="bx-s bx-s-w" x="272" y="204" font-size="10.5">并发执行 / Judge 校准</text>
+
+      <rect class="bx-core" x="256" y="238" width="200" height="80" rx="3"></rect>
+      <text class="tag" x="272" y="258" fill="#8FA6C6">CORE · 03</text>
+      <text class="bx-t bx-t-w" x="272" y="282" font-size="14">Experiment Manager</text>
+      <text class="bx-s bx-s-w" x="272" y="300" font-size="10.5">一次变更 = 一个 Experiment</text>
+      <text class="bx-s bx-s-w" x="272" y="312" font-size="10.5">管理多个 Evaluation Run</text>
+
+      <!-- 存储与回归 -->
+      <rect class="bx-store" x="520" y="22" width="180" height="80" rx="3"></rect>
+      <text class="tag" x="536" y="42">STORE</text>
+      <text class="bx-t" x="536" y="66" font-size="14">Score Store</text>
+      <text class="bx-s" x="536" y="84">每次 Run 的全量分数</text>
+      <text class="bx-s" x="536" y="96">Case 级明细 + 元数据</text>
+
+      <rect class="bx-gate" x="520" y="130" width="180" height="80" rx="3"></rect>
+      <text class="tag" x="536" y="150" fill="#EBC4BF">DECISION</text>
+      <text class="bx-t bx-t-w" x="536" y="174" font-size="14">Release Gate</text>
+      <text class="bx-s bx-s-w" x="536" y="192">Hard / Soft / Delta 三层判定</text>
+      <text class="bx-s bx-s-w" x="536" y="204">输出 PASS / WARN / FAIL</text>
+
+      <rect class="bx" x="520" y="238" width="180" height="80" rx="3"></rect>
+      <text class="tag" x="536" y="258">ANALYSIS</text>
+      <text class="bx-t" x="536" y="282" font-size="14">Regression Engine</text>
+      <text class="bx-s" x="536" y="300">Baseline 对比 / 波动带</text>
+      <text class="bx-s" x="536" y="312">劣化 Case 归因定位</text>
+
+      <rect class="bx" x="520" y="346" width="180" height="80" rx="3"></rect>
+      <text class="tag" x="536" y="366">VIEW</text>
+      <text class="bx-t" x="536" y="390" font-size="14">Dashboard</text>
+      <text class="bx-s" x="536" y="408">Run 历史 / 趋势曲线</text>
+      <text class="bx-s" x="536" y="420">Gate 结论与归因报告</text>
+
+      <!-- 内部数据流 -->
+      <line class="flow" x1="356" y1="102" x2="356" y2="126"></line>
+      <line class="flow" x1="356" y1="210" x2="356" y2="234"></line>
+      <line class="flow" x1="456" y1="62" x2="516" y2="62"></line>
+      <line class="flow" x1="456" y1="278" x2="516" y2="278"></line>
+      <line class="flow" x1="610" y1="102" x2="610" y2="126"></line>
+      <line class="flow-ink" x1="610" y1="238" x2="610" y2="214"></line>
+
+      <!-- 外部 -->
+      <rect class="bx" x="20" y="130" width="180" height="64" rx="3"></rect>
+      <text class="tag" x="36" y="150">SYSTEM UNDER TEST</text>
+      <text class="bx-t" x="36" y="172" font-size="13">RAG Pipeline vN</text>
+      <text class="bx-s" x="36" y="186">Retriever · Reranker · LLM</text>
+      <line class="flow-ink" x1="200" y1="170" x2="252" y2="170"></line>
+
+      <!-- CI/CD -->
+      <rect class="bx" x="20" y="238" width="180" height="64" rx="3"></rect>
+      <text class="tag" x="36" y="258">PIPELINE</text>
+      <text class="bx-t" x="36" y="280" font-size="13">CI/CD Runner</text>
+      <text class="bx-s" x="36" y="294">执行 Run 并等待 Gate 结论</text>
+      <line class="flow-ink" x1="200" y1="278" x2="252" y2="278"></line>
+
+      <!-- 底部主流程 -->
+      <line class="flow" x1="356" y1="318" x2="356" y2="440"></line>
+      <line class="flow" x1="456" y1="440" x2="712" y2="440" transform="translate(-140,0)"></line>
+
+      <rect class="bx" x="216" y="410" width="200" height="60" rx="3"></rect>
+      <text class="bx-t" x="232" y="436" font-size="13">Baseline Comparison</text>
+      <text class="bx-s" x="232" y="454">当前 Run vs 基线 Run</text>
+
+      <rect class="bx-gate" x="476" y="410" width="200" height="60" rx="3"></rect>
+      <text class="bx-t bx-t-w" x="492" y="436" font-size="13">Deploy / Block</text>
+      <text class="bx-s bx-s-w" x="492" y="454">PASS → 部署 · FAIL → 阻断</text>
+
+      <line class="flow" x1="416" y1="440" x2="472" y2="440"></line>
+      <line class="flow-ink" x1="700" y1="230" x2="700" y2="470"></line>
+      <line class="flow-ink" x1="700" y1="470" x2="680" y2="470"></line>
+
+      <text class="tag" x="40" y="530">图注：实线为评测数据主流程，虚线为控制流。Release Gate 是唯一拥有「否决权」的组件。</text>
+    </svg>

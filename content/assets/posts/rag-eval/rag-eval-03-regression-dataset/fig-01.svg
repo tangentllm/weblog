@@ -1,0 +1,120 @@
+<svg viewBox="0 0 1000 440" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:1000px;">
+        <defs>
+          <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#8a8f98"></path>
+          </marker>
+          <marker id="arwR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#b8433a"></path>
+          </marker>
+          <linearGradient id="gAccent" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#f6e8e6"></stop>
+            <stop offset="100%" stop-color="#fbfaf7"></stop>
+          </linearGradient>
+          <linearGradient id="gBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#e8eef6"></stop>
+            <stop offset="100%" stop-color="#fbfaf7"></stop>
+          </linearGradient>
+          <linearGradient id="gGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#e9f1ec"></stop>
+            <stop offset="100%" stop-color="#fbfaf7"></stop>
+          </linearGradient>
+          <linearGradient id="gAmber" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#faf0dc"></stop>
+            <stop offset="100%" stop-color="#fbfaf7"></stop>
+          </linearGradient>
+        </defs>
+
+        <!-- 标题 -->
+        <text x="500" y="30" text-anchor="middle" font-family="Playfair Display, serif" font-size="18" font-weight="700" fill="#16181d" letter-spacing="0.5">
+          Regression Dataset 的覆盖矩阵
+        </text>
+        <text x="500" y="50" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#8a8f98" letter-spacing="1.5">
+          BY FAILURE MODE × RISK LEVEL
+        </text>
+
+        <!-- 4 columns -->
+        <!-- Failure -->
+        <g>
+          <rect x="40" y="80" width="220" height="300" rx="10" fill="url(#gAccent)" stroke="#d8a5a0" stroke-width="1"></rect>
+          <rect x="40" y="80" width="220" height="46" rx="10" fill="#b8433a"></rect>
+          <rect x="40" y="112" width="220" height="14" fill="#b8433a"></rect>
+          <text x="150" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#fff" letter-spacing="1">FAILURE CASE</text>
+          <text x="150" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#8a8f98" letter-spacing="1">已发生过的事故</text>
+          <line x1="65" y1="165" x2="235" y2="165" stroke="#d8a5a0" stroke-width="0.8"></line>
+          <g font-family="Inter, sans-serif" font-size="11" fill="#4a4f58">
+            <text x="65" y="190">• 来自真实线上事故</text>
+            <text x="65" y="212">• 关联 root_cause 记录</text>
+            <text x="65" y="234">• historical_failures 必填</text>
+            <text x="65" y="256">• 修复后必须长期保留</text>
+            <text x="65" y="278">• 防止同类问题复发</text>
+          </g>
+          <rect x="85" y="300" width="130" height="26" rx="13" fill="#b8433a"></rect>
+          <text x="150" y="317" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#fff" font-weight="600" letter-spacing="1">RISK: HIGH</text>
+          <text x="150" y="358" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#8a8f98">10–15%</text>
+        </g>
+
+        <!-- Edge -->
+        <g>
+          <rect x="280" y="80" width="220" height="300" rx="10" fill="url(#gBlue)" stroke="#b3c6dc" stroke-width="1"></rect>
+          <rect x="280" y="80" width="220" height="46" rx="10" fill="#2d5a8e"></rect>
+          <rect x="280" y="112" width="220" height="14" fill="#2d5a8e"></rect>
+          <text x="390" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#fff" letter-spacing="1">EDGE CASE</text>
+          <text x="390" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#8a8f98" letter-spacing="1">输入分布的边界</text>
+          <line x1="305" y1="165" x2="475" y2="165" stroke="#b3c6dc" stroke-width="0.8"></line>
+          <g font-family="Inter, sans-serif" font-size="11" fill="#4a4f58">
+            <text x="305" y="190">• 多跳 / 否定 / 长尾 Query</text>
+            <text x="305" y="212">• 表格 &amp; 跨文档对照</text>
+            <text x="305" y="234">• 上下文省略型提问</text>
+            <text x="305" y="256">• 多语种 / 口语化 / 错字</text>
+            <text x="305" y="278">• 暴露系统结构性弱点</text>
+          </g>
+          <rect x="325" y="300" width="130" height="26" rx="13" fill="#2d5a8e"></rect>
+          <text x="390" y="317" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#fff" font-weight="600" letter-spacing="1">RISK: MEDIUM</text>
+          <text x="390" y="358" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#8a8f98">10–15%</text>
+        </g>
+
+        <!-- Adversarial -->
+        <g>
+          <rect x="520" y="80" width="220" height="300" rx="10" fill="url(#gGreen)" stroke="#a3c3ae" stroke-width="1"></rect>
+          <rect x="520" y="80" width="220" height="46" rx="10" fill="#3d6b4f"></rect>
+          <rect x="520" y="112" width="220" height="14" fill="#3d6b4f"></rect>
+          <text x="630" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#fff" letter-spacing="1">ADVERSARIAL CASE</text>
+          <text x="630" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#8a8f98" letter-spacing="1">对抗性输入</text>
+          <line x1="545" y1="165" x2="715" y2="165" stroke="#a3c3ae" stroke-width="0.8"></line>
+          <g font-family="Inter, sans-serif" font-size="11" fill="#4a4f58">
+            <text x="545" y="190">• Prompt Injection</text>
+            <text x="545" y="212">• Out-of-Scope 询问</text>
+            <text x="545" y="234">• 语义陷阱 / 诱导改写</text>
+            <text x="545" y="256">• 通用工具 + 业务定制</text>
+            <text x="545" y="278">• 守住安全与合规底线</text>
+          </g>
+          <rect x="565" y="300" width="130" height="26" rx="13" fill="#3d6b4f"></rect>
+          <text x="630" y="317" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#fff" font-weight="600" letter-spacing="1">RISK: HIGH</text>
+          <text x="630" y="358" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#8a8f98">5–10%</text>
+        </g>
+
+        <!-- High-risk -->
+        <g>
+          <rect x="760" y="80" width="220" height="300" rx="10" fill="url(#gAmber)" stroke="#d4b98a" stroke-width="1"></rect>
+          <rect x="760" y="80" width="220" height="46" rx="10" fill="#a3701c"></rect>
+          <rect x="760" y="112" width="220" height="14" fill="#a3701c"></rect>
+          <text x="870" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#fff" letter-spacing="1">HIGH-RISK CASE</text>
+          <text x="870" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#8a8f98" letter-spacing="1">高业务后果</text>
+          <line x1="785" y1="165" x2="955" y2="165" stroke="#d4b98a" stroke-width="0.8"></line>
+          <g font-family="Inter, sans-serif" font-size="11" fill="#4a4f58">
+            <text x="785" y="190">• 法务 / 合规相关问题</text>
+            <text x="785" y="212">• 涉及钱、时效、权益</text>
+            <text x="785" y="234">• 金牌答案需双人审定</text>
+            <text x="785" y="256">• Release Gate 强校验</text>
+            <text x="785" y="278">• 错一次即严重事故</text>
+          </g>
+          <rect x="805" y="300" width="130" height="26" rx="13" fill="#a3701c"></rect>
+          <text x="870" y="317" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#fff" font-weight="600" letter-spacing="1">RISK: CRITICAL</text>
+          <text x="870" y="358" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#8a8f98">15–20%</text>
+        </g>
+
+        <!-- 底部标注 -->
+        <text x="500" y="415" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#8a8f98" font-style="italic">
+          每一类 Case 都对应明确的失败模式 · 占比建议基于企业客服 RAG 的典型实践
+        </text>
+      </svg>

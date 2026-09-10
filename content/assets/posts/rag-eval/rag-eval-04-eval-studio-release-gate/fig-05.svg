@@ -1,0 +1,82 @@
+<svg viewBox="0 0 860 380" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace">
+      
+
+      <!-- 坐标区 -->
+      <g transform="translate(70,30)">
+        <!-- 100% 线 -->
+        <line class="ax" x1="0" y1="0" x2="740" y2="0"></line>
+        <!-- 6 组柱状 -->
+        <!-- 组宽 110，柱宽 40，间隙 8 -->
+
+        <!-- Recall: 0.82 → 0.90 (scale: 1.0 = 240px) -->
+        <g transform="translate(15,0)">
+          <rect class="v1" x="0" y="43.2" width="40" height="196.8"></rect>
+          <rect class="v2" x="48" y="24" width="40" height="216"></rect>
+          <text class="bar-t v1" x="8" y="38" fill="#8A8A84">0.82</text>
+          <text class="bar-t" x="56" y="19" fill="#2B4C7E">0.90</text>
+          <text class="lb" x="20" y="270">Recall</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#2E6E4E">▲</text>
+        </g>
+
+        <!-- Precision: 0.79 → 0.83 -->
+        <g transform="translate(135,0)">
+          <rect class="v1" x="0" y="50.4" width="40" height="189.6"></rect>
+          <rect class="v2" x="48" y="40.8" width="40" height="199.2"></rect>
+          <text class="bar-t v1" x="8" y="45" fill="#8A8A84">0.79</text>
+          <text class="bar-t" x="56" y="35" fill="#2B4C7E">0.83</text>
+          <text class="lb" x="10" y="270">Precision</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#2E6E4E">▲</text>
+        </g>
+
+        <!-- Faithfulness: 0.91 → 0.78 -->
+        <g transform="translate(255,0)">
+          <rect class="v1" x="0" y="21.6" width="40" height="218.4"></rect>
+          <rect class="v2" x="48" y="52.8" width="40" height="187.2"></rect>
+          <text class="bar-t v1" x="8" y="16" fill="#8A8A84">0.91</text>
+          <text class="bar-t" x="56" y="47" fill="#B03A2E">0.78</text>
+          <text class="lb" x="8" y="270">Faithfulness</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#B03A2E">▼</text>
+        </g>
+
+        <!-- Relevancy: 0.86 → 0.84 -->
+        <g transform="translate(375,0)">
+          <rect class="v1" x="0" y="33.6" width="40" height="206.4"></rect>
+          <rect class="v2" x="48" y="38.4" width="40" height="201.6"></rect>
+          <text class="bar-t v1" x="8" y="28" fill="#8A8A84">0.86</text>
+          <text class="bar-t" x="56" y="33" fill="#B07D2B">0.84</text>
+          <text class="lb" x="6" y="270">Relevancy</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#B07D2B">▼</text>
+        </g>
+
+        <!-- Correctness: 0.83 → 0.81 -->
+        <g transform="translate(495,0)">
+          <rect class="v1" x="0" y="40.8" width="40" height="199.2"></rect>
+          <rect class="v2" x="48" y="45.6" width="40" height="194.4"></rect>
+          <text class="bar-t v1" x="8" y="35" fill="#8A8A84">0.83</text>
+          <text class="bar-t" x="56" y="40" fill="#B07D2B">0.81</text>
+          <text class="lb" x="8" y="270">Correctness</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#B07D2B">▼</text>
+        </g>
+
+        <!-- Latency (归一化到 5s) -->
+        <g transform="translate(615,0)">
+          <rect class="v1" x="0" y="124.8" width="40" height="115.2"></rect>
+          <rect class="v2" x="48" y="67.2" width="40" height="172.8"></rect>
+          <text class="bar-t v1" x="2" y="119" fill="#8A8A84">2.4s</text>
+          <text class="bar-t" x="52" y="62" fill="#B07D2B">3.6s</text>
+          <text class="lb" x="10" y="270">Latency P95</text>
+          <text x="20" y="286" font-size="12" font-weight="700" fill="#B07D2B">▲</text>
+        </g>
+
+        <!-- Faithfulness 阈值线 0.85 -->
+        <line class="gr" x1="255" y1="36" x2="385" y2="36"></line>
+        <text class="gr-t" x="240" y="32" text-anchor="end">Soft Gate 0.85</text>
+
+        <!-- legend -->
+        <rect class="v1" x="0" y="320" width="14" height="14"></rect>
+        <text class="lb" x="22" y="331">Baseline v1.4.2（线上）</text>
+        <rect class="v2" x="220" y="320" width="14" height="14"></rect>
+        <text class="lb" x="242" y="331">Candidate v1.5.0-rc1</text>
+        <text class="lb" x="440" y="331" fill="#8A8A84">Latency 按 5s 满刻度归一化显示</text>
+      </g>
+    </svg>

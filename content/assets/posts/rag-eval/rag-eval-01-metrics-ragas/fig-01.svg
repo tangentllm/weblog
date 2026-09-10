@@ -1,0 +1,51 @@
+<svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,PingFang SC,sans-serif">
+          <defs>
+            <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L9,3 L0,6 Z" fill="#52606d"></path>
+            </marker>
+            <marker id="arrA" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L9,3 L0,6 Z" fill="#1e5f8c"></path>
+            </marker>
+            <marker id="arrG" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L9,3 L0,6 Z" fill="#1a7f5a"></path>
+            </marker>
+          </defs>
+
+          <!-- Question -->
+          <rect x="20" y="140" width="120" height="56" rx="8" fill="#fff" stroke="#e4e0d6"></rect>
+          <text x="80" y="164" text-anchor="middle" font-size="13" fill="#1f2933" font-weight="600">Question</text>
+          <text x="80" y="182" text-anchor="middle" font-size="11" fill="#7b8794">user_input</text>
+
+          <!-- Retriever box -->
+          <rect x="200" y="40" width="200" height="100" rx="10" fill="#f4f8fb" stroke="#1e5f8c" stroke-width="1.5"></rect>
+          <text x="300" y="68" text-anchor="middle" font-size="14" fill="#1e5f8c" font-weight="700">Retrieval Evaluation</text>
+          <text x="300" y="92" text-anchor="middle" font-size="11.5" fill="#52606d">Context Recall / Context Precision</text>
+          <text x="300" y="110" text-anchor="middle" font-size="11.5" fill="#52606d">Hit Rate · MRR (legacy)</text>
+          <text x="300" y="130" text-anchor="middle" font-size="10.5" fill="#7b8794" font-style="italic">评：是否把“够用的信息”拉回来</text>
+
+          <!-- Generator box -->
+          <rect x="200" y="200" width="200" height="100" rx="10" fill="#f0f7f3" stroke="#1a7f5a" stroke-width="1.5"></rect>
+          <text x="300" y="228" text-anchor="middle" font-size="14" fill="#1a7f5a" font-weight="700">Generation Evaluation</text>
+          <text x="300" y="252" text-anchor="middle" font-size="11.5" fill="#52606d">Faithfulness · Answer Relevancy</text>
+          <text x="300" y="270" text-anchor="middle" font-size="11.5" fill="#52606d">Factual Correctness</text>
+          <text x="300" y="290" text-anchor="middle" font-size="10.5" fill="#7b8794" font-style="italic">评：答得是否接地、是否切题、是否正确</text>
+
+          <!-- Arrows from Question -->
+          <path d="M140,158 C170,140 175,95 200,92" fill="none" stroke="#1e5f8c" stroke-width="1.4" marker-end="url(#arrA)"></path>
+          <path d="M140,178 C170,200 175,248 200,252" fill="none" stroke="#1a7f5a" stroke-width="1.4" marker-end="url(#arrG)"></path>
+
+          <!-- Final score box -->
+          <rect x="490" y="120" width="240" height="140" rx="10" fill="#fffdf5" stroke="#b45309" stroke-width="1.5"></rect>
+          <text x="610" y="150" text-anchor="middle" font-size="14" fill="#b45309" font-weight="700">一套合格的评测 = 双视角</text>
+          <text x="610" y="178" text-anchor="middle" font-size="12" fill="#52606d">只评 Retrieval → 看不见幻觉</text>
+          <text x="610" y="200" text-anchor="middle" font-size="12" fill="#52606d">只评 Generation → 找不到检索根因</text>
+          <text x="610" y="228" text-anchor="middle" font-size="12.5" fill="#1f2933" font-weight="600">两层必须同时点亮，</text>
+          <text x="610" y="246" text-anchor="middle" font-size="12.5" fill="#1f2933" font-weight="600">才能定位一次失败发生在哪一层</text>
+
+          <path d="M400,90 C440,90 455,140 490,150" fill="none" stroke="#52606d" stroke-width="1.2" marker-end="url(#arr)" stroke-dasharray="5 4"></path>
+          <path d="M400,250 C440,250 455,215 490,205" fill="none" stroke="#52606d" stroke-width="1.2" marker-end="url(#arr)" stroke-dasharray="5 4"></path>
+
+          <!-- Annotation -->
+          <text x="80" y="240" text-anchor="middle" font-size="10.5" fill="#7b8794" font-style="italic">同一个 Question</text>
+          <text x="80" y="256" text-anchor="middle" font-size="10.5" fill="#7b8794" font-style="italic">两个独立评分面</text>
+        </svg>

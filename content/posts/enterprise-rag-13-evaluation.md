@@ -1,9 +1,9 @@
----
+﻿---
 title: 企业级 RAG 架构设计与工程实践（十三）：RAG 到底有没有变好？建立企业级 RAG Evaluation 体系
 slug: enterprise-rag-13-evaluation
 date: 2026-09-10T16:00:00+08:00
 readTime: 28 分钟
-category: RAG 与检索
+category: 评测与质量
 tags: RAG, 企业知识库, 企业级 RAG, 教程系列
 cover: ./content/assets/posts/covers/rag.svg
 format: html

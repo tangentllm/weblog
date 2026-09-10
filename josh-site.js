@@ -527,22 +527,353 @@ function joshNormalizeHeadingText(text) {
     .toLowerCase();
 }
 
+const JOSH_HTML_MAGAZINE_SCOPE = '.josh-prose .josh-html-magazine';
+
+function joshBuildHtmlMagazineIsolationCss(scope = JOSH_HTML_MAGAZINE_SCOPE) {
+  return [
+    `${scope}{`,
+    'max-width:100%;',
+    'background:transparent!important;',
+    'color:var(--josh-color-text)!important;',
+    '--paper:var(--josh-color-background)!important;',
+    '--paper-deep:color-mix(in srgb,var(--josh-color-cloud-300) 14%,var(--josh-color-background))!important;',
+    '--paper-alt:color-mix(in srgb,var(--josh-color-cloud-300) 10%,var(--josh-color-background))!important;',
+    '--bg:var(--josh-color-background)!important;',
+    '--bg-card:color-mix(in srgb,var(--josh-color-cloud-300) 55%,var(--josh-color-background))!important;',
+    '--surface:color-mix(in srgb,var(--josh-color-cloud-300) 55%,var(--josh-color-background))!important;',
+    '--border:color-mix(in srgb,var(--josh-color-text) 16%,transparent)!important;',
+    '--ink:var(--josh-color-text)!important;',
+    '--ink-soft:var(--josh-color-gray-700)!important;',
+    '--ink-mute:var(--josh-color-gray-500)!important;',
+    '--ink-faint:var(--josh-color-gray-500)!important;',
+    '--text:var(--josh-color-text)!important;',
+    '--text-muted:var(--josh-color-gray-500)!important;',
+    '--fg:var(--josh-color-text)!important;',
+    '--line:color-mix(in srgb,var(--josh-color-text) 16%,transparent)!important;',
+    '--line-soft:color-mix(in srgb,var(--josh-color-text) 10%,transparent)!important;',
+    '--rule:color-mix(in srgb,var(--josh-color-text) 16%,transparent)!important;',
+    '--card:color-mix(in srgb,var(--josh-color-cloud-300) 55%,var(--josh-color-background))!important;',
+    '--code-bg:var(--josh-color-code-bg)!important;',
+    '--code-ink:var(--josh-syntax-txt)!important;',
+    '}',
+    `${scope} .page,`,
+    `${scope} .wrap,`,
+    `${scope} .paper,`,
+    `${scope} .container,`,
+    `${scope} main{`,
+    'max-width:100%;',
+    'margin-left:0;',
+    'margin-right:0;',
+    'padding-left:0;',
+    'padding-right:0;',
+    'background:transparent!important;',
+    'color:inherit!important;',
+    '}',
+  ].join('');
+}
+
+function joshParseCssColorToRgb(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (!s || s === 'none' || s === 'transparent' || s.startsWith('url(')) return null;
+  if (s === 'white') return [255, 255, 255];
+  if (s === 'black') return [0, 0, 0];
+  let m = s.match(/^#([0-9a-f]{3})$/i);
+  if (m) {
+    const h = m[1];
+    return [parseInt(h[0] + h[0], 16), parseInt(h[1] + h[1], 16), parseInt(h[2] + h[2], 16)];
+  }
+  m = s.match(/^#([0-9a-f]{6})$/i);
+  if (m) {
+    const h = m[1];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  m = s.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+  return null;
+}
+
+function joshRelLuminance(rgb) {
+  const [r, g, b] = rgb.map((c) => {
+    const x = c / 255;
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function joshClassifySvgToneFromSamples(samples) {
+  const scored = [];
+  for (const sample of samples || []) {
+    const rgb = joshParseCssColorToRgb(sample.fill);
+    if (!rgb) continue;
+    const L = joshRelLuminance(rgb);
+    const area = Number(sample.area) > 0 ? Number(sample.area) : 1;
+    scored.push({ L, area });
+  }
+  if (!scored.length) return 'light';
+  scored.sort((a, b) => b.area - a.area);
+  const top = scored.slice(0, Math.min(3, scored.length));
+  const weighted = top.reduce((sum, s) => sum + s.L * s.area, 0)
+    / top.reduce((sum, s) => sum + s.area, 0);
+  if (weighted >= 0.55) return 'light';
+  if (weighted <= 0.35) return 'dark';
+  const mean = scored.reduce((sum, s) => sum + s.L, 0) / scored.length;
+  return mean >= 0.45 ? 'light' : 'dark';
+}
+
+function joshReadSvgFill(el) {
+  const attr = el.getAttribute('fill');
+  if (attr) return attr;
+  const style = el.getAttribute('style') || '';
+  const m = style.match(/(?:^|;)\s*fill\s*:\s*([^;]+)/i);
+  return m ? m[1].trim() : '';
+}
+
+function joshClassifySvgTone(svg) {
+  const samples = [];
+  const rootFill = joshReadSvgFill(svg);
+  if (rootFill) samples.push({ fill: rootFill, area: 1e9 });
+  svg.querySelectorAll('rect, path, circle, ellipse, polygon').forEach((el) => {
+    const fill = joshReadSvgFill(el);
+    if (!fill) return;
+    const w = parseFloat(el.getAttribute('width') || '0') || 0;
+    const h = parseFloat(el.getAttribute('height') || '0') || 0;
+    const r = parseFloat(el.getAttribute('r') || '0') || 0;
+    let area = w > 0 && h > 0 ? w * h : 0;
+    if (!area && r > 0) area = Math.PI * r * r;
+    if (!area) area = el.tagName.toLowerCase() === 'rect' ? 100 : 1;
+    samples.push({ fill, area });
+  });
+  return joshClassifySvgToneFromSamples(samples);
+}
+
+/** Paper-card (light) vs leave-as-is (dark) for dark-mode magazine figures. */
+function joshAnnotateMagazineFigures(root) {
+  if (!root) return;
+  const doc = root.ownerDocument;
+
+  // Prefer annotating existing figure hosts so we don't nest paper cards.
+  root.querySelectorAll('.mermaid, .fig-frame').forEach((el) => {
+    if (el.classList.contains('josh-magazine-fig')) return;
+    const innerSvg = el.querySelector('svg');
+    const tone = innerSvg ? joshClassifySvgTone(innerSvg) : 'light';
+    el.classList.add('josh-magazine-fig');
+    el.setAttribute('data-josh-svg-tone', tone);
+    el.querySelectorAll('svg').forEach((svg) => svg.setAttribute('data-josh-svg-tone', tone));
+  });
+
+  root.querySelectorAll('svg').forEach((svg) => {
+    if (svg.closest('.josh-magazine-fig')) return;
+    if (svg.closest('.josh-code-snippet, .shiki')) return;
+    const tone = joshClassifySvgTone(svg);
+    svg.setAttribute('data-josh-svg-tone', tone);
+    const wrap = doc.createElement('div');
+    wrap.className = 'josh-magazine-fig';
+    wrap.setAttribute('data-josh-svg-tone', tone);
+    wrap.setAttribute('role', 'group');
+    svg.parentNode.insertBefore(wrap, svg);
+    wrap.appendChild(svg);
+    wrap.querySelectorAll('svg').forEach((child) => child.setAttribute('data-josh-svg-tone', tone));
+  });
+}
+
+/** Ensure wide tables scroll inside .tbl-wrap (and get lightbox affordance). */
+function joshWrapMagazineTables(root) {
+  if (!root) return;
+  const doc = root.ownerDocument;
+  root.querySelectorAll('table').forEach((table) => {
+    if (table.closest('.tbl-wrap')) return;
+    const wrap = doc.createElement('div');
+    wrap.className = 'tbl-wrap';
+    table.parentNode.insertBefore(wrap, table);
+    wrap.appendChild(table);
+  });
+}
+
 function joshHtmlArticleChromeSelector() {
-  return 'header, nav, footer, .masthead, .hero, .next-box';
+  return 'header, nav, footer, .masthead, .hero, .cover, .next-box';
+}
+
+function joshHtmlArticleKeeperSelector() {
+  return '.abstract, .series-index, .subtitle, .deck, .lead-deck, aside.abstract';
+}
+
+function joshStripCssComments(css) {
+  return String(css || '').replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+function joshScopeSelectorList(selectorGroup, scope = JOSH_HTML_MAGAZINE_SCOPE) {
+  return selectorGroup
+    .split(',')
+    .map((raw) => {
+      const s = raw.trim();
+      if (!s) return s;
+      if (/^(from|to|\d+(\.\d+)?%)$/i.test(s)) return s;
+      if (s === ':root' || s === 'html' || s === 'body') return scope;
+      if (s === '*') return `${scope}, ${scope} *`;
+      if (
+        s === scope
+        || s.startsWith(`${scope} `)
+        || s.startsWith(`${scope}:`)
+        || s.startsWith(`${scope}.`)
+        || s.startsWith(`${scope}[`)
+      ) {
+        return s;
+      }
+      if (s.startsWith(':root')) return `${scope}${s.slice(5)}`;
+      if (/^html\b/.test(s)) return `${scope}${s.replace(/^html\b/, '')}`;
+      if (/^body\b/.test(s)) return `${scope}${s.replace(/^body\b/, '')}`;
+      return `${scope} ${s}`;
+    })
+    .join(', ');
+}
+
+function joshReadBalancedCssBlock(text, openIndex) {
+  let i = openIndex + 1;
+  let depth = 1;
+  const start = i;
+  while (i < text.length && depth > 0) {
+    const c = text[i];
+    if (c === '"' || c === "'") {
+      const q = c;
+      i += 1;
+      while (i < text.length && text[i] !== q) {
+        if (text[i] === '\\') i += 1;
+        i += 1;
+      }
+      i += 1;
+      continue;
+    }
+    if (c === '{') depth += 1;
+    else if (c === '}') depth -= 1;
+    i += 1;
+  }
+  return {
+    body: text.slice(start, i - 1),
+    end: i,
+  };
+}
+
+function joshScopeHtmlArticleCss(css, scope = JOSH_HTML_MAGAZINE_SCOPE) {
+  const text = joshStripCssComments(css);
+
+  const processRules = (chunk) => {
+    let j = 0;
+    let out = '';
+
+    const skipWs = () => {
+      while (j < chunk.length && /\s/.test(chunk[j])) j += 1;
+    };
+
+    while (j < chunk.length) {
+      skipWs();
+      if (j >= chunk.length) break;
+
+      if (chunk[j] === '@') {
+        const atMatch = chunk.slice(j).match(/^@[a-zA-Z-]+/);
+        const atName = (atMatch ? atMatch[0] : '@').toLowerCase();
+        const atStart = j;
+        j += atName.length;
+
+        if (atName === '@keyframes' || atName === '@font-face' || atName === '@page') {
+          while (j < chunk.length && chunk[j] !== '{') j += 1;
+          if (chunk[j] === '{') {
+            const { body, end } = joshReadBalancedCssBlock(chunk, j);
+            out += `${chunk.slice(atStart, j)}{${body}}`;
+            j = end;
+          } else {
+            out += chunk.slice(atStart, j);
+          }
+          continue;
+        }
+
+        if (atName === '@media' || atName === '@supports' || atName === '@container') {
+          const preludeStart = j;
+          while (j < chunk.length && chunk[j] !== '{') j += 1;
+          const prelude = chunk.slice(preludeStart, j).trim();
+          if (chunk[j] === '{') {
+            const { body, end } = joshReadBalancedCssBlock(chunk, j);
+            out += `${atName} ${prelude}{${processRules(body)}}`;
+            j = end;
+          }
+          continue;
+        }
+
+        while (j < chunk.length && chunk[j] !== '{' && chunk[j] !== ';') j += 1;
+        if (chunk[j] === ';') {
+          j += 1;
+          out += chunk.slice(atStart, j);
+        } else if (chunk[j] === '{') {
+          const { body, end } = joshReadBalancedCssBlock(chunk, j);
+          out += `${chunk.slice(atStart, j)}{${body}}`;
+          j = end;
+        } else {
+          out += chunk.slice(atStart, j);
+        }
+        continue;
+      }
+
+      const selStart = j;
+      while (j < chunk.length && chunk[j] !== '{') j += 1;
+      const selectorGroup = chunk.slice(selStart, j).trim();
+      if (chunk[j] !== '{') {
+        out += chunk.slice(selStart, j);
+        break;
+      }
+      const { body, end } = joshReadBalancedCssBlock(chunk, j);
+      j = end;
+      if (!selectorGroup) continue;
+      out += `${joshScopeSelectorList(selectorGroup, scope)}{${body}}`;
+    }
+
+    return out;
+  };
+
+  return processRules(text);
+}
+
+function joshCollectHtmlArticleStyles(doc) {
+  return [...doc.querySelectorAll('style')]
+    .map((el) => el.textContent || '')
+    .filter((text) => text.trim())
+    .join('\n');
+}
+
+function joshSalvageHtmlArticleKeepers(root) {
+  if (!root) return;
+  const keepSel = joshHtmlArticleKeeperSelector();
+  root.querySelectorAll(joshHtmlArticleChromeSelector()).forEach((chrome) => {
+    chrome.querySelectorAll(keepSel).forEach((el) => {
+      if (!chrome.parentNode) return;
+      chrome.parentNode.insertBefore(el, chrome);
+    });
+  });
 }
 
 function joshFindHtmlArticleRoot(doc) {
-  const wrap = doc.querySelector('.wrap');
-  if (wrap) return wrap;
-  const main = doc.querySelector('main');
-  if (main) return main;
+  // Prefer full magazine shells first. Some drafts put abstract/series chrome
+  // beside <main> inside .wrap; selecting bare <main> would drop that content.
   const page = doc.querySelector('.page');
   if (page) return page;
   const paper = doc.querySelector('.paper');
   if (paper) return paper;
 
+  const wraps = [...doc.querySelectorAll('.wrap')].filter(
+    (el) => !el.closest('.hero, .masthead, .cover, header'),
+  );
+  if (wraps.length === 1) return wraps[0];
+  if (wraps.length > 1) {
+    const outer = wraps.filter((el) => !wraps.some((other) => other !== el && other.contains(el)));
+    const pool = outer.length ? outer : wraps;
+    return pool.reduce((best, el) => (
+      (el.textContent || '').length >= (best.textContent || '').length ? el : best
+    ));
+  }
+
+  const main = doc.querySelector('main');
+  if (main) return main;
+
   const containers = [...doc.querySelectorAll('.container')].filter(
-    (el) => !el.closest('.hero, .masthead, header'),
+    (el) => !el.closest('.hero, .masthead, .cover, header'),
   );
   if (containers.length === 1) return containers[0];
   if (containers.length > 1) {
@@ -551,38 +882,62 @@ function joshFindHtmlArticleRoot(doc) {
     ));
   }
 
-  return doc.querySelector('.container') || doc.body;
+  return doc.querySelector('.wrap, .container') || doc.body;
 }
 
 function extractHtmlArticleProse(html, title) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
+
+  const rawCss = joshCollectHtmlArticleStyles(doc);
+  const scopedCss = rawCss ? joshScopeHtmlArticleCss(rawCss) : '';
+  const hasMagazineCss = Boolean(scopedCss.trim());
+
   doc.querySelectorAll('script, style, link[rel="stylesheet"]').forEach((el) => el.remove());
 
-  // Drop page chrome before choosing the root so `.container` inside `.hero` is not selected.
+  // Prefer body content over chrome nested inside hero/masthead.
+  joshSalvageHtmlArticleKeepers(doc.body);
   doc.body?.querySelectorAll(joshHtmlArticleChromeSelector()).forEach((el) => el.remove());
 
   const container = joshFindHtmlArticleRoot(doc);
+  joshSalvageHtmlArticleKeepers(container);
   container.querySelectorAll(joshHtmlArticleChromeSelector()).forEach((el) => el.remove());
-  container.querySelectorAll('.toc').forEach((el) => el.remove());
-  container.querySelectorAll('.callout[style]').forEach((el) => el.removeAttribute('style'));
-  container.querySelectorAll('pre[style], pre code[style]').forEach((el) => el.removeAttribute('style'));
-  container.querySelectorAll('pre span[style]').forEach((el) => el.removeAttribute('style'));
-  // Standalone magazine drafts often force white text on dark cards; without those
-  // backgrounds the text vanishes inside Josh prose.
-  container.querySelectorAll('[style*="color"]').forEach((el) => {
-    const style = el.getAttribute('style') || '';
-    if (!/#fff\b|#ffffff\b|\bwhite\b|rgb\(\s*255\s*,\s*255\s*,\s*255/i.test(style)) return;
-    const cleaned = style
-      .split(';')
-      .map((part) => part.trim())
-      .filter((part) => part && !/^color\s*:/i.test(part))
-      .join('; ');
-    if (cleaned) el.setAttribute('style', cleaned);
-    else el.removeAttribute('style');
-  });
+  container.querySelectorAll('.toc, .toc-inline, .toc-title').forEach((el) => el.remove());
 
-  return stripDuplicatePostH1(container.innerHTML.trim(), title);
+  if (hasMagazineCss) {
+    joshAnnotateMagazineFigures(container);
+    joshWrapMagazineTables(container);
+  }
+
+  // When magazine CSS is kept, leave author colors/tokens alone.
+  if (!hasMagazineCss) {
+    container.querySelectorAll('.callout[style]').forEach((el) => el.removeAttribute('style'));
+    container.querySelectorAll('pre[style], pre code[style]').forEach((el) => el.removeAttribute('style'));
+    container.querySelectorAll('pre span[style]').forEach((el) => el.removeAttribute('style'));
+    // Standalone magazine drafts often force white text on dark cards; without those
+    // backgrounds the text vanishes inside Josh prose.
+    container.querySelectorAll('[style*="color"]').forEach((el) => {
+      const style = el.getAttribute('style') || '';
+      if (!/#fff\b|#ffffff\b|\bwhite\b|rgb\(\s*255\s*,\s*255\s*,\s*255/i.test(style)) return;
+      const cleaned = style
+        .split(';')
+        .map((part) => part.trim())
+        .filter((part) => part && !/^color\s*:/i.test(part))
+        .join('; ');
+      if (cleaned) el.setAttribute('style', cleaned);
+      else el.removeAttribute('style');
+    });
+  }
+
+  const bodyHtml = stripDuplicatePostH1(container.innerHTML.trim(), title);
+  if (!hasMagazineCss) return bodyHtml;
+
+  // Surface/ink tokens → Josh theme. Keep --accent* from the draft (do not
+  // force Josh primary). Dark-mode hardcode patches live in josh-prose.css.
+  const isolationCss = joshBuildHtmlMagazineIsolationCss();
+
+  return `<style data-josh-html-magazine="1">${scopedCss}${isolationCss}</style>`
+    + `<div class="josh-html-magazine">${bodyHtml}</div>`;
 }
 
 function stripDuplicatePostH1(html, title) {
@@ -958,7 +1313,9 @@ function joshExtractCalloutTitle(root) {
 function enhanceJoshProseCallouts(scope = document) {
   const proseRoots = scope.querySelectorAll('.josh-prose');
   proseRoots.forEach((prose) => {
+    // Magazine HTML articles keep their own callout styling; do not rewrite them.
     prose.querySelectorAll('.callout:not([data-josh-enhanced]), .warn-callout:not([data-josh-enhanced])').forEach((el) => {
+      if (el.closest('.josh-html-magazine')) return;
       const variant = joshInferCalloutVariant(
         el.querySelector('.co-label, .callout-title, strong')?.textContent || '',
         `${el.className} ${el.classList.contains('warn-callout') ? 'warn' : ''}`,
@@ -968,6 +1325,7 @@ function enhanceJoshProseCallouts(scope = document) {
     });
 
     prose.querySelectorAll('blockquote:not([data-josh-enhanced]):not(.quote):not(.josh-quote)').forEach((el) => {
+      if (el.closest('.josh-html-magazine')) return;
       const { title, bodyHtml } = joshExtractCalloutTitle(el);
       if (!title || !bodyHtml || !joshIsCalloutTitle(title)) return;
       const variant = joshInferCalloutVariant(title, '');
@@ -975,6 +1333,7 @@ function enhanceJoshProseCallouts(scope = document) {
     });
 
     prose.querySelectorAll('.josh-callout:not([data-josh-enhanced])').forEach((el) => {
+      if (el.closest('.josh-html-magazine')) return;
       let variant = 'info';
       if (el.classList.contains('josh-callout--warning')) variant = 'warning';
       else if (el.classList.contains('josh-callout--success')) variant = 'success';
@@ -1183,10 +1542,21 @@ function joshTagCloudMarkup(sortedTags) {
   </div>`;
 }
 
-function joshHotTagCardMarkup(tag, tagPosts) {
+function joshHotTagCardMarkup(tag, tagPosts, usedTitles = null) {
   const count = tagPosts.length;
   const sorted = [...tagPosts].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const previewItems = sorted.slice(0, 2).map((post) => {
+  const seen = usedTitles || new Set();
+  const unique = [];
+  const fallback = [];
+  for (const post of sorted) {
+    const title = String(post.title || '').trim();
+    if (!title) continue;
+    if (!seen.has(title)) unique.push(post);
+    else fallback.push(post);
+  }
+  const picks = [...unique, ...fallback].slice(0, 2);
+  picks.forEach((post) => seen.add(String(post.title || '').trim()));
+  const previewItems = picks.map((post) => {
     const title = String(post.title || '').trim();
     return title ? `<li class="josh-tag-card__preview-item">${title}</li>` : '';
   }).join('');
@@ -1209,7 +1579,8 @@ function joshHotTagCardMarkup(tag, tagPosts) {
 function joshTagsHotSectionMarkup(sortedTags, limit = 6) {
   const hotTags = sortedTags.slice(0, limit);
   if (!hotTags.length) return '';
-  const cards = hotTags.map(([tag, tagPosts]) => joshHotTagCardMarkup(tag, tagPosts)).join('');
+  const usedTitles = new Set();
+  const cards = hotTags.map(([tag, tagPosts]) => joshHotTagCardMarkup(tag, tagPosts, usedTitles)).join('');
   return `<section class="josh-tags-page__hot" aria-labelledby="josh-tags-hot-heading">
     <h2 class="josh-tags-page__hot-title" id="josh-tags-hot-heading">热门标签</h2>
     <div class="josh-tag-card-grid" role="list">${cards}</div>
@@ -4576,6 +4947,8 @@ function initJoshSiteInteractions(app) {
     initJoshInteractions(app);
   }
 
+  initJoshMagazineLightbox(app);
+
   let cleanupAbout = null;
   if (app.querySelector('.tangent-about-page')) {
     if (typeof initTangentAboutInteractions === 'function') {
@@ -4721,6 +5094,7 @@ function renderJoshPost(app, slug) {
       displayViewCountMulti(post.slug, 'post', [`view-count-tail-${post.slug}`]);
     }
     if (typeof bindJoshReadingProgress === 'function') bindJoshReadingProgress(post.slug);
+    initJoshMagazineLightbox(app);
   });
 
   setTimeout(() => {
@@ -4729,6 +5103,136 @@ function renderJoshPost(app, slug) {
 }
 
 const JOSH_HEADING_ANCHOR_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
+
+function joshCloseMagazineLightbox() {
+  document.querySelectorAll('.josh-magazine-lightbox').forEach((el) => el.remove());
+  document.documentElement.classList.remove('josh-magazine-lightbox-open');
+}
+
+function joshOpenMagazineLightbox(sourceEl) {
+  if (!sourceEl) return;
+  joshCloseMagazineLightbox();
+
+  const svg = sourceEl.matches('svg') ? sourceEl : sourceEl.querySelector('svg');
+  const tableHost = sourceEl.classList?.contains('tbl-wrap')
+    ? sourceEl
+    : sourceEl.querySelector?.('.tbl-wrap, table');
+  const table = tableHost?.matches?.('table')
+    ? tableHost
+    : tableHost?.querySelector?.('table');
+
+  const tone = sourceEl.getAttribute('data-josh-svg-tone')
+    || svg?.getAttribute('data-josh-svg-tone')
+    || 'light';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'josh-magazine-lightbox';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', '放大查看');
+
+  const panel = document.createElement('div');
+  panel.className = 'josh-magazine-lightbox__panel';
+  // Light paper matches magazine diagrams (class-based cream fills). Dark-native
+  // SVGs still paint correctly via scoped magazine CSS inside the host below.
+  panel.setAttribute('data-tone', tone === 'dark' ? 'dark' : 'light');
+
+  // Keep .josh-prose .josh-html-magazine ancestry so article <style> rules
+  // (e.g. svg .b { fill:#F3F1EC }) still apply after clone.
+  const proseHost = document.createElement('div');
+  proseHost.className = 'josh-prose';
+  const magazineHost = document.createElement('div');
+  magazineHost.className = 'josh-html-magazine';
+  magazineHost.setAttribute('data-josh-lightbox-host', '1');
+
+  if (svg) {
+    const clone = svg.cloneNode(true);
+    clone.removeAttribute('width');
+    clone.removeAttribute('height');
+    clone.style.width = '100%';
+    clone.style.maxWidth = '100%';
+    clone.style.height = 'auto';
+    clone.style.display = 'block';
+    // Wide/flat process diagrams (tiny viewBox height) need a readable floor.
+    const vb = (clone.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+    if (vb.length === 4 && vb[2] > 0 && vb[3] > 0 && vb[2] / vb[3] >= 8) {
+      clone.setAttribute('data-josh-lightbox-wide', '1');
+    }
+    magazineHost.appendChild(clone);
+    proseHost.appendChild(magazineHost);
+    panel.appendChild(proseHost);
+  } else if (table) {
+    const wrap = document.createElement('div');
+    wrap.className = 'tbl-wrap';
+    wrap.appendChild(table.cloneNode(true));
+    magazineHost.appendChild(wrap);
+    proseHost.appendChild(magazineHost);
+    panel.appendChild(proseHost);
+  } else {
+    return;
+  }
+
+  const hint = document.createElement('div');
+  hint.className = 'josh-magazine-lightbox__hint';
+  hint.textContent = '点击空白处或按 Esc 关闭';
+
+  overlay.appendChild(panel);
+  overlay.appendChild(hint);
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) joshCloseMagazineLightbox();
+  });
+  panel.addEventListener('click', (event) => event.stopPropagation());
+
+  document.body.appendChild(overlay);
+  document.documentElement.classList.add('josh-magazine-lightbox-open');
+}
+
+function initJoshMagazineLightbox(scope) {
+  if (!window.__joshMagazineLightboxDelegated) {
+    window.__joshMagazineLightboxDelegated = true;
+    document.addEventListener('click', (event) => {
+      const target = event.target.closest(
+        '.josh-html-magazine .josh-magazine-fig, .josh-html-magazine .tbl-wrap, .josh-html-magazine .mermaid',
+      );
+      if (!target) return;
+      if (event.target.closest('a, button, input, textarea, select')) return;
+      if (!target.querySelector('svg, table')) return;
+      event.preventDefault();
+      joshOpenMagazineLightbox(target);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        joshCloseMagazineLightbox();
+        return;
+      }
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const target = event.target.closest?.(
+        '.josh-html-magazine .josh-magazine-fig, .josh-html-magazine .tbl-wrap, .josh-html-magazine .mermaid',
+      );
+      if (!target || !target.querySelector('svg, table')) return;
+      event.preventDefault();
+      joshOpenMagazineLightbox(target);
+    });
+  }
+
+  const root = (scope && scope.querySelector)
+    ? (scope.querySelector('.josh-html-magazine') || scope)
+    : document.querySelector('.josh-html-magazine');
+  if (!root || !root.querySelectorAll) return;
+
+  root.querySelectorAll('.josh-magazine-fig, .tbl-wrap, .mermaid').forEach((el) => {
+    if (!el.querySelector('svg, table') && !el.classList.contains('mermaid')) return;
+    if (!el.classList.contains('josh-magazine-fig') && el.classList.contains('mermaid')) {
+      el.classList.add('josh-magazine-fig');
+      if (!el.getAttribute('data-josh-svg-tone')) el.setAttribute('data-josh-svg-tone', 'light');
+    }
+    el.style.cursor = 'zoom-in';
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    if (!el.getAttribute('role')) el.setAttribute('role', 'button');
+    if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', '点击放大查看');
+    el.dataset.joshLightboxBound = '1';
+  });
+}
 
 function initJoshHeadingAnchors(scope) {
   const root = scope || document;

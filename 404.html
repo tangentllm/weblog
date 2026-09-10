@@ -84,7 +84,7 @@
   </script>
   <link rel="stylesheet" href="josh-tokens.css">
   <link rel="stylesheet" href="josh-components.css?v=5">
-  <link rel="stylesheet" href="josh-prose.css?v=6">
+  <link rel="stylesheet" href="josh-prose.css?v=8">
   <link rel="stylesheet" href="josh-syntax.css">
   <link rel="stylesheet" href="josh-home.css">
   <link rel="stylesheet" href="josh-playground.css">
@@ -217,7 +217,7 @@
 <script type="module" src="josh-playground.js"></script>
 <script type="module" src="josh-shiki.js"></script>
 <script src="josh-hit-counter.js"></script>
-<script src="josh-site.js?v=7"></script>
+<script src="josh-site.js?v=10"></script>
 <script src="josh-interactions.js?v=4"></script>
 <script src="josh-home.js"></script>
 <script>
@@ -2400,6 +2400,7 @@ function runJoshCodeHighlight(scope = document) {
   const fallbackHljs = () => {
     if (typeof hljs === 'undefined') return;
     scope.querySelectorAll('.josh-prose pre code:not(.shiki code)').forEach((block) => {
+      if (block.closest('.josh-code-snippet .shiki')) return;
       hljs.highlightElement(block);
     });
   };
@@ -2527,7 +2528,11 @@ function renderMermaidDiagrams(scope = document) {
 
   const nodes = scope.querySelectorAll('.mermaid');
   if (nodes.length > 0) {
-    mermaid.run({ nodes });
+    Promise.resolve(mermaid.run({ nodes })).finally(() => {
+      if (typeof initJoshMagazineLightbox === 'function') {
+        initJoshMagazineLightbox(scope);
+      }
+    });
   }
 }
 

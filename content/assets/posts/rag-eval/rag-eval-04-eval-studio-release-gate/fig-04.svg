@@ -1,0 +1,62 @@
+<svg viewBox="0 0 860 190" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace">
+      <defs>
+        <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8A8A84"></path>
+        </marker>
+      </defs>
+      
+      <g>
+        <rect class="st st4" x="14" y="55" width="96" height="72" rx="3"></rect>
+        <text class="t4" x="26" y="82" fill="#1B1B1B">Git Commit</text>
+        <text class="s4" x="26" y="100" fill="#8A8A84">代码 / Prompt /</text>
+        <text class="s4" x="26" y="113" fill="#8A8A84">模型配置变更</text>
+
+        <line class="f4" x1="110" y1="91" x2="130" y2="91"></line>
+
+        <rect class="st" x="134" y="55" width="96" height="72" rx="3"></rect>
+        <text class="t4" x="146" y="82" fill="#1B1B1B">Unit Test</text>
+        <text class="s4" x="146" y="100" fill="#8A8A84">逻辑正确性</text>
+        <text class="s4" x="146" y="113" fill="#8A8A84">秒级</text>
+
+        <line class="f4" x1="230" y1="91" x2="250" y2="91"></line>
+
+        <rect class="st" x="254" y="55" width="100" height="72" rx="3"></rect>
+        <text class="t4" x="266" y="82" fill="#1B1B1B">Integration</text>
+        <text class="t4" x="266" y="96" fill="#1B1B1B" font-size="11.5">Test</text>
+        <text class="s4" x="266" y="113" fill="#8A8A84">链路连通 · 分钟级</text>
+
+        <line class="f4" x1="354" y1="91" x2="374" y2="91"></line>
+
+        <rect class="st" x="378" y="55" width="108" height="72" rx="3" style="stroke:#2B4C7E;stroke-width:1.6;"></rect>
+        <text class="t4" x="390" y="78" fill="#2B4C7E">RAG Regression</text>
+        <text class="s4" x="390" y="94" fill="#8A8A84">Recall / Precision</text>
+        <text class="s4" x="390" y="107" fill="#8A8A84">确定性指标</text>
+        <text class="s4" x="390" y="119" fill="#8A8A84">≈ 3 min</text>
+
+        <line class="f4" x1="486" y1="91" x2="506" y2="91"></line>
+
+        <rect class="st" x="510" y="55" width="108" height="72" rx="3" style="stroke:#2B4C7E;stroke-width:1.6;"></rect>
+        <text class="t4" x="522" y="78" fill="#2B4C7E">LLM Evaluation</text>
+        <text class="s4" x="522" y="94" fill="#8A8A84">Judge 类指标</text>
+        <text class="s4" x="522" y="107" fill="#8A8A84">分层抽样</text>
+        <text class="s4" x="522" y="119" fill="#8A8A84">≈ 8 min</text>
+
+        <line class="f4" x1="618" y1="91" x2="638" y2="91"></line>
+
+        <rect class="st gate4" x="642" y="55" width="96" height="72" rx="3"></rect>
+        <text class="t4" x="654" y="82" fill="#fff">Release</text>
+        <text class="t4" x="654" y="96" fill="#fff">Gate</text>
+        <text class="s4" x="654" y="113" fill="#EBC4BF">PASS/WARN/FAIL</text>
+
+        <line class="f4" x1="738" y1="80" x2="758" y2="80"></line>
+
+        <rect class="st dep" x="762" y="46" width="86" height="40" rx="3"></rect>
+        <text class="t4" x="778" y="70" fill="#fff" font-size="11">Deploy</text>
+
+        <line class="f4" x1="738" y1="104" x2="758" y2="140"></line>
+
+        <rect class="st" x="762" y="122" width="86" height="40" rx="3"></rect>
+        <text class="t4" x="778" y="146" fill="#B03A2E" font-size="11">Block</text>
+      </g>
+      <text x="14" y="176" font-size="9.5" fill="#8A8A84" letter-spacing="1.5">蓝色描边为本篇新增 Stage；三个评测 Stage 失败任一，后续 Stage 均不执行。</text>
+    </svg>

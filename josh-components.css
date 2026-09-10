@@ -1231,7 +1231,7 @@ html.josh-site[data-color-mode="dark"] .josh-page--tags .josh-tags-page__hot .jo
   color: var(--josh-color-gray-700);
   line-height: 1.45;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

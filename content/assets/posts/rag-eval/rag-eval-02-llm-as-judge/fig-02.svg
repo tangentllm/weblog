@@ -1,0 +1,34 @@
+<svg viewBox="0 0 920 300" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#16405B"></path>
+        </marker>
+      </defs>
+      <text x="460" y="28" text-anchor="middle" font-size="13" fill="#7A8A9A" letter-spacing="3">同一个 Judge · 同一条 Claim · 同一个 Context —— 仅交换两个候选 Answer 的顺序</text>
+      <!-- 左：原始顺序 -->
+      <g>
+        <rect x="60" y="55" width="380" height="190" rx="12" fill="#fff" stroke="#E3DDD2"></rect>
+        <text x="250" y="86" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">顺序 A：Answer-1 在前</text>
+        <rect x="90" y="104" width="320" height="44" rx="8" fill="#DCE8F0" stroke="#16405B" stroke-width="1.2"></rect>
+        <text x="250" y="131" text-anchor="middle" font-size="13" fill="#16405B" font-weight="600">Answer-1（真值：Faithful）</text>
+        <rect x="90" y="160" width="320" height="44" rx="8" fill="#F2EEE6" stroke="#E3DDD2"></rect>
+        <text x="250" y="187" text-anchor="middle" font-size="13" fill="#7A8A9A">Answer-2（真值：含幻觉）</text>
+        <text x="250" y="232" text-anchor="middle" font-size="15" font-weight="700" fill="#2E7D52" font-family="'JetBrains Mono',monospace">Judge 选择 → Answer-1 ✓ 正确</text>
+      </g>
+      <!-- 中间交换符 -->
+      <circle cx="460" cy="150" r="22" fill="#F5E3D7" stroke="#B4531E" stroke-width="1.5"></circle>
+      <text x="460" y="156" text-anchor="middle" font-size="16" fill="#B4531E" font-weight="700">⇄</text>
+      <!-- 右：交换后 -->
+      <g>
+        <rect x="480" y="55" width="380" height="190" rx="12" fill="#fff" stroke="#E3DDD2"></rect>
+        <text x="670" y="86" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">顺序 B：Answer-2 在前</text>
+        <rect x="510" y="104" width="320" height="44" rx="8" fill="#F2EEE6" stroke="#E3DDD2"></rect>
+        <text x="670" y="131" text-anchor="middle" font-size="13" fill="#7A8A9A">Answer-2（真值：含幻觉）</text>
+        <rect x="510" y="160" width="320" height="44" rx="8" fill="#DCE8F0" stroke="#16405B" stroke-width="1.2"></rect>
+        <text x="670" y="187" text-anchor="middle" font-size="13" fill="#16405B" font-weight="600">Answer-1（真值：Faithful）</text>
+        <text x="670" y="232" text-anchor="middle" font-size="15" font-weight="700" fill="#B03A2E" font-family="'JetBrains Mono',monospace">Judge 选择 → Answer-2 ✗ 翻转</text>
+      </g>
+      <path d="M440,150 L478,150" fill="none" stroke="#B4531E" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr2)"></path>
+      <!-- 底注 -->
+      <text x="460" y="282" text-anchor="middle" font-size="12.5" fill="#B4531E">结论：Judge 的部分「判断力」其实是对位置的敏感度。不消除它，成对评测的结论不可信。</text>
+    </svg>

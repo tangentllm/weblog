@@ -1,9 +1,9 @@
----
+﻿---
 title: RAG Evaluation 工程（一）：从“检索到了”到“回答正确”，Ragas 到底在评估什么？
 slug: rag-eval-01-metrics-ragas
 date: 2026-09-10T19:00:00+08:00
 readTime: 18 分钟
-category: RAG 与检索
+category: 评测与质量
 tags: RAG, Evaluation, RAG Evaluation, 教程系列
 cover: ./content/assets/posts/covers/rag.svg
 format: html

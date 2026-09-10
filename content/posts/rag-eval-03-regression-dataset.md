@@ -1,9 +1,9 @@
----
+﻿---
 title: RAG Evaluation 工程（三）：RAG Regression：如何建立一套真正有价值的 Evaluation Dataset？
 slug: rag-eval-03-regression-dataset
 date: 2026-09-10T21:00:00+08:00
 readTime: 18 分钟
-category: RAG 与检索
+category: 评测与质量
 tags: RAG, Evaluation, Regression Dataset, 教程系列
 cover: ./content/assets/posts/covers/rag.svg
 format: html

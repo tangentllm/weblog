@@ -1,0 +1,102 @@
+<svg viewBox="0 0 1000 440" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:1000px;">
+        <defs>
+          <marker id="arw2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#b8433a"></path>
+          </marker>
+          <marker id="arw3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#4a4f58"></path>
+          </marker>
+          <linearGradient id="gCase" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff"></stop>
+            <stop offset="100%" stop-color="#f4f2ec"></stop>
+          </linearGradient>
+        </defs>
+
+        <!-- 标题 -->
+        <text x="500" y="30" text-anchor="middle" font-family="Playfair Display, serif" font-size="18" font-weight="700" fill="#16181d" letter-spacing="0.5">
+          Failure-to-Regression 闭环
+        </text>
+        <text x="500" y="50" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#8a8f98" letter-spacing="1.5">
+          PRODUCTION → FAILURE → ANNOTATION → REGRESSION CASE → EVALUATION → FUTURE PROTECTION
+        </text>
+
+        <!-- Production (top-left) -->
+        <g>
+          <rect x="40" y="90" width="180" height="80" rx="10" fill="url(#gCase)" stroke="#c8c3b8" stroke-width="1.5"></rect>
+          <rect x="40" y="90" width="6" height="80" rx="3" fill="#4a4f58"></rect>
+          <text x="60" y="118" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#16181d">① Production</text>
+          <text x="60" y="140" font-family="Inter, sans-serif" font-size="10.5" fill="#4a4f58">真实流量持续运行</text>
+          <text x="60" y="156" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#8a8f98">query · trace · log</text>
+        </g>
+
+        <!-- Failure -->
+        <g>
+          <rect x="270" y="90" width="180" height="80" rx="10" fill="url(#gCase)" stroke="#d8a5a0" stroke-width="1.5"></rect>
+          <rect x="270" y="90" width="6" height="80" rx="3" fill="#b8433a"></rect>
+          <text x="290" y="118" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#16181d">② Failure</text>
+          <text x="290" y="140" font-family="Inter, sans-serif" font-size="10.5" fill="#4a4f58">线上出现质量异常</text>
+          <text x="290" y="156" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#8a8f98">ticket · alert · feedback</text>
+        </g>
+
+        <!-- Annotation -->
+        <g>
+          <rect x="500" y="90" width="180" height="80" rx="10" fill="url(#gCase)" stroke="#b3c6dc" stroke-width="1.5"></rect>
+          <rect x="500" y="90" width="6" height="80" rx="3" fill="#2d5a8e"></rect>
+          <text x="520" y="118" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#16181d">③ Annotation</text>
+          <text x="520" y="140" font-family="Inter, sans-serif" font-size="10.5" fill="#4a4f58">标注 root cause 与期望行为</text>
+          <text x="520" y="156" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#8a8f98">expert review · label</text>
+        </g>
+
+        <!-- Regression Case -->
+        <g>
+          <rect x="730" y="90" width="230" height="80" rx="10" fill="#f6e8e6" stroke="#b8433a" stroke-width="2"></rect>
+          <rect x="730" y="90" width="6" height="80" rx="3" fill="#b8433a"></rect>
+          <text x="750" y="118" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#b8433a">④ Regression Case</text>
+          <text x="750" y="140" font-family="Inter, sans-serif" font-size="10.5" fill="#4a4f58">标准化入库 · 带 risk_level</text>
+          <text x="750" y="156" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#8a8f98">case.yaml · dataset vN</text>
+        </g>
+
+        <!-- 顶部箭头 -->
+        <line x1="220" y1="130" x2="265" y2="130" stroke="#b8433a" stroke-width="1.5" marker-end="url(#arw2)"></line>
+        <line x1="450" y1="130" x2="495" y2="130" stroke="#b8433a" stroke-width="1.5" marker-end="url(#arw2)"></line>
+        <line x1="680" y1="130" x2="725" y2="130" stroke="#b8433a" stroke-width="1.5" marker-end="url(#arw2)"></line>
+
+        <!-- Evaluation (below) -->
+        <g>
+          <rect x="500" y="240" width="180" height="80" rx="10" fill="url(#gCase)" stroke="#c8c3b8" stroke-width="1.5"></rect>
+          <rect x="500" y="240" width="6" height="80" rx="3" fill="#3d6b4f"></rect>
+          <text x="520" y="268" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#16181d">⑤ Evaluation</text>
+          <text x="520" y="290" font-family="Inter, sans-serif" font-size="10.5" fill="#4a4f58">每次 Evaluation Run 自动跑</text>
+          <text x="520" y="306" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#8a8f98">ragas · judge · score</text>
+        </g>
+
+        <!-- Future Protection -->
+        <g>
+          <rect x="270" y="240" width="180" height="80" rx="10" fill="#e9f1ec" stroke="#3d6b4f" stroke-width="1.5"></rect>
+          <rect x="270" y="240" width="6" height="80" rx="3" fill="#3d6b4f"></rect>
+          <text x="290" y="268" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#3d6b4f">⑥ Future Protection</text>
+          <text x="290" y="290" font-family="Inter, sans-serif" font-size="10.5" fill="#4a4f58">同类问题在 PR 阶段被拦截</text>
+          <text x="290" y="306" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#8a8f98">gate · block · alert</text>
+        </g>
+
+        <!-- 回路箭头 -->
+        <path d="M 845 175 Q 845 210 680 240 L 680 280" fill="none" stroke="#4a4f58" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arw3)"></path>
+        <text x="790" y="215" font-family="Inter, sans-serif" font-size="10.5" fill="#8a8f98" font-style="italic">加入 Regression Dataset</text>
+
+        <line x1="495" y1="280" x2="455" y2="280" stroke="#4a4f58" stroke-width="1.5" marker-end="url(#arw3)"></line>
+        <text x="475" y="270" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#8a8f98">run</text>
+
+        <!-- 反馈环回 Production -->
+        <path d="M 270 280 Q 130 280 130 175" fill="none" stroke="#3d6b4f" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arw3)"></path>
+        <text x="100" y="230" font-family="Inter, sans-serif" font-size="10.5" fill="#3d6b4f" font-style="italic">守门 → 长期</text>
+        <text x="100" y="246" font-family="Inter, sans-serif" font-size="10.5" fill="#3d6b4f" font-style="italic">保护 Production</text>
+
+        <!-- 底部注解 -->
+        <rect x="40" y="365" width="920" height="55" rx="8" fill="#f4f2ec" stroke="#e5e2da" stroke-width="1"></rect>
+        <text x="500" y="387" text-anchor="middle" font-family="Inter, sans-serif" font-size="12.5" fill="#16181d" font-weight="600">
+          每转一圈，dataset 就多一条"已知脆弱点"。多次循环后，Regression Dataset 成为系统真实脆弱性的精准地图。
+        </text>
+        <text x="500" y="406" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#8a8f98" font-style="italic">
+          这就是"持续演进"的本质 —— 不是增长数据量，而是增长防御密度。
+        </text>
+      </svg>

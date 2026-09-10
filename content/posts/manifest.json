@@ -4,7 +4,7 @@
     "title": "RAG Evaluation 工程（四）：Eval Studio：把 RAG Evaluation 接入 CI/CD，建立真正的上线质量门禁",
     "date": "2026-09-10T22:00:00+08:00",
     "readTime": "28 分钟",
-    "category": "RAG 与检索",
+    "category": "评测与质量",
     "tags": [
       "RAG",
       "Evaluation",
@@ -25,7 +25,7 @@
     "title": "RAG Evaluation 工程（三）：RAG Regression：如何建立一套真正有价值的 Evaluation Dataset？",
     "date": "2026-09-10T21:00:00+08:00",
     "readTime": "18 分钟",
-    "category": "RAG 与检索",
+    "category": "评测与质量",
     "tags": [
       "RAG",
       "Evaluation",
@@ -46,7 +46,7 @@
     "title": "RAG Evaluation 工程（二）：LLM-as-Judge：让大模型给 RAG 打分，真的可靠吗？",
     "date": "2026-09-10T20:00:00+08:00",
     "readTime": "25 分钟",
-    "category": "RAG 与检索",
+    "category": "评测与质量",
     "tags": [
       "RAG",
       "Evaluation",
@@ -67,7 +67,7 @@
     "title": "RAG Evaluation 工程（一）：从“检索到了”到“回答正确”，Ragas 到底在评估什么？",
     "date": "2026-09-10T19:00:00+08:00",
     "readTime": "18 分钟",
-    "category": "RAG 与检索",
+    "category": "评测与质量",
     "tags": [
       "RAG",
       "Evaluation",
@@ -130,7 +130,7 @@
     "title": "企业级 RAG 架构设计与工程实践（十三）：RAG 到底有没有变好？建立企业级 RAG Evaluation 体系",
     "date": "2026-09-10T16:00:00+08:00",
     "readTime": "28 分钟",
-    "category": "RAG 与检索",
+    "category": "评测与质量",
     "tags": [
       "RAG",
       "企业知识库",

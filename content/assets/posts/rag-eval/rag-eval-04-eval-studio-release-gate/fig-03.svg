@@ -1,0 +1,70 @@
+<svg viewBox="0 0 860 480" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2B4C7E"></path>
+        </marker>
+        <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#B03A2E"></path>
+        </marker>
+        <marker id="arrG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2E6E4E"></path>
+        </marker>
+      </defs>
+      
+
+      <!-- Input -->
+      <rect class="g" x="20" y="185" width="150" height="90" rx="3"></rect>
+      <text class="tag3" x="36" y="207">INPUT</text>
+      <text class="t3" x="36" y="229" font-size="12.5">Run Report</text>
+      <text class="s3" x="36" y="247">Baseline vs Current</text>
+      <text class="s3" x="36" y="261">Delta × 7 指标</text>
+
+      <line class="f3" x1="170" y1="230" x2="216" y2="230"></line>
+
+      <!-- Hard Gate -->
+      <rect class="g" x="220" y="30" width="230" height="110" rx="3" style="stroke:#B03A2E;stroke-width:1.8;"></rect>
+      <text class="tag3" x="236" y="52" fill="#B03A2E">LAYER 1 · HARD GATE · 一票否决</text>
+      <text class="t3" x="236" y="76" font-size="12.5">Critical Tier Failures = 0</text>
+      <text class="t3" x="236" y="96" font-size="12.5">High-risk Error Cases = 0</text>
+      <text class="s3" x="236" y="118">任何一条违反 → 直接 FAIL，无豁免</text>
+
+      <!-- Soft Gate -->
+      <rect class="g" x="220" y="175" width="230" height="110" rx="3" style="stroke:#B07D2B;stroke-width:1.8;"></rect>
+      <text class="tag3" x="236" y="197" fill="#B07D2B">LAYER 2 · SOFT GATE · 绝对水位</text>
+      <text class="t3" x="236" y="221" font-size="12.5">Faithfulness ≥ 0.85</text>
+      <text class="t3" x="236" y="241" font-size="12.5">Relevancy ≥ 0.80 · Latency P95 ≤ 3.0s</text>
+      <text class="t3" x="236" y="261" font-size="12.5">Cost ≤ $0.005 / query</text>
+
+      <!-- Delta Gate -->
+      <rect class="g" x="220" y="320" width="230" height="110" rx="3" style="stroke:#2B4C7E;stroke-width:1.8;"></rect>
+      <text class="tag3" x="236" y="342" fill="#2B4C7E">LAYER 3 · REGRESSION DELTA · 相对退化</text>
+      <text class="t3" x="236" y="366" font-size="12.5">Δ Faithfulness ≥ −0.03</text>
+      <text class="t3" x="236" y="386" font-size="12.5">Δ Recall ≥ −0.02 · Δ Cost ≤ +20%</text>
+      <text class="s3" x="236" y="408">超出波动带 → WARN / FAIL</text>
+
+      <line class="f3" x1="170" y1="230" x2="216" y2="100"></line>
+      <line class="f3" x1="170" y1="230" x2="216" y2="360"></line>
+
+      <!-- 判定 -->
+      <line class="f3" x1="450" y1="85" x2="530" y2="185"></line>
+      <line class="f3" x1="450" y1="230" x2="530" y2="225"></line>
+      <line class="f3" x1="450" y1="375" x2="530" y2="265"></line>
+
+      <rect class="g" x="534" y="175" width="150" height="110" rx="3" style="fill:#F3F1EC;"></rect>
+      <text class="tag3" x="550" y="197">VERDICT</text>
+      <text class="t3" x="550" y="221" font-size="12.5">三层全部评估</text>
+      <text class="s3" x="550" y="241">Hard FAIL → FAIL</text>
+      <text class="s3" x="550" y="255">Soft/Delta 违规 → WARN*</text>
+      <text class="s3" x="550" y="269">全通过 → PASS</text>
+
+      <!-- 输出 -->
+      <line class="fG" x1="684" y1="205" x2="740" y2="140"></line>
+      <rect class="g" x="744" y="98" width="96" height="52" rx="3" style="fill:#E9F2ED;stroke:#2E6E4E;stroke-width:1.8;"></rect>
+      <text class="t3" x="762" y="128" font-size="13" fill="#2E6E4E">DEPLOY</text>
+
+      <line class="fR" x1="684" y1="255" x2="740" y2="330"></line>
+      <rect class="g" x="744" y="318" width="96" height="52" rx="3" style="fill:#F9ECEA;stroke:#B03A2E;stroke-width:1.8;"></rect>
+      <text class="t3" x="768" y="348" font-size="13" fill="#B03A2E">BLOCK</text>
+
+      <text class="tag3" x="40" y="466">* WARN 的处置策略见 3.4 节：可由 Tech Lead 显式 override，但 override 记录永久留痕。</text>
+    </svg>

@@ -1,0 +1,33 @@
+<svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,PingFang SC,sans-serif">
+          <defs>
+            <marker id="arr2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L9,3 L0,6 Z" fill="#52606d"></path>
+            </marker>
+          </defs>
+
+          <!-- Triangle -->
+          <polygon points="380,60 160,300 600,300" fill="none" stroke="#e4e0d6" stroke-width="2"></polygon>
+          <circle cx="380" cy="100" r="6" fill="#1a7f5a"></circle>
+          <circle cx="210" cy="270" r="6" fill="#1e5f8c"></circle>
+          <circle cx="550" cy="270" r="6" fill="#8a5a1e"></circle>
+
+          <!-- Vertex labels -->
+          <text x="380" y="48" text-anchor="middle" font-size="15" fill="#1a7f5a" font-weight="700">Groundedness 接地性</text>
+          <text x="380" y="72" text-anchor="middle" font-size="12" fill="#7b8794">Answer 是否忠实于 Context</text>
+          <text x="380" y="92" text-anchor="middle" font-size="12" fill="#52606d" font-weight="600">Faithfulness</text>
+
+          <text x="140" y="270" text-anchor="end" font-size="15" fill="#1e5f8c" font-weight="700">Retrieval Quality 检索质量</text>
+          <text x="140" y="292" text-anchor="end" font-size="12" fill="#7b8794">Context 是否拉全、是否排序合理</text>
+          <text x="140" y="312" text-anchor="end" font-size="12" fill="#52606d" font-weight="600">Context Recall · Context Precision</text>
+
+          <text x="620" y="270" text-anchor="start" font-size="15" fill="#8a5a1e" font-weight="700">Answer Quality 答案质量</text>
+          <text x="620" y="292" text-anchor="start" font-size="12" fill="#7b8794">是否切题、是否与 Reference 一致</text>
+          <text x="620" y="312" text-anchor="start" font-size="12" fill="#52606d" font-weight="600">Answer Relevancy · Factual Correctness</text>
+
+          <!-- Center -->
+          <text x="380" y="200" text-anchor="middle" font-size="13" fill="#1f2933" font-weight="700">RAG System Quality</text>
+          <text x="380" y="222" text-anchor="middle" font-size="11.5" fill="#7b8794">三个顶点相互独立，</text>
+          <text x="380" y="240" text-anchor="middle" font-size="11.5" fill="#7b8794">任一顶点弱化，整体体验都会塌</text>
+
+          <text x="380" y="375" text-anchor="middle" font-size="11.5" fill="#7b8794" font-style="italic">注：本系列沿用此术语体系，后续三篇会在其上叠加 Regression / Gate / Production 维度</text>
+        </svg>

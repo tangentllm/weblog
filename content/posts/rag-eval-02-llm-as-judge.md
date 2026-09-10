@@ -1,9 +1,9 @@
----
+﻿---
 title: RAG Evaluation 工程（二）：LLM-as-Judge：让大模型给 RAG 打分，真的可靠吗？
 slug: rag-eval-02-llm-as-judge
 date: 2026-09-10T20:00:00+08:00
 readTime: 25 分钟
-category: RAG 与检索
+category: 评测与质量
 tags: RAG, Evaluation, LLM-as-Judge, 教程系列
 cover: ./content/assets/posts/covers/rag.svg
 format: html

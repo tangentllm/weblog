@@ -478,6 +478,12 @@ html.josh-site[data-color-mode="dark"]:has(.josh-page--about) .josh-footer.josh-
 
 /* Josh .j2ip1mo — ≤920px: anchor bottom, extra intro top padding for overlay */
 @media (max-width: 57.5rem) {
+  /* Contain page-level x-scroll from cutout bleed; desktop keeps overflow visible */
+  html.josh-site:has(.josh-page--about),
+  html.josh-site:has(.josh-page--about) body {
+    overflow-x: clip !important;
+  }
+
   .josh-about-sky {
     overflow-x: clip;
     overflow-y: visible;
@@ -503,7 +509,8 @@ html.josh-site[data-color-mode="dark"]:has(.josh-page--about) .josh-footer.josh-
     width: 24.4375rem;
     height: 47.375rem;
     overflow: visible;
-    transform: translateY(-35px) translateX(calc(20% + 65px)) scale(0.96);
+    /* Soften desktop bleed on tablet — keep arms visible without page x-scroll */
+    transform: translateY(-35px) translateX(8%) scale(0.88);
     transform-origin: 50% 0;
   }
 
@@ -543,7 +550,8 @@ html.josh-site[data-color-mode="dark"]:has(.josh-page--about) .josh-footer.josh-
     height: auto;
     display: flex;
     justify-content: center;
-    transform: translateY(-35px) translateX(calc(20% + 65px)) scale(0.96);
+    /* Centered mobile cutout — no extra translateX (avoids scrollWidth ≈ 1000) */
+    transform: translateY(-28px) translateX(0) scale(0.92);
     transform-origin: 50% 0;
   }
 

@@ -1,0 +1,39 @@
+<svg viewBox="0 0 920 340" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#16405B"></path>
+        </marker>
+        <marker id="arr3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#B4531E"></path>
+        </marker>
+      </defs>
+      <!-- 被评数据 -->
+      <rect x="40" y="120" width="180" height="96" rx="12" fill="#F5E3D7" stroke="#B4531E" stroke-width="1.5"></rect>
+      <text x="130" y="152" text-anchor="middle" font-size="14" font-weight="700" fill="#8A3A10">同一批样本</text>
+      <text x="130" y="174" text-anchor="middle" font-size="11.5" fill="#8A3A10">Calibration Set</text>
+      <text x="130" y="193" text-anchor="middle" font-size="11.5" fill="#8A3A10">（人工金标 50–100 条）</text>
+      <!-- 三个 Judge -->
+      <g>
+        <rect x="330" y="36" width="220" height="52" rx="10" fill="#DCE8F0" stroke="#16405B" stroke-width="1.3"></rect>
+        <text x="440" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">Judge A · 模型家族 α</text>
+        <text x="440" y="77" text-anchor="middle" font-size="11" fill="#3A5A74">当前生产 Judge</text>
+        <rect x="330" y="142" width="220" height="52" rx="10" fill="#fff" stroke="#16405B" stroke-width="1.3"></rect>
+        <text x="440" y="164" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">Judge B · 模型家族 β</text>
+        <text x="440" y="183" text-anchor="middle" font-size="11" fill="#3A5A74">影子 Judge · 每周比对</text>
+        <rect x="330" y="248" width="220" height="52" rx="10" fill="#fff" stroke="#16405B" stroke-width="1.3"></rect>
+        <text x="440" y="270" text-anchor="middle" font-size="13" font-weight="700" fill="#16405B">Judge C · 模型家族 γ</text>
+        <text x="440" y="289" text-anchor="middle" font-size="11" fill="#3A5A74">候补 · 家族谱系隔离校验</text>
+      </g>
+      <path d="M220,150 L260,150 L260,62 L328,62" fill="none" stroke="#B4531E" stroke-width="1.5" marker-end="url(#arr3a)"></path>
+      <path d="M220,150 L260,150 L260,168 L328,168" fill="none" stroke="#B4531E" stroke-width="1.5" marker-end="url(#arr3a)"></path>
+      <path d="M220,150 L260,150 L260,274 L328,274" fill="none" stroke="#B4531E" stroke-width="1.5" marker-end="url(#arr3a)"></path>
+      <!-- 一致性仲裁 -->
+      <rect x="640" y="118" width="240" height="100" rx="12" fill="#18222E"></rect>
+      <text x="760" y="150" text-anchor="middle" font-size="13.5" font-weight="700" fill="#E3B455">一致性仲裁层</text>
+      <text x="760" y="176" text-anchor="middle" font-size="11.5" fill="#D8E1EA" font-family="'JetBrains Mono',monospace">agreement / κ / per-class F1</text>
+      <text x="760" y="198" text-anchor="middle" font-size="11" fill="#5E7387" font-family="'JetBrains Mono',monospace">分歧样本 → 人工复核队列</text>
+      <path d="M550,62 L700,62 L700,116" fill="none" stroke="#16405B" stroke-width="1.5" marker-end="url(#arr3)"></path>
+      <path d="M550,168 L700,168" fill="none" stroke="#16405B" stroke-width="1.5" marker-end="url(#arr3)"></path>
+      <path d="M550,274 L700,274 L700,220" fill="none" stroke="#16405B" stroke-width="1.5" marker-end="url(#arr3)"></path>
+      <text x="460" y="330" text-anchor="middle" font-size="12.5" fill="#7A8A9A">多 Judge 交叉 + 人工金标锚定：当 Judge A 与金标一致率跌破阈值，B 已有连续两周的平行数据可以无缝接管。</text>
+    </svg>

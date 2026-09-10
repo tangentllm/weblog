@@ -71,6 +71,22 @@ function joshShikiInferLang(codeEl) {
   if (match) return joshShikiNormalizeLang(match[1]);
   const parent = codeEl.closest('[data-language]');
   if (parent) return joshShikiNormalizeLang(parent.getAttribute('data-language'));
+
+  // Magazine drafts often encode language in the chrome filename / lang tag.
+  const hint = codeEl.closest('.codecard, .code-block, figure, .josh-html-magazine')
+    ?.querySelector('.fname, .cc-name, .lang-tag, .code-head')
+    ?.textContent || '';
+  if (/\.py\b|python/i.test(hint)) return 'python';
+  if (/\.ya?ml\b/i.test(hint)) return 'yaml';
+  if (/\.json\b/i.test(hint)) return 'json';
+  if (/\.tsx?\b|typescript/i.test(hint)) return hint.includes('tsx') ? 'tsx' : 'typescript';
+  if (/\.jsx?\b|javascript/i.test(hint)) return 'javascript';
+  if (/\.(sh|bash)\b|shell/i.test(hint)) return 'bash';
+  if (/\.md\b|markdown/i.test(hint)) return 'markdown';
+  if (/\.html?\b/i.test(hint)) return 'html';
+  if (/\.css\b/i.test(hint)) return 'css';
+  if (/\.sql\b/i.test(hint)) return 'sql';
+
   return 'plaintext';
 }
 
@@ -163,7 +179,12 @@ async function joshHighlightCodeElement(highlighter, codeEl) {
   });
 
   const pre = codeEl.closest('pre');
-  const host = pre?.closest('.code-block') || pre;
+  // Magazine drafts wrap code in .codecard / .code-block chrome — replace the
+  // whole shell so Josh snippet styling wins instead of leaving an empty bar.
+  const host = pre?.closest('.josh-html-magazine .codecard')
+    || pre?.closest('.josh-html-magazine .code-block')
+    || pre?.closest('.code-block')
+    || pre;
   if (!host) return;
 
   const figure = joshBuildCodeSnippetFigure(shikiHtml);
@@ -172,7 +193,8 @@ async function joshHighlightCodeElement(highlighter, codeEl) {
 }
 
 function joshWrapPlainCodeSnippets(scope = document) {
-  const pres = [];
+  const hosts = [];
+  const seen = new Set();
   scope.querySelectorAll('.josh-prose pre').forEach((pre) => {
     if (pre.closest('.josh-code-snippet') || pre.closest('.josh-playground') || pre.closest('.sp-wrapper')) return;
     if (!pre.querySelector('code')) return;
@@ -180,14 +202,24 @@ function joshWrapPlainCodeSnippets(scope = document) {
       pre.remove();
       return;
     }
-    pres.push(pre);
+    const host = pre.closest('.josh-html-magazine .codecard')
+      || pre.closest('.josh-html-magazine .code-block')
+      || pre;
+    if (seen.has(host)) return;
+    seen.add(host);
+    hosts.push({ host, pre });
   });
 
-  pres.forEach((pre) => {
-    pre.replaceWith(joshWrapPreInCodeSnippet(pre));
+  hosts.forEach(({ host, pre }) => {
+    const figure = joshCreateCodeSnippetShell();
+    const body = figure.querySelector('.josh-code-snippet__body');
+    pre.classList.remove('josh-shiki-pending');
+    body.appendChild(pre);
+    joshBindCodeSnippetCopy(figure);
+    host.replaceWith(figure);
   });
 
-  return pres.length;
+  return hosts.length;
 }
 
 async function highlightJoshProseCode(scope = document) {
