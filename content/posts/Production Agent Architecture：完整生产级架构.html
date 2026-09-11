@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Agent Architecture：完整生产级架构</title>
+    <style>
+        :root {
+            --primary-color: #1a1a2e;
+            --accent-color: #4a90e2;
+            --secondary-accent: #e94560;
+            --text-color: #2c3e50;
+            --light-bg: #f9fafb;
+            --border-color: #e1e4e8;
+            --code-bg: #1e1e2e;
+            --code-text: #cdd6f4;
+            --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-sans);
+            line-height: 1.8;
+            color: var(--text-color);
+            max-width: 880px;
+            margin: 0 auto;
+            padding: 40px 30px;
+            background-color: #ffffff;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--primary-color);
+            font-weight: 700;
+            line-height: 1.4;
+            margin-top: 1.5em;
+            margin-bottom: 1em;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 20px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 3rem;
+        }
+
+        h2 {
+            font-size: 1.9rem;
+            margin-top: 4rem;
+            padding-left: 0.8rem;
+            border-left: 5px solid var(--accent-color);
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            margin-top: 2.5rem;
+        }
+
+        h4 {
+            font-size: 1.15rem;
+            color: var(--accent-color);
+        }
+
+        p {
+            margin-bottom: 1.2rem;
+            text-align: justify;
+        }
+
+        strong {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        a {
+            color: var(--accent-color);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--accent-color);
+        }
+
+        blockquote {
+            border-left: 4px solid var(--secondary-accent);
+            padding: 15px 25px;
+            margin: 25px 0;
+            background-color: var(--light-bg);
+            color: #444;
+            font-style: italic;
+            border-radius: 0 4px 4px 0;
+        }
+
+        code {
+            font-family: var(--font-mono);
+            background-color: #eef1f5;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 0.88em;
+            color: var(--secondary-accent);
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 25px;
+            border-radius: 8px;
+            overflow-x: auto;
+            box-shadow: var(--card-shadow);
+            margin: 2rem 0;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            color: var(--code-text);
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            margin: 2rem 0;
+            box-shadow: var(--card-shadow);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            font-size: 0.95rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: block;
+            overflow-x: auto;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: left;
+            min-width: 120px;
+        }
+
+        thead {
+            background-color: var(--primary-color);
+            color: #fff;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: var(--light-bg);
+        }
+
+        .svg-container {
+            text-align: center;
+            margin: 3rem 0;
+            padding: 20px;
+            background-color: #fcfcfd;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            overflow-x: auto;
+        }
+
+        .svg-caption {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 15px;
+            font-style: italic;
+        }
+        
+        .checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+        .checklist li {
+            margin-bottom: 10px;
+            padding-left: 30px;
+            position: relative;
+        }
+        .checklist li:before {
+            content: '✅';
+            position: absolute;
+            left: 0;
+            top: 2px;
+        }
+
+        .highlight-box {
+            background-color: #f0f7ff;
+            border: 1px solid #d0e3ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+        
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .case-study {
+            background-color: #fffcf5;
+            border-left: 4px solid #f1c40f;
+            padding: 20px;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+        .case-study strong {
+            color: #d35400;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Production Agent Architecture：完整生产级架构</h1>
+<p class="subtitle">从一个 Agent Demo 到可上线、可观测、可治理、可扩展的生产系统</p>
+
+<h2 id="intro">引言：系列定位与核心问题</h2>
+<p>在前面的系列文章中，我们逐一拆解了构建 Agent 的各个核心维度：从 Workflow 与 Agent 的抉择，到单/多 Agent 的系统设计；从 Memory、Tool Calling 的能力扩展，到 Evaluation、Observability 与 Reliability 的工程保障。这些组件单独看都有一套复杂的工程实践，但当它们真正要组合成一个系统时，问题才刚刚开始。</p>
+<p>本篇必须完成最终架构收束：<strong>如何把这些能力组合成真正能够进入生产环境的 Agent System。</strong> 我们不再独立介绍 RAG、Memory 或 Tool Calling，而是站在系统架构层，把这些能力放到正确的位置。</p>
+<p>全文围绕以下 10 个核心问题展开：</p>
+<ol>
+    <li>一个 Demo Agent 和 Production Agent 到底差在哪里？</li>
+    <li>Production Agent 的完整架构应该是什么？</li>
+    <li>Agent Runtime 为什么应该独立出来？</li>
+    <li>Control Plane 和 Data Plane 如何划分？</li>
+    <li>Agent 如何管理 State、Memory 和 Execution？</li>
+    <li>Model、Tool、RAG、Memory 如何成为可插拔能力？</li>
+    <li>Evaluation、Observability、Reliability 如何进入 Runtime？</li>
+    <li>如何做多租户、权限、安全与审计？</li>
+    <li>如何控制成本、延迟和资源？</li>
+    <li>如何让 Agent 从“一个应用”演化为“Agent Platform”？</li>
+</ol>
+
+<h2 id="core-views">核心观点声明</h2>
+<div class="highlight-box">
+<ol>
+<li><strong>Production Agent 不是一个 Prompt + LLM + Tools 的组合，而是一套拥有 Runtime、State、Policy、Execution、Observability 和 Recovery 能力的分布式系统。</strong></li>
+<li><strong>模型负责概率性决策，Runtime 负责确定性执行。</strong> Agent 不应该拥有所有控制权。</li>
+<li><strong>Production Agent 最重要的变化是从“模型调用”变成“Runtime”。</strong></li>
+<li><strong>Production Agent Architecture 应该把“智能层”和“系统层”分离。</strong></li>
+<li><strong>真正的 Agent Platform，不是提供一个 Agent SDK，而是提供一个可治理的 Agent Runtime。</strong></li>
+<li><strong>Agent 的生产化，本质上是把不确定性限制在确定性边界之内。</strong></li>
+<li><strong>完整 Production Agent 最终应形成：Think → Plan → Act → Observe → Recover → Evaluate → Improve 的闭环。</strong></li>
+</ol>
+</div>
+
+<h2 id="01">01. Agent Demo 与 Production Agent 的分水岭</h2>
+<p>让我们从一个极简的电商客服 Demo 开始：</p>
+<pre><code class="language-python">response = llm.invoke(prompt)
+# 甚至是一个带 Tool 的循环：
+while not done:
+    decision = llm.decide()
+    tool.execute(decision)</code></pre>
+<p>这段代码在 Demo 阶段、在 sunny path（理想路径）下完美运行。用户说“我要退款”，Agent 决定调用退款 Tool，Tool 执行成功，返回结果。但如果真的上线以后，够吗？显然不够。</p>
+<p>在真实的线上环境中，你面临的不是理想路径，而是无数的长尾故障：</p>
+<ul>
+    <li><strong>基础设施故障：</strong> 模型超时、LLM Provider 不可用、网络抖动。</li>
+    <li><strong>执行异常：</strong> Tool 超时、Tool 参数错误（幻觉导致）、Tool 服务自身 5xx。</li>
+    <li><strong>系统级问题：</strong> 权限问题（A 用户退了 B 用户的单）、重复执行（用户狂点按钮）、Agent Loop（死循环调用同一 Tool）、Memory 污染（历史数据带偏当前决策）、RAG 错误（检索到过期政策）。</li>
+    <li><strong>安全与合规：</strong> 数据泄露（把 C 用户的订单信息返回给 A 用户）、并发冲突、多租户隔离被穿透。</li>
+    <li><strong>资源与运维：</strong> 成本失控（Token 用量激增）、P95 延迟超标（链路太长）、灰度发布困难、Prompt/Model 版本漂移导致回归。</li>
+</ul>
+<p>这就引出了 Demo 和 Production 的本质区别：</p>
+<blockquote><strong>Demo 的核心是“能不能跑”；Production 的核心是“能不能长期、稳定、安全、可治理地运行”。</strong></blockquote>
+
+<table>
+    <thead>
+        <tr>
+            <th>维度</th>
+            <th>Demo Agent</th>
+            <th>Production Agent</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>核心关注点</td>
+            <td>“能不能跑通主流程”</td>
+            <td>“能否长期、稳定、安全、可治理地运行”</td>
+        </tr>
+        <tr>
+            <td>状态管理</td>
+            <td>内存变量，随进程销毁</td>
+            <td>Durable State，支持 Checkpoint 与恢复</td>
+        </tr>
+        <tr>
+            <td>错误处理</td>
+            <td>抛出异常，直接崩溃</td>
+            <td>Retry, Fallback, Circuit Breaker, Safe Stop</td>
+        </tr>
+        <tr>
+            <td>权限与安全</td>
+            <td>无，或硬编码在 Prompt 中</td>
+            <td>Policy Engine, Tenant Isolation, Agent Identity Chain</td>
+        </tr>
+        <tr>
+            <td>可观测性</td>
+            <td>Print 日志</td>
+            <td>Distributed Tracing, Metrics, Token Cost Track</td>
+        </tr>
+        <tr>
+            <td>版本控制</td>
+            <td>Git 代码版本</td>
+            <td>Prompt, Model, Tool, Policy 联合快照版本</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2 id="02">02. Production Agent 的完整架构</h2>
+<p>这是全文最重要的一张架构图。Production Agent 并非简单的线性调用，而是一个包含控制面与数据面的复杂拓扑。它将“智能层”（LLM 决策）和“系统层”（执行控制）严格分离。</p>
+
+<div class="svg-container">
+    <svg width="100%" height="550" viewBox="0 0 800 550" xmlns="http://www.w3.org/2000/svg">
+        <!-- Control Plane -->
+        <rect x="50" y="20" width="700" height="100" fill="#f4f6f9" stroke="#bdc3c7" rx="10" />
+        <text x="400" y="50" font-family="Arial" font-size="16" fill="#2c3e50" text-anchor="middle" font-weight="bold">CONTROL PLANE (治理面)</text>
+        <rect x="80" y="70" width="120" height="40" fill="#fff" stroke="#3498db" rx="5"/><text x="140" y="95" text-anchor="middle" font-size="12">Agent Registry</text>
+        <rect x="220" y="70" width="120" height="40" fill="#fff" stroke="#3498db" rx="5"/><text x="280" y="95" text-anchor="middle" font-size="12">Policy Engine</text>
+        <rect x="360" y="70" width="120" height="40" fill="#fff" stroke="#3498db" rx="5"/><text x="420" y="95" text-anchor="middle" font-size="12">Versioning</text>
+        <rect x="500" y="70" width="120" height="40" fill="#fff" stroke="#3498db" rx="5"/><text x="560" y="95" text-anchor="middle" font-size="12">Evaluation</text>
+        <rect x="640" y="70" width="80" height="40" fill="#fff" stroke="#3498db" rx="5"/><text x="680" y="95" text-anchor="middle" font-size="12">Release</text>
+
+        <!-- Client & Gateway -->
+        <rect x="330" y="150" width="140" height="40" fill="#2c3e50" rx="5"/><text x="400" y="175" text-anchor="middle" font-size="14" fill="#fff">Client (User)</text>
+        <line x1="400" y1="190" x2="400" y2="220" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+        <rect x="330" y="220" width="140" height="40" fill="#7f8c8d" rx="5"/><text x="400" y="245" text-anchor="middle" font-size="14" fill="#fff">API Gateway</text>
+        <line x1="400" y1="260" x2="400" y2="290" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <!-- Agent Runtime -->
+        <rect x="150" y="290" width="500" height="120" fill="#e8f6f3" stroke="#1abc9c" stroke-width="2" rx="10" />
+        <text x="400" y="320" font-family="Arial" font-size="16" fill="#16a085" text-anchor="middle" font-weight="bold">AGENT RUNTIME (智能与执行边界)</text>
+        <rect x="170" y="340" width="110" height="50" fill="#fff" stroke="#1abc9c" rx="5"/><text x="225" y="365" text-anchor="middle" font-size="12">Context Builder</text>
+        <rect x="300" y="340" width="110" height="50" fill="#fff" stroke="#1abc9c" rx="5"/><text x="355" y="365" text-anchor="middle" font-size="12">Planner / Agent</text>
+        <rect x="430" y="340" width="100" height="50" fill="#fff" stroke="#1abc9c" rx="5"/><text x="480" y="365" text-anchor="middle" font-size="12">Policy / Guardrails</text>
+        <rect x="550" y="340" width="80" height="50" fill="#fff" stroke="#1abc9c" rx="5"/><text x="590" y="365" text-anchor="middle" font-size="12">Executor</text>
+
+        <!-- Downstream -->
+        <line x1="400" y1="410" x2="400" y2="430" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+        <rect x="100" y="440" width="100" height="40" fill="#34495e" rx="5"/><text x="150" y="465" text-anchor="middle" font-size="12" fill="#fff">LLM Gateway</text>
+        <rect x="220" y="440" width="100" height="40" fill="#34495e" rx="5"/><text x="270" y="465" text-anchor="middle" font-size="12" fill="#fff">Tool Runtime</text>
+        <rect x="340" y="440" width="100" height="40" fill="#34495e" rx="5"/><text x="390" y="465" text-anchor="middle" font-size="12" fill="#fff">Memory / RAG</text>
+        <rect x="460" y="440" width="100" height="40" fill="#34495e" rx="5"/><text x="510" y="465" text-anchor="middle" font-size="12" fill="#fff">State Store</text>
+        <rect x="580" y="440" width="120" height="40" fill="#34495e" rx="5"/><text x="640" y="465" text-anchor="middle" font-size="12" fill="#fff">Business Services</text>
+        
+        <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+            </marker>
+        </defs>
+    </svg>
+    <div class="svg-caption">图 1：Demo Agent vs Production Agent 架构对比与全景图</div>
+</div>
+
+<h2 id="03">03. Agent Runtime：生产系统最核心的组件</h2>
+<p><strong>Agent Runtime 是 Production Agent 的核心。</strong> 如果说 LLM 是大脑，那么 Runtime 就是小脑和脊髓，负责条件反射、平衡和运动控制。</p>
+<p>它至少负责以下能力：</p>
+<ul>
+    <li><strong>Execution Loop & Step Management:</strong> 控制 Think-Act-Observe 循环，防止死循环。例如，当 Agent 连续 3 次调用同一 Tool 且参数相同时，Runtime 应主动中断并返回 Fallback 答案。</li>
+    <li><strong>State Management:</strong> 管理当前 Run 的所有中间状态。</li>
+    <li><strong>Timeout & Budget:</strong> 强制执行时间限制和成本限制。如果 Agent 执行到第 5 步时 Token 预算已耗尽 80%，Runtime 会注入 System Message 强制要求 Agent 总结现有信息并返回最终响应。</li>
+    <li><strong>Retry & Fallback:</strong> 在 LLM 或 Tool 失败时进行恢复。</li>
+    <li><strong>Tool Execution & Validation:</strong> 在执行 Tool 前进行参数和权限校验。</li>
+    <li><strong>Event Emission & Checkpoint:</strong> 记录每一步并支持持久化恢复。</li>
+    <li><strong>Cancellation & Recovery:</strong> 支持任务取消和崩溃后的断点续传。</li>
+</ul>
+
+<div class="case-study">
+<p><strong>案例深潜：电商客服 Agent 的长流程恢复</strong></p>
+<p>假设用户请求退款，Agent 在第 2 步查询了订单，第 3 步发起了退款申请，但系统在第 4 步等待人工审批时由于节点重启导致进程被 Kill。</p>
+<p>如果是 Demo 架构，用户需要重新输入指令，Agent 重新执行所有步骤（可能导致重复发起退款申请）。而 Production Runtime 会在每一步执行后向 State Store 写入 Checkpoint。进程重启后，Runtime 从 State Store 恢复上下文，发现当前处于“等待审批”状态，直接重连消息队列等待审批结果，用户毫无感知，也不会产生副作用。</p>
+</div>
+
+<blockquote><strong>反直觉观点 1：</strong> Production Agent 的核心不是更强的模型，而是更强的 Runtime。模型负责概率性决策，Runtime 负责确定性执行。</blockquote>
+
+<p>为什么不能把这些能力散落在业务代码里？因为一旦你有 Agent A、Agent B、Agent C，每个业务团队都自己实现 Retry、Timeout 和 State，最终会导致平台能力碎片化。线上的配置更改、故障排查和统一升级将变成灾难。<strong>Runtime 与 Agent 的区别是什么？</strong> Agent（或 Planner）是基于 LLM 的概率性决策组件，它决定“下一步做什么”；而 Runtime 是确定性的执行环境，它决定“这个决策是否被允许执行、如何执行、失败了怎么办”。Runtime 是 Agent 的操作系统。</p>
+
+<div class="svg-container">
+    <svg width="100%" height="400" viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg">
+        <!-- Runtime Container -->
+        <rect x="50" y="20" width="600" height="360" fill="#e8f6f3" stroke="#1abc9c" stroke-width="2" rx="10" />
+        <text x="350" y="50" text-anchor="middle" font-size="16" fill="#16a085" font-weight="bold">Agent Runtime Internal Structure</text>
+        
+        <!-- Entry -->
+        <rect x="270" y="70" width="160" height="40" fill="#2c3e50" rx="5"/><text x="350" y="95" text-anchor="middle" font-size="12" fill="#fff">Request / Event Ingest</text>
+        <line x1="350" y1="110" x2="350" y2="140" stroke="#333" stroke-width="2" marker-end="url(#arrow2)"/>
+        
+        <!-- Context & State -->
+        <rect x="100" y="140" width="140" height="40" fill="#fff" stroke="#1abc9c" rx="5"/><text x="170" y="165" text-anchor="middle" font-size="12">Context Builder</text>
+        <rect x="460" y="140" width="140" height="40" fill="#fff" stroke="#1abc9c" rx="5"/><text x="530" y="165" text-anchor="middle" font-size="12">State Manager (Checkpoint)</text>
+        <line x1="240" y1="160" x2="300" y2="160" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+        <line x1="460" y1="160" x2="400" y2="160" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+        
+        <!-- Planner -->
+        <rect x="270" y="140" width="160" height="40" fill="#3498db" rx="5"/><text x="350" y="165" text-anchor="middle" font-size="12" fill="#fff">Planner / Agent (LLM)</text>
+        <line x1="350" y1="180" x2="350" y2="210" stroke="#333" stroke-width="2" marker-end="url(#arrow2)"/>
+        
+        <!-- Policy -->
+        <rect x="270" y="210" width="160" height="40" fill="#e67e22" rx="5"/><text x="350" y="235" text-anchor="middle" font-size="12" fill="#fff">Policy / Guardrails</text>
+        <line x1="350" y1="250" x2="350" y2="280" stroke="#333" stroke-width="2" marker-end="url(#arrow2)"/>
+        
+        <!-- Executor -->
+        <rect x="270" y="280" width="160" height="40" fill="#9b59b6" rx="5"/><text x="350" y="305" text-anchor="middle" font-size="12" fill="#fff">Execution Controller</text>
+        <line x1="350" y1="320" x2="350" y2="350" stroke="#333" stroke-width="2" marker-end="url(#arrow2)"/>
+        
+        <!-- Exit -->
+        <rect x="270" y="350" width="160" height="40" fill="#2c3e50" rx="5"/><text x="350" y="375" text-anchor="middle" font-size="12" fill="#fff">Response / Event Emit</text>
+        
+        <!-- Sidecars -->
+        <rect x="50" y="210" width="140" height="40" fill="#f1c40f" fill-opacity="0.2" stroke="#f1c40f" rx="5"/><text x="120" y="235" text-anchor="middle" font-size="12">Reliability (Retry/Timeout)</text>
+        <rect x="510" y="210" width="140" height="40" fill="#f1c40f" fill-opacity="0.2" stroke="#f1c40f" rx="5"/><text x="580" y="235" text-anchor="middle" font-size="12">Observability (Trace)</text>
+        
+        <defs>
+            <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+            </marker>
+        </defs>
+    </svg>
+    <div class="svg-caption">图 2：Agent Runtime 内部结构与组件交互时序</div>
+</div>
+
+<h2 id="04">04. Control Plane vs Data Plane</h2>
+<p>这是生产架构必须跨越的门槛。将系统拆分为 Control Plane（控制面）和 Data Plane（数据面）。</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>特征</th>
+            <th>Data Plane (数据面)</th>
+            <th>Control Plane (控制面)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>核心职责</td>
+            <td>一次 Agent Run 的实时执行</td>
+            <td>Agent 系统如何被配置、治理、评估和发布</td>
+        </tr>
+        <tr>
+            <td>包含组件</td>
+            <td>Agent, Runtime, State, Tool, Model, Memory</td>
+            <td>Agent Registry, Prompt Registry, Policy, Version Management, Eval</td>
+        </tr>
+        <tr>
+            <td>关注点</td>
+            <td>延迟、吞吐量、并发、可靠性</td>
+            <td>配置、权限、评估、版本、多租户治理</td>
+        </tr>
+        <tr>
+            <td>Trade-off 决策</td>
+            <td>优化执行路径，尽量无状态化或快速状态恢复</td>
+            <td>优化管理界面与一致性，允许较高延迟</td>
+        </tr>
+    </tbody>
+</table>
+
+<blockquote><strong>反直觉观点 4：</strong> 一个 Agent Platform 最重要的不是“能创建 Agent”，而是“能治理 Agent”。没有 Control Plane，Agent 很容易停留在“应用代码”；有了 Control Plane，才开始接近 Agent Platform。</blockquote>
+
+<h2 id="05">05. Agent Registry 与版本化</h2>
+<p>Agent Registry 解决了 Agent 的版本化与配置寻址问题。在生产环境中，我们面临的痛点是：当线上 Agent 出现异常行为时，我们无法确定它当时运行的是哪个 Prompt、用的是哪个 Model 版本、调用了哪个 Tool。</p>
+<pre><code class="language-json">{
+  "agent_id": "ecommerce_customer_service",
+  "version": "1.2.0",
+  "prompt_ref": "prompt_v8_refund_policy",
+  "model_ref": {"primary": "gpt-4o-2024-08-06", "fallback": "claude-3-5-sonnet"},
+  "tools": ["query_order", "create_refund", "check_policy"],
+  "memory_policy": {"window": 10, "summary_strategy": "rolling"},
+  "guardrails": ["no_cross_tenant", "max_refund_5000"],
+  "budget": {"max_tokens": 5000, "max_steps": 10}
+}</code></pre>
+
+<h2 id="06">06. Model Gateway / Model Router</h2>
+<p>生产架构应该避免 Agent 直接耦合特定的 LLM Provider。Model Gateway 把模型依赖从 Agent 业务逻辑中隔离出来。它提供 Provider abstraction, Model routing, fallback, rate limit, quota, cost routing, latency routing 等能力。</p>
+<p>例如，在电商客服场景中，对于简单的“查物流”意图，Gateway 可以路由到便宜快速的 GPT-4o-mini；而对于涉及“高额退款谈判”的意图，路由到 GPT-4o。当 OpenAI 集群限流时，Gateway 自动 fallback 到 Azure OpenAI。</p>
+
+<h2 id="07">07. Tool Gateway / Tool Runtime</h2>
+<p>不要让 Agent 直接调用任意 API，而应该通过 Tool Runtime。它负责 schema validation, authentication, tenant isolation, timeout, retry, idempotency, audit。</p>
+<p>在电商客服案例中，当 LLM 幻觉生成一个错误的 JSON 参数（如 <code>order_id="abc"</code> 传给 <code>query_order</code>），Tool Runtime 的 Schema Validation 会直接拦截并返回结构化错误，提示 LLM 重新生成，而不是导致底层业务系统崩溃。</p>
+<blockquote><strong>反直觉观点 3：</strong> Tool 越多不代表 Agent 越强；Tool Governance 往往比 Tool 数量更重要。当 Tool 增加到 100 个时，如果没有 Tool Gateway 的权限和路由治理，Agent 将陷入选择困难和安全灾难。</blockquote>
+
+<h2 id="08">08. State、Memory、RAG 如何进入架构？</h2>
+<p>这三者不能混为一谈，必须划清边界：<strong>State</strong> 是当前运行状态（如暂存的 Tool 返回的巨大 JSON）；<strong>Memory</strong> 是跨时间的信息（如用户历史偏好）；<strong>RAG</strong> 是外部知识（如退换货政策）。Runtime 应该负责 Context Assembly。</p>
+
+<h2 id="09">09. Context Builder：被低估的核心组件</h2>
+<p>模型上下文不是数据库，不能什么都塞进去。Context Builder 负责优先级排序与 Token Budget 控制。在电商退款场景中，它优先保留 System Prompt 和 RAG 片段，截断冗长的 Tool Result（如支付流水号列表），确保 LLM 拿到的是最精简、最相关的上下文。</p>
+
+<h2 id="10">10. Policy Engine</h2>
+<p>这是 Production Agent 和 Demo Agent 的重要分水岭。Policy 决定可以调用什么 Tool、什么 Tool 需要确认、最大金额等。当电商客服 Agent 决定调用 <code>create_refund</code> 工具，且金额为 6000 时，Policy Engine 会拦截并要求人工审批。</p>
+<blockquote><strong>反直觉观点 5：</strong> 生产 Agent 不应该追求完全自动化，而应该追求可控自动化。Policy 不应该藏在 Prompt 里（“请不要退款超过 5000” LLM 可能不听），应该是机器可执行的确定性约束。</blockquote>
+
+<h2 id="11">11. Security Architecture</h2>
+<p>安全架构不仅是对外防黑客，更是对内防 Agent 幻觉。包括 Authentication（谁在调用）、Authorization（允许做什么）、Tenant Isolation（谁可以看到什么）、Tool Permission（Agent 可以调用什么）、Data Security、Secret Management（严禁进入 Prompt）和 Audit。</p>
+
+<h2 id="12">12. Agent Identity</h2>
+<p>传统系统是 <code>User -> Service</code>，服务自己持有身份。Agent 系统是 <code>User -> Agent -> Tool -> Business Service</code>。因此 Tool 执行时必须知道：这是哪个用户通过哪个 Agent 发起的？建立 Agent Identity Chain 透传 user identity, tenant, agent identity, request id, trace id, authorization scope。如果缺少这一环，退款 API 会以为是 Agent 这个服务账号在退款，导致审计失败和越权风险。</p>
+
+<h2 id="13">13. Multi-Tenant Architecture</h2>
+<p>生产 Agent 平台通常服务多个企业。Memory、RAG、Tool、Configuration 都必须隔离 Tenant。<strong>最危险的 Agent Bug 之一，是跨 Tenant 数据泄露。</strong> 例如，A 公司的客服 Agent 在进行 RAG 检索时，如果索引没有按租户分片，可能会检索到 B 公司的产品手册。</p>
+
+<h2 id="14">14. Execution State 与 Checkpoint</h2>
+<p>Agent 运行通常不是一个瞬时函数。因为 Agent 可能超时、进程重启、Tool 长时间运行，所以 Runtime 需要 Durable State。</p>
+<table>
+    <thead>
+        <tr>
+            <th>Trade-off</th>
+            <th>State 存储</th>
+            <th>无状态执行</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>适用场景</td>
+            <td>长任务，多步骤，需人工介入，高可靠性（如电商长流程退款）</td>
+            <td>无状态查询，简单 RAG，单次推理任务（如简单的物流查询）</td>
+        </tr>
+        <tr>
+            <td>优势</td>
+            <td>支持恢复、暂停、审计，进程崩溃不丢数据</td>
+            <td>极致伸缩性，无数据库瓶颈</td>
+        </tr>
+        <tr>
+            <td>劣势</td>
+            <td>存储成本，状态机复杂度增加，可能有一致性问题</td>
+            <td>不可恢复，并发控制困难，长任务 HTTP 超时</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2 id="15">15. Human-in-the-Loop (HITL)</h2>
+<p>有些任务必须进入人工审核。当 Policy Engine 判定高风险时，Agent Runtime 将 State 挂起并持久化，推送到人工审核队列。审核通过后，Runtime 恢复 State，继续执行 <code>create_refund</code>。</p>
+
+<h2 id="16">16. Async Agent 与长任务</h2>
+<p>很多 Agent 不适合 HTTP 同步等待。当 Agent 需要执行深度研究、大规模文档处理、多 Agent 协作时，HTTP 连接会在 60 秒后超时。</p>
+<table>
+    <thead>
+        <tr>
+            <th>Trade-off</th>
+            <th>同步</th>
+            <th>异步</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>适用场景</td>
+            <td>单次问答，快速 Tool 调用，SLA < 10s</td>
+            <td>深度研究，人工审批，SLA > 30s</td>
+        </tr>
+        <tr>
+            <td>实现</td>
+            <td>HTTP Request -> Response</td>
+            <td>Create Run -> Run ID -> Event/Webhook/Polling -> Result</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2 id="17">17. Event-Driven Agent Runtime</h2>
+<p>当执行时间、并发、可靠性和解耦需求真正出现时，再引入事件驱动。通过 Kafka/Queue 将 Agent 步骤解耦为独立 Worker。优势是解耦、异步、重试、扩展。但不要为了“微服务化”而复杂化。</p>
+<blockquote><strong>反直觉观点 6：</strong> 架构复杂度不是越低越好，也不是越高越先进；正确的架构是复杂度与真实业务规模匹配。只有当真正需要时，再引入 Kafka，而不是为了显得“企业级”而无脑加入。</blockquote>
+
+<div class="svg-container">
+    <svg width="100%" height="350" viewBox="0 0 700 350" xmlns="http://www.w3.org/2000/svg">
+        <!-- API Gateway -->
+        <rect x="280" y="20" width="140" height="40" fill="#2c3e50" rx="5"/><text x="350" y="45" text-anchor="middle" font-size="14" fill="#fff">API Gateway</text>
+        <line x1="350" y1="60" x2="350" y2="90" stroke="#333" stroke-width="2" marker-end="url(#arrow3)"/>
+        
+        <!-- Event Bus -->
+        <rect x="150" y="90" width="400" height="50" fill="#f1c40f" fill-opacity="0.3" stroke="#f1c40f" rx="10" stroke-dasharray="5,5"/>
+        <text x="350" y="120" text-anchor="middle" font-size="14" font-weight="bold">Message Queue / Event Bus (Kafka)</text>
+        
+        <line x1="350" y1="140" x2="150" y2="190" stroke="#333" stroke-width="2" marker-end="url(#arrow3)"/>
+        <line x1="350" y1="140" x2="350" y2="190" stroke="#333" stroke-width="2" marker-end="url(#arrow3)"/>
+        <line x1="350" y1="140" x2="550" y2="190" stroke="#333" stroke-width="2" marker-end="url(#arrow3)"/>
+        
+        <!-- Workers -->
+        <rect x="80" y="190" width="140" height="60" fill="#e8f6f3" stroke="#1abc9c" rx="5"/><text x="150" y="215" text-anchor="middle" font-size="12" font-weight="bold">Context Builder</text><text x="150" y="235" text-anchor="middle" font-size="10">Worker</text>
+        <rect x="280" y="190" width="140" height="60" fill="#e8f6f3" stroke="#1abc9c" rx="5"/><text x="350" y="215" text-anchor="middle" font-size="12" font-weight="bold">Agent / Planner</text><text x="350" y="235" text-anchor="middle" font-size="10">Worker</text>
+        <rect x="480" y="190" width="140" height="60" fill="#e8f6f3" stroke="#1abc9c" rx="5"/><text x="550" y="215" text-anchor="middle" font-size="12" font-weight="bold">Tool Executor</text><text x="550" y="235" text-anchor="middle" font-size="10">Worker</text>
+        
+        <line x1="150" y1="250" x2="350" y2="290" stroke="#333" stroke-width="1" stroke-dasharray="5,5" marker-end="url(#arrow3)"/>
+        <line x1="350" y1="250" x2="350" y2="290" stroke="#333" stroke-width="1" stroke-dasharray="5,5" marker-end="url(#arrow3)"/>
+        <line x1="550" y1="250" x2="350" y2="290" stroke="#333" stroke-width="1" stroke-dasharray="5,5" marker-end="url(#arrow3)"/>
+        
+        <!-- State Store -->
+        <rect x="280" y="290" width="140" height="40" fill="#7f8c8d" rx="5"/><text x="350" y="315" text-anchor="middle" font-size="12" fill="#fff">Durable State Store</text>
+        
+        <defs>
+            <marker id="arrow3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+            </marker>
+        </defs>
+    </svg>
+    <div class="svg-caption">图 3：Event-driven Agent Runtime 解耦架构</div>
+</div>
+
+<h2 id="18">18. Observability 在架构中的位置</h2>
+<p>不要把 Observability 放在架构图最底部当成附属模块。它应该横向贯穿整个 Runtime。Production Agent 没有 Trace，就没有真正的运行可见性。因为 Agent 的执行路径是概率性的，你无法通过阅读代码预知它走了哪条路。必须通过 Trace 追踪每一步的 LLM 输入输出、Tool 执行耗时、Token 消耗。</p>
+<table>
+    <thead>
+        <tr>
+            <th>Trade-off</th>
+            <th>全量 Trace</th>
+            <th>Sampling (采样)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>适用场景</td>
+            <td>核心链路，高风险操作，Debug 阶段，复杂多步推理</td>
+            <td>高频简单查询，成本敏感场景，线上稳定期</td>
+        </tr>
+        <tr>
+            <td>优势</td>
+            <td>100% 可追溯，不遗漏任何长尾 Bug</td>
+            <td>节省存储成本，降低 Trace 系统写入压力</td>
+        </tr>
+        <tr>
+            <td>劣势</td>
+            <td>存储成本极高，Trace 系统 (如 Jaeger) 可能成为瓶颈</td>
+            <td>难以捕捉偶发错误，可能导致关键审计缺失</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2 id="19">19. Evaluation 在架构中的位置</h2>
+<p>Evaluation 不应该只是上线前跑一下测试。生产架构应当形成 Continuous Evaluation（持续评估闭环）。从线上提取 Trace，转化为 Eval Dataset，在离线环境对新版本 Prompt/Model 进行 Regression 测试，作为 Release Gate。</p>
+
+<h2 id="20">20. Reliability Layer</h2>
+<p>把 Reliability 正式落地。Runtime 应该拥有 Reliability Controller，包含 Timeout, Retry, Fallback, Budget, Circuit Breaker, Loop Detection, Safe Stop。<strong>Reliability 不是业务逻辑的一部分，而应该成为 Runtime Capability。</strong></p>
+
+<p><strong>伪代码 1：Agent Runtime 主循环</strong>（展示框架无关的执行逻辑）</p>
+<pre><code class="language-python">def run_agent_runtime(request: Request):
+    # 1. 构建上下文
+    context = context_builder.build(request)
+    state = state_store.load(request.session_id)
+    
+    # 2. 执行循环，受 Runtime 控制
+    while runtime.can_continue(state):
+        try:
+            # 2.1 Agent 决策 (LLM)
+            decision = agent.decide(context=context, state=state)
+            
+            # 2.2 Policy & Guardrails 校验
+            policy.validate(decision, user_scope=request.user)
+            
+            # 2.3 执行器执行
+            result = executor.execute(decision)
+            
+            # 2.4 状态更新与持久化
+            state = state_manager.update(state, result)
+            observability.record_trace(state, decision, result)
+            
+            if task_completed(state):
+                break
+                
+        except LoopDetectedError:
+            runtime.safe_stop(state)
+            break
+        except BudgetExceededError:
+            runtime.trigger_fallback(state)
+            break
+        except ToolTimeoutError:
+            executor.retry_with_fallback(decision)
+            
+    return response_builder.build(state)</code></pre>
+
+<p><strong>伪代码 2：Production Reliability + Guardrails Execution</strong></p>
+<pre><code class="language-text">[LLM Decision: Tool=create_refund, Args={order_id: 123, amount: 6000}]
+    ↓
+[Policy Engine] -> Check Permission & Constraints
+    ├── User Role: VIP
+    ├── Tool Permission: Allowed
+    └── Constraint Check: Amount(6000) > AutoRefundLimit(5000) -> Fail
+    ↓
+[Human Approval Triggered] -> Pause Run, Save Checkpoint
+    ↓ (Human Approves in UI)
+[Runtime Resume] -> Load Checkpoint
+    ↓
+[Budget Check] -> Check Cost & Token Limit
+    ↓
+[Executor] -> Call Tool Runtime with Idempotency Token
+    ├── Schema Validation: OK
+    ├── Auth & Tenant Isolation: OK
+    └── Call Business API
+         ├── Timeout (3s)
+         └── Retry (Exponential Backoff) -> Success
+    ↓
+[Observability] -> Record Trace Span, Cost, Latency</code></pre>
+
+<h2 id="21">21. Cost Architecture</h2>
+<p>生产环境不能只看 Task Success，还必须关注 Cost / Successful Task。成本来自 LLM + Embedding + Reranker + Tool + Storage + Network。建立 Cost Budget -> Agent Run -> Track -> Limit -> Alert 的控制链路。通过 token budget, model routing, cache, semantic cache 优化成本。</p>
+<blockquote><strong>反直觉观点 2：</strong> Agent 越智能，不代表系统越可靠；智能越强，越需要确定性的边界控制。成本失控往往就是因为 Agent 在死循环中不断消耗 Token。</blockquote>
+
+<h2 id="22">22. Performance Architecture</h2>
+<p>Total Latency = LLM + Tool + Retrieval + Memory + Network + Queue。指出 Agent latency 通常不是一个模型调用决定的。通过 parallel tool calls, streaming, speculative execution, caching, timeout budget 优化。例如，电商客服在查询订单的同时，可以并行查询物流状态，而不是串行等待。</p>
+
+<h2 id="23">23. Deployment Architecture</h2>
+<p>从 Single Process 演化到 API -> Agent Runtime Cluster -> Worker Cluster -> Tool Services -> Model Gateway。推荐 <strong>模块化单体 → 服务化 → Agent Platform</strong>，而不是一上来几十个微服务。这降低了初期的运维成本和调试复杂度。</p>
+<table>
+    <thead>
+        <tr>
+            <th>Trade-off</th>
+            <th>单体架构</th>
+            <th>微服务架构</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>适用场景</td>
+            <td>初创期，业务边界模糊，团队规模小（<10人）</td>
+            <td>多业务线，需独立扩容，团队规模大</td>
+        </tr>
+        <tr>
+            <td>优势</td>
+            <td>开发快，无网络开销，Debug 简单，无分布式事务问题</td>
+            <td>故障隔离，独立伸缩，技术栈解耦</td>
+        </tr>
+        <tr>
+            <td>劣势</td>
+            <td>一崩全崩，代码冲突多，无法局部扩容</td>
+            <td>运维成本极高，调试困难，强一致性难以保证</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2 id="24">24. Versioning Architecture</h2>
+<p>生产 Agent 至少需要同时版本化：Agent, Prompt, Model, Tool, Policy, Knowledge, Evaluation。因为线上 Bug 必须能够回答：“当时运行的到底是哪一个版本？”</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>版本组件</th>
+            <th>变更频率</th>
+            <th>回滚策略</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>Agent Version</td><td>中</td><td>Registry 路由切流</td></tr>
+        <tr><td>Prompt Version</td><td>高</td><td>文本回滚</td></tr>
+        <tr><td>Model Version</td><td>低</td><td>Gateway Router 切换</td></tr>
+        <tr><td>Tool Version</td><td>中</td><td>Tool Registry 切换</td></tr>
+        <tr><td>Policy Version</td><td>低</td><td>Policy Engine Reload</td></tr>
+        <tr><td>Knowledge Version</td><td>高</td><td>Vector DB Snapshot</td></tr>
+    </tbody>
+</table>
+
+<h2 id="25">25. Release Strategy</h2>
+<p>介绍 Shadow（旁路执行）, Canary（小流量）, A/B, Rollback。Agent 特别需要 Prompt / Model / Tool / Policy 的联合版本发布。例如，新 Prompt 导致 LLM 倾向于调用一个新 Tool，如果只灰度了 Prompt 没有灰度 Tool，会导致大量调用失败。</p>
+
+<h2 id="26">26. Agent Configuration vs Code</h2>
+<p>哪些应该配置化？Tools, Models, Prompt, Budget, Policies, Routing, Guardrails。哪些应该代码化？Core runtime, Security enforcement, State machine, Recovery logic。核心原则：<strong>业务策略可以配置化，安全边界不能依赖普通配置。</strong></p>
+
+<h2 id="27">27. 一个完整生产级 Agent Run</h2>
+<div class="case-study">
+<p>用一个完整的电商智能客服 Agent 案例贯穿：“帮我把这个订单退掉”。</p>
+<pre><code class="language-text">[User] -> "帮我把这个订单退掉"
+  ↓
+[API Gateway] -> Auth: User A, Tenant: E-commerce Co. -> 路由至 Runtime
+  ↓
+[Agent Runtime]
+  ├── [Context Builder]
+  │     ├── State: (无历史执行)
+  │     ├── Memory: 提取 User A 是 VIP，历史满意度低
+  │     ├── RAG: 检索"大家电退款政策" (基于用户当前订单类目)
+  │     └── Token Budget: 4000 (截断部分政策片段)
+  ↓
+  ├── [Agent / Planner] (LLM 决策)
+  │     └── LLM Output: Intent=refund, Action=query_refund_eligibility(order_id=123)
+  ↓
+  ├── [Policy Check] 
+  │     └── Allow: query_refund_eligibility
+  ↓
+  ├── [Execution Controller] -> Tool Runtime
+  │     ├── Schema Validation: OK
+  │     └── Call API: query_refund_eligibility(order_id=123)
+  │           └── Response: Eligible=true, Amount=6000
+  ↓
+  ├── [Agent / Planner] (LLM 决策)
+  │     └── LLM Output: Action=create_refund(order_id=123, amount=6000)
+  ↓
+  ├── [Policy Check]
+  │     └── Constraint: Amount(6000) > AutoLimit(5000) -> HIGH RISK
+  ↓
+  ├── [Human-in-the-Loop Triggered]
+  │     └── Save Checkpoint to State Store, push to Audit Queue
+  ↓ (人工审批通过，触发恢复)
+  ├── [Runtime Resume]
+  │     └── Load Checkpoint, Continue Execution
+  ↓
+  ├── [Execution Controller] -> Tool Runtime
+  │     ├── Idempotency Token: generated
+  │     ├── Call API: create_refund
+  │     │     └── Tool Timeout (Network Issue)
+  │     ├── Retry 1: Exponential Backoff
+  │     │     └── Fallback Triggered -> Fallback Tool: queue_manual_refund
+  │     └── Result: Refund Queued Successfully
+  ↓
+  ├── [State Update] -> Update final status
+  ↓
+  ├── [Observability] -> Record Full Trace, Token Cost, Latency
+  ↓
+  └── [Final Response] -> "已为您发起退款申请，由于金额较大，已进入加急处理队列"</code></pre>
+<p>异常场景验证：如果发生 Tool Timeout，Runtime 通过 Retry 机制恢复；如果发生 Duplicate Refund（用户狂点），Idempotency Token 阻断；如果发生 High-risk approval，系统不会崩溃而是进入挂起状态。这就是 Production Architecture 的威力。</p>
+</div>
+
+<h2 id="28">28. 从 Agent Application 到 Agent Platform</h2>
+<p>Agent Application 解决一个具体业务。Agent Platform 提供 Runtime, Tool Registry, Model Gateway, Memory, Knowledge, Policy, Evaluation, Observability, Deployment, Governance。当你的公司需要同时上线电商客服、内部 IT Helpdesk、销售助手时，你需要的是 Platform。</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Trade-off</th>
+            <th>应用内实现</th>
+            <th>Platform 化</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>适用场景</td>
+            <td>单业务线，快速验证，团队规模小</td>
+            <td>多业务线，多租户，需要统一治理与复用</td>
+        </tr>
+        <tr>
+            <td>何时选择</td>
+            <td>当验证想法比稳定性更重要时</td>
+            <td>当应用数 >3，且跨团队开发时</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2 id="29">29. 什么时候应该建设 Agent Platform？</h2>
+<p>不需要 Platform：只有一个 Agent，Tool 很少，没有多租户。开始需要：Agent 多个，Tool 复用，多 Provider，高频迭代 Prompt。真正的平台化：当 Runtime 成为多个 Agent 的公共基础设施。</p>
+
+<h2 id="30">30. Architecture Evolution</h2>
+<p>演化路径：Stage 1: LLM API -> Stage 2: Single Agent -> Stage 3: Agent + Tools -> Stage 4: Agent Runtime -> Stage 5: Production Agent -> Stage 6: Agent Platform。</p>
+
+<div class="svg-container">
+    <svg width="100%" height="300" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+        <rect x="20" y="120" width="100" height="50" fill="#bdc3c7" rx="5"/><text x="70" y="150" text-anchor="middle" font-size="12">1. LLM API</text>
+        <line x1="120" y1="145" x2="150" y2="145" stroke="#333" stroke-width="2" marker-end="url(#arrow4)"/>
+        
+        <rect x="150" y="120" width="100" height="50" fill="#bdc3c7" rx="5"/><text x="200" y="150" text-anchor="middle" font-size="12">2. Single Agent</text>
+        <line x1="250" y1="145" x2="280" y2="145" stroke="#333" stroke-width="2" marker-end="url(#arrow4)"/>
+        
+        <rect x="280" y="120" width="110" height="50" fill="#bdc3c7" rx="5"/><text x="335" y="150" text-anchor="middle" font-size="12">3. Agent + Tools</text>
+        <line x1="390" y1="145" x2="420" y2="145" stroke="#333" stroke-width="2" marker-end="url(#arrow4)"/>
+        
+        <rect x="420" y="120" width="100" height="50" fill="#3498db" rx="5"/><text x="470" y="150" text-anchor="middle" font-size="12" fill="#fff">4. Agent Runtime</text>
+        <line x1="520" y1="145" x2="550" y2="145" stroke="#333" stroke-width="2" marker-end="url(#arrow4)"/>
+        
+        <rect x="550" y="120" width="100" height="50" fill="#3498db" rx="5"/><text x="600" y="150" text-anchor="middle" font-size="12" fill="#fff">5. Production</text>
+        <line x1="650" y1="145" x2="680" y2="145" stroke="#333" stroke-width="2" marker-end="url(#arrow4)"/>
+        
+        <rect x="680" y="120" width="100" height="50" fill="#2c3e50" rx="5"/><text x="730" y="150" text-anchor="middle" font-size="12" fill="#fff">6. Platform</text>
+        
+        <text x="70" y="200" text-anchor="middle" font-size="10">直接调用</text>
+        <text x="200" y="200" text-anchor="middle" font-size="10">加 Prompt</text>
+        <text x="335" y="200" text-anchor="middle" font-size="10">接外部 API</text>
+        <text x="470" y="200" text-anchor="middle" font-size="10" fill="#2980b9">加边界控制</text>
+        <text x="600" y="200" text-anchor="middle" font-size="10" fill="#2980b9">加治理可观测</text>
+        <text x="730" y="200" text-anchor="middle" font-size="10" fill="#2c3e50">多租户复用</text>
+        
+        <defs>
+            <marker id="arrow4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+            </marker>
+        </defs>
+    </svg>
+    <div class="svg-caption">图 4：Architecture Evolution 阶梯演化图</div>
+</div>
+
+<h2 id="31">31. 生产级 Agent 的最小架构 (MVP)</h2>
+<p>第一版不一定需要 Kafka, Service Mesh。核心原则：<strong>先建立 Runtime，再逐渐平台化。</strong> MVP Architecture：API Gateway -> Agent Runtime (State, Context Builder, Tool Runtime, Guardrails, Reliability, Trace) -> Model Gateway -> Business Services。</p>
+
+<h2 id="32">32. Production Checklist</h2>
+<div class="card">
+<ul class="checklist">
+    <li><strong>Runtime:</strong> Timeout, Max Steps, State, Cancellation, Checkpoint</li>
+    <li><strong>Tools:</strong> Schema, Permission, Idempotency, Audit</li>
+    <li><strong>Model:</strong> Gateway, Fallback, Rate Limit</li>
+    <li><strong>Memory/RAG:</strong> Tenant Isolation, Versioning, Retrieval Control</li>
+    <li><strong>Reliability:</strong> Retry, Fallback, Budget, Loop Detection, Safe Stop</li>
+    <li><strong>Observability:</strong> Trace, Metrics, Logs, Cost</li>
+    <li><strong>Evaluation:</strong> Golden Set, Regression, Release Gate</li>
+    <li><strong>Security:</strong> Authentication, Authorization, Data Isolation, Secret Management, Audit</li>
+</ul>
+</div>
+
+<h2 id="33">33. 最终统一架构模型</h2>
+<p>全文最后收束成一张“总架构图”。展示了从 Client 到 Gateway，进入 Agent Runtime，受 Control Plane 治理，向下调用各类能力，并受 Observability 和 Eval 全程监控的完整闭环。</p>
+
+<div class="svg-container">
+    <svg width="100%" height="650" viewBox="0 0 800 650" xmlns="http://www.w3.org/2000/svg">
+        <!-- Control Plane -->
+        <rect x="50" y="10" width="700" height="90" fill="#f4f6f9" stroke="#bdc3c7" rx="10" />
+        <text x="400" y="35" text-anchor="middle" font-size="16" fill="#2c3e50" font-weight="bold">CONTROL PLANE (治理面)</text>
+        <text x="400" y="65" text-anchor="middle" font-size="12" fill="#333">Agent Registry | Policy | Evaluation | Versioning | Release</text>
+        <text x="400" y="85" text-anchor="middle" font-size="12" fill="#333">Tenant Config | Observability Config</text>
+
+        <!-- Client -->
+        <rect x="330" y="130" width="140" height="40" fill="#2c3e50" rx="5"/><text x="400" y="155" text-anchor="middle" font-size="14" fill="#fff">Client</text>
+        <line x1="400" y1="170" x2="400" y2="200" stroke="#333" stroke-width="2" marker-end="url(#arrow6)"/>
+
+        <!-- Gateway -->
+        <rect x="330" y="200" width="140" height="40" fill="#7f8c8d" rx="5"/><text x="400" y="225" text-anchor="middle" font-size="14" fill="#fff">API Gateway</text>
+        <line x1="400" y1="240" x2="400" y2="270" stroke="#333" stroke-width="2" marker-end="url(#arrow6)"/>
+
+        <!-- Agent Runtime -->
+        <rect x="100" y="270" width="600" height="220" fill="#e8f6f3" stroke="#1abc9c" stroke-width="2" rx="10" />
+        <text x="400" y="295" text-anchor="middle" font-size="16" fill="#16a085" font-weight="bold">AGENT RUNTIME (核心边界)</text>
+        <rect x="130" y="310" width="160" height="40" fill="#fff" stroke="#1abc9c" rx="5"/><text x="210" y="335" text-anchor="middle" font-size="12">Context Builder</text>
+        <rect x="320" y="310" width="160" height="40" fill="#fff" stroke="#1abc9c" rx="5"/><text x="400" y="335" text-anchor="middle" font-size="12">Agent / Planner</text>
+        <rect x="510" y="310" width="160" height="40" fill="#fff" stroke="#1abc9c" rx="5"/><text x="590" y="335" text-anchor="middle" font-size="12">State Manager</text>
+        <rect x="130" y="370" width="160" height="40" fill="#fff" stroke="#1abc9c" rx="5"/><text x="210" y="395" text-anchor="middle" font-size="12">Policy Engine</text>
+        <rect x="320" y="370" width="160" height="40" fill="#fff" stroke="#1abc9c" rx="5"/><text x="400" y="395" text-anchor="middle" font-size="12">Guardrails</text>
+        <rect x="510" y="370" width="160" height="40" fill="#fff" stroke="#1abc9c" rx="5"/><text x="590" y="395" text-anchor="middle" font-size="12">Reliability Controller</text>
+        <rect x="230" y="430" width="340" height="40" fill="#fff" stroke="#1abc9c" rx="5"/><text x="400" y="455" text-anchor="middle" font-size="12">Execution Controller (Idempotency, Retry, Timeout)</text>
+
+        <!-- Downstream Services -->
+        <line x1="400" y1="490" x2="400" y2="520" stroke="#333" stroke-width="2" marker-end="url(#arrow6)"/>
+        <rect x="80" y="520" width="160" height="40" fill="#34495e" rx="5"/><text x="160" y="545" text-anchor="middle" font-size="12" fill="#fff">Model Gateway</text>
+        <rect x="260" y="520" width="160" height="40" fill="#34495e" rx="5"/><text x="340" y="545" text-anchor="middle" font-size="12" fill="#fff">Tool Runtime</text>
+        <rect x="440" y="520" width="160" height="40" fill="#34495e" rx="5"/><text x="520" y="545" text-anchor="middle" font-size="12" fill="#fff">Memory / RAG Gateway</text>
+        <rect x="620" y="520" width="100" height="40" fill="#34495e" rx="5"/><text x="670" y="545" text-anchor="middle" font-size="12" fill="#fff">State Store</text>
+
+        <line x1="400" y1="560" x2="400" y2="590" stroke="#333" stroke-width="2" marker-end="url(#arrow6)"/>
+        <rect x="200" y="590" width="400" height="40" fill="#e74c3c" rx="5"/><text x="400" y="615" text-anchor="middle" font-size="14" fill="#fff">Business Systems & External APIs</text>
+        
+        <!-- Observability Sidecar Spanning -->
+        <rect x="680" y="270" width="100" height="220" fill="#f1c40f" fill-opacity="0.2" stroke="#f1c40f" stroke-dasharray="5,5" rx="5"/>
+        <text x="730" y="380" text-anchor="middle" font-size="12" fill="#7f8c8d" transform="rotate(-90 730 380)">Observability & Eval (Full Trace)</text>
+        
+        <defs>
+            <marker id="arrow6" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+            </marker>
+        </defs>
+    </svg>
+    <div class="svg-caption">图 5：完整 Production Agent 最终统一总架构图</div>
+</div>
+
+<h2 id="34">34. 最终统一公式与结论</h2>
+<div class="highlight-box">
+<p style="text-align: center; font-weight: bold; font-size: 1.2rem;">Production Agent = Intelligence + Runtime + State + Tools + Policy + Reliability + Observability + Evaluation + Governance</p>
+</div>
+<p>Agent 本身只是系统的一部分。真正进入生产环境的是 <strong>Agent System</strong>。</p>
+<p><strong>Production Agent 的核心，不是把 Demo 做大，而是把“智能”放进一个可治理的运行时。</strong></p>
+<p>一个真正生产级的 Agent 系统应该具备完整的运行时、状态管理、策略执行、恢复机制和可观测性。也因此，<strong>Agent Engineering 最终会从“Prompt Engineering”走向“Systems Engineering”。</strong></p>
+<p>本篇作为第一阶段 Agent 系列的收束，后续我们将开启更高级主题：Agent Platform 底层设计、Multi-Agent Orchestration 协议、Agent Security 深度实践与 AgentOps 等。</p>
+
+</body>
+</html>

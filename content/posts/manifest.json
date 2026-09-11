@@ -1,5 +1,118 @@
 [
   {
+    "slug": "production-agent-09-production-architecture",
+    "title": "Production Agent Architecture：完整生产级架构",
+    "date": "2026-09-11T11:35:00+08:00",
+    "readTime": "30 分钟",
+    "category": "智能体跟多agent",
+    "tags": [
+      "Agent",
+      "Architecture",
+      "Agent Runtime",
+      "Production",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/production-agent-architecture.svg",
+    "excerpt": "把 Workflow/Agent、Memory、Tool、Evaluation、Observability、Reliability 收束成可上线、可观测、可治理、可扩展的生产级 Agent 系统架构。",
+    "file": "./content/posts/production-agent-09-production-architecture.md",
+    "format": "html",
+    "htmlFile": "./content/posts/Production Agent Architecture：完整生产级架构.html",
+    "subtitle": "完整生产级架构",
+    "series": "生产级 Agent 系统架构",
+    "seriesOrder": 9
+  },
+  {
+    "slug": "production-agent-08-agent-reliability",
+    "title": "Agent Reliability：重试、Fallback、Guardrails",
+    "date": "2026-09-11T11:05:00+08:00",
+    "readTime": "24 分钟",
+    "category": "智能体跟多agent",
+    "tags": [
+      "Agent",
+      "Reliability",
+      "Retry",
+      "Fallback",
+      "Guardrails",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/production-agent-architecture.svg",
+    "excerpt": "从「偶尔能跑」到生产环境可控、可恢复、可降级：用 Detect / Contain / Recover / Degrade / Prevent 设计 Agent 可靠性。",
+    "file": "./content/posts/production-agent-08-agent-reliability.md",
+    "format": "html",
+    "htmlFile": "./content/posts/Agent Reliability：重试、Fallback、Guardrails.html",
+    "subtitle": "重试、Fallback、Guardrails",
+    "series": "生产级 Agent 系统架构",
+    "seriesOrder": 8
+  },
+  {
+    "slug": "production-agent-07-agent-observability",
+    "title": "Agent Observability：如何调试一个会“思考”的系统",
+    "date": "2026-09-11T10:40:00+08:00",
+    "readTime": "26 分钟",
+    "category": "智能体跟多agent",
+    "tags": [
+      "Agent",
+      "Observability",
+      "Trace",
+      "Debugging",
+      "Agent Architecture",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/production-agent-architecture.svg",
+    "excerpt": "从「日志里只有一句报错」到完整还原 Agent 决策与执行轨迹：建立生产级 Observability 的数据模型、Trace 与调试方法。",
+    "file": "./content/posts/production-agent-07-agent-observability.md",
+    "format": "html",
+    "htmlFile": "./content/posts/Agent Observability：如何调试一个会“思考”的系统.html",
+    "subtitle": "如何调试一个会“思考”的系统",
+    "series": "生产级 Agent 系统架构",
+    "seriesOrder": 7
+  },
+  {
+    "slug": "production-agent-06-agent-evaluation",
+    "title": "Agent Evaluation：如何评估 Agent 是否真的有效",
+    "date": "2026-09-11T10:10:00+08:00",
+    "readTime": "28 分钟",
+    "category": "智能体跟多agent",
+    "tags": [
+      "Agent",
+      "Evaluation",
+      "LLM-as-Judge",
+      "Trajectory",
+      "Release Gate",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/production-agent-architecture.svg",
+    "excerpt": "从「感觉不错」到可量化、可回归、可上线的 Agent 评估体系：轨迹评估、LLM-as-Judge 与发布质量门禁。",
+    "file": "./content/posts/production-agent-06-agent-evaluation.md",
+    "format": "html",
+    "htmlFile": "./content/posts/Agent Evaluation：如何评估 Agent 是否真的有效.html",
+    "subtitle": "如何评估 Agent 是否真的有效",
+    "series": "生产级 Agent 系统架构",
+    "seriesOrder": 6
+  },
+  {
+    "slug": "production-agent-05-tool-calling",
+    "title": "Agent Tool Calling：工具设计与可靠性",
+    "date": "2026-09-11T09:30:00+08:00",
+    "readTime": "25 分钟",
+    "category": "智能体跟多agent",
+    "tags": [
+      "Agent",
+      "Tool Calling",
+      "Function Calling",
+      "Agent Architecture",
+      "教程系列"
+    ],
+    "cover": "./content/assets/posts/covers/production-agent-architecture.svg",
+    "excerpt": "Agent 的能力上限取决于它能可靠调用什么工具。不讲 Function Calling 语法，只谈生产级 Tool Design 与 Tool Reliability。",
+    "file": "./content/posts/production-agent-05-tool-calling.md",
+    "format": "html",
+    "htmlFile": "./content/posts/Agent Tool Calling：工具设计与可靠性.html",
+    "subtitle": "工具设计与可靠性",
+    "series": "生产级 Agent 系统架构",
+    "seriesOrder": 5
+  },
+  {
     "slug": "rag-eval-04-eval-studio-release-gate",
     "title": "RAG Evaluation 工程（四）：Eval Studio：把 RAG Evaluation 接入 CI/CD，建立真正的上线质量门禁",
     "date": "2026-09-10T22:00:00+08:00",

@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Tool Calling：工具设计与可靠性 · Agent 系列之五</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAF7F1; --paper2:#F3EDE3; --ink:#2B2926; --ink-soft:#5C574F;
+  --line:#E4DCCE; --teal:#1E4B5A; --teal-soft:#E4EDF0; --rust:#C05621;
+  --rust-soft:#F9E9DE; --code-bg:#20272B; --code-ink:#D8DEE4;
+  --serif:'Noto Serif SC',serif; --sans:'Noto Sans SC',sans-serif; --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16.5px;line-height:1.85;
+  background-image:radial-gradient(#e8e0d0 0.6px,transparent 0.6px);background-size:26px 26px}
+/* ── 进度条 ── */
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--teal),var(--rust));width:0%;z-index:99;transition:width .1s linear}
+/* ── 单栏布局 ── */
+.wrap{max-width:900px;margin:0 auto;padding:0 28px}
+main{max-width:860px;margin:0 auto;padding:0 0 120px}
+/* ── Hero ── */
+.hero{max-width:900px;margin:0 auto;padding:80px 28px 20px}
+.series-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12.5px;color:var(--teal);border:1px solid var(--teal);border-radius:999px;padding:4px 14px;letter-spacing:.08em;background:var(--teal-soft)}
+.hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(34px,5vw,50px);line-height:1.28;margin:26px 0 18px;color:var(--ink)}
+.hero h1 em{font-style:normal;color:var(--rust);border-bottom:4px solid var(--rust-soft)}
+.hero .sub{font-size:18px;color:var(--ink-soft);max-width:680px}
+.meta{display:flex;gap:22px;margin-top:30px;padding-top:20px;border-top:1px solid var(--line);font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap}
+.meta b{color:var(--teal)}
+/* ── 章节标题 ── */
+section{margin-top:84px}
+.sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:26px}
+.sec-num{font-family:var(--serif);font-weight:900;font-size:44px;color:transparent;-webkit-text-stroke:1.5px var(--rust);line-height:1;flex-shrink:0}
+h2{font-family:var(--serif);font-weight:700;font-size:27px;color:var(--teal);line-height:1.4}
+h3{font-family:var(--serif);font-weight:700;font-size:19px;color:var(--ink);margin:38px 0 14px;padding-left:14px;border-left:3px solid var(--rust)}
+p{margin:0 0 18px}
+p.lead{font-size:17.5px;color:var(--ink-soft)}
+strong{color:var(--teal)}
+em{font-style:normal;color:var(--rust);font-weight:500}
+/* ── 卡片 ── */
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:26px 28px;margin:26px 0;box-shadow:0 1px 3px rgba(43,41,38,.04)}
+.card .card-title{font-family:var(--serif);font-weight:700;color:var(--teal);font-size:15.5px;letter-spacing:.05em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.callout{background:var(--teal-soft);border-left:4px solid var(--teal);border-radius:0 10px 10px 0;padding:20px 24px;margin:26px 0}
+.callout.rust{background:var(--rust-soft);border-left-color:var(--rust)}
+.callout p{margin:0}
+.callout .tag{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--rust);display:block;margin-bottom:6px}
+.quote-core{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--teal);text-align:center;padding:30px 20px;background:#fff;border:1px dashed var(--teal);border-radius:12px;margin:30px 0;line-height:1.7}
+.quote-core::before{content:"「";color:var(--rust);font-size:24px}
+.quote-core::after{content:"」";color:var(--rust);font-size:24px}
+/* ── ASCII 流程 ── */
+.flow{font-family:var(--mono);font-size:13px;background:var(--paper2);border:1px solid var(--line);border-radius:10px;padding:22px 26px;overflow-x:auto;line-height:1.7;white-space:pre;color:var(--teal);margin:24px 0}
+.flow b{color:var(--rust)}
+.flow .dim{color:var(--ink-soft)}
+/* ── 表格 ── */
+.tbl-wrap{overflow-x:auto;margin:26px 0;border-radius:12px;border:1px solid var(--line);box-shadow:0 1px 3px rgba(43,41,38,.04)}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:#fff;min-width:520px}
+caption{caption-side:top;text-align:left;font-family:var(--serif);font-weight:700;color:var(--rust);padding:14px 18px 4px;font-size:14px;letter-spacing:.05em}
+th{background:var(--teal);color:#fff;font-weight:500;padding:11px 16px;text-align:left;font-size:13.5px;letter-spacing:.05em}
+td{padding:11px 16px;border-top:1px solid var(--line);vertical-align:top}
+tbody tr:nth-child(even){background:var(--paper)}
+tbody tr:hover{background:var(--rust-soft)}
+td .y{color:#2E7D46;font-weight:700}td .n{color:var(--rust);font-weight:700}
+td code,p code,li code{font-family:var(--mono);font-size:.86em;background:var(--paper2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--teal)}
+/* ── 代码块 ── */
+.code-block{position:relative;margin:26px 0;border-radius:12px;overflow:hidden;box-shadow:0 6px 20px rgba(32,39,43,.18)}
+.code-bar{display:flex;align-items:center;justify-content:space-between;background:#161D21;padding:9px 16px;font-family:var(--mono);font-size:12px;color:#7A8B94}
+.copy-btn{background:transparent;border:1px solid #3B4A52;color:#9FB0B8;border-radius:6px;padding:3px 12px;font-family:var(--mono);font-size:11.5px;cursor:pointer;transition:.2s}
+.copy-btn:hover{border-color:var(--rust);color:var(--rust)}
+pre{background:var(--code-bg);padding:20px 22px;overflow-x:auto;font-family:var(--mono);font-size:13.2px;line-height:1.75;color:var(--code-ink)}
+.kw{color:#E8A87C}.fn{color:#8EC1D8}.st{color:#A8C6A0}.cm{color:#71838C;font-style:italic}.nu{color:#D9B08C}
+/* ── SVG 图 ── */
+.fig{background:#fff;border:1px solid var(--line);border-radius:12px;padding:28px 20px 16px;margin:30px 0;box-shadow:0 1px 3px rgba(43,41,38,.04)}
+.fig svg{width:100%;height:auto;display:block}
+.figcap{text-align:center;font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-top:14px;letter-spacing:.06em}
+.figcap b{color:var(--rust)}
+/* ── 反模式卡片 ── */
+.anti-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:26px 0}
+@media(max-width:680px){.anti-grid{grid-template-columns:1fr}}
+.anti{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px 22px;transition:.25s;position:relative;overflow:hidden}
+.anti:hover{transform:translateY(-3px);box-shadow:0 8px 22px rgba(43,41,38,.09);border-color:var(--rust)}
+.anti .no{font-family:var(--serif);font-weight:900;font-size:26px;color:var(--rust-soft);position:absolute;top:8px;right:14px;line-height:1}
+.anti h5{font-family:var(--serif);font-size:15.5px;color:var(--rust);margin-bottom:8px}
+.anti p{font-size:13.8px;line-height:1.75;color:var(--ink-soft);margin:0}
+.anti p b{color:var(--teal)}
+/* ── 统计卡 ── */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:26px 0}
+@media(max-width:680px){.stat-row{grid-template-columns:1fr}}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;text-align:center;transition:.25s}
+.stat:hover{border-color:var(--teal);transform:translateY(-2px)}
+.stat .v{font-family:var(--serif);font-weight:900;font-size:32px;color:var(--teal);line-height:1.2}
+.stat .v.rust{color:var(--rust)}
+.stat .l{font-size:12.5px;color:var(--ink-soft);margin-top:6px;line-height:1.5}
+/* ── Checklist ── */
+.chk-group{margin:22px 0}
+.chk-group h5{font-family:var(--serif);color:var(--teal);font-size:15px;margin-bottom:10px;letter-spacing:.05em}
+.chk{display:flex;align-items:flex-start;gap:11px;padding:9px 14px;background:#fff;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:.2s;font-size:14.5px}
+.chk:hover{border-color:var(--teal)}
+.chk input{display:none}
+.box{width:19px;height:19px;border:2px solid var(--teal);border-radius:5px;flex-shrink:0;margin-top:4px;position:relative;transition:.15s;background:#fff}
+.chk input:checked + .box{background:var(--rust);border-color:var(--rust)}
+.chk input:checked + .box::after{content:"✓";color:#fff;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.chk input:checked ~ span{color:var(--ink-soft);text-decoration:line-through;text-decoration-color:var(--rust)}
+/* ── 决策树 ── */
+.decide{background:#fff;border:1px solid var(--line);border-radius:12px;padding:26px;margin:26px 0;font-family:var(--mono);font-size:13px;line-height:1.9;white-space:pre;overflow-x:auto;color:var(--ink)}
+.decide b{color:var(--rust)}.decide i{color:var(--teal);font-style:normal;font-weight:600}
+.decide .dim{color:#8A8378}
+/* ── 系列 footer ── */
+.next{margin-top:90px;background:var(--teal);color:#fff;border-radius:14px;padding:34px 36px}
+.next .nx-tag{font-family:var(--mono);font-size:12px;letter-spacing:.25em;color:#A9CBD6}
+.next h3{border:none;color:#fff;font-size:23px;margin:10px 0 12px;padding:0}
+.next p{color:#D5E4E9;margin:0;font-size:15px}
+footer{max-width:900px;margin:0 auto;padding:30px 28px 60px;font-family:var(--mono);font-size:12px;color:var(--ink-soft);text-align:center}
+ul.clean{margin:0 0 18px 22px}ul.clean li{margin-bottom:8px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <span class="series-tag">AGENT ENGINEERING · 系列第 5 篇</span>
+  <h1>Agent Tool Calling：<br><em>工具设计</em>与<em>可靠性</em></h1>
+  <p class="sub">Agent 的能力上限，很大程度取决于它能够可靠调用什么工具；而 Agent 的稳定性，又取决于这些工具是否被正确设计。本文不解释 Function Calling 语法，只讨论 Tool Design 与 Tool Reliability 两个生产级核心问题。</p>
+  <div class="meta">
+    <span>系列：<b>Workflow → Single Agent → Multi-Agent → Memory → <u style="color:var(--rust)">Tool Calling</u></b></span>
+    <span>阅读：<b>~25 min</b></span>
+    <span>级别：<b>Production / Architect</b></span>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+
+<!-- ═══ 承接系列 ═══ -->
+<div class="card">
+  <div class="card-title">◈ 本文在系列中的位置</div>
+  <p style="margin:0">上一篇 <strong>Agent Memory</strong> 解决的是：<em>过去的信息如何进入当前决策</em>。本文解决的是它的对偶问题——<strong>当前决策如何转化为外部世界的行动</strong>。</p>
+  <div class="flow"><span class="dim">Agent</span>
+ ├── Context
+ ├── State
+ ├── Memory      <span class="dim">← 记住过去</span>
+ └── Tools       <span class="dim">← 改变现在</span>
+       ↓
+    <b>Action</b></div>
+</div>
+
+<!-- ═══ 01 ═══ -->
+<section id="s1">
+  <div class="sec-head"><span class="sec-num">01</span><h2>Agent 为什么需要 Tool Calling</h2></div>
+  <p class="lead">先建立一个贯穿全文的判断标准，再谈设计。</p>
+  <p>当 Agent 只需要推理、总结、改写文本时，LLM 本身就够了。但当 Agent 需要<strong>访问实时数据、执行外部动作或改变业务状态</strong>时，语言模型与真实世界之间就出现了一条鸿沟——模型能"说"出答案，却无法"做"出结果。Tool 正是跨越这条鸿沟的能力边界。</p>
+  <p>因此，Tool Calling 不应该被理解为"给 LLM 挂几个 API"。它是在 Agent 与真实世界之间建立一层<strong>可控的行动接口</strong>。Tool 的本质是 Agent 的 <em>Action Interface</em>：</p>
+  <div class="quote-core">Tool Calling = Decision + Contract + Execution + Recovery + Observation，<br>而不是 LLM → Function → Result</div>
+
+  <!-- 图1：基本闭环 -->
+  <div class="fig">
+  <svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+    <g transform="rotate(-1 110 100)">
+      <rect x="35" y="60" width="150" height="80" rx="14" fill="#E4EDF0" stroke="#1E4B5A" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="110" y="92" text-anchor="middle" font-size="16" font-weight="700" fill="#1E4B5A">LLM Decision</text>
+      <text x="110" y="116" text-anchor="middle" font-size="12" fill="#5C574F">想做什么</text>
+    </g>
+    <g transform="rotate(1 330 100)">
+      <rect x="265" y="60" width="130" height="80" rx="14" fill="#F9E9DE" stroke="#C05621" stroke-width="2.5"/>
+      <text x="330" y="92" text-anchor="middle" font-size="16" font-weight="700" fill="#C05621">Tool Call</text>
+      <text x="330" y="116" text-anchor="middle" font-size="12" fill="#5C574F">契约 + 校验</text>
+    </g>
+    <g transform="rotate(-1 565 100)">
+      <rect x="490" y="60" width="150" height="80" rx="14" fill="#fff" stroke="#1E4B5A" stroke-width="2.5" stroke-dasharray="7 4"/>
+      <text x="565" y="92" text-anchor="middle" font-size="16" font-weight="700" fill="#1E4B5A">External World</text>
+      <text x="565" y="116" text-anchor="middle" font-size="12" fill="#5C574F">订单 / 支付 / 物流</text>
+    </g>
+    <path d="M188 96 Q 226 88 260 95" fill="none" stroke="#2B2926" stroke-width="2"/>
+    <path d="M253 89 L 262 95 L 252 101" fill="none" stroke="#2B2926" stroke-width="2"/>
+    <path d="M398 96 Q 440 88 486 95" fill="none" stroke="#2B2926" stroke-width="2"/>
+    <path d="M479 89 L 488 95 L 478 101" fill="none" stroke="#2B2926" stroke-width="2"/>
+    <path d="M565 143 Q 565 195 390 200 Q 180 200 108 145" fill="none" stroke="#C05621" stroke-width="2" stroke-dasharray="6 4"/>
+    <path d="M101 154 L 108 144 L 116 153" fill="none" stroke="#C05621" stroke-width="2"/>
+    <text x="340" y="222" text-anchor="middle" font-size="13" fill="#C05621" font-weight="700">Observation（观察结果回到模型，驱动下一步决策）</text>
+    <text x="345" y="30" text-anchor="middle" font-size="12.5" fill="#5C574F" font-style="italic">语言决策 → 确定性执行 → 观察 → 再决策</text>
+  </svg>
+  <div class="figcap">图 1 · <b>Tool Calling 的基本闭环</b>：Action → Observation → Next Decision</div>
+  </div>
+</section>
+
+<!-- ═══ 02 ═══ -->
+<section id="s2">
+  <div class="sec-head"><span class="sec-num">02</span><h2>Tool Calling 到底解决什么问题</h2></div>
+  <p>从一个最朴素的场景开始。用户对电商 Agent 说：<em>"帮我查一下订单 123456。"</em></p>
+  <p>Agent 需要完成一条完整的链路：理解意图 → 选择 <code>query_order</code> → 生成参数 → 调用 API → 读取结果 → 生成回答。没有 Tool 时，LLM 只能生成文字——它或许能"编"出一个订单状态，但那不是事实。有 Tool 之后，链路变成了闭环：</p>
+  <div class="flow">LLM
+ ↓ <b>Decision</b>（选择工具 + 生成参数）
+Tool
+ ↓
+<b>External World</b>（真实的订单系统）
+ ↓
+<b>Observation</b>（结构化事实返回）
+ ↓
+<b>Next Decision</b>（基于事实继续推理）</div>
+  <div class="callout">
+    <span class="tag">CORE INSIGHT</span>
+    <p>Tool Calling 的本质，是<strong>把 LLM 的语言决策连接到确定性的外部执行系统</strong>。模型负责"决定做什么"，Tool 负责"确定地做到"。这两个职责一旦混淆——比如让模型猜业务规则、让 Tool 替模型做选择——系统就会同时失去灵活性和可靠性。</p>
+  </div>
+</section>
+
+<!-- ═══ 03 ═══ -->
+<section id="s3">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Tool 应该设计成多大</h2></div>
+  <p class="lead">这是 Tool Design 中第一个真正需要做权衡的决策，也是大多数团队踩的第一个坑。</p>
+
+  <h3>方案 A：超级 Tool（God Tool）</h3>
+  <div class="flow">handle_customer_request( request )</div>
+  <p>所有事情交给一个 Tool。看似简单，实际上 Schema 完全不透明——模型无法从一个 <code>request</code> 字符串中理解系统能力边界；权限无法按动作控制；一次失败无法定位是查询出错还是退款出错；观测数据也失去了区分度。</p>
+
+  <h3>方案 B：过度细粒度（Tool Explosion）</h3>
+  <div class="flow">get_order_id()          get_order_product()
+check_order_status()    get_order_payment()
+get_order_logistics()   get_order_refund_status() ...</div>
+  <p>能力确实清晰了，但代价是 Tool 数量爆炸：选择空间变大导致选错概率上升；Agent 需要多次串联调用，推理链变长、延迟累加；任何一步失败都会打断整个任务。</p>
+
+  <h3>方案 C：业务能力级 Tool（通常更合理）</h3>
+  <div class="flow">query_order()            query_refund_status()
+create_refund()          cancel_order()</div>
+  <p>每个 Tool 对应一个<strong>稳定的业务动作</strong>。这就是本文的粒度原则：</p>
+  <div class="callout rust">
+    <span class="tag">DESIGN PRINCIPLE</span>
+    <p><strong>Tool 的粒度应该围绕"Agent 需要做出的业务动作"设计，而不是围绕底层 API 的粒度设计。</strong>底层 API 可能有二十个端点，但 Agent 的业务动作可能只有四个。</p>
+  </div>
+
+  <div class="tbl-wrap"><table>
+    <caption>表 1 · Tool 粒度 Trade-off</caption>
+    <thead><tr><th>设计</th><th>优点</th><th>缺点</th><th>适用场景</th></tr></thead>
+    <tbody>
+      <tr><td><strong>粗粒度</strong></td><td>调用链短、决策次数少</td><td>能力边界模糊、权限难控、错误难定位</td><td>能力单一、低风险场景</td></tr>
+      <tr><td><strong>中等粒度</strong></td><td>能力清晰、可选性适中、权限可按动作划分</td><td>需要认真设计业务边界</td><td><em>绝大多数生产系统</em></td></tr>
+      <tr><td><strong>细粒度</strong></td><td>每个能力精确、可组合</td><td>Tool Explosion、选择成本高、链路脆弱</td><td>仅当组合确实由模型动态决定时</td></tr>
+    </tbody>
+  </table></div>
+
+  <p>一个实用的反例检验：如果某两个 Tool <strong>总是被一起调用</strong>，它们大概率应该合并成一个业务动作；如果某个 Tool 的参数里藏着一个"动作类型"枚举（<code>action: query|cancel|refund</code>），它大概率应该拆开。粒度不是越细越好，也不是越粗越好，而是<strong>围绕稳定业务能力取中</strong>。</p>
+
+  <h3>一个能力到底该不该设计成 Tool？</h3>
+  <p>在确定粒度之前，还有一个更前置的判断：这个能力是否值得做成 Tool。</p>
+  <div class="decide"><b>一个能力是否应该设计成 Tool？</b>
+        │
+        ↓
+  是否需要外部系统 / 实时数据 / 副作用？
+        │
+   ┌────┴─────┐
+  No           Yes
+   ↓            ↓
+ 普通推理     <i>Tool Candidate</i>
+（无需 Tool）    │
+                ↓
+        是否有清晰业务边界？
+                │
+         ┌──────┴──────┐
+        No             Yes
+         ↓              ↓
+   重新定义边界       <i>Tool</i>
+  <span class="dim">（不要包装成"万能函数"）</span>  <span class="dim">（明确能力 / 输入 / 输出 / 副作用 / 权限）</span></div>
+  <p>换句话说，<strong>不是所有 API 都应该包装成 Tool</strong>。Tool 不应该成为"万能函数"——一个合格的 Tool 必须有明确能力、明确输入、明确输出、明确副作用、明确权限边界。如果一个能力无法回答"它的业务边界在哪"，正确的做法是先重新定义边界，而不是急着暴露给模型。</p>
+</section>
+
+<!-- ═══ 04 ═══ -->
+<section id="s4">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Tool Contract：工具能力的边界</h2></div>
+  <p class="lead">一旦确定了粒度，下一步是把每个 Tool 定义成一份完整的契约——而不只是一个函数签名。</p>
+  <p>一个面向生产系统的 Tool Contract 至少包含以下部分：</p>
+
+  <!-- 图2：Tool Contract -->
+  <div class="fig">
+  <svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+    <ellipse cx="380" cy="165" rx="118" ry="52" fill="#E4EDF0" stroke="#1E4B5A" stroke-width="2.5"/>
+    <text x="380" y="158" text-anchor="middle" font-size="17" font-weight="900" fill="#1E4B5A">Tool Contract</text>
+    <text x="380" y="180" text-anchor="middle" font-size="11.5" fill="#5C574F">机器可读的能力契约</text>
+    <g font-size="12.5" fill="#2B2926">
+      <g transform="rotate(-2 130 42)"><rect x="52" y="26" width="156" height="32" rx="16" fill="#fff" stroke="#C05621" stroke-width="1.8"/><text x="130" y="47" text-anchor="middle">Name / Description</text></g>
+      <g transform="rotate(1.5 380 32)"><rect x="300" y="16" width="160" height="32" rx="16" fill="#fff" stroke="#C05621" stroke-width="1.8"/><text x="380" y="37" text-anchor="middle">Input / Output Schema</text></g>
+      <g transform="rotate(-1.5 628 44)"><rect x="552" y="28" width="152" height="32" rx="16" fill="#fff" stroke="#C05621" stroke-width="1.8"/><text x="628" y="49" text-anchor="middle">Preconditions</text></g>
+      <g transform="rotate(1 90 165)"><rect x="18" y="149" width="144" height="32" rx="16" fill="#fff" stroke="#1E4B5A" stroke-width="1.8"/><text x="90" y="170" text-anchor="middle">Side Effects</text></g>
+      <g transform="rotate(-1 668 165)"><rect x="596" y="149" width="144" height="32" rx="16" fill="#fff" stroke="#1E4B5A" stroke-width="1.8"/><text x="668" y="170" text-anchor="middle">Permission</text></g>
+      <g transform="rotate(-1.5 130 292)"><rect x="52" y="276" width="156" height="32" rx="16" fill="#fff" stroke="#1E4B5A" stroke-width="1.8"/><text x="130" y="297" text-anchor="middle">Idempotency</text></g>
+      <g transform="rotate(1.5 380 300)"><rect x="306" y="284" width="148" height="32" rx="16" fill="#fff" stroke="#C05621" stroke-width="1.8"/><text x="380" y="305" text-anchor="middle">Timeout / Retry</text></g>
+      <g transform="rotate(-1 628 290)"><rect x="540" y="274" width="176" height="32" rx="16" fill="#fff" stroke="#1E4B5A" stroke-width="1.8"/><text x="628" y="295" text-anchor="middle">Error Model / Metadata</text></g>
+    </g>
+    <g stroke="#B8AE9C" stroke-width="1.5" fill="none">
+      <path d="M160 60 Q 220 95 280 128"/><path d="M355 50 L 372 112"/><path d="M600 62 Q 540 95 482 128"/>
+      <path d="M120 168 L 260 165"/><path d="M640 168 L 500 165"/>
+      <path d="M160 274 Q 220 240 280 205"/><path d="M370 282 L 378 218"/><path d="M600 272 Q 540 240 482 205"/>
+    </g>
+  </svg>
+  <div class="figcap">图 2 · <b>Tool Contract 的八个维度</b>：Schema 只是其中一角</div>
+  </div>
+
+  <p>逐项来看容易被忽略的几个：</p>
+  <ul class="clean">
+    <li><strong>Preconditions</strong>：调用前提。例如"订单必须存在且属于当前用户"。前提条件应尽量由系统校验，而不是指望模型自己判断。</li>
+    <li><strong>Side Effects</strong>：是否有副作用、是否可逆。这直接决定该 Tool 是否需要确认机制（见第 12 节）。</li>
+    <li><strong>Idempotency</strong>：同一请求重复执行是否安全。这决定了超时后能不能重试（见第 11 节）。</li>
+    <li><strong>Error Model</strong>：失败时返回什么。结构化错误语义是重试决策的依据（见第 10、13 节）。</li>
+  </ul>
+  <p>以退款为例，一个合格的工具定义长这样：</p>
+
+  <div class="code-block">
+    <div class="code-bar"><span>tool_contract.json · create_refund</span><button class="copy-btn" onclick="copyCode(this)">复制</button></div>
+    <pre><span class="cm">// Schema 不是文档，而是 Agent 与 Tool 之间的机器可读契约</span>
+{
+  <span class="st">"name"</span>: <span class="st">"create_refund"</span>,
+  <span class="st">"description"</span>: <span class="st">"Create a refund request for an eligible order."</span>,
+  <span class="st">"parameters"</span>: {
+    <span class="st">"type"</span>: <span class="st">"object"</span>,
+    <span class="st">"properties"</span>: {
+      <span class="st">"order_id"</span>: {
+        <span class="st">"type"</span>: <span class="st">"string"</span>,
+        <span class="st">"description"</span>: <span class="st">"The order ID to refund, e.g. 123456"</span>
+      },
+      <span class="st">"reason"</span>: {
+        <span class="st">"type"</span>: <span class="st">"string"</span>,
+        <span class="st">"enum"</span>: [<span class="st">"damaged"</span>, <span class="st">"wrong_item"</span>, <span class="st">"quality_issue"</span>],
+        <span class="st">"description"</span>: <span class="st">"Structured refund reason, must be chosen from enum"</span>
+      }
+    },
+    <span class="st">"required"</span>: [<span class="st">"order_id"</span>, <span class="st">"reason"</span>]
+  }
+}</pre>
+  </div>
+</section>
+
+<!-- ═══ 05 ═══ -->
+<section id="s5">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Tool Description：如何让模型理解工具</h2></div>
+  <p class="lead">模型是否正确调用 Tool，很大程度取决于 Name、Description、Schema、Enum、Constraints 这些"说明书"的质量。换句话说——<strong>Tool Schema 本质上也是 Prompt Engineering 的一部分</strong>。</p>
+  <p>先看一个真实的反例。很多团队这样写描述：</p>
+  <div class="flow" style="color:var(--rust)">❌  "查询订单"</div>
+  <p>这句话没有告诉模型任何决策所需的信息：能查到什么？订单不存在怎么办？用户没给订单号时该做什么？应该写成像这样的完整说明书：</p>
+  <div class="flow" style="color:var(--teal)">✓  "查询指定订单的当前状态、支付状态、物流状态以及可执行的售后操作。
+   仅适用于<b>已经存在</b>的订单。
+   如果用户没有提供订单号，<b>不要猜测</b>，应先向用户询问订单号。"</div>
+  <p>注意第二段：<em>告诉模型"什么时候不要使用"，往往比"什么时候使用"更能减少错误调用</em>。<code>query_refund_status</code> 和 <code>create_refund</code> 的混淆，多数时候就是靠描述里的"不要"条款解决的。</p>
+  <div class="callout">
+    <span class="tag">DESCRIPTION CHECKLIST</span>
+    <p>一份优秀的 Tool Description 至少回答六个问题：<strong>What</strong>（做什么）、<strong>When</strong>（何时使用）、<strong>When NOT</strong>（何时不该用）、<strong>Input</strong>（参数怎么来）、<strong>Output</strong>（返回什么结构）、<strong>Constraints</strong>（有什么限制）。</p>
+  </div>
+</section>
+
+<!-- ═══ 06 ═══ -->
+<section id="s6">
+  <div class="sec-head"><span class="sec-num">06</span><h2>Tool Selection：如何选择正确工具</h2></div>
+  <p class="lead">Tool 越多，不代表 Agent 越强。</p>
+  <p>用户问：<em>"我的订单什么时候能退款？"</em>Agent 手上有 <code>query_order</code>、<code>query_refund_status</code>、<code>create_refund</code>、<code>cancel_order</code>……它必须选择 <code>query_refund_status</code> 而不是 <code>create_refund</code>——选错后者，就是一个真实的退款单被创建了。Tool Selection 本质上是一个 <strong>Capability Routing 问题</strong>：</p>
+
+  <!-- 图3：Selection Pipeline -->
+  <div class="fig">
+  <svg viewBox="0 0 760 150" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+    <g font-size="13" font-weight="700">
+      <g transform="rotate(-1.5 80 70)"><rect x="16" y="44" width="128" height="52" rx="12" fill="#E4EDF0" stroke="#1E4B5A" stroke-width="2.2"/><text x="80" y="66" text-anchor="middle" fill="#1E4B5A">User Intent</text><text x="80" y="85" text-anchor="middle" font-size="11" font-weight="400" fill="#5C574F">"退款到账了吗"</text></g>
+      <g transform="rotate(1 235 70)"><rect x="172" y="44" width="126" height="52" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.2"/><text x="235" y="66" text-anchor="middle" fill="#1E4B5A">Candidate</text><text x="235" y="85" text-anchor="middle" font-size="11" font-weight="400" fill="#5C574F">候选工具召回</text></g>
+      <g transform="rotate(-1 390 70)"><rect x="318" y="44" width="144" height="52" rx="12" fill="#F9E9DE" stroke="#C05621" stroke-width="2.4"/><text x="390" y="66" text-anchor="middle" fill="#C05621">Selection</text><text x="390" y="85" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5C574F">query_refund_status ✓</text></g>
+      <g transform="rotate(1.5 548 70)"><rect x="494" y="44" width="108" height="52" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.2"/><text x="548" y="66" text-anchor="middle" fill="#1E4B5A">Arguments</text><text x="548" y="85" text-anchor="middle" font-size="11" font-weight="400" fill="#5C574F">参数生成</text></g>
+      <g transform="rotate(-1 682 70)"><rect x="630" y="44" width="104" height="52" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.2"/><text x="682" y="66" text-anchor="middle" fill="#1E4B5A">Validation</text><text x="682" y="85" text-anchor="middle" font-size="11" font-weight="400" fill="#5C574F">执行前校验</text></g>
+    </g>
+    <g stroke="#2B2926" stroke-width="2" fill="none">
+      <path d="M146 70 Q 158 64 169 68"/><path d="M163 62 L 172 68 L 162 74"/>
+      <path d="M300 70 Q 308 64 315 68"/><path d="M310 62 L 320 68 L 309 74"/>
+      <path d="M464 70 Q 476 64 491 68"/><path d="M482 62 L 492 68 L 481 74"/>
+      <path d="M604 70 Q 614 64 627 68"/><path d="M618 62 L 628 68 L 617 74"/>
+    </g>
+    <text x="380" y="132" text-anchor="middle" font-size="12.5" fill="#5C574F" font-style="italic">create_refund 在 Selection 阶段就应该被排除——它是一个"写"动作，与查询意图不符</text>
+  </svg>
+  <div class="figcap">图 3 · <b>Tool Selection Pipeline</b>：意图 → 召回 → 选择 → 参数 → 校验</div>
+  </div>
+
+  <h3>几十个甚至上百个工具，全部暴露给 LLM 吗？</h3>
+  <p>通常不应该。所有工具的 Schema 都会进入上下文，直接推高 Token 成本和延迟；更重要的是，选择空间越大，模型选错的概率越高。工程上有几种渐进的解法：</p>
+  <ul class="clean">
+    <li><strong>Tool Group</strong>：按业务域分组（订单组、售后组、商品组），先路由到组，再在组内选择。</li>
+    <li><strong>Tool Router</strong>：用轻量模型或嵌入检索做第一跳路由，只把候选工具暴露给主 Agent。</li>
+    <li><strong>Dynamic Tool Discovery</strong>：依托 Tool Registry（第 20 节），按意图动态召回相关工具，而非静态全量注入。</li>
+    <li><strong>Hierarchical Selection</strong>：先选"能力类别"，再选"具体动作"，两层决策各自缩小空间。</li>
+  </ul>
+  <p>当工具规模超过约 20 个时，这些机制就不再是优化项，而逐渐成为必要项（具体阈值取决于模型能力与任务复杂度，需要实测）。</p>
+
+  <div class="stat-row">
+    <div class="stat"><div class="v">3 → 50</div><div class="l">工具数量增长时<br>Schema 注入的 Token 成本近似线性上升</div></div>
+    <div class="stat"><div class="v rust">选择错误率 ↑</div><div class="l">候选空间扩大后<br>Wrong Tool Rate 通常随之上升</div></div>
+    <div class="stat"><div class="v">P95 延迟 ↑</div><div class="l">更长的上下文 + 更长的推理链<br>直接转化为用户体验的劣化</div></div>
+  </div>
+</section>
+
+<!-- ═══ 07 ═══ -->
+<section id="s7">
+  <div class="sec-head"><span class="sec-num">07</span><h2>Schema：如何约束参数</h2></div>
+  <p class="lead">Schema 决定可靠性——因为能在 Schema 层表达的约束，就不应该依赖 Prompt 或模型自觉。</p>
+  <p>对比同一个参数的三种写法：</p>
+
+  <div class="code-block">
+    <div class="code-bar"><span>schema_evolution · 从"能用"到"可靠"</span><button class="copy-btn" onclick="copyCode(this)">复制</button></div>
+    <pre><span class="cm">// ① 差：语义不明，模型只能靠猜</span>
+{ <span class="st">"order"</span>: { <span class="st">"type"</span>: <span class="st">"string"</span> } }
+
+<span class="cm">// ② 好：名称明确 + 示例描述</span>
+{ <span class="st">"order_id"</span>: { <span class="st">"type"</span>: <span class="st">"string"</span>,
+    <span class="st">"description"</span>: <span class="st">"The user's order ID, e.g. 123456789"</span> } }
+
+<span class="cm">// ③ 更好：用 enum 把自由文本变成受控词表</span>
+{ <span class="st">"reason"</span>: { <span class="st">"type"</span>: <span class="st">"string"</span>,
+    <span class="st">"enum"</span>: [<span class="st">"damaged"</span>, <span class="st">"wrong_item"</span>, <span class="st">"quality_issue"</span>] } }</pre>
+  </div>
+
+  <p>第 ③ 种写法的价值在于：<code>reason</code> 从"模型自由发挥的字符串"变成了"从有限集合中选择"。自由文本意味着下游系统要做模糊匹配，而模糊匹配就意味着不确定性。</p>
+  <div class="callout rust">
+    <span class="tag">CONSTRAINT PUSHDOWN</span>
+    <p>约束应该逐层前推：<strong>能用 Schema 表达的，不要留给 Prompt；能用系统校验的，不要留给模型判断。</strong>即 LLM Reasoning → Schema Constraint → System Validation，约束越靠前，不确定性越少。</p>
+  </div>
+</section>
+
+<!-- ═══ 08 ═══ -->
+<section id="s8">
+  <div class="sec-head"><span class="sec-num">08</span><h2>Argument Validation</h2></div>
+  <p class="lead">Tool Calling 在生产中最常见的问题，不是调用失败，而是<strong>参数错误</strong>。</p>
+  <p>典型症状：API 要求 <code>order_id</code> 是字符串，模型给了数字 <code>123456</code>；参数为空串；或者 <code>reason</code> 填了 <em>"我觉得商品坏了"</em>这种 enum 无法匹配的自由文本。所以执行前必须有一条完整的校验链：</p>
+  <div class="flow">LLM Output
+   ↓
+<b>JSON Schema</b>          <span class="dim">← 结构合法吗</span>
+   ↓
+<b>Type Validation</b>      <span class="dim">← 类型 / 必填 / Enum / Format</span>
+   ↓
+<b>Business Validation</b>  <span class="dim">← 业务上允许吗</span>
+   ↓
+<b>Permission Validation</b> <span class="dim">← 这个用户可以吗</span>
+   ↓
+Execution</div>
+
+  <p>这里必须严格区分两类校验，它们对应完全不同的错误处理策略：</p>
+  <div class="card">
+    <div class="card-title">◆ Schema Validation vs Business Validation</div>
+    <p style="margin-bottom:10px"><strong>Schema Validation</strong> 解决"格式正确"：类型、必填、Enum、Format。失败意味着模型生成的参数不合法，通常可以通过错误信息让模型重新生成。</p>
+    <p style="margin:0"><strong>Business Validation</strong> 解决"业务上允许"：订单是否存在、用户是否拥有该订单、是否已过退款期、是否已退款。失败不重试、也不该让模型再猜——需要把结构化错误返回给模型或转人工。</p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-bar"><span>pseudocode · 三层校验（框架无关）</span><button class="copy-btn" onclick="copyCode(this)">复制</button></div>
+    <pre><span class="kw">def</span> <span class="fn">validate</span>(tool, args, user):
+    <span class="cm"># 第一层：Schema 校验 —— 格式是否正确</span>
+    errors = json_schema_validate(args, tool.input_schema)
+    <span class="kw">if</span> errors:
+        <span class="kw">return</span> Reject(errors, ask_user=<span class="kw">True</span>)
+
+    <span class="cm"># 第二层：业务校验 —— 业务上是否允许</span>
+    order = order_repo.find(args[<span class="st">"order_id"</span>])
+    <span class="kw">if</span> order <span class="kw">is</span> <span class="kw">None</span>:
+        <span class="kw">return</span> StructuredError(<span class="st">"ORDER_NOT_FOUND"</span>)
+    <span class="kw">if</span> order.owner != user.id:
+        <span class="kw">return</span> StructuredError(<span class="st">"PERMISSION_DENIED"</span>)
+    <span class="kw">if</span> order.status <span class="kw">not in</span> REFUNDABLE:
+        <span class="kw">return</span> StructuredError(<span class="st">"NOT_REFUNDABLE"</span>)
+
+    <span class="cm"># 第三层：权限校验</span>
+    <span class="kw">if not</span> policy.allows(user, tool, args):
+        <span class="kw">return</span> StructuredError(<span class="st">"FORBIDDEN"</span>)
+
+    <span class="kw">return</span> Pass()</pre>
+  </div>
+</section>
+
+<!-- ═══ 09 ═══ -->
+<section id="s9">
+  <div class="sec-head"><span class="sec-num">09</span><h2>Tool Reliability 模型</h2></div>
+  <p class="lead">不要把可靠性寄托在"API 成功率"上。一次工具调用有六个可能失败的层面。</p>
+  <div class="flow">Tool Reliability
+│
+├── <b>Selection</b>     <span class="dim">← 选错工具</span>
+├── <b>Argument</b>      <span class="dim">← 参数错误</span>
+├── <b>Permission</b>    <span class="dim">← 越权调用</span>
+├── <b>Execution</b>     <span class="dim">← 超时 / 5xx / 限流</span>
+├── <b>Result</b>        <span class="dim">← 返回内容无效</span>
+└── <b>Recovery</b>      <span class="dim">← 失败后无法恢复</span></div>
+  <p>这些失败还会级联放大：选错工具 → 必然生成错误参数 → 触发业务校验失败 → 模型重试又选错 → 进入循环。所以生产系统不能只看 API 成功率，而要看 <strong>End-to-End Tool Success Rate</strong>：从"用户表达意图"到"业务动作正确完成"的全链路成功率。</p>
+
+  <!-- 图4：Reliability Pipeline -->
+  <div class="fig">
+  <svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+    <g font-size="13">
+      <g transform="rotate(-1 130 40)"><rect x="50" y="22" width="160" height="38" rx="10" fill="#F9E9DE" stroke="#C05621" stroke-width="2.2"/><text x="130" y="46" text-anchor="middle" fill="#C05621" font-weight="700">Tool Selection</text></g>
+      <g transform="rotate(1 130 95)"><rect x="50" y="77" width="160" height="38" rx="10" fill="#fff" stroke="#C05621" stroke-width="2.2"/><text x="130" y="101" text-anchor="middle" fill="#C05621" font-weight="700">Argument Validation</text></g>
+      <g transform="rotate(-1 130 150)"><rect x="50" y="132" width="160" height="38" rx="10" fill="#fff" stroke="#C05621" stroke-width="2.2"/><text x="130" y="156" text-anchor="middle" fill="#C05621" font-weight="700">Authorization</text></g>
+      <g transform="rotate(1 130 205)"><rect x="50" y="187" width="160" height="38" rx="10" fill="#E4EDF0" stroke="#1E4B5A" stroke-width="2.4"/><text x="130" y="211" text-anchor="middle" fill="#1E4B5A" font-weight="700">Execution</text></g>
+      <g transform="rotate(-1 340 150)"><rect x="262" y="112" width="156" height="76" rx="12" fill="#1E4B5A"/><text x="340" y="144" text-anchor="middle" fill="#fff" font-weight="700">Result Validation</text><text x="340" y="166" text-anchor="middle" fill="#A9CBD6" font-size="11.5">返回值可信吗</text></g>
+      <g transform="rotate(1 555 150)"><rect x="478" y="112" width="154" height="76" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.4"/><text x="555" y="144" text-anchor="middle" fill="#1E4B5A" font-weight="700">Recovery</text><text x="555" y="166" text-anchor="middle" fill="#5C574F" font-size="11.5">Retry / Fallback</text></g>
+      <g transform="rotate(-1 686 118)"><rect x="630" y="62" width="112" height="36" rx="18" fill="#E4EDF0" stroke="#1E4B5A" stroke-width="2"/><text x="686" y="85" text-anchor="middle" fill="#1E4B5A" font-weight="700">Observation</text></g>
+      <g transform="rotate(1 686 188)"><rect x="636" y="206" width="104" height="36" rx="18" fill="#E4EDF0" stroke="#1E4B5A" stroke-width="2"/><text x="688" y="229" text-anchor="middle" fill="#1E4B5A" font-weight="700">Next Decision</text></g>
+    </g>
+    <g stroke="#2B2926" stroke-width="2" fill="none">
+      <path d="M130 62 L 130 74"/><path d="M124 68 L 130 76 L 136 68"/>
+      <path d="M130 117 L 130 129"/><path d="M124 123 L 130 131 L 136 123"/>
+      <path d="M130 172 L 130 184"/><path d="M124 178 L 130 186 L 136 178"/>
+      <path d="M212 206 Q 250 200 258 172"/><path d="M250 178 L 259 170 L 261 181"/>
+      <path d="M420 150 Q 446 145 474 148"/><path d="M466 141 L 476 148 L 465 155"/>
+      <path d="M608 132 Q 626 118 632 104" stroke="#C05621" stroke-dasharray="5 4"/>
+      <path d="M628 112 L 634 102 L 640 112" stroke="#C05621"/>
+      <path d="M640 130 Q 660 160 660 200 Q 660 216 672 220" stroke="#C05621" stroke-dasharray="5 4"/>
+    </g>
+    <g font-size="11.5" fill="#8A5A44" font-style="italic">
+      <text x="232" y="40">← Wrong Tool</text>
+      <text x="232" y="95">← Invalid Args</text>
+      <text x="232" y="150">← Unauthorized</text>
+      <text x="232" y="205">← Timeout / 5xx</text>
+      <text x="440" y="105">← Invalid Result</text>
+    </g>
+  </svg>
+  <div class="figcap">图 4 · <b>Reliability Pipeline</b>：每一层都是独立的失败点，错误沿链条级联</div>
+  </div>
+</section>
+
+<!-- ═══ 10 ═══ -->
+<section id="s10">
+  <div class="sec-head"><span class="sec-num">10</span><h2>Retry / Timeout / Circuit Breaker</h2></div>
+  <p class="lead">Tool 失败后是否一定 Retry？答案是不一定——而且"失败就重试"在生产环境里是危险行为。</p>
+  <p>Agent Tool 可能调用支付、物流、搜索、CRM 等各种下游，任何一个都可能变慢或抖动。重试决策必须基于<strong>错误语义</strong>分类：</p>
+  <div class="card">
+    <div class="card-title">◆ 可以 Retry vs 不应该 Retry</div>
+    <p style="margin-bottom:8px"><span style="color:#2E7D46;font-weight:700">✓ 可以重试</span>：Network Timeout（前提是幂等）、Temporary 5xx、Rate Limit、Temporary Service Unavailable —— 这些是瞬时故障，重试有期望收益。</p>
+    <p style="margin:0"><span style="color:var(--rust);font-weight:700">✗ 不应重试</span>：Invalid Argument、Permission Denied、Business Rule Violation、Resource Not Found —— 这些是语义性失败，重试只会得到相同结果，还可能放大副作用。</p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-bar"><span>pseudocode · 基于错误语义的恢复策略</span><button class="copy-btn" onclick="copyCode(this)">复制</button></div>
+    <pre><span class="kw">def</span> <span class="fn">run_with_recovery</span>(tool, args, ctx):
+    <span class="kw">for</span> attempt <span class="kw">in</span> <span class="fn">range</span>(tool.max_retries + <span class="nu">1</span>):
+        <span class="kw">try</span>:
+            <span class="kw">return</span> tool.execute(args, timeout=ctx.timeout)
+        <span class="kw">except</span> Timeout:
+            <span class="kw">if not</span> tool.idempotent:
+                <span class="kw">raise</span>          <span class="cm"># 非幂等工具不能盲目重试！</span>
+            backoff(attempt)   <span class="cm"># 指数退避</span>
+        <span class="kw">except</span> RateLimit <span class="kw">as</span> e:
+            backoff(e.retry_after)
+        <span class="kw">except</span> (InvalidArgument, PermissionDenied,
+                NotFound, Conflict) <span class="kw">as</span> e:
+            <span class="kw">return</span> structured_error(e)  <span class="cm"># 语义失败：重试无意义</span>
+        <span class="kw">except</span> DependencyDown:
+            <span class="kw">if</span> breaker.is_open(tool.name):
+                <span class="kw">return</span> fallback(tool, ctx)  <span class="cm"># 熔断打开，走降级</span>
+            backoff(attempt)
+    <span class="kw">return</span> structured_error(ExhaustedRetries())</pre>
+  </div>
+
+  <h3>Timeout 是预算，不是单点配置</h3>
+  <p>最常见的错误配置：每个 Tool 超时 30 秒。这意味着一个调用 5 个工具的任务，最坏情况要等 150 秒——用户早就离开了。正确的做法是把超时当成<strong>整条请求的时间预算</strong>来分配：</p>
+  <div class="flow">Request Budget = 10s
+
+Tool A = 2s   →   Tool B = 3s   →   Retry = 2s   →   LLM = 3s
+<span class="dim">而不是：Tool A timeout 30s，Tool B timeout 30s ……</span></div>
+  <p>配套机制包括：区分 Connection Timeout 与 Read Timeout、维护 Retry Budget（限制重试总耗时）、对持续故障的下游启用 Circuit Breaker（快速失败 + 降级答案）、以及对单个工具设置并发上限。核心思想只有一个：<em>任何单个工具都不允许拖垮整条请求</em>。</p>
+</section>
+
+<!-- ═══ 11 ═══ -->
+<section id="s11">
+  <div class="sec-head"><span class="sec-num">11</span><h2>Idempotency</h2></div>
+  <p class="lead">生产级 Tool Calling 绕不开的一课：重试 + 非幂等 = 重复副作用。</p>
+  <p>考虑一个真实的故障序列。Agent 调用 <code>create_refund()</code>，网络超时——但下游其实已经执行成功。系统判定失败并重试，于是：</p>
+  <div class="flow">Call → Timeout → Retry → Call Again
+
+结果：
+  Refund <span style="color:var(--rust)">#1</span>   <span class="dim">（第一次调用，实际已成功）</span>
+  Refund <span style="color:var(--rust)">#2</span>   <span class="dim">（重试产生的重复退款）</span></div>
+  <p>解决方案是 <strong>Idempotency Key</strong>：由业务语义构造一个确定性键，例如 <code>user_id + order_id + action + request_id</code>。下游在执行前先检查该键是否已处理过，处理过则直接返回上次结果：</p>
+  <div class="flow">Agent
+ ↓
+Tool Call（携带 Idempotency Key）
+ ↓
+<b>Idempotency Check</b>
+ ↓
+Execute Once  <span class="dim">← 相同 Key 只会真正执行一次</span>
+ ↓
+Result</div>
+  <div class="callout rust">
+    <span class="tag">PRODUCTION RULE</span>
+    <p><strong>所有具有副作用的 Tool，都应该认真考虑幂等性。</strong>判断标准很简单：这个 Tool 被意外执行两次，业务上能接受吗？退款、下单、发消息、改地址——答案几乎总是否定的。而纯查询类工具天然幂等，无需额外处理。</p>
+  </div>
+</section>
+
+<!-- ═══ 12 ═══ -->
+<section id="s12">
+  <div class="sec-head"><span class="sec-num">12</span><h2>副作用与确认机制</h2></div>
+  <p class="lead">Tool 必须按风险分级——查询类和修改类工具，不能用同一套执行策略。</p>
+
+  <div class="tbl-wrap"><table>
+    <caption>表 2 · Read Tool vs Write Tool</caption>
+    <thead><tr><th>类型</th><th>典型工具</th><th>风险</th><th>执行策略</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Read-only</strong></td><td><code>query_order</code> · <code>search_product</code> · <code>query_logistics</code></td><td>低（只读，可逆，无副作用）</td><td>可直接自动执行</td></tr>
+      <tr><td><strong>Side-effect</strong></td><td><code>create_refund</code> · <code>cancel_order</code> · <code>submit_order</code> · <code>send_message</code></td><td>中到高（改变业务状态，可能不可逆）</td><td>确认 / 授权后执行</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Agent 应该直接执行高风险动作吗？</h3>
+  <p>答案不是简单的 Yes 或 No，而是一个四级决策，依据风险、金额、用户授权、可逆性和业务规则综合判断：</p>
+  <div class="decide"><b>Tool（有副作用）</b>
+    ├─ 低风险 + 可逆 + 用户已授权        → <i>Auto Execute</i>      <span class="dim">（如修改收货地址）</span>
+    ├─ 中风险 / 涉及资金                 → <i>Human Confirmation</i> <span class="dim">（Agent 展示摘要，用户点确认）</span>
+    ├─ 高风险 / 大额 / 不可逆            → <i>Human Approval</i>     <span class="dim">（进入人工审批队列）</span>
+    └─ 违反业务规则或权限不足            → <i>Reject</i>             <span class="dim">（直接拒绝并说明原因）</span></div>
+  <p>实践中最容易被低估的是中间两级：很多团队做到了"退款需要确认"，却忘记了大额退款和普通退款应该走不同的通道。<em>风险分级应该是连续的，而不是二值的</em>。</p>
+</section>
+
+<!-- ═══ 13 ═══ -->
+<section id="s13">
+  <div class="sec-head"><span class="sec-num">13</span><h2>Tool Result 与 Error Design</h2></div>
+  <p class="lead">多数人只打磨 Input，但 Output 同样重要——Tool Result 是 Agent 下一步决策的 Observation。</p>
+  <p>最糟糕的返回方式是把整个 API Response 原样塞回上下文：字段冗余、结构混乱，模型需要"猜"哪个字段是关键信息，且白白消耗 Token。正确的做法是为 Agent 设计专门的返回结构：</p>
+
+  <div class="code-block">
+    <div class="code-bar"><span>tool_result · 成功与失败都应结构化</span><button class="copy-btn" onclick="copyCode(this)">复制</button></div>
+    <pre><span class="cm">// 成功：只返回 Agent 决策需要的字段</span>
+{
+  <span class="st">"success"</span>: <span class="kw">true</span>,
+  <span class="st">"order"</span>: {
+    <span class="st">"id"</span>: <span class="st">"123456"</span>,
+    <span class="st">"status"</span>: <span class="st">"shipped"</span>,
+    <span class="st">"refund_eligible"</span>: <span class="kw">true</span>   <span class="cm">// 预计算的业务标志，避免模型自行推断</span>
+  }
+}
+
+<span class="cm">// 失败：错误也必须结构化，携带机器可读语义</span>
+{
+  <span class="st">"success"</span>: <span class="kw">false</span>,
+  <span class="st">"error"</span>: {
+    <span class="st">"code"</span>: <span class="st">"ORDER_NOT_FOUND"</span>,
+    <span class="st">"message"</span>: <span class="st">"Order does not exist"</span>
+  }
+}</pre>
+  </div>
+
+  <p><code>refund_eligible</code> 这个字段值得特别一提：与其让模型根据 <code>status</code>、<code>paid_at</code>、<code>refund_window</code> 自行推断"能不能退"，不如由系统预计算后直接返回结论。<strong>能由确定性逻辑得出的判断，就不应该交给概率性推理。</strong></p>
+
+  <h3>错误不应该只返回 Exception</h3>
+  <p>把 Java 堆栈直接丢给模型，它既读不懂也不知道该怎么办。应该建立错误分类体系，每一类错误对应明确的处理动作：</p>
+  <div class="flow">Tool Error
+│
+├── Validation Error      <span class="dim">（参数不合法）</span>
+├── Authentication Error  <span class="dim">（身份失败）</span>
+├── Authorization Error   <span class="dim">（权限不足）</span>
+├── Not Found             <span class="dim">（资源不存在）</span>
+├── Conflict              <span class="dim">（业务冲突）</span>
+├── Rate Limit
+├── Timeout
+├── Dependency Failure    <span class="dim">（下游不可用）</span>
+└── Unknown Error</div>
+
+  <div class="tbl-wrap"><table>
+    <caption>表 3 · 错误类型 → 处理策略映射</caption>
+    <thead><tr><th>Error</th><th>Retry</th><th>Fallback</th><th>Ask User</th><th>典型处置</th></tr></thead>
+    <tbody>
+      <tr><td>Invalid Argument</td><td><span class="n">✗</span></td><td></td><td><span class="y">✓</span></td><td>携带错误信息让模型修正参数，或向用户澄清</td></tr>
+      <tr><td>Permission Denied</td><td><span class="n">✗</span></td><td></td><td></td><td>直接终止，告知无权限（不要试图绕过）</td></tr>
+      <tr><td>Not Found</td><td><span class="n">✗</span></td><td></td><td><span class="y">✓</span></td><td>请用户确认订单号等信息</td></tr>
+      <tr><td>Business Conflict</td><td><span class="n">✗</span></td><td></td><td><span class="y">✓</span></td><td>如"已退款"，向用户说明现状</td></tr>
+      <tr><td>Timeout</td><td><span class="y">✓</span>（需幂等）</td><td><span class="y">✓</span></td><td></td><td>退避重试一次，仍失败则降级</td></tr>
+      <tr><td>Rate Limit</td><td><span class="y">✓</span></td><td></td><td></td><td>按 <code>retry_after</code> 等待</td></tr>
+      <tr><td>Service Down</td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td></td><td>熔断 + 降级答案或转人工</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ═══ 14 ═══ -->
+<section id="s14">
+  <div class="sec-head"><span class="sec-num">14</span><h2>Agent Loop 与 Tool Calling</h2></div>
+  <p class="lead">现在把前面所有组件组装成标准循环。</p>
+  <p>Tool Calling 的本质不是"一次函数调用"，而是 Agent Decision Loop 中的 <strong>Action → Observation → Next Decision</strong>。每一次工具调用的结果都会改变状态，状态又驱动下一次决策：</p>
+
+  <!-- 图5：Agent Loop -->
+  <div class="fig">
+  <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+    <g font-size="13" font-weight="700">
+      <g transform="rotate(-1.5 110 60)"><rect x="34" y="34" width="152" height="52" rx="12" fill="#E4EDF0" stroke="#1E4B5A" stroke-width="2.3"/><text x="110" y="56" text-anchor="middle" fill="#1E4B5A">Reason / Decide</text><text x="110" y="75" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5C574F">基于 State + Memory</text></g>
+      <g transform="rotate(1 110 175)"><rect x="34" y="149" width="152" height="52" rx="12" fill="#fff" stroke="#C05621" stroke-width="2.3"/><text x="110" y="171" fill="#C05621">Validate</text><text x="110" y="190" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5C574F">Schema / Business / Auth</text></g>
+      <g transform="rotate(-1 110 285)"><rect x="34" y="259" width="152" height="52" rx="12" fill="#F9E9DE" stroke="#C05621" stroke-width="2.3"/><text x="110" y="281" fill="#C05621">Execute Tool</text><text x="110" y="300" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5C574F">Timeout / Idempotency</text></g>
+      <g transform="rotate(1.5 380 285)"><rect x="304" y="259" width="152" height="52" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.3"/><text x="380" y="281" fill="#1E4B5A">Observe Result</text><text x="380" y="300" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5C574F">结构化 Observation</text></g>
+      <g transform="rotate(-1 380 175)"><rect x="304" y="149" width="152" height="52" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.3"/><text x="380" y="171" fill="#1E4B5A">Update State</text><text x="380" y="190" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5C574F">写入 Agent 状态</text></g>
+      <g transform="rotate(1 380 60)"><rect x="304" y="34" width="152" height="52" rx="12" fill="#1E4B5A"/><text x="380" y="56" fill="#fff">Decide Again</text><text x="380" y="75" text-anchor="middle" font-size="10.5" font-weight="400" fill="#A9CBD6">循环直到收敛</text></g>
+      <g transform="rotate(-1.5 640 60)"><rect x="566" y="34" width="148" height="52" rx="26" fill="#fff" stroke="#2E7D46" stroke-width="2.3" stroke-dasharray="6 4"/><text x="640" y="56" fill="#2E7D46">Final Answer</text><text x="640" y="75" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5C574F">无工具调用时出口</text></g>
+    </g>
+    <g stroke="#2B2926" stroke-width="2" fill="none">
+      <path d="M110 88 L 110 146"/><path d="M104 139 L 110 148 L 116 139"/>
+      <path d="M110 203 L 110 256"/><path d="M104 249 L 110 258 L 116 249"/>
+      <path d="M188 285 Q 240 290 301 286"/><path d="M294 279 L 304 286 L 293 293"/>
+      <path d="M380 257 L 380 204"/><path d="M374 211 L 380 202 L 386 211"/>
+      <path d="M380 147 L 380 89"/><path d="M374 96 L 380 87 L 386 96"/>
+      <path d="M458 60 Q 520 55 562 59" stroke="#2E7D46" stroke-dasharray="6 4"/>
+      <path d="M555 52 L 565 59 L 554 66" stroke="#2E7D46"/>
+      <!-- Decide Again 顶部回流弧线（画布内） -->
+      <path d="M380 32 Q 292 2 178 26" stroke="#C05621"/>
+      <path d="M186 18 L 176 27 L 189 31" stroke="#C05621"/>
+    </g>
+    <text x="230" y="20" text-anchor="middle" font-size="12" fill="#C05621" font-weight="700">有下一次工具调用 → 继续循环</text>
+    <text x="620" y="130" text-anchor="middle" font-size="12" fill="#2E7D46" font-style="italic">Decide 判断无需工具</text>
+    <text x="620" y="148" text-anchor="middle" font-size="12" fill="#2E7D46" font-style="italic">→ 直接生成最终回答</text>
+  </svg>
+  <div class="figcap">图 5 · <b>Agent Tool Loop</b>：一个有边界的决策状态机，而非无限循环</div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-bar"><span>pseudocode · Agent Tool Loop（框架无关）</span><button class="copy-btn" onclick="copyCode(this)">复制</button></div>
+    <pre>MAX_STEPS = <span class="nu">8</span>              <span class="cm"># 最大循环步数</span>
+REQUEST_BUDGET = <span class="nu">10.0</span>      <span class="cm"># 整条请求的时间预算（秒）</span>
+
+state = init_state(user, conversation, memory)
+
+<span class="kw">for</span> step <span class="kw">in</span> <span class="fn">range</span>(MAX_STEPS):
+    <span class="kw">if</span> elapsed() > REQUEST_BUDGET:
+        <span class="kw">return</span> degrade(state)          <span class="cm"># 预算耗尽，降级回答</span>
+
+    decision = agent.decide(state)     <span class="cm"># LLM 决策</span>
+
+    <span class="kw">if</span> decision.is_final:
+        <span class="kw">return</span> decision.answer         <span class="cm"># 无需工具，输出最终答案</span>
+
+    <span class="kw">if</span> is_repeated(decision, state):   <span class="cm"># 重复调用检测</span>
+        <span class="kw">return</span> fallback(state)
+
+    tool = registry.lookup(decision.tool)
+    <span class="kw">if</span> tool <span class="kw">is</span> <span class="kw">None</span> <span class="kw">or not</span> authorized(user, tool):
+        state.observe(error(<span class="st">"PERMISSION_DENIED"</span>))
+        <span class="kw">continue</span>
+
+    result = executor.run(
+        tool, decision.args,
+        timeout=remaining_budget(),
+        idempotency_key=make_key(user, decision),
+    )
+
+    state.observe(result)              <span class="cm"># Observation 进入状态，驱动下一轮</span></pre>
+  </div>
+</section>
+
+<!-- ═══ 15 ═══ -->
+<section id="s15">
+  <div class="sec-head"><span class="sec-num">15</span><h2>防止无限调用</h2></div>
+  <p class="lead">一个真实发生过的事故模式：Agent 反复调用 <code>query_order</code>，每次结果都一样，但它"觉得"再查一次也许就好了。</p>
+  <div class="flow" style="color:var(--rust)">Agent → query_order → query_order → query_order → …（永不停止）</div>
+  <p>这不会自己停下来。所以 Agent <strong>必须是一个有边界的状态机</strong>，至少配置五道护栏：</p>
+  <ul class="clean">
+    <li><strong>Max Tool Calls</strong>：单次任务允许的工具调用总数上限。</li>
+    <li><strong>Max Loop Steps</strong>：推理循环步数上限。</li>
+    <li><strong>Time Budget</strong>：整条请求的挂钟时间预算。</li>
+    <li><strong>Repeated Call Detection</strong>：相同工具 + 相同参数（归一化后）的重复调用，直接命中即终止或降级。</li>
+    <li><strong>Duplicate Request Detection</strong>：借助 Idempotency Key 识别语义重复的请求。</li>
+  </ul>
+  <p>这些护栏在上一节的循环伪代码中都有体现。触发护栏后的行为同样重要：<em>不是抛异常，而是优雅降级</em>——告诉用户"目前无法完成，已为您转人工"，同时携带完整 Trace 供排查（见第 17 节）。</p>
+</section>
+
+<!-- ═══ 16 ═══ -->
+<section id="s16">
+  <div class="sec-head"><span class="sec-num">16</span><h2>Security 与 Authorization</h2></div>
+  <p class="lead">真正的危险场景往往不是"Agent 被攻破"，而是更平凡的一种：Agent 获得了超过用户权限的工具能力。</p>
+  <p>系统架构上，调用链是 User → Agent → Tool → Business System。如果 Agent 以自己的服务账号调用下游，那么<em>任何用户</em>——包括不拥有该订单的用户——都可能通过 Prompt 让 Agent 查询或修改别人的数据。正确的身份链应该是：</p>
+  <div class="flow"><b>User Identity</b>
+ ↓
+Agent Context（携带身份 + 租户 + 会话）
+ ↓
+<b>Authorization</b>（按用户身份校验，而非 Agent 身份）
+ ↓
+Tool → Business System</div>
+  <div class="callout rust">
+    <span class="tag">SECURITY PRINCIPLE</span>
+    <p><strong>不要因为 Agent 可以调用 Tool，就默认 Agent 有权限调用 Tool。</strong>Agent 是行动的代理者，不是权限的授予者。权限永远来自它所代表的用户。</p>
+  </div>
+  <p>生产清单至少包括：</p>
+  <ul class="clean">
+    <li><strong>Authentication / Authorization</strong>：每个 Tool 调用前按用户身份鉴权，工具粒度的权限矩阵。</li>
+    <li><strong>Tenant Isolation</strong>：多租户场景下，查询参数与数据范围必须强制绑定租户。</li>
+    <li><strong>User Scope / Tool Scope</strong>：普通用户与客服坐席可用的工具集合不同；同一工具的参数范围也可不同（如退款金额上限）。</li>
+    <li><strong>Sensitive Parameters</strong>：支付凭证、身份证号等敏感参数尽量不经过模型——由前端安全通道直传，模型只持有引用句柄。</li>
+    <li><strong>Audit Log</strong>：所有副作用调用必须留痕：谁、在什么会话中、批准人是谁、执行了什么。</li>
+    <li><strong>Secret Management</strong>：下游 API 密钥只存在于执行层，永不进入模型上下文和日志。</li>
+  </ul>
+</section>
+
+<!-- ═══ 17 ═══ -->
+<section id="s17">
+  <div class="sec-head"><span class="sec-num">17</span><h2>Tool Observability</h2></div>
+  <p class="lead">无法观测的 Agent 无法调试。Tool Calling 必须留下完整的痕迹。</p>
+  <p>每一次工具调用至少记录：</p>
+  <div class="flow">request_id · trace_id · agent_id · tool_name · arguments
+start_time · duration · status · error_code · retry_count
+user_id / tenant_id</div>
+  <p>但要注意一条红线：<strong>敏感参数不能无条件进入日志</strong>。日志层应做字段级脱敏——金额可以留，卡号、手机号应掩码或哈希。观测的目标是回答三个问题：</p>
+  <div class="stat-row">
+    <div class="stat"><div class="v" style="font-size:20px;line-height:1.5;padding-top:6px">为什么选<br>这个 Tool？</div><div class="l">需要记录 Selection 阶段的<br>候选集与最终选择依据</div></div>
+    <div class="stat"><div class="v" style="font-size:20px;line-height:1.5;padding-top:6px">Tool 为什么<br>失败？</div><div class="l">需要结构化 error_code<br>而非堆栈字符串</div></div>
+    <div class="stat"><div class="v" style="font-size:20px;line-height:1.5;padding-top:6px">选错了，还是<br>API 挂了？</div><div class="l">Selection 失败与 Execution 失败<br>必须可区分归因</div></div>
+  </div>
+  <p>为此，Trace 的组织方式应该与决策过程对齐：</p>
+  <div class="flow">Agent Trace
+ ├── LLM Decision       <span class="dim">（模型当时的推理上下文）</span>
+ ├── Tool Selection     <span class="dim">（候选 → 选择）</span>
+ ├── Tool Arguments     <span class="dim">（脱敏后）</span>
+ ├── Tool Execution     <span class="dim">（耗时 / 重试 / 熔断状态）</span>
+ ├── Tool Result        <span class="dim">（结构化返回）</span>
+ └── Next Decision      <span class="dim">（观察如何影响下一步）</span></div>
+</section>
+
+<!-- ═══ 18 ═══ -->
+<section id="s18">
+  <div class="sec-head"><span class="sec-num">18</span><h2>Tool Calling 的评估指标</h2></div>
+  <p class="lead">如果只监控一个 API Success Rate，你将无法回答"Agent 到底行不行"。</p>
+  <div class="tbl-wrap"><table>
+    <caption>表 4 · 多层 Tool Calling 指标体系</caption>
+    <thead><tr><th>层级</th><th>核心指标</th><th>回答的问题</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Selection</strong></td><td>Tool Selection Accuracy · Wrong Tool Rate</td><td>Agent 是否在选正确的工具？</td></tr>
+      <tr><td><strong>Argument</strong></td><td>Argument Validity · Argument Accuracy</td><td>参数生成是否格式正确且语义准确？</td></tr>
+      <tr><td><strong>Execution</strong></td><td>Tool Success Rate · Timeout Rate · Retry Rate</td><td>执行层是否稳定？</td></tr>
+      <tr><td><strong>Recovery</strong></td><td>Failure Recovery Rate</td><td>失败后有多大比例被成功挽回？</td></tr>
+      <tr><td><strong>System</strong></td><td>P95 Latency · Cost · Tool Calls / Task</td><td>性能与成本是否在预算内？</td></tr>
+      <tr><td><strong>Business</strong></td><td>Task Completion Rate · Successful Action Rate · Human Escalation Rate</td><td><em>业务目标最终达成了吗？</em></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <span class="tag">EVALUATION PRINCIPLE</span>
+    <p>最终评价 Tool Calling 的标准不是"函数调用成功"，而是 <strong>"Agent 是否完成了正确的业务目标"</strong>。一个工具 100% 调用成功、但选错了工具导致用户流失的系统，比一个偶尔超时但能正确恢复的系统差得多。</p>
+  </div>
+</section>
+
+<!-- ═══ 19 ═══ -->
+<section id="s19">
+  <div class="sec-head"><span class="sec-num">19</span><h2>完整案例：电商客服退款</h2></div>
+  <p class="lead">把前面所有环节串到一条真实链路上。</p>
+  <p>用户：<em>"我的 123456 订单商品坏了，帮我退款。"</em></p>
+  <div class="flow">Intent（退款诉求）
+ ↓
+<b>query_order</b>(order_id=<span class="st">"123456"</span>)      <span class="dim">← 查订单，确认存在且属于该用户</span>
+ ↓
+Check Order（status=delivered, paid=true）
+ ↓
+<b>check_refund_eligibility</b>(order_id)     <span class="dim">← 预计算的业务判断，而非模型推断</span>
+ ↓
+Need Confirmation?   <span class="dim">← 写操作 + 涉及资金 → 需要 Human Confirmation</span>
+ ↓
+<b>create_refund</b>(order_id, reason=<span class="st">"damaged"</span>, idempotency_key=…)
+ ↓
+Observe Result（success=true, refund_id=…）
+ ↓
+Final Response（"退款已提交，预计 1–3 个工作日到账"）</div>
+
+  <p>为什么不能只设计一个 <code>refund()</code> 大一统工具？因为这个案例里的每一步都依赖工具边界的存在：<code>query_order</code> 是只读的所以能自动执行；<code>check_refund_eligibility</code> 把业务规则从模型推理中拿走；<code>create_refund</code> 是写操作所以触发确认与幂等保护；<code>query_refund_status</code> 支撑后续的"退款到账了吗"追问。一个黑盒 <code>refund()</code> 会把这四件事全部搅在一起——参数不透明、业务规则隐藏、权限无法分级、错误无法归因。</p>
+
+  <h3>生产级 Tool Calling 架构</h3>
+  <!-- 图6：生产架构 -->
+  <div class="fig">
+  <svg viewBox="0 0 800 470" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+    <g font-size="12.5" font-weight="700">
+      <!-- Agent 层 -->
+      <g transform="rotate(-1 105 52)"><rect x="30" y="30" width="150" height="44" rx="12" fill="#E4EDF0" stroke="#1E4B5A" stroke-width="2.4"/><text x="105" y="57" text-anchor="middle" fill="#1E4B5A" font-size="14">Agent（Decide）</text></g>
+      <g transform="rotate(1 55 135)"><rect x="14" y="112" width="82" height="40" rx="10" fill="#fff" stroke="#1E4B5A" stroke-width="1.8"/><text x="55" y="136" text-anchor="middle" fill="#1E4B5A" font-size="12">State</text></g>
+      <g transform="rotate(-1 146 135)"><rect x="102" y="112" width="88" height="40" rx="10" fill="#fff" stroke="#1E4B5A" stroke-width="1.8"/><text x="146" y="136" text-anchor="middle" fill="#1E4B5A" font-size="12">Memory</text></g>
+      <!-- Router 层 -->
+      <g transform="rotate(1 330 52)"><rect x="248" y="30" width="164" height="44" rx="12" fill="#F9E9DE" stroke="#C05621" stroke-width="2.4"/><text x="330" y="57" text-anchor="middle" fill="#C05621" font-size="14">Tool Router</text></g>
+      <g transform="rotate(-1 570 52)"><rect x="490" y="30" width="160" height="44" rx="12" fill="#fff" stroke="#C05621" stroke-width="2.2"/><text x="570" y="50" text-anchor="middle" fill="#C05621">Tool Registry</text><text x="570" y="66" text-anchor="middle" font-size="10" font-weight="400" fill="#8A5A44">元数据 / 可用性 / 版本</text></g>
+      <g transform="rotate(1 570 135)"><rect x="496" y="112" width="148" height="40" rx="10" fill="#fff" stroke="#C05621" stroke-width="1.8"/><text x="570" y="136" text-anchor="middle" fill="#C05621" font-size="12">Tool Schema</text></g>
+      <!-- 校验层 -->
+      <g transform="rotate(-1 330 135)"><rect x="250" y="112" width="160" height="44" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.2"/><text x="330" y="132" text-anchor="middle" fill="#1E4B5A">Validator</text><text x="330" y="149" text-anchor="middle" font-size="10" font-weight="400" fill="#5C574F">Schema / Business</text></g>
+      <g transform="rotate(1 105 218)"><rect x="30" y="196" width="150" height="44" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.2"/><text x="105" y="216" text-anchor="middle" fill="#1E4B5A">Authorization</text><text x="105" y="233" text-anchor="middle" font-size="10" font-weight="400" fill="#5C574F">User Identity → Scope</text></g>
+      <g transform="rotate(-1 305 218)"><rect x="230" y="196" width="150" height="44" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.2"/><text x="305" y="216" text-anchor="middle" fill="#1E4B5A">Policy</text><text x="305" y="233" text-anchor="middle" font-size="10" font-weight="400" fill="#5C574F">风险分级 / 确认</text></g>
+      <!-- 执行层 -->
+      <g transform="rotate(1 510 218)"><rect x="428" y="196" width="164" height="44" rx="12" fill="#1E4B5A"/><text x="510" y="216" text-anchor="middle" fill="#fff" font-size="14">Executor</text><text x="510" y="233" text-anchor="middle" font-size="10" font-weight="400" fill="#A9CBD6">Timeout / Budget</text></g>
+      <g transform="rotate(-1 701 218)"><rect x="636" y="196" width="130" height="44" rx="10" fill="#fff" stroke="#C05621" stroke-width="2.2" stroke-dasharray="6 4"/><text x="701" y="216" text-anchor="middle" fill="#C05621" font-size="12">Retry / Fallback</text><text x="701" y="232" text-anchor="middle" font-size="10" font-weight="400" fill="#8A5A44">Breaker</text></g>
+      <!-- 下游 -->
+      <g transform="rotate(1 510 300)"><rect x="400" y="278" width="220" height="44" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.2"/><text x="510" y="298" text-anchor="middle" fill="#1E4B5A">Tool Service（下游系统）</text><text x="510" y="315" text-anchor="middle" font-size="10" font-weight="400" fill="#5C574F">订单 / 支付 / 物流 / CRM</text></g>
+      <g transform="rotate(-1 703 300)"><rect x="630" y="278" width="146" height="44" rx="12" fill="#fff" stroke="#1E4B5A" stroke-width="2.2"/><text x="703" y="298" text-anchor="middle" fill="#1E4B5A" font-size="12">Result Validator</text><text x="703" y="315" text-anchor="middle" font-size="10" font-weight="400" fill="#5C574F">返回值校验</text></g>
+      <!-- 观测横条 -->
+      <g transform="rotate(0.6 400 386)"><rect x="60" y="364" width="680" height="44" rx="12" fill="#F3EDE3" stroke="#8A5A44" stroke-width="2"/><text x="400" y="384" text-anchor="middle" fill="#8A5A44" font-weight="700">Observability</text><text x="400" y="401" text-anchor="middle" font-size="10.5" font-weight="400" fill="#8A5A44">Trace · 指标 · Audit Log（全链路埋点）</text></g>
+    </g>
+    <!-- 连线 -->
+    <g stroke="#2B2926" stroke-width="2" fill="none">
+      <path d="M182 52 L 244 52"/><path d="M237 46 L 246 52 L 236 58"/>
+      <path d="M330 76 L 330 108"/><path d="M324 101 L 330 110 L 336 101"/>
+      <path d="M414 52 L 486 52" stroke="#C05621" stroke-dasharray="5 4"/><path d="M479 46 L 488 52 L 478 58" stroke="#C05621"/>
+      <path d="M570 76 L 570 108" stroke="#C05621" stroke-dasharray="5 4"/>
+      <path d="M412 135 L 486 135" stroke="#C05621" stroke-dasharray="5 4"/>
+      <path d="M248 135 Q 210 150 182 190"/><path d="M188 182 L 181 192 L 192 193"/>
+      <path d="M105 154 L 105 192"/><path d="M99 185 L 105 194 L 111 185"/>
+      <path d="M182 218 L 226 218"/><path d="M219 212 L 228 218 L 218 224"/>
+      <path d="M382 218 L 424 218"/><path d="M417 212 L 426 218 L 416 224"/>
+      <path d="M594 218 L 632 218" stroke="#C05621" stroke-dasharray="5 4"/><path d="M625 212 L 634 218 L 624 224" stroke="#C05621"/>
+      <path d="M510 242 L 510 274"/><path d="M504 267 L 510 276 L 516 267"/>
+      <path d="M622 300 L 626 300"/>
+      <path d="M510 324 Q 510 348 560 360" stroke-dasharray="4 4"/>
+      <!-- 回流：Result Validator → Agent -->
+      <path d="M703 324 Q 703 430 400 442 Q 105 448 60 300 Q 40 200 70 78" stroke="#2E7D46" stroke-width="2" stroke-dasharray="7 5"/>
+      <path d="M62 88 L 70 76 L 78 88" stroke="#2E7D46" stroke-width="2"/>
+      <!-- 观测虚线（走方块间的空隙，避免穿越组件） -->
+      <path d="M415 160 L 415 362" stroke="#8A5A44" stroke-width="1.5" stroke-dasharray="3 5"/>
+      <path d="M510 242 L 510 360" stroke="#8A5A44" stroke-width="1.5" stroke-dasharray="3 5"/>
+    </g>
+    <text x="400" y="462" text-anchor="middle" font-size="12.5" fill="#2E7D46" font-weight="700">Observation 回流 → State Update → Next Decision</text>
+  </svg>
+  <div class="figcap">图 6 · <b>生产级 Tool Calling 架构</b>：Registry → Selection → Validation → Authorization → Execution → Result Validation → Observation</div>
+  </div>
+</section>
+
+<!-- ═══ 20 ═══ -->
+<section id="s20">
+  <div class="sec-head"><span class="sec-num">20</span><h2>Tool Registry：能力目录</h2></div>
+  <p class="lead">当系统从 3 个工具增长到 50 个、甚至 500 个时，硬编码的工具列表就失效了。</p>
+  <p>Tool Registry 保存的不再只是函数引用，而是每个能力的完整元数据：</p>
+  <div class="flow">Tool Metadata
+├── Name / Description / Category
+├── <b>Risk Level</b>          <span class="dim">← 驱动确认策略（第 12 节）</span>
+├── <b>Permission</b>          <span class="dim">← 驱动鉴权（第 16 节）</span>
+├── Input / Output Schema
+├── <b>Availability</b>        <span class="dim">← 熔断状态，驱动动态下线</span>
+└── Version              <span class="dim">← Schema 变更可追溯</span></div>
+  <p>有了 Registry，工具发现就变成了一条独立的链路：<code>User Intent → Tool Discovery → Candidate Tools → Tool Selection</code>。下游服务临时不可用时，Router 可以自动把该工具从候选集中摘除，Agent 甚至不会感知到故障。</p>
+  <div class="callout rust">
+    <span class="tag">REGISTRY PRINCIPLE</span>
+    <p><strong>Tool Registry 是大型 Agent 系统的能力目录，而不是简单的函数列表。</strong>它承载的是治理：哪些能力存在、谁能用、现在是否可用、风险等级是什么。没有 Registry 的 500 工具系统，本质上是一堆无法治理的硬编码。</p>
+  </div>
+</section>
+
+<!-- ═══ 21 ═══ -->
+<section id="s21">
+  <div class="sec-head"><span class="sec-num">21</span><h2>十个常见反模式</h2></div>
+  <p class="lead">每个反模式都标注了成因、后果与改法，可作 Code Review 时的对照表。</p>
+  <div class="anti-grid">
+    <div class="anti"><span class="no">01</span><h5>God Tool</h5><p><b>成因：</b>追求快速上线，把整个业务域塞进一个函数。<b>后果：</b>Schema 不透明、权限无法分级、错误无法归因。<b>改法：</b>按业务动作拆分，参考第 3 节方案 C。</p></div>
+    <div class="anti"><span class="no">02</span><h5>Tool Explosion</h5><p><b>成因：</b>按底层 API 一比一包装成工具。<b>后果：</b>选择空间爆炸、上下文膨胀、链路脆弱。<b>改法：</b>按业务动作聚合 + Registry 动态召回。</p></div>
+    <div class="anti"><span class="no">03</span><h5>Ambiguous Tool</h5><p><b>成因：</b>多个工具功能相近，描述却含糊。<b>后果：</b>模型选错工具，如误触 create_refund。<b>改法：</b>Description 写清 When / When NOT（第 5 节）。</p></div>
+    <div class="anti"><span class="no">04</span><h5>Weak Schema</h5><p><b>成因：</b>所有参数都是 string。<b>后果：</b>类型错误、格式混乱全靠下游兜底。<b>改法：</b>严格类型 + enum + format，约束前推（第 7 节）。</p></div>
+    <div class="anti"><span class="no">05</span><h5>Hidden Side Effect</h5><p><b>成因：</b>工具名叫 get_xxx，实际会写数据。<b>后果：</b>Agent 按只读策略自动执行，造成意外修改。<b>改法：</b>副作用必须在契约中显式声明并驱动策略。</p></div>
+    <div class="anti"><span class="no">06</span><h5>Blind Retry</h5><p><b>成因：</b>失败就重试，不区分错误类型。<b>后果：</b>参数错误重试一万次也不会对；非幂等操作被重复执行。<b>改法：</b>按错误语义分类重试（第 10 节）。</p></div>
+    <div class="anti"><span class="no">07</span><h5>No Idempotency</h5><p><b>成因：</b>写操作没有幂等键。<b>后果：</b>超时重试导致双倍退款。<b>改法：</b>所有副作用工具强制携带 Idempotency Key（第 11 节）。</p></div>
+    <div class="anti"><span class="no">08</span><h5>Tool Result Dump</h5><p><b>成因：</b>把整个 API Response 塞进上下文。<b>后果：</b>Token 浪费、模型在噪音中找关键信息、输出不稳定。<b>改法：</b>为 Agent 定制结构化返回（第 13 节）。</p></div>
+    <div class="anti"><span class="no">09</span><h5>No Authorization</h5><p><b>成因：</b>Agent 用服务账号调用下游。<b>后果：</b>任何用户都能通过 Prompt 越权访问他人数据。<b>改法：</b>按用户身份鉴权，租户强制隔离（第 16 节）。</p></div>
+    <div class="anti"><span class="no">10</span><h5>Infinite Tool Loop</h5><p><b>成因：</b>循环无边界、无重复检测。<b>后果：</b>成本失控、请求永不返回。<b>改法：</b>Max Steps + Time Budget + 重复检测（第 15 节）。</p></div>
+  </div>
+</section>
+
+<!-- ═══ 22 ═══ -->
+<section id="s22">
+  <div class="sec-head"><span class="sec-num">22</span><h2>Tool Design Checklist</h2></div>
+  <p class="lead">一份可以直接用于评审的清单——点击可勾选。</p>
+  <div class="card">
+    <div class="chk-group"><h5>◆ TOOL DESIGN</h5>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>Tool 表达一个清晰的业务能力，而非底层 API 的透传</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>Tool Name 明确到能顾名思义</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>Description 说明了使用条件（When）</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>Description 说明了何时不该使用（When NOT）</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>Input Schema 严格：类型、必填、enum、format</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>Output 结构化，只含决策所需字段</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>Error 结构化，携带机器可读错误码</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>副作用在契约中显式声明</span></label>
+    </div>
+    <div class="chk-group"><h5>◆ RELIABILITY</h5>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>有明确的 Timeout（连接 / 读取 / 整体预算）</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>有基于错误语义的 Retry Policy</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>副作用工具有 Idempotency Key</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>有 Rate Limit 与并发上限</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>下游有 Circuit Breaker 与 Fallback</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>有重复调用检测与循环护栏</span></label>
+    </div>
+    <div class="chk-group"><h5>◆ SECURITY</h5>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>按用户身份 Authorization，而非 Agent 身份</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>多租户场景有 Tenant Isolation</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>Tool Scope 按角色 / 风险分级</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>副作用调用有 Audit Log（含确认人）</span></label>
+    </div>
+    <div class="chk-group"><h5>◆ OBSERVABILITY</h5>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>能回答：Agent 为什么选择这个 Tool</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>能回答：Tool 为什么失败（归因到层）</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>能统计 Tool Selection Accuracy</span></label>
+      <label class="chk"><input type="checkbox"><span class="box"></span><span>能统计业务级任务完成率</span></label>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 23 ═══ -->
+<section id="s23">
+  <div class="sec-head"><span class="sec-num">23</span><h2>总结：一个统一模型</h2></div>
+  <p class="lead">全文收敛为一句话：Tool 是 Agent 的 Action Interface，而 Interface 的质量决定了 Agent 能否可靠地行动。</p>
+  <div class="flow">                <b>Agent</b>
+                  │
+             <b>Decision</b>
+                  │
+            Tool Selection
+                  │
+            Tool Contract
+                  │
+         ┌────────┴────────┐
+         ↓                 ↓
+    Validation         Authorization
+         │                 │
+         └────────┬────────┘
+                  ↓
+              <b>Execution</b>
+                  │
+        ┌─────────┼─────────┐
+        ↓         ↓         ↓
+      Retry    Timeout   Fallback
+        │         │         │
+        └─────────┼─────────┘
+                  ↓
+            <b>Observation</b>
+                  ↓
+             State Update
+                  ↓
+            Next Decision</div>
+  <p>回到开头的判断：Agent 的智能决定了它<em>想做什么</em>，而 Tool 的设计决定了它能否安全、准确地把"想做什么"变成<em>真正做到了什么</em>。成熟的 Agent Tool Calling 不应该追求更多工具，而应该追求——<strong>清晰的能力边界、严格的契约、可控的执行、可靠的恢复，以及完整的可观测性</strong>。</p>
+  <div class="quote-core">Good Agent = Good Decision + Good Tool Contract<br>+ Reliable Execution + Safe Action + Observable Outcome</div>
+
+  <div class="next">
+    <div class="nx-tag">NEXT IN SERIES · 系列第 6 篇</div>
+    <h3>Agent Evaluation：如何判断 Agent 到底有没有做对</h3>
+    <p>Memory 解决"过去如何进入决策"，Tool Calling 解决"决策如何变成行动"。下一步的问题是：面对一个会行动的 Agent，我们如何系统地评估它的行为质量——而不是靠肉眼盯日志。</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>AGENT ENGINEERING SERIES · PART 05 — TOOL CALLING<br>Design · 2025</footer>
+
+<script>
+// ── 阅读进度条 ──
+const bar = document.getElementById('progress');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+}, {passive: true});
+
+// ── 代码复制 + 状态反馈 ──
+function copyCode(btn) {
+  const code = btn.closest('.code-block').querySelector('pre').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    const old = btn.textContent;
+    btn.textContent = '已复制 ✓';
+    btn.style.borderColor = '#2E7D46';
+    btn.style.color = '#7FC98F';
+    setTimeout(() => { btn.textContent = old; btn.style.borderColor = ''; btn.style.color = ''; }, 1600);
+  });
+}
+</script>
+</body>
+</html>
