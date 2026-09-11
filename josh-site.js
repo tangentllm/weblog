@@ -532,40 +532,54 @@ const JOSH_HTML_MAGAZINE_SCOPE = '.josh-prose .josh-html-magazine';
 function joshBuildHtmlMagazineIsolationCss(scope = JOSH_HTML_MAGAZINE_SCOPE) {
   const softMix = (token, fallback) =>
     `color-mix(in srgb,var(${token},${fallback}) 22%,var(--josh-color-background))!important`;
+  const cardMix = 'color-mix(in srgb,var(--josh-color-cloud-300) 55%,var(--josh-color-background))!important';
   return [
     `${scope}{`,
     'max-width:100%;',
     'background:transparent!important;',
     'color:var(--josh-color-text)!important;',
     '--paper:var(--josh-color-background)!important;',
+    '--paper2:color-mix(in srgb,var(--josh-color-cloud-300) 18%,var(--josh-color-background))!important;',
     '--paper-deep:color-mix(in srgb,var(--josh-color-cloud-300) 14%,var(--josh-color-background))!important;',
     '--paper-alt:color-mix(in srgb,var(--josh-color-cloud-300) 10%,var(--josh-color-background))!important;',
     '--bg:var(--josh-color-background)!important;',
-    '--bg-card:color-mix(in srgb,var(--josh-color-cloud-300) 55%,var(--josh-color-background))!important;',
-    '--surface:color-mix(in srgb,var(--josh-color-cloud-300) 55%,var(--josh-color-background))!important;',
+    '--bg-color:var(--josh-color-background)!important;',
+    '--bg-card:' + cardMix + ';',
+    '--light-bg:color-mix(in srgb,var(--josh-color-cloud-300) 22%,var(--josh-color-background))!important;',
+    '--surface:' + cardMix + ';',
     '--border:color-mix(in srgb,var(--josh-color-text) 16%,transparent)!important;',
+    '--border-color:color-mix(in srgb,var(--josh-color-text) 16%,transparent)!important;',
     '--ink:var(--josh-color-text)!important;',
     '--ink-soft:var(--josh-color-gray-700)!important;',
     '--ink-mute:var(--josh-color-gray-500)!important;',
     '--ink-faint:var(--josh-color-gray-500)!important;',
     '--soft:var(--josh-color-gray-700)!important;',
     '--text:var(--josh-color-text)!important;',
+    '--text-color:var(--josh-color-text)!important;',
     '--text-muted:var(--josh-color-gray-500)!important;',
+    '--muted:var(--josh-color-gray-500)!important;',
+    '--muted-text:var(--josh-color-gray-500)!important;',
+    '--quote-color:var(--josh-color-gray-500)!important;',
+    /* Drafts often use --primary-color as near-black heading ink, not accent. */
+    '--primary-color:var(--josh-color-text)!important;',
     '--fg:var(--josh-color-text)!important;',
     '--line:color-mix(in srgb,var(--josh-color-text) 16%,transparent)!important;',
     '--line-soft:color-mix(in srgb,var(--josh-color-text) 10%,transparent)!important;',
     '--soft-line:color-mix(in srgb,var(--josh-color-text) 22%,transparent)!important;',
     '--rule:color-mix(in srgb,var(--josh-color-text) 16%,transparent)!important;',
     '--grid:color-mix(in srgb,var(--josh-color-cloud-300) 35%,var(--josh-color-background))!important;',
-    '--card:color-mix(in srgb,var(--josh-color-cloud-300) 55%,var(--josh-color-background))!important;',
+    '--card:' + cardMix + ';',
+    '--card-bg:' + cardMix + ';',
     '--neutral-bg:color-mix(in srgb,var(--josh-color-cloud-300) 40%,var(--josh-color-background))!important;',
     '--dia-fill:color-mix(in srgb,var(--josh-color-cloud-300) 28%,var(--josh-color-background))!important;',
     `--rust-bg:${softMix('--rust', '#A23E2B')};`,
+    `--rust-soft:${softMix('--rust', '#C05621')};`,
+    `--teal-soft:${softMix('--teal', '#1E4B5A')};`,
     `--blue-bg:${softMix('--blue', '#2E5E76')};`,
     `--amber-bg:${softMix('--amber', '#B07C2A')};`,
     `--good-soft:${softMix('--good', '#1d7a53')};`,
     `--warm-soft:${softMix('--warm', '#a04000')};`,
-    '--accent-line:color-mix(in srgb,var(--accent,var(--josh-color-primary)) 35%,transparent)!important;',
+    '--accent-line:color-mix(in srgb,var(--accent,var(--accent-color,var(--josh-color-primary))) 35%,transparent)!important;',
     '--tbl-head:color-mix(in srgb,var(--josh-color-cloud-300) 45%,var(--josh-color-background))!important;',
     '--tbl-stripe:color-mix(in srgb,var(--josh-color-cloud-300) 28%,var(--josh-color-background))!important;',
     '--tbl-line:color-mix(in srgb,var(--josh-color-text) 12%,transparent)!important;',
@@ -574,6 +588,8 @@ function joshBuildHtmlMagazineIsolationCss(scope = JOSH_HTML_MAGAZINE_SCOPE) {
     '--code-bg:var(--josh-color-code-bg)!important;',
     '--code-head:color-mix(in srgb,var(--josh-color-cloud-300) 35%,var(--josh-color-code-bg))!important;',
     '--code-ink:var(--josh-syntax-txt)!important;',
+    '--code-color:var(--josh-syntax-txt)!important;',
+    '--code-text:var(--josh-syntax-txt)!important;',
     '--wire:color-mix(in srgb,var(--josh-color-text) 45%,transparent)!important;',
     '--svg-line:color-mix(in srgb,var(--josh-color-text) 55%,transparent)!important;',
     '}',
@@ -631,6 +647,12 @@ function joshClassifySvgToneFromSamples(samples) {
     scored.push({ L, area });
   }
   if (!scored.length) return 'light';
+  // Any sizable near-white panel means the diagram is light-paper artwork.
+  const brightArea = scored
+    .filter((s) => s.L >= 0.85)
+    .reduce((sum, s) => sum + s.area, 0);
+  const totalArea = scored.reduce((sum, s) => sum + s.area, 0) || 1;
+  if (brightArea / totalArea >= 0.12 || brightArea >= 8000) return 'light';
   scored.sort((a, b) => b.area - a.area);
   const top = scored.slice(0, Math.min(3, scored.length));
   const weighted = top.reduce((sum, s) => sum + s.L * s.area, 0)
@@ -673,7 +695,7 @@ function joshAnnotateMagazineFigures(root) {
   const doc = root.ownerDocument;
 
   // Prefer annotating existing figure hosts so we don't nest paper cards.
-  root.querySelectorAll('.mermaid, .fig-frame').forEach((el) => {
+  root.querySelectorAll('.mermaid, .fig-frame, .svg-container, .svg-box, .fig').forEach((el) => {
     if (el.classList.contains('josh-magazine-fig')) return;
     const innerSvg = el.querySelector('svg');
     const tone = innerSvg ? joshClassifySvgTone(innerSvg) : 'light';
@@ -694,6 +716,30 @@ function joshAnnotateMagazineFigures(root) {
     svg.parentNode.insertBefore(wrap, svg);
     wrap.appendChild(svg);
     wrap.querySelectorAll('svg').forEach((child) => child.setAttribute('data-josh-svg-tone', tone));
+  });
+
+  joshAnnotateLightSvgInk(root);
+}
+
+/**
+ * Light-paper diagrams keep pastel rects; dark-mode theme text would wash out labels.
+ * Mark each label as dark-ink (default) or light-ink (white on dark chips).
+ */
+function joshAnnotateLightSvgInk(root) {
+  if (!root) return;
+  root.querySelectorAll('.josh-magazine-fig[data-josh-svg-tone="light"]').forEach((fig) => {
+    fig.querySelectorAll('text, tspan').forEach((el) => {
+      const fill = joshReadSvgFill(el);
+      // Only rewrite missing/theme fills. Keep explicit brand/accent colors.
+      if (!fill || /^currentcolor$/i.test(fill) || /^var\(/i.test(fill)) {
+        el.setAttribute('data-josh-svg-ink', 'dark');
+        return;
+      }
+      const rgb = joshParseCssColorToRgb(fill);
+      if (!rgb) return;
+      const L = joshRelLuminance(rgb);
+      if (L >= 0.72) el.setAttribute('data-josh-svg-ink', 'light');
+    });
   });
 }
 

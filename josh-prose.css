@@ -1960,8 +1960,16 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine {
 
 /* Body text that drafts hard-code near-black — leave accent/status alone.
  * Do NOT force `th` here: thead often uses dark ink panels with light labels. */
-html.josh-site.dark .josh-prose .josh-html-magazine :is(p, li, td, dd, dt, blockquote, figcaption, .fig-cap, .flow-caption, .byline, .meta, .subtitle, .deck, .lead-deck, .abstract p),
-html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(p, li, td, dd, dt, blockquote, figcaption, .fig-cap, .flow-caption, .byline, .meta, .subtitle, .deck, .lead-deck, .abstract p) {
+html.josh-site.dark .josh-prose .josh-html-magazine :is(
+  p, li, td, dd, dt, blockquote, figcaption,
+  .fig-cap, .flow-caption, .byline, .meta, .meta-info, .subtitle, .deck, .lead-deck, .lead,
+  .abstract p, .svg-caption, .flow-text, .anti p, .label, .stat-caption, .note, .card-title
+),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
+  p, li, td, dd, dt, blockquote, figcaption,
+  .fig-cap, .flow-caption, .byline, .meta, .meta-info, .subtitle, .deck, .lead-deck, .lead,
+  .abstract p, .svg-caption, .flow-text, .anti p, .label, .stat-caption, .note, .card-title
+) {
   color: var(--josh-color-text) !important;
 }
 
@@ -1976,7 +1984,8 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(.page
   border-color: color-mix(in srgb, var(--josh-color-text) 16%, transparent);
 }
 
-/* Soft surfaces: cream/white cards → dark surfaces; accents keep draft hue via vars */
+/* Soft surfaces: cream/white cards → dark surfaces; accents keep draft hue via vars.
+ * Do NOT include .svg-container/.svg-box/.fig here — light-paper figs own those hosts. */
 html.josh-site.dark .josh-prose .josh-html-magazine :is(
   .card,
   .callout,
@@ -2011,9 +2020,17 @@ html.josh-site.dark .josh-prose .josh-html-magazine :is(
   .dialog,
   .toc-card,
   .toc-box,
+  .toc,
   .badge,
   .motto,
-  figure.fig,
+  .concept-card,
+  .stats-card,
+  .highlight-box,
+  .case-study,
+  .quote-core,
+  .box,
+  .anti,
+  .flow-text,
   table
 ),
 html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
@@ -2050,9 +2067,17 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
   .dialog,
   .toc-card,
   .toc-box,
+  .toc,
   .badge,
   .motto,
-  figure.fig,
+  .concept-card,
+  .stats-card,
+  .highlight-box,
+  .case-study,
+  .quote-core,
+  .box,
+  .anti,
+  .flow-text,
   table
 ) {
   background: color-mix(in srgb, var(--josh-color-cloud-300) 72%, var(--josh-color-background)) !important;
@@ -2061,8 +2086,8 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
 }
 
 /* Soft callout body copy must follow surface (overrides draft #22456b etc.) */
-html.josh-site.dark .josh-prose .josh-html-magazine :is(.tech-note, .tnote, .callout, .card, .note, .insight, .warn, .danger, .abstract, .lead-quote) :is(p, li, span, div:not([class])),
-html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(.tech-note, .tnote, .callout, .card, .note, .insight, .warn, .danger, .abstract, .lead-quote) :is(p, li, span, div:not([class])) {
+html.josh-site.dark .josh-prose .josh-html-magazine :is(.tech-note, .tnote, .callout, .card, .note, .insight, .warn, .danger, .abstract, .lead-quote, .highlight-box, .case-study, .concept-card) :is(p, li, span, div:not([class]), strong),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(.tech-note, .tnote, .callout, .card, .note, .insight, .warn, .danger, .abstract, .lead-quote, .highlight-box, .case-study, .concept-card) :is(p, li, span, div:not([class]), strong) {
   color: var(--josh-color-text) !important;
 }
 
@@ -2295,16 +2320,25 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .josh-mag
   padding: 14px 16px;
   box-shadow: none;
   color: #1a1f2e;
-  /* Diagrams keep light-paper tokens so fill:var(--ink) stays dark-on-white. */
+  /* Diagrams keep light-paper tokens so fill:var(--ink/--text-color) stays dark-on-white. */
   --ink: #1a1f2e !important;
   --ink-soft: #4a5568 !important;
   --ink-mute: #6b7280 !important;
   --ink-faint: #8492a6 !important;
   --soft: #6b675e !important;
+  --text: #1a1f2e !important;
+  --text-color: #1a1f2e !important;
+  --primary-color: #1a1f2e !important;
+  --muted: #6b7a89 !important;
+  --muted-text: #6b7a89 !important;
+  --quote-color: #6a737d !important;
   --paper: #fdfcf9 !important;
+  --paper2: #f3ede3 !important;
   --card: #ffffff !important;
+  --card-bg: #ffffff !important;
   --line: #e5e9f0 !important;
   --border: #e5e9f0 !important;
+  --border-color: #e5e9f0 !important;
   --dia-fill: #fffdf7 !important;
   --neutral-bg: #f1efe7 !important;
   --grid: #efeae0 !important;
@@ -2313,10 +2347,38 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .josh-mag
   --code-bg: #f5f7fa !important;
 }
 
+/* Hardcoded near-black SVG labels on unmarked / dark-tone figs → lift for dark page */
+html.josh-site.dark .josh-prose .josh-html-magazine .josh-magazine-fig:not([data-josh-svg-tone='light']) .svg-text,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .josh-magazine-fig:not([data-josh-svg-tone='light']) .svg-text,
+html.josh-site.dark .josh-prose .josh-html-magazine svg:not([data-josh-svg-tone='light']) .svg-text,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine svg:not([data-josh-svg-tone='light']) .svg-text {
+  fill: color-mix(in srgb, var(--josh-color-text) 88%, #ffffff) !important;
+}
+
 html.josh-site.dark .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='light'] svg,
 html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='light'] svg {
   filter: none !important;
   background: transparent !important;
+  color: #1a1f2e;
+}
+
+/* Label ink on light-paper diagrams.
+ * - unmarked / theme-var labels → dark ink
+ * - explicit white labels on dark chips → keep white
+ * - leave mid/accent fills (e.g. #C0392B) alone */
+html.josh-site.dark .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='light'] :is(text, tspan, .svg-text):not([fill]),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='light'] :is(text, tspan, .svg-text):not([fill]) {
+  fill: #1a1f2e !important;
+}
+
+html.josh-site.dark .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='light'] [data-josh-svg-ink='dark'],
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='light'] [data-josh-svg-ink='dark'] {
+  fill: #1a1f2e !important;
+}
+
+html.josh-site.dark .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='light'] [data-josh-svg-ink='light'],
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='light'] [data-josh-svg-ink='light'] {
+  fill: #ffffff !important;
 }
 
 html.josh-site.dark .josh-prose .josh-html-magazine .josh-magazine-fig[data-josh-svg-tone='dark'],
