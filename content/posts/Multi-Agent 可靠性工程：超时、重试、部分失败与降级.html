@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent 可靠性工程：超时、重试、部分失败与降级</title>
+<style>
+  :root{
+    --paper:#FCFBF6;
+    --card:#FFFFFF;
+    --card-warm:#F6F3EA;
+    --ink:#21242B;
+    --ink-soft:#5A5E68;
+    --ink-faint:#8B8F99;
+    --accent:#0E5A5E;
+    --accent-soft:#E3EEEC;
+    --warn:#B4552D;
+    --warn-soft:#F7E9E1;
+    --gold:#9A7B2D;
+    --line:#E4E0D4;
+    --line-strong:#C9C4B4;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,"Times New Roman",serif;
+    --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,sans-serif;
+    --mono:"JetBrains Mono","SF Mono",Menlo,Consolas,"Courier New",monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--serif);
+    font-size:17px;
+    line-height:1.95;
+    -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(#e9e5d8 0.6px, transparent 0.6px);
+    background-size:26px 26px;
+  }
+  .container{max-width:860px;margin:0 auto;padding:0 28px 120px;}
+
+  .series-bar{
+    border-bottom:1px solid var(--line-strong);
+    padding:20px 0 14px;
+    font-family:var(--sans);
+    font-size:13px;
+    letter-spacing:.12em;
+    color:var(--ink-soft);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .series-bar .dot{color:var(--warn);}
+
+  .post-header{padding:64px 0 30px;text-align:left;}
+  .kicker{
+    font-family:var(--sans);font-size:13px;letter-spacing:.28em;
+    color:var(--accent);font-weight:600;margin-bottom:22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .kicker::after{content:"";flex:0 0 60px;height:1px;background:var(--accent);}
+  h1.post-title{
+    font-size:clamp(30px,5vw,44px);
+    line-height:1.35;font-weight:900;letter-spacing:.01em;
+    margin-bottom:20px;
+  }
+  .post-subtitle{font-size:18px;color:var(--ink-soft);line-height:1.9;max-width:640px;}
+  .post-meta{
+    margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
+    font-family:var(--sans);font-size:13px;color:var(--ink-faint);
+    display:flex;gap:26px;flex-wrap:wrap;
+  }
+  .post-meta b{color:var(--ink-soft);font-weight:600;}
+
+  .lead-card{
+    margin:52px 0 0;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-left:4px solid var(--accent);
+    border-radius:6px;
+    padding:34px 38px;
+    box-shadow:0 1px 0 rgba(0,0,0,.02), 0 12px 32px -18px rgba(30,40,40,.18);
+  }
+  .lead-card .label{
+    font-family:var(--sans);font-size:12px;letter-spacing:.24em;
+    color:var(--accent);font-weight:700;margin-bottom:14px;
+  }
+  .lead-card p{font-size:17.5px;margin-bottom:10px;}
+  .lead-card p strong{color:var(--accent);}
+  .lead-card .core{
+    margin-top:16px;padding-top:16px;border-top:1px dashed var(--line-strong);
+    font-size:18px;
+  }
+
+  .toc{
+    margin:44px 0 0;
+    background:var(--card-warm);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:28px 34px;
+  }
+  .toc .label{font-family:var(--sans);font-size:12px;letter-spacing:.24em;color:var(--gold);font-weight:700;margin-bottom:16px;}
+  .toc ol{list-style:none;counter-reset:toc;columns:2;column-gap:44px;}
+  .toc li{counter-increment:toc;break-inside:avoid;font-size:15px;line-height:2.1;}
+  .toc a{color:var(--ink);text-decoration:none;transition:color .15s;}
+  .toc a:hover{color:var(--accent);}
+  .toc li::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:var(--mono);font-size:12px;color:var(--accent);
+    margin-right:10px;
+  }
+  @media (max-width:640px){.toc ol{columns:1;}}
+
+  section.sec{margin-top:96px;}
+  .sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:6px;}
+  .sec-num{font-family:var(--mono);font-size:15px;color:var(--warn);font-weight:700;letter-spacing:.05em;}
+  h2.sec-title{font-size:27px;font-weight:900;letter-spacing:.01em;line-height:1.4;}
+  .sec-underline{
+    width:52px;height:3px;background:var(--accent);border-radius:2px;
+    margin:14px 0 30px;position:relative;
+  }
+  .sec-underline::after{content:"";position:absolute;left:60px;top:1px;width:14px;height:1px;background:var(--line-strong);}
+  h3{font-size:19px;font-weight:700;margin:42px 0 16px;display:flex;align-items:center;gap:10px;}
+  h3::before{content:"§";color:var(--warn);font-size:15px;font-weight:400;}
+  p{margin-bottom:18px;}
+  p strong{font-weight:700;}
+  em.hl{font-style:normal;background:linear-gradient(transparent 62%, #F2DFA8 62%);padding:0 2px;}
+  code.inline{
+    font-family:var(--mono);font-size:.86em;background:var(--card-warm);
+    border:1px solid var(--line);border-radius:4px;padding:1px 7px;color:var(--accent);
+    white-space:nowrap;
+  }
+
+  blockquote.viewpoint{
+    margin:30px 0;padding:22px 30px;
+    border-left:3px solid var(--warn);
+    background:linear-gradient(90deg, var(--warn-soft), transparent 70%);
+    border-radius:0 6px 6px 0;
+    font-size:18.5px;line-height:1.9;
+  }
+  blockquote.viewpoint .q{color:var(--warn);font-weight:700;margin-right:8px;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:34px 0;}
+  @media (max-width:640px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+  .stat{
+    background:var(--card);border:1px solid var(--line);border-radius:6px;
+    padding:20px 16px 16px;text-align:center;position:relative;overflow:hidden;
+    transition:transform .18s, box-shadow .18s;
+  }
+  .stat:hover{transform:translateY(-3px);box-shadow:0 14px 28px -16px rgba(30,40,40,.28);}
+  .stat::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent);opacity:.85;}
+  .stat.bad::before{background:var(--warn);}
+  .stat .num{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--accent);display:block;line-height:1.2;}
+  .stat.bad .num{color:var(--warn);}
+  .stat .cap{font-family:var(--sans);font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.6;display:block;}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:6px;
+    padding:28px 32px;margin:30px 0;
+    box-shadow:0 1px 0 rgba(0,0,0,.02);
+  }
+  .card .card-label{
+    font-family:var(--sans);font-size:12px;letter-spacing:.2em;
+    color:var(--accent);font-weight:700;margin-bottom:14px;
+  }
+
+  .table-wrap{overflow-x:auto;margin:30px 0;}
+  table.data{
+    width:100%;border-collapse:collapse;
+    background:var(--card);border-radius:6px;overflow:hidden;
+    box-shadow:0 0 0 1px var(--line);
+    font-size:15px;
+  }
+  table.data th{
+    font-family:var(--sans);font-size:13px;font-weight:700;letter-spacing:.06em;
+    text-align:left;color:#fff;background:var(--accent);
+    padding:13px 16px;white-space:nowrap;
+  }
+  table.data td{padding:13px 16px;border-top:1px solid var(--line);vertical-align:top;line-height:1.75;}
+  table.data tbody tr:nth-child(even){background:#FAF8F1;}
+  table.data tbody tr:hover{background:var(--accent-soft);}
+  .pill{
+    display:inline-block;font-family:var(--sans);font-size:12px;font-weight:600;
+    border-radius:20px;padding:2px 11px;white-space:nowrap;
+  }
+  .pill.yes{background:var(--accent-soft);color:var(--accent);border:1px solid #C4DCD8;}
+  .pill.no{background:var(--warn-soft);color:var(--warn);border:1px solid #EBD2C4;}
+  .pill.mid{background:#F2ECDB;color:var(--gold);border:1px solid #E3D8B8;}
+
+  .budget{margin:30px 0;}
+  .b-row{margin-bottom:14px;}
+  .b-label{
+    font-family:var(--sans);font-size:13px;color:var(--ink-soft);
+    margin-bottom:5px;display:flex;justify-content:space-between;
+  }
+  .b-track{background:#EFECE0;border-radius:4px;height:30px;overflow:hidden;}
+  .b-fill{
+    height:100%;border-radius:4px;display:flex;align-items:center;
+    padding-left:12px;color:#fff;font-family:var(--mono);font-size:12px;
+    background:repeating-linear-gradient(-45deg,var(--accent),var(--accent) 9px,#127074 9px,#127074 18px);
+    animation:grow 1s ease-out both;
+  }
+  .b-fill.amber{background:repeating-linear-gradient(-45deg,var(--gold),var(--gold) 9px,#AE8C3A 9px,#AE8C3A 18px);}
+  .b-fill.rust{background:repeating-linear-gradient(-45deg,var(--warn),var(--warn) 9px,#C4693F 9px,#C4693F 18px);}
+  @keyframes grow{from{width:0;}}
+  @media (prefers-reduced-motion:reduce){.b-fill{animation:none;}}
+
+  .codeblock{
+    margin:34px 0;border-radius:8px;overflow:hidden;
+    box-shadow:0 20px 44px -22px rgba(20,25,30,.4);
+    border:1px solid #2E3138;
+  }
+  .codeblock .bar{
+    background:#26282E;padding:10px 16px;display:flex;align-items:center;gap:8px;
+    font-family:var(--sans);font-size:12px;color:#9DA2AB;
+  }
+  .codeblock .bar .d{width:11px;height:11px;border-radius:50%;}
+  .codeblock .bar .d1{background:#E5645A;}
+  .codeblock .bar .d2{background:#E0B04E;}
+  .codeblock .bar .d3{background:#6FBF73;}
+  .codeblock .bar .fname{margin-left:8px;font-family:var(--mono);}
+  .codeblock pre{
+    background:#1E2026;color:#D8DCE3;
+    padding:22px 24px;overflow-x:auto;
+    font-family:var(--mono);font-size:13.5px;line-height:1.8;
+    tab-size:4;
+  }
+  .codeblock pre code{font-family:inherit;}
+  .tok-k{color:#7FB4E8;}
+  .tok-s{color:#C9B478;}
+  .tok-c{color:#7A828E;font-style:italic;}
+  .tok-n{color:#D69A66;}
+  .tok-d{color:#D48BB8;}
+  .terminal{
+    margin:26px 0;border-radius:8px;overflow:hidden;
+    border:1px solid var(--line-strong);
+    background:#FAF8F1;
+  }
+  .terminal .bar{
+    background:#ECE8DA;padding:8px 16px;font-family:var(--sans);
+    font-size:12px;color:var(--ink-soft);letter-spacing:.08em;
+    border-bottom:1px solid var(--line);
+  }
+  .terminal pre{
+    padding:18px 22px;font-family:var(--mono);font-size:13px;line-height:1.85;
+    color:#3E4249;overflow-x:auto;
+  }
+  .terminal pre .ok{color:var(--accent);font-weight:600;}
+  .terminal pre .dim{color:var(--ink-faint);}
+
+  .figure{margin:38px 0;text-align:center;}
+  .figure svg{max-width:100%;height:auto;}
+  .figcap{
+    font-family:var(--sans);font-size:13px;color:var(--ink-faint);
+    margin-top:14px;line-height:1.7;text-align:left;
+  }
+  .figcap b{color:var(--ink-soft);font-weight:600;}
+
+  .formula-card{
+    margin:44px 0;padding:40px 30px;text-align:center;
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    box-shadow:0 18px 40px -24px rgba(20,40,40,.3);
+    position:relative;overflow:hidden;
+  }
+  .formula-card::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--accent),var(--gold),var(--warn));
+  }
+  .formula{
+    font-family:var(--mono);font-size:clamp(13px,2.3vw,19px);font-weight:700;
+    color:var(--ink);line-height:1.9;white-space:nowrap;
+  }
+  .formula .op{color:var(--warn);padding:0 6px;}
+  .formula .part{color:var(--accent);}
+  .formula-note{margin-top:14px;font-family:var(--sans);font-size:13px;color:var(--ink-faint);}
+
+  .next-post{
+    margin-top:80px;padding:40px 42px;
+    background:linear-gradient(135deg,#F2F0E7,#FAF9F3);
+    border:1px dashed var(--line-strong);border-radius:8px;
+  }
+  .next-post .label{
+    font-family:var(--sans);font-size:12px;letter-spacing:.24em;
+    color:var(--gold);font-weight:700;margin-bottom:14px;
+  }
+  .next-post h3.np{font-size:22px;margin:0 0 12px;}
+  .next-post h3.np::before{content:none;}
+  .next-post p{color:var(--ink-soft);margin-bottom:0;}
+
+  footer.colophon{
+    margin-top:80px;padding-top:24px;border-top:1px solid var(--line);
+    font-family:var(--sans);font-size:13px;color:var(--ink-faint);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  }
+
+  @media (max-width:640px){
+    body{font-size:16px;}
+    .lead-card,.card,.toc{padding:24px 22px;}
+    .next-post{padding:30px 24px;}
+    .formula{white-space:normal;}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="series-bar">
+    <span>MULTI-AGENT 系统设计 <span class="dot">·</span> 第三篇</span>
+    <span>RELIABILITY ENGINEERING</span>
+  </div>
+
+  <header class="post-header">
+    <div class="kicker">AGENT RELIABILITY</div>
+    <h1 class="post-title">Multi-Agent 可靠性工程：<br>超时、重试、部分失败与降级</h1>
+    <p class="post-subtitle">Agent 系统出错以后怎么办？这不是异常处理的补丁问题，而是分布式系统的第一性设计问题。</p>
+    <div class="post-meta">
+      <span><b>发布</b> 2026-09-23</span>
+      <span><b>字数</b> 约 8,000</span>
+      <span><b>阅读</b> ≈ 25 min</span>
+      <span><b>系列</b> 架构 → 通信与状态 → <u>可靠性</u> → 生产运维</span>
+    </div>
+  </header>
+
+  <div class="lead-card">
+    <div class="label">摘 要 · ABSTRACT</div>
+    <p>架构解决了「怎么拆」，通信与状态解决了「怎么协作」。这一篇解决：<strong>Agent 系统出错以后怎么办？</strong></p>
+    <p class="core">核心观点：Multi-Agent 本质上是一个包含多个 LLM、Tool、网络请求和状态操作的复杂分布式系统，因此必须按照<strong>可靠性工程</strong>来设计，而不能当作「调 API 加个 try/except」来对待。</p>
+  </div>
+
+  <nav class="toc">
+    <div class="label">目 录 · CONTENTS</div>
+    <ol>
+      <li><a href="#s1">Agent 为什么天然不稳定</a></li>
+      <li><a href="#s2">Timeout：分层超时预算</a></li>
+      <li><a href="#s3">Retry：什么该重试</a></li>
+      <li><a href="#s4">Partial Failure 部分失败</a></li>
+      <li><a href="#s5">Fallback 降级阶梯</a></li>
+      <li><a href="#s6">Loop / Deadlock / Runaway</a></li>
+      <li><a href="#s7">Tool Calling Reliability</a></li>
+      <li><a href="#s8">Guardrails 放在哪里</a></li>
+      <li><a href="#s9">可靠性架构图</a></li>
+      <li><a href="#s10">Failure Matrix</a></li>
+      <li><a href="#s11">Python 示例</a></li>
+      <li><a href="#s12">最终结论</a></li>
+    </ol>
+  </nav>
+
+  <p>传统分布式系统经过二十年演化，沉淀出一整套可靠性方法论：超时、重试、熔断、降级、幂等、死信队列、人工兜底。Agent 系统没有发明新的问题，只是把这些问题<em class="hl">叠加了概率</em>：每个 LLM 调用本身就有百分之几的失败率，一个 Workflow 里如果串了十次 LLM 调用和五次 Tool 调用，端到端成功率会被乘法迅速稀释。所以 Agent 系统的可靠性设计不是可选项，而是生存前提。</p>
+
+  <!-- ================= 1 ================= -->
+  <section class="sec" id="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">Agent 为什么天然不稳定</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>先建立直觉。一个 Multi-Agent 系统的不稳定来自七个层面，且它们是<em class="hl">相乘而不是相加</em>的：</p>
+
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>层面</th><th>典型故障</th><th>特点</th></tr></thead>
+      <tbody>
+        <tr><td><b>LLM 非确定性</b></td><td>同样输入不同输出、幻觉、格式漂移</td><td>概率性，无法根除</td></tr>
+        <tr><td><b>Tool 不可靠</b></td><td>第三方 API 5xx、字段变更、限流</td><td>外部依赖，不可控</td></tr>
+        <tr><td><b>网络不稳定</b></td><td>超时、断连、DNS 故障</td><td>经典分布式问题</td></tr>
+        <tr><td><b>外部 API 失败</b></td><td>429 限流、配额耗尽、服务下线</td><td>有明确语义，可分类处理</td></tr>
+        <tr><td><b>Planner 出错</b></td><td>生成不可执行的任务、循环规划</td><td>LLM 层错误，最难检测</td></tr>
+        <tr><td><b>输出 Schema 错误</b></td><td>JSON 不合法、字段缺失、类型错位</td><td>可校验，可重试</td></tr>
+        <tr><td><b>Agent 间依赖复杂</b></td><td>A 等 B、B 等 C、C 失败拖垮整条链</td><td>级联失败，放大一切</td></tr>
+      </tbody>
+    </table></div>
+
+    <p>一个具体算例：假设单次 LLM 调用成功率 97%，一个 Workflow 串联 8 次调用，端到端成功率只有 0.97⁸ ≈ 78%。<em class="hl">不做任何可靠性设计，五个用户里就有一个失败。</em>这就是为什么可靠性工程必须是第一性设计，而不是事后补丁。</p>
+
+    <div class="stat-grid">
+      <div class="stat"><span class="num">97%</span><span class="cap">单次 LLM 调用<br>成功率</span></div>
+      <div class="stat"><span class="num">× 8</span><span class="cap">串联调用次数<br>成功率相乘</span></div>
+      <div class="stat bad"><span class="num">78%</span><span class="cap">端到端成功率<br>0.97⁸</span></div>
+      <div class="stat bad"><span class="num">1 / 5</span><span class="cap">每五个用户<br>约一个遭遇失败</span></div>
+    </div>
+
+    <p>关键结论：<strong>你无法消除单点失败，只能设计失败之后系统的行为。</strong>这正是后面所有机制的共同目标。</p>
+  </section>
+
+  <!-- ================= 2 ================= -->
+  <section class="sec" id="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Timeout：分层超时预算</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>Timeout 看似最简单的机制，实际最容易被做错。常见的错误做法是「每处都设 30 秒」，结果是：底层 LLM 超时 30 秒，Agent 层又等 30 秒，Workflow 层再等 30 秒——一次失败要挂 90 秒，用户早已流失。</p>
+
+    <blockquote class="viewpoint"><span class="q">▍</span>正确做法是<strong>分层 Timeout + 预算传导（Deadline Propagation）</strong>。</blockquote>
+
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>层级</th><th>典型预算</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><b>LLM Timeout</b></td><td><code class="inline">10–60s</code></td><td>单次模型调用，流式场景可放宽首 token 超时</td></tr>
+        <tr><td><b>Tool Timeout</b></td><td><code class="inline">1–30s</code></td><td>按 Tool 语义定，搜索类短，爬取类长</td></tr>
+        <tr><td><b>Agent Timeout</b></td><td><code class="inline">60–300s</code></td><td>单个 Agent 完成任务的总预算</td></tr>
+        <tr><td><b>Workflow Timeout</b></td><td><code class="inline">5–15min</code></td><td>整个任务的全局死线</td></tr>
+      </tbody>
+    </table></div>
+
+    <p>预算自上而下逐层收紧的关系，可以这样直观理解：</p>
+
+    <div class="budget">
+      <div class="b-row">
+        <div class="b-label"><span>Workflow 全局死线</span><span>15 min</span></div>
+        <div class="b-track"><div class="b-fill" style="width:100%">15 min</div></div>
+      </div>
+      <div class="b-row">
+        <div class="b-label"><span>Agent 总预算（严格 &lt; 父层，预留余量）</span><span>5 min</span></div>
+        <div class="b-track"><div class="b-fill amber" style="width:33%">5 min</div></div>
+      </div>
+      <div class="b-row">
+        <div class="b-label"><span>单次 LLM / Tool 调用</span><span>60 s</span></div>
+        <div class="b-track"><div class="b-fill rust" style="width:8%"></div></div>
+      </div>
+    </div>
+
+    <h3>三条设计原则</h3>
+    <p><strong>1. 子层预算必须严格小于父层预算。</strong>Agent 预算 120s，那么内部 LLM + Tool 调用的累计预算必须预留余量（比如上限 90s），否则父层超时发生时子层还在傻等。</p>
+    <p><strong>2. Deadline 要随请求传播。</strong>Orchestrator 创建任务时打上全局 deadline，每一层在发起新调用前先检查「我还剩多少时间」，剩余时间不足时直接走降级路径，而不是发起一个注定完不成的调用。</p>
+    <p><strong>3. 超时 ≠ 全部作废，要有 Partial Result 和 Cancellation。</strong>一个 Research Agent 在 60s 死线到来时已经搜集了 7 条证据，正确的做法是把这 7 条作为部分结果上交，并标注「结果不完整」，而不是全部丢弃。同时，被超时取消的 Agent 要能收到取消信号，停止已发出的 Tool 调用、释放资源——这就是 Cancellation。</p>
+
+    <blockquote class="viewpoint"><span class="q">▍</span>一句话总结：<strong>Timeout 管的不是「等多久」，而是「到期之后怎么办」。</strong></blockquote>
+  </section>
+
+  <!-- ================= 3 ================= -->
+  <section class="sec" id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Retry：什么该重试，什么绝不能重试</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>Retry 是被滥用最多的机制。盲目重试不仅无效，还会放大故障（重试风暴）、重复副作用（重复扣款）、掩盖真正的 bug。</p>
+
+    <h3>错误分类决定重试策略</h3>
+
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>错误类型</th><th>例子</th><th>是否重试</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td><b>Transient Error</b></td><td>网络抖动、503、429 限流</td><td><span class="pill yes">✅ 重试</span></td><td>下一次大概率成功</td></tr>
+        <tr><td><b>Validation Error</b></td><td>JSON 解析失败、Schema 错误</td><td><span class="pill mid">⚠️ 1 次带纠错</span></td><td>模型有概率自我修正；原样重发无意义</td></tr>
+        <tr><td><b>Permission Error</b></td><td>无 API Key、越权访问</td><td><span class="pill no">❌ 绝不重试</span></td><td>重试一万次也不会有权限</td></tr>
+        <tr><td><b>Business Error</b></td><td>余额不足、库存为零、订单不存在</td><td><span class="pill no">❌ 绝不重试</span></td><td>业务规则失败，不是技术故障</td></tr>
+        <tr><td><b>Model Error</b></td><td>上下文超长、内容策略拦截</td><td><span class="pill no">❌ 不原样重试</span></td><td>需先改输入，否则重试必然复现</td></tr>
+      </tbody>
+    </table></div>
+
+    <blockquote class="viewpoint"><span class="q">▍</span>核心判断标准只有一个：<strong>这个失败是否随时间或尝试次数而改变？</strong>会变的（瞬态故障）才值得重试；不变的（权限、业务规则、确定性 bug）重试就是浪费钱和延迟。</blockquote>
+
+    <h3>重试的四个必备参数</h3>
+    <p>裸重试（立即、无限次）会制造重试风暴：服务端越慢，客户端重试越密集，形成雪崩。正确的重试需要：</p>
+    <div class="card">
+      <div class="card-label">RETRY CHECKLIST</div>
+      <p><strong>Exponential Backoff（指数退避）</strong>——第 n 次重试等待 <code class="inline">base × 2^(n-1)</code>，给服务端恢复时间；</p>
+      <p><strong>Jitter（随机抖动）</strong>——在退避时间上叠加随机量，避免上千个客户端在同一毫秒同时重试，这是分布式系统的经典教训；</p>
+      <p><strong>Retry Limit（重试上限）</strong>——一般 2–4 次。重试是消耗预算的，必须在时间预算内封顶；</p>
+      <p style="margin-bottom:0"><strong>Idempotency（幂等性）</strong>——最重要也最容易被忽略。<em class="hl">只有幂等操作才能安全重试。</em>「调用搜索 API」重试无害，「执行转账」重试就是双倍扣款。对非幂等操作，必须先引入幂等键（Idempotency Key）：同一个 <code class="inline">request_id</code> 的重复请求，服务端返回第一次的结果。</p>
+    </div>
+    <p>另外一个常被遗忘的规则：<strong>重试预算要和超时预算联合计算。</strong>「重试 5 次 × 每次 30s 超时」= 最长 150s，如果 Agent 层预算只有 60s，这个重试策略本身就是 bug。</p>
+  </section>
+
+  <!-- ================= 4 ================= -->
+  <section class="sec" id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">Partial Failure：三个 Agent 两个成功怎么办</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>一个典型场景：</p>
+    <div class="card">
+      <div class="card-label">场 景</div>
+      <p style="margin-bottom:6px">Workflow 需要三个 Agent 并行工作：</p>
+      <p style="margin-bottom:6px">– Research Agent&nbsp;&nbsp;<span class="pill yes">✅ 成功</span></p>
+      <p style="margin-bottom:6px">– Search Agent&nbsp;&nbsp;&nbsp;&nbsp;<span class="pill yes">✅ 成功</span></p>
+      <p style="margin-bottom:0">– Data Agent&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="pill no">❌ 失败（第三方数据 API 挂了）</span></p>
+    </div>
+    <p>系统怎么办？这不是一个有标准答案的问题，而是一个<em class="hl">业务决策</em>，有五种可选策略：</p>
+
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>策略</th><th>行为</th><th>适用场景</th></tr></thead>
+      <tbody>
+        <tr><td><b>Fail Fast</b></td><td>任何子任务失败立即终止整个 Workflow</td><td>子任务强依赖，缺一不可（如支付链路）</td></tr>
+        <tr><td><b>Best Effort</b></td><td>忽略失败，用成功部分继续</td><td>子任务彼此独立，失败部分影响小</td></tr>
+        <tr><td><b>Partial Result</b></td><td>交付部分结果，并<b>显式标注</b>缺失部分</td><td>结果可分级使用，用户宁可要 80% 也不要 0%</td></tr>
+        <tr><td><b>Alternative Path</b></td><td>用备用路径补齐失败部分（换数据源、换 Tool）</td><td>存在功能等价的替代方案</td></tr>
+        <tr><td><b>Human Review</b></td><td>挂起，交给人工介入</td><td>失败影响重大且无法自动补救</td></tr>
+      </tbody>
+    </table></div>
+
+    <p>实践中最好的设计往往是组合拳，例如：</p>
+    <div class="terminal">
+      <div class="bar">PARTIAL FAILURE 处理链</div>
+      <pre>Data Agent 失败
+ → 先尝试 Alternative Path（备用数据源）
+ → 仍失败则降级为 Partial Result（标注「数据部分缺失」）
+ → 若该数据是最终交付的关键字段 → 升级为 Human Review</pre>
+    </div>
+
+    <h3>两条工程铁律</h3>
+    <p><strong>1. 部分结果必须显式声明，不能伪装成完整结果。</strong>一个静默缺失关键数据的报告比失败更危险——用户会基于错误前提做决策。</p>
+    <p><strong>2. 策略要在 Orchestrator 层声明，而不是散落在各 Agent 内部。</strong>哪些步骤是关键路径、哪些可降级，是 Workflow 的拓扑属性，应该作为编排配置的一部分。</p>
+  </section>
+
+  <!-- ================= 5 ================= -->
+  <section class="sec" id="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Fallback：一个逐级下降的阶梯</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>最常见的误解是把 Fallback 等同于「换个模型再试一次」。真正的 Fallback 是一条<em class="hl">可靠性逐级递增、能力逐级递减</em>的阶梯：</p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 640 620" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif" role="img" aria-label="Fallback 降级阶梯示意图">
+        <defs>
+          <marker id="arwA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M1,1 L9,5 L1,9" fill="none" stroke="#5A5E68" stroke-width="1.8" stroke-linecap="round"/>
+          </marker>
+        </defs>
+        <rect x="4" y="4" width="632" height="612" rx="14" fill="#FFFDF5" stroke="#D8D2C0" stroke-width="1.6" stroke-dasharray="7 5"/>
+        <text x="40" y="180" font-size="13" fill="#B4552D" writing-mode="tb" letter-spacing="4" font-weight="600">能 力 递 减 ↓</text>
+        <text x="602" y="180" font-size="13" fill="#0E5A5E" writing-mode="tb" letter-spacing="4" font-weight="600">确 定 性 递 增 ↓</text>
+        <g font-size="14.5" font-weight="600">
+          <g transform="rotate(-0.4 320 60)">
+            <rect x="160" y="36" width="320" height="50" rx="8" fill="#E3EEEC" stroke="#0E5A5E" stroke-width="2"/>
+            <text x="320" y="67" text-anchor="middle" fill="#0E5A5E">Agent（完整能力）</text>
+          </g>
+          <line x1="320" y1="88" x2="320" y2="112" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwA)"/>
+          <g transform="rotate(0.3 320 140)">
+            <rect x="160" y="114" width="320" height="50" rx="8" fill="#FFFDF5" stroke="#3F6E71" stroke-width="2"/>
+            <text x="320" y="145" text-anchor="middle" fill="#21242B">Alternative Agent（换策略 / 提示词）</text>
+          </g>
+          <line x1="320" y1="166" x2="320" y2="190" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwA)"/>
+          <g transform="rotate(-0.3 320 220)">
+            <rect x="160" y="192" width="320" height="50" rx="8" fill="#FFFDF5" stroke="#5F7A50" stroke-width="2"/>
+            <text x="320" y="223" text-anchor="middle" fill="#21242B">Alternative Model（换更稳的模型）</text>
+          </g>
+          <line x1="320" y1="244" x2="320" y2="268" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwA)"/>
+          <g transform="rotate(0.4 320 298)">
+            <rect x="160" y="270" width="320" height="50" rx="8" fill="#FFFDF5" stroke="#8A7434" stroke-width="2"/>
+            <text x="320" y="301" text-anchor="middle" fill="#21242B">Alternative Tool（换数据源 / 服务）</text>
+          </g>
+          <line x1="320" y1="322" x2="320" y2="346" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwA)"/>
+          <g transform="rotate(-0.35 320 376)">
+            <rect x="160" y="348" width="320" height="50" rx="8" fill="#F6F0DC" stroke="#9A7B2D" stroke-width="2"/>
+            <text x="320" y="379" text-anchor="middle" fill="#21242B">Deterministic Workflow（规则代码）</text>
+          </g>
+          <line x1="320" y1="400" x2="320" y2="424" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwA)"/>
+          <g transform="rotate(0.3 320 454)">
+            <rect x="160" y="426" width="320" height="50" rx="8" fill="#F7E9E1" stroke="#B4552D" stroke-width="2"/>
+            <text x="320" y="457" text-anchor="middle" fill="#B4552D">Graceful Degradation（降级告知）</text>
+          </g>
+        </g>
+        <text x="320" y="516" text-anchor="middle" font-size="13.5" fill="#5A5E68">每一级都在用「能力」换「确定性」</text>
+        <path d="M240,532 C290,556 350,556 400,534" fill="none" stroke="#B4552D" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="4 4"/>
+        <text x="320" y="580" text-anchor="middle" font-size="15" fill="#0E5A5E" font-weight="700">Fallback 不是「换一个模型再试一次」</text>
+      </svg>
+      <figcaption class="figcap"><b>图 1 · Fallback 阶梯</b>：自上而下，系统越来越「笨」，但越来越可靠。最底层的降级沟通依然是有效的 Fallback。</figcaption>
+    </figure>
+
+    <p>理解这条阶梯的关键是认识到：<strong>每一级都在用「能力」换「确定性」。</strong></p>
+    <p>– 顶层 Agent 最聪明，但最不稳定；</p>
+    <p>– Alternative Model 牺牲一些质量换取可用性；</p>
+    <p>– Deterministic Workflow（一段写死的规则代码）永远不会幻觉、不会超时，但它只能处理预设场景；</p>
+    <p>– 最底层的 Graceful Degradation 可能只是一句「抱歉，该功能暂时不可用，已通知工程师」——<em class="hl">它依然是有效的 Fallback</em>，因为它把不确定性变成了确定性的、诚实的沟通。</p>
+
+    <h3>设计 Fallback 必须回答的三个问题</h3>
+    <p><strong>1. 降级后的结果质量是否可接受？</strong>备用模型如果频繁输出垃圾，Fallback 就变成了失败的搬运工。</p>
+    <p><strong>2. Fallback 是否改变了系统承诺？</strong>主路径承诺「实时数据」，Fallback 路径只有「昨日缓存数据」，必须在结果中标注，否则用户被误导。</p>
+    <p><strong>3. 谁来决定下降到哪一级？</strong>应该由 Orchestrator 根据「这一步对最终交付的关键程度」决定，而不是每个 Agent 各自为政。</p>
+  </section>
+
+  <!-- ================= 6 ================= -->
+  <section class="sec" id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">Loop / Deadlock / Runaway Agent：会自己跑飞的系统</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>Agent 系统独有的危险：<em class="hl">失败不一定是崩溃，也可能是无限运行</em>——持续烧钱、持续调用 API、永远不结束。三类典型：</p>
+
+    <h3>Agent Loop（循环调用）</h3>
+    <div class="terminal"><div class="bar">循环委托</div>
+<pre>A 委托 B → B 发现问题委托 C → C 无法解决委托回 A → A 再次委托 B …</pre></div>
+    <p>两个 Agent 互相「踢皮球」，形成死循环，直到烧光预算。</p>
+
+    <h3>Planner Loop（无限规划）</h3>
+    <p>Planner 不断生成新任务：「先做 X」→ X 需要先做 Y → Y 需要先做 Z → Z 又依赖 X。任务队列无限膨胀，系统看起来「很忙」，实际永远到不了终点。</p>
+
+    <h3>Tool Loop（重复调用）</h3>
+    <p>Agent 对同一 Tool 用略不同的参数反复调用（第 1 页、第 2 页、……第 500 页），或者调用失败后不死心地一次次重试同一调用。</p>
+
+    <h3>五道防线</h3>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>防线</th><th>机制</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><b>Max Steps</b></td><td>硬性步数上限</td><td>每个 Agent / Workflow 最多执行 N 步，超出即中断。<b>最简单、最有效，必须设置</b></td></tr>
+        <tr><td><b>Budget</b></td><td>Token / 费用 / 调用次数上限</td><td>防止「合法但昂贵」的跑飞，每个任务有成本上限，超出即降级</td></tr>
+        <tr><td><b>Deadline</b></td><td>时间死线</td><td>与第 2 节呼应，兜住所有慢循环</td></tr>
+        <tr><td><b>Loop Detection</b></td><td>状态指纹</td><td>记录 Agent 访问过的状态（任务签名、调用序列哈希），检测到重复状态立即中断。Max Steps 是粗防线，它是精确防线</td></tr>
+        <tr><td><b>State Checkpoint</b></td><td>状态快照</td><td>定期持久化执行状态。被中断的任务可从检查点恢复或进入人工审核，而不是全部丢弃</td></tr>
+      </tbody>
+    </table></div>
+
+    <blockquote class="viewpoint"><span class="q">▍</span>一个关键观念转变：<strong>达到 Max Steps 不是「系统故障」，而是「系统的正常保护行为」。</strong>它应该产生一个结构化的中断报告（已完成的步骤、卡在哪一步、消耗了多少预算），供上层决定重试、降级或转人工——而不是一个裸异常。</blockquote>
+  </section>
+
+  <!-- ================= 7 ================= -->
+  <section class="sec" id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">Tool Calling Reliability：把每个 Tool 调用当作一次 RPC</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>Tool 是 Agent 系统中「手」的部分，也是绝大多数不可控故障的入口。每一次 Tool 调用都应该被当作一次严肃的远程过程调用（RPC）来对待，完整的可靠调用链如下：</p>
+
+    <div class="terminal"><div class="bar">RELIABLE TOOL CALL PIPELINE</div>
+<pre>Agent 产生调用意图
+  → 1. Schema Validation    （输出格式是否符合 Tool 的调用 Schema？）
+  → 2. Permission Check     （该 Agent 有权调用此 Tool 吗？）
+  → 3. Parameter Validation （参数业务上合法吗？路径注入？金额为负？）
+  → 4. Rate Limit Check     （本 Agent / 全局的调用频率是否超限？）
+  → 5. Idempotency Guard    （写操作是否携带幂等键？）
+  → 6. Execute（带 Timeout + Retry）
+  → 7. Audit Log            （谁、何时、用什么参数、调了什么、结果如何）</pre></div>
+
+    <h3>逐条说明</h3>
+    <p><strong>Schema Validation</strong>——LLM 输出的 Tool 调用是概率性生成的，格式错误是常态而非异常。校验失败的处理策略：带上错误信息让模型重试一次（「你的参数 <code class="inline">date</code> 格式错误，应为 YYYY-MM-DD」），而不是把内部异常暴露给用户。</p>
+    <p><strong>Permission</strong>——Tool 权限必须按 Agent 粒度控制。写数据库的 Tool 不应该对所有 Agent 开放——尤其是能被用户输入间接影响行为的 Agent。</p>
+    <p><strong>Parameter Validation</strong>——Schema 对了，语义还可能错。LLM 可能生成 <code class="inline">amount=-100</code>、<code class="inline">path=../../etc/passwd</code> 这类「格式合法、语义危险」的参数。业务级校验是安全边界，不能省。</p>
+    <p><strong>Rate Limit</strong>——既要尊重外部 API 的限流，也要限制自己系统的调用频率。Agent 跑飞时（见第 6 节），Rate Limit 是最后一道闸门。</p>
+    <p><strong>Idempotency</strong>——所有写操作 Tool 必须支持幂等键。重试机制（第 3 节）的安全性完全建立在它之上。</p>
+    <p><strong>Audit Log</strong>——出了问题，「Agent 为什么做了这件事」是首要问题。没有审计日志的 Tool 调用，等于黑盒中的黑盒。日志应包含：调用方 Agent、时间、参数、返回、耗时、错误。</p>
+  </section>
+
+  <!-- ================= 8 ================= -->
+  <section class="sec" id="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">Guardrails：放在哪里比是什么更重要</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>Guardrails（护栏）通常被分为四类：</p>
+
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>类型</th><th>拦截什么</th><th>例子</th></tr></thead>
+      <tbody>
+        <tr><td><b>Input Guardrail</b></td><td>进入系统的恶意 / 越界输入</td><td>Prompt 注入、越权指令、超长输入</td></tr>
+        <tr><td><b>Tool Guardrail</b></td><td>危险的 Tool 调用</td><td>删库操作、超额度调用、越权访问</td></tr>
+        <tr><td><b>Output Guardrail</b></td><td>不合格的输出</td><td>幻觉内容、敏感信息泄漏、格式错误</td></tr>
+        <tr><td><b>Policy Guardrail</b></td><td>违反业务 / 合规策略的行为</td><td>禁止自动执行的操作、禁止讨论的话题</td></tr>
+      </tbody>
+    </table></div>
+
+    <p>概念人人会讲，真正的工程问题是：<em class="hl">Guardrail 放在哪一层？</em>放错位置的 Guardrail 等于没有。</p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 1040 320" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif" role="img" aria-label="Guardrail 放置位置示意图">
+        <defs>
+          <marker id="arwB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M1,1 L9,5 L1,9" fill="none" stroke="#5A5E68" stroke-width="1.8" stroke-linecap="round"/>
+          </marker>
+        </defs>
+        <rect x="4" y="4" width="1032" height="312" rx="14" fill="#FFFDF5" stroke="#D8D2C0" stroke-width="1.6" stroke-dasharray="7 5"/>
+        <g font-size="14" font-weight="600">
+          <!-- 用户输入 -->
+          <g transform="rotate(-0.4 70 100)"><rect x="26" y="76" width="88" height="48" rx="8" fill="#F6F3EA" stroke="#5A5E68" stroke-width="2"/><text x="70" y="105" text-anchor="middle" fill="#21242B">用户输入</text></g>
+          <line x1="114" y1="100" x2="146" y2="100" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwB)"/>
+          <!-- Input Guardrail -->
+          <g transform="rotate(0.3 222 100)"><rect x="150" y="70" width="144" height="60" rx="8" fill="#E3EEEC" stroke="#0E5A5E" stroke-width="2.2" stroke-dasharray="6 4"/><text x="222" y="95" text-anchor="middle" fill="#0E5A5E">Input</text><text x="222" y="115" text-anchor="middle" fill="#0E5A5E">Guardrail</text></g>
+          <text x="222" y="152" text-anchor="middle" font-size="12" fill="#5A5E68" font-weight="400">放在最外层入口</text>
+          <text x="222" y="170" text-anchor="middle" font-size="12" fill="#5A5E68" font-weight="400">越早拦截成本越低</text>
+          <line x1="294" y1="100" x2="338" y2="100" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwB)"/>
+          <!-- Orchestrator -->
+          <g transform="rotate(-0.3 424 100)"><rect x="340" y="64" width="168" height="72" rx="8" fill="#FFFDF5" stroke="#21242B" stroke-width="2.4"/><text x="424" y="94" text-anchor="middle" fill="#21242B">Orchestrator</text><text x="424" y="120" text-anchor="middle" font-size="12" fill="#B4552D" font-weight="600">▲ Policy Guardrail</text></g>
+          <text x="424" y="158" text-anchor="middle" font-size="12" fill="#5A5E68" font-weight="400">策略是全局编排决策</text>
+          <text x="424" y="176" text-anchor="middle" font-size="12" fill="#5A5E68" font-weight="400">只有它有全局视角</text>
+          <line x1="508" y1="100" x2="552" y2="100" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwB)"/>
+          <!-- Agent -->
+          <g transform="rotate(0.35 610 100)"><rect x="554" y="76" width="112" height="48" rx="8" fill="#F6F3EA" stroke="#5A5E68" stroke-width="2"/><text x="610" y="105" text-anchor="middle" fill="#21242B">Agent</text></g>
+          <line x1="666" y1="100" x2="700" y2="100" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwB)"/>
+          <!-- Tool -->
+          <g transform="rotate(-0.3 750 100)"><rect x="702" y="76" width="96" height="48" rx="8" fill="#F7E9E1" stroke="#B4552D" stroke-width="2.6"/><text x="750" y="105" text-anchor="middle" fill="#B4552D">Tool ⚙</text></g>
+          <g transform="rotate(0.4 750 152)"><rect x="678" y="134" width="144" height="34" rx="6" fill="none" stroke="#B4552D" stroke-width="1.8"/><text x="750" y="156" text-anchor="middle" font-size="12" fill="#B4552D">Tool Guardrail 内置</text></g>
+          <text x="750" y="192" text-anchor="middle" font-size="12" fill="#5A5E68" font-weight="400">贴着危险动作</text>
+          <text x="750" y="210" text-anchor="middle" font-size="12" fill="#5A5E68" font-weight="400">确定性代码 · 不可绕过</text>
+          <line x1="798" y1="100" x2="832" y2="100" stroke="#5A5E68" stroke-width="1.8" marker-end="url(#arwB)"/>
+          <!-- Output Guardrail -->
+          <g transform="rotate(0.3 900 100)"><rect x="836" y="70" width="128" height="60" rx="8" fill="#E3EEEC" stroke="#0E5A5E" stroke-width="2.2" stroke-dasharray="6 4"/><text x="900" y="95" text-anchor="middle" fill="#0E5A5E">Output</text><text x="900" y="115" text-anchor="middle" fill="#0E5A5E">Guardrail</text></g>
+          <text x="900" y="152" text-anchor="middle" font-size="12" fill="#5A5E68" font-weight="400">交付前最后检查</text>
+        </g>
+        <text x="520" y="264" text-anchor="middle" font-size="14" fill="#0E5A5E" font-weight="700">Guardrail 的位置由它保护的对象决定 —— 关键安全约束必须落在确定性代码里，不能只落在提示词里</text>
+        <text x="520" y="292" text-anchor="middle" font-size="12.5" fill="#8B8F99" font-weight="400">入口 → 编排 → 执行 → 交付，四层各司其职</text>
+      </svg>
+      <figcaption class="figcap"><b>图 2 · Guardrail 放置位置</b>：保护入口就放在入口，保护危险动作就贴着危险动作，保护全局就放在唯一拥有全局视角的编排层。</figcaption>
+    </figure>
+
+    <h3>四条放置原则</h3>
+    <p><strong>Input Guardrail → 放在最外层入口（Orchestrator 之前）。</strong>恶意输入越早拦截，成本越低、影响面越小。一旦注入内容进入 Agent 间通信，就会被转述、改写、传播，越来越难识别。用户输入在进入任何 Agent 之前必须先过这一关。</p>
+    <p><strong>Tool Guardrail → 放在 Tool 执行层内部，而不是 Agent 层。</strong>Tool 是最终的危险动作执行者，只有 Tool 层的检查是<em class="hl">不可绕过的</em>。在 Agent 的提示词里写「你不许删除用户数据」是提示词级别的约束，可以被注入攻破；在 Tool 的执行代码里做权限校验才是工程级约束。</p>
+    <p><strong>Output Guardrail → 放在两处：Agent 输出边界 + 最终交付前。</strong>Agent 输出给下游 Agent 前做格式与内容校验（防止坏数据级联传播）；最终结果交付用户前做最后一道整体检查（敏感信息、免责声明、质量底线）。两道各司其职，缺一不可。</p>
+    <p><strong>Policy Guardrail → 放在 Orchestrator 编排层。</strong>策略约束的粒度是「这个 Workflow 整体不许做什么」，只有 Orchestrator 有全局视角。例如「金额超过 1 万的操作必须人工确认」——这是编排决策，不是单个 Agent 能判断的。</p>
+  </section>
+
+  <!-- ================= 9 ================= -->
+  <section class="sec" id="s9">
+    <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">可靠性架构图</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>把前面所有机制放进一张图，这就是一个生产级 Multi-Agent 系统的可靠性骨架：</p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 1000 770" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC','Microsoft YaHei',sans-serif" role="img" aria-label="Multi-Agent 可靠性架构示意图">
+        <defs>
+          <marker id="arwC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M1,1 L9,5 L1,9" fill="none" stroke="#2A2D34" stroke-width="1.8" stroke-linecap="round"/>
+          </marker>
+          <marker id="arwCt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M1,1 L9,5 L1,9" fill="none" stroke="#B4552D" stroke-width="1.8" stroke-linecap="round"/>
+          </marker>
+          <marker id="arwCc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M1,1 L9,5 L1,9" fill="none" stroke="#0E5A5E" stroke-width="1.8" stroke-linecap="round"/>
+          </marker>
+        </defs>
+        <rect x="6" y="6" width="988" height="758" rx="16" fill="#FFFDF5" stroke="#D8D2C0" stroke-width="1.8" stroke-dasharray="8 5"/>
+        <text x="30" y="42" font-size="13" fill="#8B8F99" letter-spacing="3">AGENT RELIABILITY ARCHITECTURE · 手绘示意图</text>
+
+        <g font-size="14" font-weight="600">
+          <g transform="rotate(-0.4 85 105)"><rect x="34" y="82" width="102" height="50" rx="8" fill="#F6F3EA" stroke="#2A2D34" stroke-width="2"/><text x="85" y="112" text-anchor="middle" fill="#21242B">Client</text></g>
+          <line x1="136" y1="107" x2="172" y2="107" stroke="#2A2D34" stroke-width="1.8" marker-end="url(#arwC)"/>
+          <g transform="rotate(0.3 248 107)"><rect x="176" y="76" width="144" height="62" rx="8" fill="#E3EEEC" stroke="#0E5A5E" stroke-width="2" stroke-dasharray="6 4"/><text x="248" y="102" text-anchor="middle" fill="#0E5A5E">Input Guardrail</text><text x="248" y="124" text-anchor="middle" font-size="11.5" fill="#5A5E68" font-weight="400">注入 / 越权拦截</text></g>
+          <line x1="320" y1="107" x2="368" y2="107" stroke="#2A2D34" stroke-width="1.8" marker-end="url(#arwC)"/>
+          <g transform="rotate(-0.3 480 108)"><rect x="372" y="62" width="216" height="94" rx="10" fill="#FFFDF5" stroke="#2A2D34" stroke-width="2.6"/><rect x="378" y="68" width="204" height="82" rx="7" fill="none" stroke="#2A2D34" stroke-width="0.9" stroke-dasharray="3 3"/><text x="480" y="94" text-anchor="middle" fill="#21242B" font-size="15.5">Orchestrator</text><text x="480" y="118" text-anchor="middle" font-size="11.5" fill="#5A5E68" font-weight="400">全局 Deadline · Policy Guardrail</text><text x="480" y="138" text-anchor="middle" font-size="11.5" fill="#5A5E68" font-weight="400">Partial Failure 策略声明</text></g>
+          <line x1="588" y1="88" x2="646" y2="74" stroke="#2A2D34" stroke-width="1.8" marker-end="url(#arwC)"/>
+          <line x1="588" y1="130" x2="646" y2="146" stroke="#2A2D34" stroke-width="1.8" marker-end="url(#arwC)"/>
+          <g transform="rotate(0.35 720 66)"><rect x="650" y="44" width="140" height="52" rx="8" fill="#F6F3EA" stroke="#2A2D34" stroke-width="2"/><text x="720" y="68" text-anchor="middle" fill="#21242B">Agent A</text><text x="720" y="87" text-anchor="middle" font-size="11" fill="#5A5E68" font-weight="400">预算检查 ↓</text></g>
+          <g transform="rotate(-0.35 720 156)"><rect x="650" y="134" width="140" height="52" rx="8" fill="#F6F3EA" stroke="#2A2D34" stroke-width="2"/><text x="720" y="158" text-anchor="middle" fill="#21242B">Agent B</text><text x="720" y="177" text-anchor="middle" font-size="11" fill="#5A5E68" font-weight="400">预算检查 ↓</text></g>
+          <line x1="790" y1="70" x2="838" y2="70" stroke="#2A2D34" stroke-width="1.8" marker-end="url(#arwC)"/>
+          <line x1="790" y1="160" x2="838" y2="160" stroke="#2A2D34" stroke-width="1.8" marker-end="url(#arwC)"/>
+          <g transform="rotate(-0.3 890 70)"><rect x="840" y="44" width="120" height="52" rx="8" fill="#FFFDF5" stroke="#B4552D" stroke-width="2.2"/><text x="900" y="68" text-anchor="middle" fill="#B4552D">Tool A ⚙</text><text x="900" y="87" text-anchor="middle" font-size="11" fill="#5A5E68" font-weight="400">Timeout 约束</text></g>
+          <g transform="rotate(0.3 890 160)"><rect x="840" y="134" width="120" height="52" rx="8" fill="#FFFDF5" stroke="#B4552D" stroke-width="2.2"/><text x="900" y="158" text-anchor="middle" fill="#B4552D">Tool B ⚙</text><text x="900" y="177" text-anchor="middle" font-size="11" fill="#5A5E68" font-weight="400">幂等键 · 限流</text></g>
+        </g>
+
+        <g font-size="13.5" font-weight="600">
+          <path d="M900,96 C900,150 830,196 762,226" fill="none" stroke="#B4552D" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#arwCt)"/>
+          <path d="M900,186 C880,210 860,224 845,232" fill="none" stroke="#B4552D" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#arwCt)"/>
+          <text x="846" y="212" font-size="11.5" fill="#B4552D" font-weight="400" transform="rotate(-32 846 212)">失败</text>
+          <g transform="rotate(0.3 700 262)"><rect x="618" y="230" width="164" height="66" rx="8" fill="#E3EEEC" stroke="#0E5A5E" stroke-width="2"/><text x="700" y="256" text-anchor="middle" fill="#0E5A5E">Retry ⟳</text><text x="700" y="278" text-anchor="middle" font-size="11.5" fill="#5A5E68" font-weight="400">退避 + Jitter · ≤3 次</text></g>
+          <line x1="782" y1="263" x2="828" y2="263" stroke="#B4552D" stroke-width="1.8" marker-end="url(#arwCt)"/>
+          <text x="805" y="252" text-anchor="middle" font-size="11" fill="#B4552D" font-weight="400">仍失败</text>
+          <g transform="rotate(-0.3 900 262)"><rect x="830" y="230" width="140" height="66" rx="8" fill="#F7E9E1" stroke="#B4552D" stroke-width="2.2"/><text x="900" y="256" text-anchor="middle" fill="#B4552D">Circuit Breaker</text><text x="900" y="278" text-anchor="middle" font-size="11.5" fill="#5A5E68" font-weight="400">连续失败 → 熔断</text></g>
+          <line x1="900" y1="296" x2="780" y2="352" stroke="#B4552D" stroke-width="1.8" marker-end="url(#arwCt)"/>
+          <text x="866" y="322" font-size="11" fill="#B4552D" font-weight="400" transform="rotate(-25 866 322)">熔断打开</text>
+          <g transform="rotate(0.35 690 388)"><rect x="600" y="354" width="180" height="70" rx="8" fill="#F6F0DC" stroke="#9A7B2D" stroke-width="2"/><text x="690" y="380" text-anchor="middle" fill="#7A6223">Fallback Chain</text><text x="690" y="402" text-anchor="middle" font-size="11" fill="#5A5E68" font-weight="400">备用Tool → 缓存 → 规则路径</text></g>
+        </g>
+
+        <g font-size="13.5" font-weight="600">
+          <path d="M600,389 C520,392 470,430 442,490" fill="none" stroke="#0E5A5E" stroke-width="1.8" marker-end="url(#arwCc)"/>
+          <g transform="rotate(-0.3 350 522)"><rect x="262" y="494" width="176" height="60" rx="8" fill="#E3EEEC" stroke="#0E5A5E" stroke-width="2" stroke-dasharray="6 4"/><text x="350" y="519" text-anchor="middle" fill="#0E5A5E">Output Guardrail</text><text x="350" y="540" text-anchor="middle" font-size="11.5" fill="#5A5E68" font-weight="400">最终交付前整体检查</text></g>
+          <line x1="262" y1="524" x2="212" y2="524" stroke="#0E5A5E" stroke-width="1.8" marker-end="url(#arwCc)"/>
+          <g transform="rotate(0.3 120 524)"><rect x="40" y="494" width="170" height="60" rx="8" fill="#F6F3EA" stroke="#2A2D34" stroke-width="2"/><text x="125" y="519" text-anchor="middle" fill="#21242B">Result ✓</text><text x="125" y="540" text-anchor="middle" font-size="11.5" fill="#5A5E68" font-weight="400">+ 完整性标注</text></g>
+        </g>
+
+        <g font-size="13.5" font-weight="600">
+          <path d="M760,206 C640,320 420,480 240,610" fill="none" stroke="#8B8F99" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arwC)"/>
+          <text x="492" y="452" font-size="11.5" fill="#8B8F99" font-weight="400" transform="rotate(-35 492 452)">无法自动恢复 → 保留上下文</text>
+          <g transform="rotate(-0.3 130 646)">
+            <path d="M60,618 L60,672 A70,16 0 0 0 200,672 L200,618" fill="#F6F3EA" stroke="#2A2D34" stroke-width="2"/>
+            <ellipse cx="130" cy="618" rx="70" ry="16" fill="#FFFDF5" stroke="#2A2D34" stroke-width="2"/>
+            <text x="130" y="656" text-anchor="middle" fill="#21242B">Dead Letter Queue</text>
+          </g>
+          <line x1="202" y1="646" x2="296" y2="646" stroke="#2A2D34" stroke-width="1.8" marker-end="url(#arwC)"/>
+          <g transform="rotate(0.35 385 646)"><rect x="298" y="616" width="172" height="62" rx="8" fill="#FFFDF5" stroke="#B4552D" stroke-width="2.2"/><text x="384" y="642" text-anchor="middle" fill="#B4552D">Human Review</text><text x="384" y="663" text-anchor="middle" font-size="11.5" fill="#5A5E68" font-weight="400">人工审核队列</text></g>
+          <path d="M470,618 C560,520 560,240 488,158" fill="none" stroke="#0E5A5E" stroke-width="1.6" stroke-dasharray="5 5" marker-end="url(#arwCc)"/>
+          <text x="556" y="368" font-size="11.5" fill="#0E5A5E" font-weight="400" transform="rotate(-88 556 368)">修复后重放</text>
+        </g>
+
+        <g font-size="12.5" font-weight="600">
+          <rect x="640" y="600" width="330" height="128" rx="10" fill="none" stroke="#8B8F99" stroke-width="1.5" stroke-dasharray="6 5"/>
+          <text x="805" y="626" text-anchor="middle" font-size="12" fill="#8B8F99" letter-spacing="2" font-weight="400">横 切 机 制 层</text>
+          <g transform="rotate(-0.3 715 672)"><rect x="654" y="646" width="122" height="52" rx="7" fill="#F6F3EA" stroke="#5A5E68" stroke-width="1.8"/><text x="715" y="668" text-anchor="middle" fill="#21242B">State Checkpoint</text><text x="715" y="687" text-anchor="middle" font-size="11" fill="#8B8F99" font-weight="400">可恢复</text></g>
+          <g transform="rotate(0.3 805 672)"><rect x="790" y="646" width="80" height="52" rx="7" fill="#F6F3EA" stroke="#5A5E68" stroke-width="1.8"/><text x="830" y="668" text-anchor="middle" fill="#21242B">Audit Log</text><text x="830" y="687" text-anchor="middle" font-size="11" fill="#8B8F99" font-weight="400">全链路</text></g>
+          <g transform="rotate(-0.25 893 672)"><rect x="884" y="646" width="76" height="52" rx="7" fill="#F6F3EA" stroke="#5A5E68" stroke-width="1.8"/><text x="922" y="668" text-anchor="middle" fill="#21242B">Budget</text><text x="922" y="687" text-anchor="middle" font-size="11" fill="#8B8F99" font-weight="400">步/费/时</text></g>
+        </g>
+        <line x1="720" y1="186" x2="716" y2="644" stroke="#8B8F99" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <line x1="900" y1="186" x2="860" y2="644" stroke="#8B8F99" stroke-width="1.2" stroke-dasharray="3 4"/>
+      </svg>
+      <figcaption class="figcap"><b>图 3 · 可靠性架构骨架</b>：① 请求先过 Input Guardrail，Orchestrator 注入全局 Deadline 与预算；② 每次 Tool 调用被 Timeout 约束、被 Retry（退避 + 抖动）保护；③ 连续失败触发熔断并切换 Fallback；④ 不可恢复的失败进入 Dead Letter Queue，流入 Human Review，人工修复后可重放；⑤ Checkpoint / Audit Log / Budget 作为横切机制贯穿全程。</figcaption>
+    </figure>
+
+    <p>熔断器（Circuit Breaker）值得单独一提，它是前文未展开但图上必须有的一环：当某个 Tool 连续失败 N 次，熔断器「打开」，后续调用<em class="hl">直接快速失败</em>而不再发起真实请求，一段时间后进入半开状态试探恢复。它解决的是 Retry 解决不了的问题——<strong>当依赖已经持续宕机时，重试本身就是伤害</strong>（浪费时间、浪费配额、加剧对方压力）。</p>
+  </section>
+
+  <!-- ================= 10 ================= -->
+  <section class="sec" id="s10">
+    <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">Failure Matrix：把策略变成一张表</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>上面所有讨论，最终要收敛成一张所有团队都能对齐的决策表。这张表本身就是最重要的可靠性交付物之一——<em class="hl">它把「出错后怎么办」从工程师的临场判断，变成了事前评审过的系统契约</em>：</p>
+
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Failure</th><th>是否 Retry</th><th>Fallback</th><th>最终行为</th></tr></thead>
+      <tbody>
+        <tr><td><b>网络超时</b></td><td><span class="pill yes">✅ 退避+抖动 ≤3 次</span></td><td><span class="pill yes">✅ 是</span></td><td>重试；仍失败走 Fallback</td></tr>
+        <tr><td><b>参数错误</b></td><td><span class="pill mid">⚠️ 1 次带纠错提示</span></td><td><span class="pill mid">⚠️ 视情况</span></td><td>修正：回传错误让模型自纠</td></tr>
+        <tr><td><b>权限错误</b></td><td><span class="pill no">❌ 绝不</span></td><td><span class="pill no">❌ 否</span></td><td>拒绝：立即失败 + 审计记录</td></tr>
+        <tr><td><b>Tool 失败</b></td><td><span class="pill mid">⚠️ 限流可重试 / 5xx 看熔断</span></td><td><span class="pill yes">✅ 是</span></td><td>降级：备用 Tool / 缓存数据</td></tr>
+        <tr><td><b>Agent 超时</b></td><td><span class="pill yes">✅ 剩余预算内</span></td><td><span class="pill yes">✅ 是</span></td><td>替代执行：换 Agent 或降级路径</td></tr>
+        <tr><td><b>Schema 错误</b></td><td><span class="pill mid">⚠️ 1 次带错误反馈</span></td><td><span class="pill yes">✅ 是</span></td><td>修正 → 失败则走规则解析</td></tr>
+        <tr><td><b>业务错误</b></td><td><span class="pill no">❌ 绝不</span></td><td><span class="pill no">❌ 否</span></td><td>如实上报业务失败原因</td></tr>
+        <tr><td><b>Loop 触发 Max Steps</b></td><td><span class="pill no">❌ 否</span></td><td><span class="pill mid">⚠️ 视情况</span></td><td>中断 + Checkpoint → 人工审核</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>使用这张表的两个要点</h3>
+    <p><strong>1. 每一行都必须对应代码里的一个明确分支</strong>，不允许「视情况」停留在口头——「视情况」必须写成可执行的判定条件（如：<code class="inline">HTTP 429 → retry</code>，<code class="inline">HTTP 500 → 检查熔断器状态</code>）。</p>
+    <p><strong>2. 这张表要随故障复盘持续更新。</strong>每次线上故障的根因，往往对应表里一个空白或错误的格子。</p>
+  </section>
+
+  <!-- ================= 11 ================= -->
+  <section class="sec" id="s11">
+    <div class="sec-head"><span class="sec-num">11</span><h2 class="sec-title">Python 示例：可运行的可靠性骨架</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>以下代码不依赖任何框架，演示五个核心机制：<strong>分层异常体系、Retry（退避 + 抖动 + 上限）、Timeout、Fallback 链、Max Steps / Loop Detection、幂等、Partial Failure 降级</strong>。已验证可直接运行。</p>
+
+    <div class="codeblock">
+      <div class="bar">
+        <span class="d d1"></span><span class="d d2"></span><span class="d d3"></span>
+        <span class="fname">agent_reliability.py</span>
+      </div>
+      <pre><code class="language-python">import time, random, functools, threading
+from dataclasses import dataclass
+from typing import Callable, Any
+
+# ============ 异常体系：分类是所有可靠性决策的前提 ============
+class AgentError(Exception): ...
+class TransientError(AgentError): ...        # 可重试：网络抖动、限流
+class ValidationError(AgentError): ...       # 不可原样重试：参数/Schema 错误
+class PermissionError_(AgentError): ...      # 绝不重试：权限
+class PermanentError(AgentError): ...        # 绝不重试：业务失败
+
+# ============ 1. Retry：指数退避 + Jitter + 上限 ============
+def retry(max_attempts=3, base_delay=0.05, max_delay=1.0,
+          retry_on=(TransientError,)):
+    """只对 retry_on 中的异常重试；其他异常立即抛出。"""
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return fn(*args, **kwargs)
+                except retry_on as e:
+                    last_exc = e
+                    if attempt == max_attempts:
+                        raise                      # Retry Limit
+                    delay = min(base_delay * 2 ** (attempt - 1), max_delay)
+                    delay += random.uniform(0, delay * 0.3)   # Jitter 防雪崩
+                    print(f"  [retry] {fn.__name__} 第{attempt}次失败({e})，"
+                          f"{delay:.2f}s 后重试")
+                    time.sleep(delay)
+            raise last_exc
+        return wrapper
+    return decorator
+
+# ============ 2. Timeout（演示用线程；生产推荐 asyncio） ============
+class TimeoutExpired(AgentError): ...
+
+def run_with_timeout(fn: Callable, seconds: float, *args, **kwargs) -&gt; Any:
+    result: dict = {}
+    def target():
+        try: result["value"] = fn(*args, **kwargs)
+        except Exception as e: result["error"] = e
+    t = threading.Thread(target=target, daemon=True)
+    t.start(); t.join(seconds)
+    if t.is_alive():
+        raise TimeoutExpired(f"{fn.__name__} 超时（&gt;{seconds}s）")
+    if "error" in result: raise result["error"]
+    return result["value"]
+
+# ============ 3. Fallback 链：主模型 -&gt; 备选模型 ============
+def call_primary_model():
+    raise TransientError("primary model 503")
+
+@retry(max_attempts=2)
+def call_fallback_model():
+    print("  [fallback] 切换到备选模型")
+    return {"text": "来自 fallback model 的回答", "quality": "medium"}
+
+def llm_with_fallback():
+    try:
+        return run_with_timeout(call_primary_model, 2.0)
+    except (TimeoutExpired, TransientError) as e:
+        print(f"  [fallback] 主模型不可用: {e}")
+        return call_fallback_model()
+
+# ============ 4. Max Steps + Loop Detection：防跑飞 ============
+class MaxStepsExceeded(AgentError): ...
+
+@dataclass
+class StepBudget:
+    max_steps: int = 5
+    steps: int = 0
+    def consume(self, step_name: str):
+        self.steps += 1
+        if self.steps &gt; self.max_steps:
+            raise MaxStepsExceeded(
+                f"超过最大步数 {self.max_steps}，疑似 Loop，中断于: {step_name}")
+
+def run_agent_loop(budget: StepBudget):
+    visited = set()
+    step = "plan"
+    for _ in range(100):                    # 故意放大循环，验证 budget 拦截
+        budget.consume(step)
+        print(f"  [agent] 执行步骤: {step}")
+        if step in visited:                 # Loop Detection：状态指纹
+            print("  [agent] 检测到重复步骤，提前退出")
+            return
+        visited.add(step)
+        step = "search" if step == "plan" else "plan"   # 模拟 A-&gt;B-&gt;A 死循环
+
+# ============ 5. Tool 调用：参数校验 + 幂等 + 限流重试 ============
+class RateLimitError(TransientError): ...
+
+_calls = {}
+def call_search_tool(query: str, request_id: str):
+    if request_id in _calls:                # Idempotency：同 request_id 直接返回
+        print("  [tool] 命中幂等缓存")
+        return _calls[request_id]
+    if not isinstance(query, str) or not query.strip():
+        raise ValidationError("query 必须是非空字符串")   # 不可重试
+    if random.random() &lt; 0.5:
+        raise RateLimitError("429 rate limited")          # 可重试
+    result = {"hits": [f"result-for-{query}"]}
+    _calls[request_id] = result
+    return result
+
+@retry(max_attempts=4, retry_on=(RateLimitError,))
+def reliable_search(query: str, request_id: str):
+    return call_search_tool(query, request_id)
+
+# ============ 演示 ============
+print("=== 1) LLM 调用 + Fallback ===")
+print(llm_with_fallback())
+
+print("\n=== 2) Tool 重试（限流自动重试）===")
+random.seed(7)
+print(reliable_search("multi-agent reliability", request_id="req-001"))
+
+print("\n=== 3) 参数错误：不重试，立即失败 ===")
+try:
+    reliable_search("", request_id="req-002")
+except ValidationError as e:
+    print(f"  捕获不可重试错误: {e}")
+
+print("\n=== 4) Max Steps 拦截 Loop ===")
+try:
+    run_agent_loop(StepBudget(max_steps=5))
+except MaxStepsExceeded as e:
+    print(f"  {e}")
+
+print("\n=== 5) Partial Failure：部分成功也能交付 ===")
+def workflow():
+    results = {}
+    try:
+        results["research"] = {"done": True}
+    except Exception:
+        results["research"] = None
+    try:
+        results["data"] = reliable_search("sales-q3", request_id="req-003")
+    except Exception:
+        # 降级：Partial Result + 标注，绝不能伪装成完整结果
+        results["data"] = {"degraded": True,
+                           "note": "降级为占位数据，已进入人工审核队列"}
+        results["needs_human_review"] = True
+    return results
+print(workflow())</code></pre>
+    </div>
+
+    <div class="terminal">
+      <div class="bar">运行输出（已验证 · 节选）</div>
+      <pre><span class="dim">=== 1) LLM 调用 + Fallback ===</span>
+  [fallback] 主模型不可用: primary model 503
+  [fallback] 切换到备选模型
+<span class="ok">{'text': '来自 fallback model 的回答', 'quality': 'medium'}</span>
+
+<span class="dim">=== 2) Tool 重试（限流自动重试）===</span>
+  [retry] reliable_search 第1次失败(429 rate limited)，0.05s 后重试
+<span class="ok">{'hits': ['result-for-multi-agent reliability']}</span>
+
+<span class="dim">=== 3) 参数错误：不重试，立即失败 ===</span>
+  捕获不可重试错误: query 必须是非空字符串
+
+<span class="dim">=== 4) Max Steps 拦截 Loop ===</span>
+  [agent] 执行步骤: plan
+  [agent] 执行步骤: search
+  [agent] 执行步骤: plan
+  [agent] 检测到重复步骤，提前退出
+
+<span class="dim">=== 5) Partial Failure：部分成功也能交付 ===</span>
+  [retry] reliable_search 第1次失败(429 rate limited)，0.06s 后重试
+  [retry] reliable_search 第2次失败(429 rate limited)，0.10s 后重试
+<span class="ok">{'research': {'done': True}, 'data': {'hits': ['result-for-sales-q3']}}</span></pre>
+    </div>
+
+    <h3>几个刻意的工程设计</h3>
+    <p><strong>异常分类先行</strong>——所有重试/降级决策都建立在异常类型上，而不是靠解析错误消息字符串；</p>
+    <p><strong><code class="inline">retry</code> 装饰器只捕获白名单异常</strong>——<code class="inline">ValidationError</code> 会穿透它直接抛出，这从代码结构上杜绝了「对权限错误盲目重试」这类事故；</p>
+    <p><strong>StepBudget 是显式对象</strong>——可以跨 Agent 传递、可以序列化进 Checkpoint，Max Steps 是契约而不是魔法数字；</p>
+    <p><strong>Partial Failure 的降级结果带 <code class="inline">"degraded": True</code> 标注</strong>——下游和用户永远知道结果的完整程度。</p>
+  </section>
+
+  <!-- ================= 12 ================= -->
+  <section class="sec" id="s12">
+    <div class="sec-head"><span class="sec-num">12</span><h2 class="sec-title">最终结论</h2></div>
+    <div class="sec-underline"></div>
+
+    <p>把这一篇的内容收拢，可以得到一个公式：</p>
+
+    <div class="formula-card">
+      <div class="formula">
+        <span class="part">Agent&nbsp;Reliability</span>
+        <span class="op">=</span>
+        <span class="part">Model</span><span class="op">+</span><span class="part">Tool</span><span class="op">+</span><span class="part">Workflow</span><span class="op">+</span><span class="part">State</span><span class="op">·</span><span style="color:var(--ink-soft)">Reliability</span>
+      </div>
+      <div class="formula-note">四者缺一，任何一环的短板都会被乘法放大到全局</div>
+    </div>
+
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>组成</th><th>关注点</th><th>对应机制</th></tr></thead>
+      <tbody>
+        <tr><td><b>Model Reliability</b></td><td>LLM 概率性失败</td><td>Schema 校验、带反馈的单次重试、Model Fallback</td></tr>
+        <tr><td><b>Tool Reliability</b></td><td>外部依赖故障</td><td>Timeout、Retry、幂等、Rate Limit、Circuit Breaker</td></tr>
+        <tr><td><b>Workflow Reliability</b></td><td>编排层故障</td><td>分层 Timeout 预算、Partial Failure 策略、Fallback 阶梯、Guardrail 位置</td></tr>
+        <tr><td><b>State Reliability</b></td><td>状态丢失与跑飞</td><td>Max Steps、Loop Detection、Checkpoint、Dead Letter、审计日志</td></tr>
+      </tbody>
+    </table></div>
+
+    <p>而贯穿四者的共同心法只有一句：</p>
+
+    <blockquote class="viewpoint"><span class="q">▍</span><strong>可靠性不是「让系统不失败」，而是「让系统失败时的行为是设计过的」。</strong></blockquote>
+
+    <p>每一次超时有预算、每一次重试有分类、每一次降级有标注、每一次中断有检查点、每一笔调用有审计——做到这些，系统在故障面前就不是脆弱的，而是<em class="hl">可预期的</em>。可预期，就是生产环境对 Agent 系统的全部要求。</p>
+
+    <div class="next-post">
+      <div class="label">下 一 篇 · NEXT</div>
+      <h3 class="np">Agent 系统的可观测性、评测与生产运维</h3>
+      <p>至此，架构（怎么拆）、通信与状态（怎么协作）、可靠性（出错怎么办）都已就位。但一个只在开发环境跑通过的 Agent 系统还不是产品。剩下的问题是：<strong>如何把整个系统真正部署、观测、评测和运行在生产环境？</strong>——如何知道它每天到底表现如何，如何在用户抱怨之前发现退化，如何证明一次修改是改进而不是回归？</p>
+    </div>
+  </section>
+
+  <footer class="colophon">
+    <span>Multi-Agent 系统设计系列 · 第三篇 / 共四篇</span>
+    <span>架构 → 通信与状态 → <b style="color:var(--accent)">可靠性</b> → 生产运维</span>
+  </footer>
+</div>
+
+<script>
+/* 轻量 Python 语法高亮（无外部依赖） */
+(function () {
+  var KW = /\b(import|from|class|def|return|try|except|raise|for|in|if|not|is|and|or|as|while|with|lambda|None|True|False|else|elif|pass|break|continue|yield|global|assert)\b/;
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  document.querySelectorAll('pre code.language-python').forEach(function (block) {
+    var src = block.textContent;
+    var re = /(#[^\n]*)|("""[\s\S]*?"""|f"[^"\n]*"|f'[^'\n]*'|"[^"\n]*"|'[^'\n]*')|(@[\w.]+)|(\b\d+\.?\d*\b)|([A-Za-z_][\w]*)/g;
+    var out = '', last = 0, m;
+    while ((m = re.exec(src)) !== null) {
+      out += esc(src.slice(last, m.index));
+      if (m[1]) out += '<span class="tok-c">' + esc(m[1]) + '</span>';
+      else if (m[2]) out += '<span class="tok-s">' + esc(m[2]) + '</span>';
+      else if (m[3]) out += '<span class="tok-d">' + esc(m[3]) + '</span>';
+      else if (m[4]) out += '<span class="tok-n">' + esc(m[4]) + '</span>';
+      else if (m[5] && KW.test(m[5])) out += '<span class="tok-k">' + esc(m[5]) + '</span>';
+      else out += esc(m[0]);
+      last = re.lastIndex;
+    }
+    out += esc(src.slice(last));
+    block.innerHTML = out;
+  });
+})();
+</script>
+</body>
+</html>

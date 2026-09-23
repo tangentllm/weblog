@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 状态与记忆：短期上下文、长期记忆与会话压缩</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#faf9f6;
+    --card:#ffffff;
+    --card-alt:#f4f1ea;
+    --ink:#22252b;
+    --ink-soft:#4a4f58;
+    --ink-faint:#8a90a0;
+    --navy:#2c4a6e;
+    --navy-deep:#1d3350;
+    --navy-tint:#e8edf4;
+    --teal:#0f6b5f;
+    --teal-tint:#e3f0ed;
+    --terra:#b5543a;
+    --terra-tint:#f7ebe6;
+    --amber:#9a6b1f;
+    --amber-tint:#f6efe0;
+    --line:#e3dfd6;
+    --code-bg:#1e2228;
+    --code-ink:#d7dce4;
+    --radius:10px;
+    --serif:'Noto Serif SC',Georgia,serif;
+    --sans:'Noto Sans SC',-apple-system,sans-serif;
+    --mono:'JetBrains Mono',Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-weight:400;
+    font-size:16px;
+    line-height:1.95;
+    -webkit-font-smoothing:antialiased;
+  }
+  .container{max-width:860px;margin:0 auto;padding:0 28px 120px;}
+
+  /* ── Hero ─────────────────────────── */
+  header.hero{
+    padding:90px 28px 56px;
+    max-width:860px;margin:0 auto;
+    border-bottom:1px solid var(--line);
+  }
+  .hero .kicker{
+    font-family:var(--mono);font-size:12px;letter-spacing:.22em;
+    color:var(--terra);text-transform:uppercase;margin-bottom:22px;
+  }
+  .hero h1{
+    font-family:var(--serif);font-weight:900;
+    font-size:clamp(30px,5vw,44px);line-height:1.35;
+    color:var(--navy-deep);letter-spacing:.01em;
+  }
+  .hero .lede{
+    margin-top:26px;font-size:17px;color:var(--ink-soft);
+    max-width:680px;line-height:1.9;
+    border-left:3px solid var(--terra);padding-left:18px;
+  }
+  .hero .meta{
+    margin-top:34px;display:flex;flex-wrap:wrap;gap:10px;
+    font-size:13px;color:var(--ink-faint);
+  }
+  .meta span{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:999px;padding:4px 14px;
+  }
+  .meta span.tag{color:var(--navy);border-color:#cdd8e6;background:var(--navy-tint);}
+
+  /* ── TOC ─────────────────────────── */
+  .toc{
+    margin:56px 0 0;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);padding:28px 32px;
+  }
+  .toc h4{font-family:var(--serif);font-size:15px;color:var(--navy-deep);letter-spacing:.12em;margin-bottom:14px;}
+  .toc ol{list-style:none;columns:2;column-gap:40px;font-size:14px;}
+  .toc li{margin:6px 0;break-inside:avoid;}
+  .toc a{color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted #c8c2b4;}
+  .toc a:hover{color:var(--terra);border-color:var(--terra);}
+  .toc .n{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-right:8px;}
+
+  /* ── Section rhythm ───────────────── */
+  section{margin-top:88px;}
+  h2{
+    font-family:var(--serif);font-weight:700;font-size:27px;
+    color:var(--navy-deep);line-height:1.4;
+    padding-bottom:14px;border-bottom:2px solid var(--navy);
+    margin-bottom:34px;scroll-margin-top:30px;
+  }
+  h2 .no{
+    font-family:var(--mono);font-weight:500;font-size:15px;
+    color:var(--terra);margin-right:14px;vertical-align:6px;
+  }
+  h3{
+    font-family:var(--serif);font-weight:600;font-size:19px;
+    color:var(--ink);margin:44px 0 18px;
+  }
+  h3::before{content:"§ ";color:var(--terra);font-weight:400;}
+  p{margin-bottom:20px;color:#31353d;}
+  strong{color:var(--navy-deep);}
+  em{color:var(--ink-soft);}
+  a{color:var(--navy);}
+
+  /* ── Quote / key takeaway ─────────── */
+  blockquote{
+    margin:30px 0;padding:22px 28px;
+    background:var(--card);border:1px solid var(--line);
+    border-left:4px solid var(--terra);border-radius:0 var(--radius) var(--radius) 0;
+    font-family:var(--serif);font-size:17px;line-height:1.85;color:var(--navy-deep);
+  }
+  blockquote p{margin:0;font-family:inherit;font-size:inherit;color:inherit;}
+  blockquote p+p{margin-top:12px;}
+
+  /* ── Callout card ─────────────────── */
+  .callout{
+    margin:30px 0;background:var(--navy-tint);
+    border:1px solid #ccdae9;border-radius:var(--radius);
+    padding:22px 26px;position:relative;
+  }
+  .callout::before{
+    content:"核心结论";position:absolute;top:-11px;left:22px;
+    background:var(--navy);color:#fff;font-size:11px;letter-spacing:.18em;
+    padding:3px 12px;border-radius:3px;font-weight:500;
+  }
+  .callout p{margin:0;color:var(--navy-deep);font-weight:500;}
+
+  /* ── Case card (真实踩坑) ─────────── */
+  .case{
+    margin:34px 0;background:var(--terra-tint);
+    border:1px solid #e8d0c4;border-radius:var(--radius);
+    padding:24px 26px 22px;position:relative;
+  }
+  .case::before{
+    content:"◆ 真实踩坑";position:absolute;top:-11px;left:22px;
+    background:var(--terra);color:#fff;font-size:11px;letter-spacing:.16em;
+    padding:3px 12px;border-radius:3px;font-weight:500;
+  }
+  .case p{margin:0 0 10px;font-size:15px;}
+  .case p:last-child{margin:0;}
+  .case .lesson{color:var(--terra);font-weight:700;}
+
+  /* ── Stat cards ───────────────────── */
+  .stats{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:14px;margin:32px 0;
+  }
+  .stat{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);padding:20px 18px 16px;text-align:center;
+  }
+  .stat .v{
+    font-family:var(--serif);font-weight:900;font-size:30px;
+    color:var(--navy-deep);line-height:1.1;
+  }
+  .stat .v small{font-size:14px;font-weight:600;color:var(--ink-faint);}
+  .stat .k{font-size:12.5px;color:var(--ink-faint);margin-top:8px;letter-spacing:.04em;}
+  .stat.warn .v{color:var(--terra);}
+  .stat.ok .v{color:var(--teal);}
+
+  /* ── Tables ───────────────────────── */
+  .tbl-wrap{overflow-x:auto;margin:30px 0;}
+  table{
+    width:100%;border-collapse:collapse;font-size:14px;
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:0 1px 2px rgba(30,40,60,.05);
+    min-width:560px;
+  }
+  caption{
+    caption-side:top;text-align:left;font-family:var(--serif);
+    font-size:13.5px;color:var(--ink-faint);padding:0 2px 10px;letter-spacing:.04em;
+  }
+  thead th{
+    background:var(--navy-deep);color:#eef2f7;font-weight:500;
+    padding:11px 14px;text-align:left;font-size:13.5px;letter-spacing:.03em;
+    border-bottom:2px solid var(--navy);
+  }
+  thead th:first-child{border-radius:var(--radius) 0 0 0;}
+  thead th:last-child{border-radius:0 var(--radius) 0 0;}
+  tbody td{
+    padding:11px 14px;border-bottom:1px solid var(--line);
+    color:#31353d;vertical-align:top;
+  }
+  tbody tr:nth-child(even){background:#f8f6f0;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--navy-tint);transition:background .15s;}
+  td.center,th.center{text-align:center;}
+  .star{color:var(--amber);letter-spacing:1px;}
+
+  /* ── Code blocks ──────────────────── */
+  .code{
+    margin:30px 0;border-radius:var(--radius);overflow:hidden;
+    box-shadow:0 6px 24px rgba(20,26,38,.16);
+  }
+  .code .bar{
+    background:#14171c;padding:9px 16px;display:flex;align-items:center;gap:8px;
+  }
+  .code .bar i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .code .bar i:nth-child(1){background:#e0655a;}
+  .code .bar i:nth-child(2){background:#e0b34d;}
+  .code .bar i:nth-child(3){background:#69b47f;}
+  .code .bar .lang{
+    margin-left:8px;font-family:var(--mono);font-size:11px;color:#7a8290;letter-spacing:.15em;
+  }
+  .code pre{
+    background:var(--code-bg);color:var(--code-ink);
+    padding:22px 26px;overflow-x:auto;
+    font-family:var(--mono);font-size:13px;line-height:1.75;
+    tab-size:4;
+  }
+  .code pre .cm{color:#5d6a7d;font-style:italic;}
+  .code pre .kw{color:#7ea8d8;}
+  .code pre .fn{color:#d8b46a;}
+  .code pre .str{color:#96c489;}
+  code.inline{
+    font-family:var(--mono);font-size:13px;background:var(--card-alt);
+    border:1px solid var(--line);border-radius:4px;padding:1px 7px;color:var(--terra);
+    white-space:nowrap;
+  }
+  .mono-block{
+    font-family:var(--mono);font-size:13px;background:var(--card-alt);
+    border:1px dashed #cfc9ba;border-radius:var(--radius);
+    padding:18px 24px;margin:26px 0;white-space:pre;overflow-x:auto;
+    color:#3a4356;line-height:1.8;
+  }
+
+  /* ── Figures ──────────────────────── */
+  figure{
+    margin:38px 0;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);padding:28px 24px 18px;
+  }
+  figure svg{width:100%;height:auto;display:block;}
+  figcaption{
+    margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:13px;color:var(--ink-faint);text-align:center;letter-spacing:.03em;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:500;}
+
+  /* ── Lists ────────────────────────── */
+  ul,ol{padding-left:26px;margin:0 0 22px;color:#31353d;}
+  li{margin-bottom:8px;}
+
+  /* ── Failure mode card ────────────── */
+  .fm{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);margin:24px 0;overflow:hidden;
+  }
+  .fm .head{
+    background:linear-gradient(90deg,var(--navy-deep),var(--navy));
+    color:#fff;padding:13px 22px;font-family:var(--serif);font-size:16px;
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;
+  }
+  .fm .head .en{font-family:var(--mono);font-size:11px;color:#9fb3cc;letter-spacing:.1em;font-weight:400;}
+  .fm .body{padding:6px 22px 18px;}
+  .fm dl{display:grid;grid-template-columns:64px 1fr;gap:0 18px;}
+  .fm dt{
+    font-family:var(--serif);font-weight:700;color:var(--terra);
+    padding:8px 0;font-size:13.5px;
+  }
+  .fm dd{padding:8px 0;font-size:14.5px;color:#31353d;border-bottom:1px dashed #eee9dd;}
+  .fm dl dt:nth-of-type(1),.fm dl dd:nth-of-type(1){border-top:none;}
+  .fm dl :is(dt,dd):last-of-type{border-bottom:none;}
+
+  /* ── Final principles ─────────────── */
+  .principle{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px 30px;margin:22px 0;position:relative;overflow:hidden;
+  }
+  .principle::before{
+    content:attr(data-n);position:absolute;right:18px;top:6px;
+    font-family:var(--serif);font-weight:900;font-size:74px;color:var(--navy-tint);
+    line-height:1;
+  }
+  .principle h5{
+    font-family:var(--mono);font-size:11px;letter-spacing:.22em;
+    color:var(--terra);margin-bottom:10px;font-weight:500;
+  }
+  .principle p{
+    font-family:var(--serif);font-size:17.5px;color:var(--navy-deep);
+    font-weight:600;line-height:1.8;margin:0;position:relative;
+  }
+
+  .divider{margin:90px 0 0;height:1px;background:var(--line);}
+  footer{
+    margin-top:70px;padding-top:34px;border-top:2px solid var(--navy-deep);
+    font-size:13px;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  }
+
+  @media (max-width:640px){
+    .toc ol{columns:1;}
+    section{margin-top:64px;}
+    h2{font-size:22px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HERO ═══════════ -->
+<header class="hero">
+  <div class="kicker">Production Agent Engineering · Vol. 07</div>
+  <h1>Agent 状态与记忆：<br>短期上下文、长期记忆与会话压缩</h1>
+  <p class="lede">
+    一个生产级 Agent，如何管理"当前正在发生什么""过去发生过什么"以及"哪些信息值得继续保留"？
+    本文沿着一条生产工程主线展开：<b>生产问题 → 概念边界 → 架构设计 → 数据流 → 工程取舍 → 故障模式 → Evaluation → 最终架构</b>。
+  </p>
+  <div class="meta">
+    <span class="tag">Agent Architecture</span>
+    <span class="tag">Memory System</span>
+    <span class="tag">Context Engineering</span>
+    <span>2026-09-12</span>
+    <span>阅读约 45 min</span>
+  </div>
+
+  <nav class="toc">
+    <h4>目 录 · CONTENTS</h4>
+    <ol>
+      <li><a href="#s1"><span class="n">01</span>Agent 为什么需要状态与记忆</a></li>
+      <li><a href="#s2"><span class="n">02</span>State、Context、History、Memory 的边界</a></li>
+      <li><a href="#s3"><span class="n">03</span>Agent State：被忽视的"运行时记忆"</a></li>
+      <li><a href="#s4"><span class="n">04</span>短期上下文：Agent 的 Working Memory</a></li>
+      <li><a href="#s5"><span class="n">05</span>长期记忆：什么真正值得保存</a></li>
+      <li><a href="#s6"><span class="n">06</span>Memory Record：长期记忆应该长什么样</a></li>
+      <li><a href="#s7"><span class="n">07</span>Memory Read / Write Pipeline</a></li>
+      <li><a href="#s8"><span class="n">08</span>Memory Lifecycle：记住之后怎么办</a></li>
+      <li><a href="#s9"><span class="n">09</span>Memory Conflict：记忆为什么会互相矛盾</a></li>
+      <li><a href="#s10"><span class="n">10</span>会话压缩：Context Compression</a></li>
+      <li><a href="#s11"><span class="n">11</span>Compression 的核心：保留有效信息</a></li>
+      <li><a href="#s12"><span class="n">12</span>Context Compression 取舍表</a></li>
+      <li><a href="#s13"><span class="n">13</span>Memory Storage Architecture</a></li>
+      <li><a href="#s14"><span class="n">14</span>Tool Calling 与 Memory</a></li>
+      <li><a href="#s15"><span class="n">15</span>Memory Retrieval：何时读取长期记忆</a></li>
+      <li><a href="#s16"><span class="n">16</span>Production Failure Modes</a></li>
+      <li><a href="#s17"><span class="n">17</span>Memory Evaluation</a></li>
+      <li><a href="#s18"><span class="n">18</span>Observability</a></li>
+      <li><a href="#s19"><span class="n">19</span>Security：权限与隐私边界</a></li>
+      <li><a href="#s20"><span class="n">20</span>完整生产级 Memory Architecture</a></li>
+      <li><a href="#s21"><span class="n">21</span>最终工程决策表</a></li>
+      <li><a href="#final"><span class="n">※</span>最终结论</a></li>
+    </ol>
+  </nav>
+</header>
+
+<div class="container">
+
+<!-- ═══════════ 01 ═══════════ -->
+<section id="s1">
+  <h2><span class="no">01</span>Agent 为什么需要状态与记忆</h2>
+  <p>先从一个我真实遇到过的生产场景说起。</p>
+  <p>某新能源汽车销售 Agent，用户第一次使用时说：</p>
+  <blockquote><p>"我是做新能源汽车销售的，主要负责华东地区，客户 mostly 是 fleet 采购方。"</p></blockquote>
+  <p>几天后，用户回来：</p>
+  <blockquote><p>"帮我准备一份客户跟进话术。"</p></blockquote>
+  <p>一个合格的 Agent 应该知道：这是 fleet 采购客户、在华东、属于 B 端销售场景，话术应该面向采购决策链，而不是个人消费者。</p>
+  <p>一个平庸的实现会怎么办？把历史所有 Session 的所有消息全部拼进 Prompt。用户用了三个月后，Prompt 里塞着 300k token 的对话历史，其中 90% 是一次性问题和过期的 Tool 输出——成本翻了 30 倍，Latency 从 2 秒涨到 20 秒，而模型反而开始混淆"用户上周说过预算 50 万"和"上上个月说过预算 80 万"。</p>
+  <p>这暴露了 Agent Memory 的核心矛盾：</p>
+  <blockquote><p><b>Agent 需要记住过去，但 LLM 不应该看到全部过去。</b></p></blockquote>
+  <p>解决这个问题，你需要同时回答三个问题：</p>
+  <ol>
+    <li><b>当前任务进行到哪里了？</b>（State）</li>
+    <li><b>过去发生了什么，什么值得继续记住？</b>（Memory）</li>
+    <li><b>这一次模型调用，到底给它看什么？</b>（Context）</li>
+  </ol>
+  <p>大部分 Memory 系统的失败，不是因为没有存储，而是因为没有把这三个问题分开。</p>
+</section>
+
+<!-- ═══════════ 02 ═══════════ -->
+<section id="s2">
+  <h2><span class="no">02</span>State、Context、History、Memory 的边界</h2>
+  <p>先建立一张我认为最值得钉在墙上的表：</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <caption><b>表 1</b> · 六个核心概念的定义边界</caption>
+    <thead><tr><th>概念</th><th>解决的问题</th><th>生命周期</th><th>数据特点</th></tr></thead>
+    <tbody>
+      <tr><td><b>History</b></td><td>过去发生过什么</td><td>长期</td><td>原始记录，append-only</td></tr>
+      <tr><td><b>Context</b></td><td>当前模型需要知道什么</td><td>单次请求</td><td>精选信息，有 Token 预算</td></tr>
+      <tr><td><b>State</b></td><td>当前任务进行到哪里</td><td>Task / Session</td><td>当前运行状态，结构化</td></tr>
+      <tr><td><b>Short-Term Memory</b></td><td>当前任务需要保留什么</td><td>Session</td><td>高频变化，易失</td></tr>
+      <tr><td><b>Session Summary</b></td><td>历史被压缩后留下什么</td><td>Session / 长期</td><td>压缩信息，有损</td></tr>
+      <tr><td><b>Long-Term Memory</b></td><td>跨 Session 什么值得保留</td><td>长期</td><td>稳定、有价值、有置信度</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>两个关键认知：</p>
+  <blockquote>
+    <p><b>Memory ≠ Chat History。</b>History 是流水账，Memory 是从流水账中提炼出的、带有元信息（类型、置信度、来源、时效）的可用知识。</p>
+    <p><b>Storage 只是 Memory 的一部分，Context 才是最终进入 LLM 的信息边界。</b>你存了一万条记忆，但如果每次调用只召回三条不相关的，Memory 系统等于不存在。</p>
+  </blockquote>
+
+  <p>更准确地表达：</p>
+  <blockquote><p>Memory 是对历史信息进行<b>写入、存储、检索、更新、压缩、冲突处理和淘汰</b>的一套机制；Context 则是某一次模型调用实际获得的信息集合。</p></blockquote>
+
+  <p>一个完整的 Agent Runtime 的分层结构如下：</p>
+
+  <figure>
+    <svg viewBox="0 0 780 430" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a90a0"/>
+        </marker>
+      </defs>
+      <!-- Row 1 : State -->
+      <rect x="12" y="16" width="756" height="104" rx="10" fill="#e8edf4" stroke="#2c4a6e" stroke-width="1.4"/>
+      <rect x="26" y="32" width="128" height="72" rx="7" fill="#2c4a6e"/>
+      <text x="90" y="66" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">State</text>
+      <text x="90" y="88" text-anchor="middle" fill="#b8c7db" font-size="10.5">运行时快照</text>
+      <g>
+        <rect x="172" y="32" width="180" height="30" rx="6" fill="#fff" stroke="#9fb3cc"/>
+        <text x="262" y="52" text-anchor="middle" fill="#31425c" font-size="12.5">Task State · 任务/步骤</text>
+        <rect x="368" y="32" width="180" height="30" rx="6" fill="#fff" stroke="#9fb3cc"/>
+        <text x="458" y="52" text-anchor="middle" fill="#31425c" font-size="12.5">Workflow State · 工作流节点</text>
+        <rect x="172" y="72" width="180" height="30" rx="6" fill="#fff" stroke="#9fb3cc"/>
+        <text x="262" y="92" text-anchor="middle" fill="#31425c" font-size="12.5">Tool State · 工具/锁/重试</text>
+        <rect x="368" y="72" width="180" height="30" rx="6" fill="#fff" stroke="#9fb3cc"/>
+        <text x="458" y="92" text-anchor="middle" fill="#31425c" font-size="12.5">Temporary Variables</text>
+        <rect x="564" y="52" width="190" height="30" rx="6" fill="#d6e0ec" stroke="#9fb3cc" stroke-dasharray="4 3"/>
+        <text x="659" y="72" text-anchor="middle" fill="#2c4a6e" font-size="11.5">回答"进行到哪"</text>
+      </g>
+      <!-- Row 2 : Short-Term -->
+      <rect x="12" y="138" width="756" height="84" rx="10" fill="#e3f0ed" stroke="#0f6b5f" stroke-width="1.4"/>
+      <rect x="26" y="153" width="128" height="54" rx="7" fill="#0f6b5f"/>
+      <text x="90" y="180" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Short-Term</text>
+      <text x="90" y="197" text-anchor="middle" fill="#bfe0da" font-size="10.5">Context</text>
+      <g>
+        <rect x="172" y="157" width="170" height="30" rx="6" fill="#fff" stroke="#8cc3ba"/>
+        <text x="257" y="177" text-anchor="middle" fill="#0d4a41" font-size="12.5">Recent Messages</text>
+        <rect x="356" y="157" width="170" height="30" rx="6" fill="#fff" stroke="#8cc3ba"/>
+        <text x="441" y="177" text-anchor="middle" fill="#0d4a41" font-size="12.5">Current Task</text>
+        <rect x="540" y="157" width="214" height="30" rx="6" fill="#fff" stroke="#8cc3ba"/>
+        <text x="647" y="177" text-anchor="middle" fill="#0d4a41" font-size="12.5">Recent Tool Results</text>
+      </g>
+      <!-- Row 3 : Summary -->
+      <rect x="12" y="240" width="756" height="66" rx="10" fill="#f6efe0" stroke="#9a6b1f" stroke-width="1.4"/>
+      <rect x="26" y="252" width="128" height="42" rx="7" fill="#9a6b1f"/>
+      <text x="90" y="279" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Session</text>
+      <text x="90" y="294" text-anchor="middle" fill="#eadfc4" font-size="10.5">Summary</text>
+      <rect x="172" y="258" width="250" height="30" rx="6" fill="#fff" stroke="#d3b878"/>
+      <text x="297" y="278" text-anchor="middle" fill="#6b4c14" font-size="12.5">Compressed History（压缩产物）</text>
+      <!-- Row 4 : Long-Term -->
+      <rect x="12" y="324" width="756" height="100" rx="10" fill="#f7ebe6" stroke="#b5543a" stroke-width="1.4"/>
+      <rect x="26" y="339" width="128" height="70" rx="7" fill="#b5543a"/>
+      <text x="90" y="372" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Long-Term</text>
+      <text x="90" y="389" text-anchor="middle" fill="#f0d6cc" font-size="10.5">Memory</text>
+      <g>
+        <rect x="172" y="340" width="180" height="30" rx="6" fill="#fff" stroke="#dca596"/>
+        <text x="262" y="360" text-anchor="middle" fill="#7c3a29" font-size="12.5">User Facts · 用户事实</text>
+        <rect x="368" y="340" width="180" height="30" rx="6" fill="#fff" stroke="#dca596"/>
+        <text x="458" y="360" text-anchor="middle" fill="#7c3a29" font-size="12.5">Preferences · 偏好</text>
+        <rect x="172" y="378" width="180" height="30" rx="6" fill="#fff" stroke="#dca596"/>
+        <text x="262" y="398" text-anchor="middle" fill="#7c3a29" font-size="12.5">Long-Term Tasks</text>
+        <rect x="368" y="378" width="180" height="30" rx="6" fill="#fff" stroke="#dca596"/>
+        <text x="458" y="398" text-anchor="middle" fill="#7c3a29" font-size="12.5">Reusable Experience</text>
+        <rect x="564" y="358" width="190" height="30" rx="6" fill="#f3ddd5" stroke="#dca596" stroke-dasharray="4 3"/>
+        <text x="659" y="378" text-anchor="middle" fill="#8a4030" font-size="11.5">回答"什么值得记"</text>
+      </g>
+    </svg>
+    <figcaption><b>图 1</b> · Agent Runtime 分层架构：State 驱动执行，Short-Term Context 服务当轮，Summary 承载压缩，Long-Term Memory 沉淀知识</figcaption>
+  </figure>
+
+  <p>下面逐层展开。</p>
+</section>
+
+<!-- ═══════════ 03 ═══════════ -->
+<section id="s3">
+  <h2><span class="no">03</span>Agent State：被忽视的"运行时记忆"</h2>
+  <p>这是我见过最多团队踩坑的地方——把 State 和 Memory 混为一谈，或者干脆没有 State，让 Agent 的"进行状态"隐式地活在 Chat History 里。</p>
+  <p>State 和 Memory 的根本区别一句话说清：</p>
+  <div class="mono-block">State：  "现在进行到哪里？"
+Memory： "过去发生了什么，什么值得继续记住？"</div>
+
+  <p>一个任务型 Agent 的 State 长这样：</p>
+
+  <div class="code">
+    <div class="bar"><i></i><i></i><i></i><span class="lang">JSON · task_state.json</span></div>
+    <pre>{
+  "goal": "完成客户跟进方案",
+  "current_step": "生成第二版话术",
+  "pending_action": "等待用户确认",
+  "retry_count": 1,
+  "tool_status": {
+    "crm_lookup": "succeeded",
+    "draft_generator": "completed_v2"
+  },
+  "workflow_node": "refine_draft",
+  "intermediate_results": {
+    "draft_v1_rejected_reason": "语气过于正式"
+  }
+}</pre>
+  </div>
+
+  <p>State 至少包含这些维度：</p>
+  <ul>
+    <li><b>Task State</b>：目标、当前步骤、已完成/未完成子任务</li>
+    <li><b>Workflow State</b>：处于工作流哪个节点、哪些分支已走过</li>
+    <li><b>Tool State</b>：每个工具调用的状态、是否持锁、幂等键</li>
+    <li><b>Pending Actions</b>：等待用户确认的事项、定时任务</li>
+    <li><b>Intermediate Results</b>：中间产物（草稿 v1 被否的原因）</li>
+    <li><b>Retry State</b>：重试次数、上次失败原因、退避时间</li>
+  </ul>
+
+  <p>为什么 State 必须独立存在、不能依赖 Chat History？三个理由：</p>
+  <ol>
+    <li><b>可恢复</b>。进程崩溃后，从 State 快照恢复任务，而不是让 LLM 重新读历史"推理出"自己进行到哪一步——那既贵又不可靠。</li>
+    <li><b>可重试</b>。重试需要知道 <code class="inline">retry_count</code> 和幂等键，这些是结构化事实，不是自然语言能稳定表达的。</li>
+    <li><b>可暂停</b>。用户说"先停一下，我明天继续"，Agent 明天必须知道 <code class="inline">pending_action: 等待用户确认</code>，而不是靠回放全部对话。</li>
+  </ol>
+
+  <div class="callout"><p><b>State 更像 Agent 的 Runtime Snapshot，Memory 更像 Agent 的知识沉淀。前者驱动执行，后者注入 Context。</b></p></div>
+</section>
+
+<!-- ═══════════ 04 ═══════════ -->
+<section id="s4">
+  <h2><span class="no">04</span>短期上下文：Agent 的 Working Memory</h2>
+  <p>Short-Term Context 是单次模型调用的工作记忆，典型构成：</p>
+  <ul>
+    <li>最近对话轮次</li>
+    <li>当前用户请求</li>
+    <li>当前任务目标与计划</li>
+    <li>最近的 Tool Calls 及其 Results</li>
+    <li>临时变量（scratchpad）</li>
+    <li>未完成任务清单</li>
+  </ul>
+
+  <p>为什么不能走"全部历史 → Prompt"这条最简单的路？随着 Session 增长：</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <caption><b>表 2</b> · 全量历史进 Prompt 的代价</caption>
+    <thead><tr><th>问题</th><th>后果</th></tr></thead>
+    <tbody>
+      <tr><td><b>Token 成本上升</b></td><td>线性甚至超线性增长，生产成本失控</td></tr>
+      <tr><td><b>Latency 上升</b></td><td>Prefill 时间变长，用户体验崩坏</td></tr>
+      <tr><td><b>Context Noise 增加</b></td><td>无关历史稀释关键信息，模型"分心"</td></tr>
+      <tr><td><b>Tool Result 污染</b></td><td>早期的大体积 JSON 输出长期驻留</td></tr>
+      <tr><td><b>历史错误持续传播</b></td><td>模型早期的误判被后续轮次不断引用</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>最后一条尤其隐蔽：模型第 5 轮给了一个错误结论，第 40 轮时它还在引用这个错误，因为"历史里写着"。<b>完整历史给了错误信息与正确信息同等的地位。</b></p>
+
+  <div class="callout"><p><b>完整历史 ≠ 有效 Context。历史是记录，Context 是预算内的信息精选。</b></p></div>
+
+  <p>把第 4、5 节放在一起对照，Short-Term 与 Long-Term Memory 的工程差异一目了然：</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <caption><b>表 3</b> · Short-Term / Long-Term Memory 工程对比</caption>
+    <thead><tr><th>维度</th><th>Short-Term Memory</th><th>Long-Term Memory</th></tr></thead>
+    <tbody>
+      <tr><td>生命周期</td><td>Session 内</td><td>跨 Session / 长期（带 TTL）</td></tr>
+      <tr><td>写入方式</td><td>隐式（对话自然产生，无需准入）</td><td>显式（Admission Policy 准入）</td></tr>
+      <tr><td>数据形态</td><td>原始消息 + Tool 结果</td><td>结构化 Memory Record</td></tr>
+      <tr><td>访问模式</td><td>顺序读取、基本全量</td><td>检索式、按需召回</td></tr>
+      <tr><td>压缩策略</td><td>Sliding Window / Summary</td><td>不压缩，靠淘汰与更新</td></tr>
+      <tr><td>典型存储</td><td>KV / DB（按 session_id）</td><td>KV + Vector DB 混合</td></tr>
+      <tr><td>主要风险</td><td>Context Noise、Tool Result 污染</td><td>Stale、冲突、误记</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>这张表也解释了为什么两者不能共用一套机制：<b>短期记忆的问题是"太满"，长期记忆的问题是"太脏"</b>——前者靠压缩解决，后者靠准入和生命周期管理解决。把短期上下文直接"落库"变成长期记忆，等于把满和脏两个问题合成了一个。</p>
+</section>
+
+<!-- ═══════════ 05 ═══════════ -->
+<section id="s5">
+  <h2><span class="no">05</span>长期记忆：什么真正值得保存</h2>
+  <p>长期记忆至少覆盖五类：</p>
+  <ul>
+    <li><b>用户事实</b>：职业、所在地区、客户类型</li>
+    <li><b>用户偏好</b>：喜欢简洁回复、偏好摄氏度、习惯中文输出</li>
+    <li><b>稳定身份信息</b>：账号角色、组织归属</li>
+    <li><b>长期任务</b>：正在进行的项目、待办承诺</li>
+    <li><b>可复用经验</b>：之前同类问题的有效解法</li>
+  </ul>
+
+  <p>这里必须正面回答一个反直觉的问题：</p>
+  <blockquote><p><b>为什么"什么都记"反而会让 Agent 变得更差？</b></p></blockquote>
+
+  <p>因为 Memory 的下游是 Retrieval + Context Injection。记的越多：</p>
+  <ul>
+    <li>检索噪声越多，无关记忆挤占 Token 预算</li>
+    <li>冲突概率越高（新旧信息打架）</li>
+    <li>过期信息污染回答（Stale Memory）</li>
+    <li>用户一旦要求"忘掉"某件事，你根本不知道它扩散到了哪些记忆条目里</li>
+  </ul>
+
+  <p>所以需要一个 <b>Memory Admission Policy</b>（记忆准入策略），本质是对每条候选记忆打分：</p>
+
+  <div class="mono-block">Admission Score = Persistence × Utility × Confidence</div>
+
+  <ul>
+    <li><b>Persistence</b>：这条信息是长期稳定，还是临时性/一次性的？"我现在有点累"不该入库；"我负责华东地区"应该入库。</li>
+    <li><b>Utility</b>：未来任务中会被用到吗？用户随口一句废话，Utility 接近零。</li>
+    <li><b>Confidence</b>：来源是用户明确声明（高），还是 LLM 从对话推断（低）？推断需要更低的默认分数。</li>
+  </ul>
+
+  <p>准入维度展开：</p>
+  <ol>
+    <li>是否长期有效（TTL 估计）</li>
+    <li>是否未来有用（与用户任务画像的匹配度）</li>
+    <li>是否用户明确表达（explicit vs inferred）</li>
+    <li>来源是否可信（用户原话 &gt; 模型推断 &gt; 工具副作用）</li>
+    <li>是否值得存储成本（一条记忆的写入、检索、维护成本不为零）</li>
+  </ol>
+
+  <div class="callout"><p><b>Long-Term Memory 不是 Chat History Archive。它是有准入门槛、有质量分、有生命周期的知识库。</b></p></div>
+</section>
+
+<!-- ═══════════ 06 ═══════════ -->
+<section id="s6">
+  <h2><span class="no">06</span>Memory Record：长期记忆应该长什么样</h2>
+  <p>生产级的 Memory 条目至少长这样：</p>
+
+  <div class="code">
+    <div class="bar"><i></i><i></i><i></i><span class="lang">JSON · memory_record</span></div>
+    <pre>{
+  "id": "mem_123",
+  "user_id": "u_001",
+  "type": "preference",
+  "content": "用户偏好简洁的技术文章",
+  "confidence": 0.92,
+  "source": "explicit_user_statement",
+  "session_id": "sess_20260115_084",
+  "created_at": "2026-01-15T10:23:00Z",
+  "updated_at": "2026-03-02T08:11:00Z",
+  "expires_at": null,
+  "supersedes": "mem_098",
+  "version": 2,
+  "access_count": 17,
+  "last_accessed_at": "2026-06-10T14:00:00Z"
+}</pre>
+  </div>
+
+  <p>为什么不能只是 <code class="inline">"user said xxx"</code> 一段裸文本？因为缺少了这些字段，你后面所有机制都建不起来：</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <caption><b>表 4</b> · Memory Record 字段与支撑机制</caption>
+    <thead><tr><th>字段</th><th>支撑的机制</th></tr></thead>
+    <tbody>
+      <tr><td><b>Content</b></td><td>语义检索的载体</td></tr>
+      <tr><td><b>Type</b></td><td>差异化注入格式与过滤策略</td></tr>
+      <tr><td><b>Confidence</b></td><td>冲突仲裁、注入优先级</td></tr>
+      <tr><td><b>Source</b></td><td>信任度判定、审计、合规删除</td></tr>
+      <tr><td><b>Timestamp</b></td><td>时间优先冲突策略、过期淘汰</td></tr>
+      <tr><td><b>TTL</b></td><td>自动生命周期管理</td></tr>
+      <tr><td><b>supersedes / version</b></td><td>版本化与冲突追踪</td></tr>
+      <tr><td><b>access_count</b></td><td>淘汰时的活跃度信号</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>一个只有裸文本的 Memory 系统，等冲突发生时你只能回答"两条都在，随缘"。</p>
+</section>
+
+<!-- ═══════════ 07 ═══════════ -->
+<section id="s7">
+  <h2><span class="no">07</span>Memory Read / Write Pipeline：把 Memory 当成一个数据系统</h2>
+  <p>很多人把 Memory 理解成"调用一次 embedding 然后 write"，这不是 Memory 系统，这是记忆垃圾桶。生产级的 Memory 是<b>读写闭环</b>：</p>
+
+  <figure>
+    <svg viewBox="0 0 780 320" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2c4a6e"/>
+        </marker>
+      </defs>
+      <!-- Write Path -->
+      <text x="14" y="26" font-size="13" font-weight="700" fill="#b5543a" letter-spacing="2">WRITE PATH</text>
+      <text x="120" y="26" font-size="11.5" fill="#8a90a0">从对话到入库</text>
+      <g>
+        <rect x="14" y="44" width="110" height="46" rx="8" fill="#fff" stroke="#b5543a" stroke-width="1.3"/>
+        <text x="69" y="64" text-anchor="middle" font-size="11.5" fill="#7c3a29">Conversation</text>
+        <text x="69" y="80" text-anchor="middle" font-size="9.5" fill="#b5543a">对话流</text>
+        <line x1="124" y1="67" x2="146" y2="67" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="148" y="44" width="112" height="46" rx="8" fill="#fff" stroke="#b5543a" stroke-width="1.3"/>
+        <text x="204" y="64" text-anchor="middle" font-size="11" fill="#7c3a29">Candidate</text>
+        <text x="204" y="78" text-anchor="middle" font-size="9.5" fill="#b5543a">候选抽取</text>
+        <line x1="260" y1="67" x2="282" y2="67" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="284" y="44" width="112" height="46" rx="8" fill="#fff" stroke="#b5543a" stroke-width="1.3"/>
+        <text x="340" y="64" text-anchor="middle" font-size="11" fill="#7c3a29">Importance /</text>
+        <text x="340" y="78" text-anchor="middle" font-size="9.5" fill="#b5543a">置信度打分</text>
+        <line x1="396" y1="67" x2="418" y2="67" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="420" y="44" width="112" height="46" rx="8" fill="#fff" stroke="#b5543a" stroke-width="1.3"/>
+        <text x="476" y="64" text-anchor="middle" font-size="11.5" fill="#7c3a29">Dedup</text>
+        <text x="476" y="80" text-anchor="middle" font-size="9.5" fill="#b5543a">语义去重</text>
+        <line x1="532" y1="67" x2="554" y2="67" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="556" y="44" width="100" height="46" rx="8" fill="#fff" stroke="#b5543a" stroke-width="1.3"/>
+        <text x="606" y="64" text-anchor="middle" font-size="10.5" fill="#7c3a29">Conflict</text>
+        <text x="606" y="80" text-anchor="middle" font-size="9.5" fill="#b5543a">冲突仲裁</text>
+        <line x1="656" y1="67" x2="678" y2="67" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="680" y="44" width="86" height="46" rx="8" fill="#b5543a"/>
+        <text x="723" y="64" text-anchor="middle" font-size="10.5" fill="#fff" font-weight="700">Memory</text>
+        <text x="723" y="80" text-anchor="middle" font-size="10.5" fill="#fff" font-weight="700">Store</text>
+      </g>
+      <text x="14" y="118" font-size="11" fill="#8a90a0">关键：Dedup 与 Conflict 必须分开 —— 重复是"同一件事说两遍"（合并），冲突是"同一件事说法变了"（仲裁）。</text>
+
+      <line x1="40" y1="138" x2="740" y2="138" stroke="#e3dfd6" stroke-width="1" stroke-dasharray="6 5"/>
+
+      <!-- Read Path -->
+      <text x="14" y="166" font-size="13" font-weight="700" fill="#0f6b5f" letter-spacing="2">READ PATH</text>
+      <text x="112" y="166" font-size="11.5" fill="#8a90a0">从查询到注入</text>
+      <g>
+        <rect x="14" y="184" width="92" height="46" rx="8" fill="#fff" stroke="#0f6b5f" stroke-width="1.3"/>
+        <text x="60" y="204" text-anchor="middle" font-size="11" fill="#0d4a41">User Query</text>
+        <text x="60" y="220" text-anchor="middle" font-size="9.5" fill="#0f6b5f">用户请求</text>
+        <line x1="106" y1="207" x2="126" y2="207" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="128" y="184" width="92" height="46" rx="8" fill="#fff" stroke="#0f6b5f" stroke-width="1.3"/>
+        <text x="174" y="204" text-anchor="middle" font-size="11" fill="#0d4a41">Need Mem?</text>
+        <text x="174" y="220" text-anchor="middle" font-size="9.5" fill="#0f6b5f">门控判断</text>
+        <line x1="220" y1="207" x2="240" y2="207" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="242" y="184" width="92" height="46" rx="8" fill="#fff" stroke="#0f6b5f" stroke-width="1.3"/>
+        <text x="288" y="204" text-anchor="middle" font-size="11" fill="#0d4a41">Retrieve</text>
+        <text x="288" y="220" text-anchor="middle" font-size="9.5" fill="#0f6b5f">混合检索</text>
+        <line x1="334" y1="207" x2="354" y2="207" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="356" y="184" width="88" height="46" rx="8" fill="#fff" stroke="#0f6b5f" stroke-width="1.3"/>
+        <text x="400" y="204" text-anchor="middle" font-size="11" fill="#0d4a41">Rank</text>
+        <text x="400" y="220" text-anchor="middle" font-size="9.5" fill="#0f6b5f">综合排序</text>
+        <line x1="444" y1="207" x2="464" y2="207" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="466" y="184" width="88" height="46" rx="8" fill="#fff" stroke="#0f6b5f" stroke-width="1.3"/>
+        <text x="510" y="204" text-anchor="middle" font-size="11" fill="#0d4a41">Filter</text>
+        <text x="510" y="220" text-anchor="middle" font-size="9.5" fill="#0f6b5f">预算裁剪</text>
+        <line x1="554" y1="207" x2="574" y2="207" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="576" y="184" width="88" height="46" rx="8" fill="#fff" stroke="#0f6b5f" stroke-width="1.3"/>
+        <text x="620" y="204" text-anchor="middle" font-size="11" fill="#0d4a41">Compress</text>
+        <text x="620" y="220" text-anchor="middle" font-size="9.5" fill="#0f6b5f">注入前压缩</text>
+        <line x1="664" y1="207" x2="684" y2="207" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar2)"/>
+        <rect x="686" y="184" width="80" height="46" rx="8" fill="#0f6b5f"/>
+        <text x="726" y="204" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">Context</text>
+        <text x="726" y="220" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">Injection</text>
+      </g>
+      <text x="14" y="258" font-size="11" fill="#8a90a0">关键：Gate 判断 → 召回 → 排序 → 过滤 → 压缩 → 注入，一个环节都不能少。</text>
+
+      <!-- loop back arrow -->
+      <path d="M 726 230 L 726 285 L 69 285 L 69 234" fill="none" stroke="#8a90a0" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ar2)"/>
+      <text x="398" y="300" text-anchor="middle" font-size="11" fill="#8a90a0" font-style="italic">注入后的回答成为下一轮对话 → 重新进入 Write Path（读写闭环）</text>
+    </svg>
+    <figcaption><b>图 2</b> · Memory Read / Write Pipeline：写入六段管道 + 读取六段漏斗，二者构成闭环</figcaption>
+  </figure>
+
+  <blockquote><p><b>Memory 不是"存进去"，而是"读写闭环"。</b>只设计写入的 Memory 系统，等于只修了下水道的上半截。</p></blockquote>
+</section>
+
+<!-- ═══════════ 08 ═══════════ -->
+<section id="s8">
+  <h2><span class="no">08</span>Memory Lifecycle：记住之后怎么办</h2>
+  <p>记忆不是 write once, read forever。完整生命周期：</p>
+
+  <figure>
+    <svg viewBox="0 0 780 190" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2c4a6e"/>
+        </marker>
+      </defs>
+      <g font-size="12.5">
+        <rect x="20"  y="55" width="100" height="46" rx="23" fill="#e8edf4" stroke="#2c4a6e" stroke-width="1.3"/>
+        <text x="70"  y="76" text-anchor="middle" fill="#1d3350" font-weight="700">Create</text>
+        <text x="70"  y="92" text-anchor="middle" fill="#5c7398" font-size="10">准入写入</text>
+        <line x1="120" y1="78" x2="146" y2="78" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar3)"/>
+        <rect x="148" y="55" width="100" height="46" rx="23" fill="#e8edf4" stroke="#2c4a6e" stroke-width="1.3"/>
+        <text x="198" y="76" text-anchor="middle" fill="#1d3350" font-weight="700">Store</text>
+        <text x="198" y="92" text-anchor="middle" fill="#5c7398" font-size="10">分类落库</text>
+        <line x1="248" y1="78" x2="274" y2="78" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar3)"/>
+        <rect x="276" y="55" width="100" height="46" rx="23" fill="#e3f0ed" stroke="#0f6b5f" stroke-width="1.3"/>
+        <text x="326" y="76" text-anchor="middle" fill="#0d4a41" font-weight="700">Retrieve</text>
+        <text x="326" y="92" text-anchor="middle" fill="#4a8377" font-size="10">按需召回</text>
+        <line x1="376" y1="78" x2="402" y2="78" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar3)"/>
+        <rect x="404" y="55" width="100" height="46" rx="23" fill="#f6efe0" stroke="#9a6b1f" stroke-width="1.3"/>
+        <text x="454" y="76" text-anchor="middle" fill="#6b4c14" font-weight="700">Update</text>
+        <text x="454" y="92" text-anchor="middle" fill="#a07c40" font-size="10">更新/版本化</text>
+        <line x1="504" y1="78" x2="530" y2="78" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar3)"/>
+        <rect x="532" y="55" width="100" height="46" rx="23" fill="#f7ebe6" stroke="#b5543a" stroke-width="1.3"/>
+        <text x="582" y="76" text-anchor="middle" fill="#7c3a29" font-weight="700">Expire</text>
+        <text x="582" y="92" text-anchor="middle" fill="#b5765f" font-size="10">TTL 到期</text>
+        <line x1="632" y1="78" x2="658" y2="78" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar3)"/>
+        <rect x="660" y="55" width="100" height="46" rx="23" fill="#1e2228"/>
+        <text x="710" y="76" text-anchor="middle" fill="#fff" font-weight="700">Delete</text>
+        <text x="710" y="92" text-anchor="middle" fill="#8a90a0" font-size="10">硬删除</text>
+      </g>
+      <!-- feedback loop Retrieve <--> Update -->
+      <path d="M 326 101 L 326 130 L 454 130 L 454 105" fill="none" stroke="#8a90a0" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#ar3)"/>
+      <text x="390" y="148" text-anchor="middle" font-size="10.5" fill="#8a90a0" font-style="italic">召回后核验 → 触发更新（记忆是活的）</text>
+      <text x="20" y="30" font-size="12" fill="#4a4f58">生命周期 = 准入（写入门槛） + 维护（更新/冲突/TTL） + 淘汰（GC + 用户删除）</text>
+      <text x="20" y="176" font-size="11" fill="#8a90a0">GC 策略：TTL 到期 ∨ 半年未访问 ∨ 置信度中下的推断类记忆 → 候选清理</text>
+    </svg>
+    <figcaption><b>图 3</b> · Memory Lifecycle：Create → Store → Retrieve → Update → Expire → Delete，检索与更新之间形成维护回路</figcaption>
+  </figure>
+
+  <p>各阶段要处理的工程问题：</p>
+  <ul>
+    <li><b>Memory Update</b>：用户说"我现在改用华氏度了"——不是新增一条，而是更新旧条目（或新条目 supersede 旧条目）。</li>
+    <li><b>Memory Expiration / TTL</b>：临时性信息（"我这周在外地出差"）设置 TTL，到期自动降权或删除。</li>
+    <li><b>用户主动修改</b>：提供用户可编辑的记忆视图，用户改过的条目 confidence 拉满、source 标记为 <code class="inline">user_edited</code>。</li>
+    <li><b>用户要求忘记</b>：<code class="inline">"忘掉我说过的事"</code>——必须能定位到具体条目并硬删除。这就是为什么裸文本 Memory 不行：你不知道"这件事"对应哪些条目。没有 type、没有 scope 的记忆，删除等于误伤或漏删。</li>
+    <li><b>版本化</b>：每次更新保留版本链，可回溯，也用于排查"Agent 为什么突然变了一个说法"。</li>
+    <li><b>Memory Garbage Collection</b>：基于 TTL + access_count + confidence 的定期清理。半年没被访问、置信度中下的推断类记忆，是 GC 的首要目标。</li>
+  </ul>
+
+  <blockquote><p><b>长期记忆不是永久事实，而是带有时间和可信度的信息。</b>你保存的不是"真相"，而是"截至某时刻、以某种置信度成立的说法"。</p></blockquote>
+</section>
+
+<!-- ═══════════ 09 ═══════════ -->
+<section id="s9">
+  <h2><span class="no">09</span>Memory Conflict：记忆为什么会互相矛盾</h2>
+  <p>最典型的场景：</p>
+  <div class="mono-block">旧记忆：用户在上海工作        (mem_045, 2026-01, confidence 0.95)
+新证据：用户现在在北京工作    (本轮对话, explicit, 2026-06)</div>
+
+  <p>如果两条都注入 Context，模型输出大概率变成精神分裂："您在上海……也提到北京……"。</p>
+
+  <p>冲突处理管道：</p>
+
+  <figure>
+    <svg viewBox="0 0 780 300" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2c4a6e"/>
+        </marker>
+      </defs>
+      <!-- two inputs -->
+      <rect x="60" y="30" width="200" height="52" rx="9" fill="#f4f1ea" stroke="#8a90a0" stroke-width="1.2"/>
+      <text x="160" y="52" text-anchor="middle" font-size="12.5" fill="#4a4f58" font-weight="700">Old Memory</text>
+      <text x="160" y="70" text-anchor="middle" font-size="10.5" fill="#8a90a0">用户在上海 · conf 0.95 · 2026-01</text>
+      <rect x="60" y="110" width="200" height="52" rx="9" fill="#e3f0ed" stroke="#0f6b5f" stroke-width="1.2"/>
+      <text x="160" y="132" text-anchor="middle" font-size="12.5" fill="#0d4a41" font-weight="700">New Evidence</text>
+      <text x="160" y="150" text-anchor="middle" font-size="10.5" fill="#4a8377">用户在北京 · explicit · 2026-06</text>
+      <!-- converge -->
+      <path d="M 260 56 L 320 56 L 320 90 L 356 96" fill="none" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar4)"/>
+      <path d="M 260 136 L 320 136 L 320 105 L 356 100" fill="none" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar4)"/>
+      <!-- conflict detection -->
+      <rect x="360" y="66" width="180" height="64" rx="9" fill="#fff" stroke="#b5543a" stroke-width="1.4"/>
+      <text x="450" y="92" text-anchor="middle" font-size="13" fill="#7c3a29" font-weight="700">Conflict Detection</text>
+      <text x="450" y="112" text-anchor="middle" font-size="10" fill="#b5765f">同 user + 同 type + 语义矛盾</text>
+      <line x1="540" y1="98" x2="576" y2="98" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar4)"/>
+      <!-- resolution -->
+      <rect x="580" y="66" width="180" height="64" rx="9" fill="#e8edf4" stroke="#2c4a6e" stroke-width="1.4"/>
+      <text x="670" y="92" text-anchor="middle" font-size="13" fill="#1d3350" font-weight="700">Resolution Policy</text>
+      <text x="670" y="112" text-anchor="middle" font-size="10" fill="#5c7398">仲裁策略（见下方优先级）</text>
+      <!-- down to updated -->
+      <path d="M 670 130 L 670 170" fill="none" stroke="#2c4a6e" stroke-width="1.6" marker-end="url(#ar4)"/>
+      <rect x="480" y="174" width="280" height="56" rx="9" fill="#2c4a6e"/>
+      <text x="620" y="197" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">Updated Memory</text>
+      <text x="620" y="216" text-anchor="middle" font-size="10.5" fill="#b8c7db">version+1 · supersedes: mem_045 · conf 0.97</text>
+      <!-- archive -->
+      <path d="M 480 202 L 420 202" fill="none" stroke="#8a90a0" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#ar4)"/>
+      <rect x="170" y="174" width="250" height="56" rx="9" fill="#f4f1ea" stroke="#8a90a0" stroke-width="1.2" stroke-dasharray="5 3"/>
+      <text x="295" y="197" text-anchor="middle" font-size="12" fill="#6a6f7c" font-weight="700">Old Version Archived</text>
+      <text x="295" y="216" text-anchor="middle" font-size="10.5" fill="#8a90a0">不物理删除（除非用户要求），可回滚</text>
+      <!-- priority list -->
+      <text x="30" y="266" font-size="11.5" fill="#4a4f58">仲裁优先级：① 用户明确声明 → ② 来源可信度 → ③ 时间优先 → ④ 无法仲裁时标记冲突状态联合注入 → ⑤ 全程版本化</text>
+    </svg>
+    <figcaption><b>图 4</b> · Memory Conflict 处理管道：检测 → 仲裁 → 版本化更新，旧版本归档可回滚</figcaption>
+  </figure>
+
+  <p>Resolution Policy 的优先级序列（从高到低）：</p>
+  <ol>
+    <li><b>用户明确声明 &gt; 一切</b>："不对，我在上海"——直接覆盖，无论旧记忆多自信。</li>
+    <li><b>来源可信度</b>：explicit_user_statement &gt; user_edited &gt; inferred &gt; tool_side_effect。</li>
+    <li><b>时间优先</b>：同等可信度时，新信息覆盖旧信息（现实世界人会换工作、换偏好）。</li>
+    <li><b>无法仲裁时不硬选</b>：当置信度接近且来源同级，宁可两条都保留但<b>标记冲突状态</b>，在注入时附加"以下两条信息存在时间上的演变，以较新为准"，让模型有元认知。</li>
+    <li><b>版本化</b>：任何覆盖都产生新 version，旧版本不物理删除（除非用户要求），保证可回滚。</li>
+  </ol>
+
+  <p>最坏的策略是"后写赢，且不留痕迹"——你将永远无法回答用户"你之前为什么一直说我在上海"。</p>
+
+  <div class="case">
+    <p><b>背景</b>：个性化写作助手项目，用户 1 月说"我是后端工程师"，6 月转岗后说"我现在做解决方案架构"。旧实现是 append-only：两条记忆都在，检索时按相关度都可能命中。结果是 7 月起用户连续投诉 Agent "人格分裂"——技术建议夹杂售前话术风格。</p>
+    <p><b>排查与修复</b>：我们把两周内的 4,200 条活跃记忆跑了冲突对账（同 user + 同 type + embedding 相似度 &gt; 0.82 再人工比对），发现 11% 存在类似新旧并存。修复后写入管道强制走 Conflict Detection，同型冲突默认"新覆盖旧 + supersede 链"，用户明确声明绝对优先。</p>
+    <div class="stats">
+      <div class="stat"><div class="v">4,200</div><div class="k">活跃记忆条数（两周窗口）</div></div>
+      <div class="stat warn"><div class="v">11%</div><div class="k">存在新旧冲突并存</div></div>
+    </div>
+    <p class="lesson">教训：没有冲突仲裁的 Memory 系统，跑半年后十分之一的记忆是互相打架的。</p>
+  </div>
+</section>
+
+<!-- ═══════════ 10 ═══════════ -->
+<section id="s10">
+  <h2><span class="no">10</span>会话压缩：Context Compression</h2>
+  <p>长 Session 必须压缩，这不是可选项而是成本项。四种主流策略：</p>
+
+  <h3>Sliding Window</h3>
+  <p>只保留最近 N 轮。实现最简单，问题也最明显：第 3 轮确立的预算约束，第 40 轮被切掉了，Agent 开始推荐超预算的方案。</p>
+
+  <h3>Conversation Summary</h3>
+  <p>把被裁掉的历史用 LLM 压成摘要。摘要质量完全取决于压缩 Prompt 的设计（见第 11 节）。</p>
+
+  <h3>Structured State</h3>
+  <p>把历史压缩成结构化状态而非自由文本：</p>
+
+  <div class="code">
+    <div class="bar"><i></i><i></i><i></i><span class="lang">JSON · structured_summary</span></div>
+    <pre>{
+  "goal": "为 fleet 客户挑选跟进方案",
+  "constraints": ["预算 50 万以内", "非 SUV", "需支持车队管理 API"],
+  "decisions": ["最终确定 B 方案"],
+  "open_questions": ["B 方案交付时间未确认"],
+  "preferences": ["话术偏正式", "需要数据支撑"]
+}</pre>
+  </div>
+
+  <p>这对任务型 Agent 是保真度最高的压缩方式——约束、决策结构化地活下来，而不是赌摘要模型"记得"提它们。</p>
+
+  <h3>Hierarchical Memory</h3>
+  <p>多层叠加：</p>
+
+  <figure>
+    <svg viewBox="0 0 780 330" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a90a0"/>
+        </marker>
+      </defs>
+      <!-- layered trapezoid stack -->
+      <g>
+        <rect x="120" y="24" width="540" height="58" rx="9" fill="#0f6b5f" opacity="0.92"/>
+        <text x="390" y="49" text-anchor="middle" font-size="14" fill="#fff" font-weight="700">Recent Messages · 最近 5–10 轮原文</text>
+        <text x="390" y="68" text-anchor="middle" font-size="10.5" fill="#bfe0da">保真度最高 · 直接进 Context</text>
+        <rect x="160" y="94" width="460" height="58" rx="9" fill="#9a6b1f" opacity="0.92"/>
+        <text x="390" y="119" text-anchor="middle" font-size="14" fill="#fff" font-weight="700">Session Summary · 本 Session 摘要</text>
+        <text x="390" y="138" text-anchor="middle" font-size="10.5" fill="#eadfc4">更早历史的有损压缩</text>
+        <rect x="200" y="164" width="380" height="58" rx="9" fill="#b5543a" opacity="0.92"/>
+        <text x="390" y="189" text-anchor="middle" font-size="14" fill="#fff" font-weight="700">Long-Term Memory · 跨 Session</text>
+        <text x="390" y="208" text-anchor="middle" font-size="10.5" fill="#f0d6cc">按需检索，不默认进 Context</text>
+        <rect x="240" y="234" width="320" height="58" rx="9" fill="#1e2228"/>
+        <text x="390" y="259" text-anchor="middle" font-size="14" fill="#fff" font-weight="700">Historical Archive · 全量归档</text>
+        <text x="390" y="278" text-anchor="middle" font-size="10.5" fill="#8a90a0">仅审计 / debug，永不进 Prompt</text>
+      </g>
+      <!-- side annotations -->
+      <line x1="660" y1="53" x2="720" y2="53" stroke="#8a90a0" stroke-width="1.2" marker-end="url(#ar5)"/>
+      <text x="726" y="50" font-size="10" fill="#4a4f58" writing-mode="tb" letter-spacing="1">越上越精确</text>
+      <text x="30" y="118" font-size="10.5" fill="#8a90a0">压缩</text>
+      <text x="30" y="188" font-size="10.5" fill="#8a90a0">检索</text>
+      <text x="30" y="258" font-size="10.5" fill="#8a90a0">归档</text>
+      <line x1="72" y1="122" x2="72" y2="160" stroke="#8a90a0" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ar5)"/>
+      <line x1="72" y1="192" x2="72" y2="230" stroke="#8a90a0" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ar5)"/>
+      <text x="390" y="316" text-anchor="middle" font-size="11" fill="#8a90a0" font-style="italic">自上而下：从"每次必进 Context"到"永不进 Context"的信息分层</text>
+    </svg>
+    <figcaption><b>图 5</b> · Hierarchical Memory 四层结构：最近消息 → 会话摘要 → 长期记忆 → 历史归档</figcaption>
+  </figure>
+</section>
+
+<!-- ═══════════ 11 ═══════════ -->
+<section id="s11">
+  <h2><span class="no">11</span>Compression 的核心：不是变短，而是保留有效信息</h2>
+  <p>这一节是整个压缩话题的灵魂。</p>
+  <blockquote><p><b>Compression 本质上是一种信息损失。</b>问题不是"压得多短"，而是"丢了什么"。</p></blockquote>
+
+  <p>反例：</p>
+  <div class="mono-block">原始信息：
+  预算 50 万以内
+  不要 SUV
+  必须支持车队管理 API
+  最终确定 B 方案
+
+朴素摘要：
+  用户最终选择 B 方案</div>
+
+  <p>压缩率很高，看起来很干净。但下一轮用户问"那 C 方案呢？"，Agent 已经不知道预算上限和"非 SUV"的约束了，开始自由发挥。<b>关键约束全部丢失，压缩变成了失忆。</b></p>
+
+  <p>所以我要提出这个观点：</p>
+  <blockquote><p><b>做 Decision-Relevant Compression（决策相关压缩），而不是长度最小化压缩。</b></p></blockquote>
+
+  <p>压缩时优先保留的信息类别：</p>
+  <ul>
+    <li><b>Goal</b>：任务目标是什么</li>
+    <li><b>Constraint</b>：硬约束（预算、格式、禁止项）——<em>最高优先级</em></li>
+    <li><b>Decision</b>：已做出的决定及其理由</li>
+    <li><b>Dependency</b>：决策之间的依赖关系</li>
+    <li><b>Pending Task</b>：未完成事项</li>
+    <li><b>User Preference</b>：影响输出形态的偏好</li>
+    <li><b>Important Tool Result</b>：影响决策的关键工具输出（如 CRM 查到的客户等级）</li>
+  </ul>
+
+  <p>摘要 Prompt 应该明确指令："先提取约束和已做决策，再概括过程；宁可摘要长一点，不可丢失任何约束。" <b>压缩率是预算的奴隶，不是目标。</b></p>
+</section>
+
+<!-- ═══════════ 12 ═══════════ -->
+<section id="s12">
+  <h2><span class="no">12</span>Context Compression 取舍表</h2>
+
+  <div class="tbl-wrap">
+  <table>
+    <caption><b>表 5</b> · 六种压缩策略的多维权衡（★ 越多越好）</caption>
+    <thead><tr><th>策略</th><th class="center">Token 成本</th><th class="center">信息保真度</th><th class="center">延迟</th><th class="center">复杂度</th><th>适用场景</th></tr></thead>
+    <tbody>
+      <tr><td>全量历史</td><td class="center">高</td><td class="center"><span class="star">★★★★★</span></td><td class="center">高</td><td class="center"><span class="star">★</span></td><td>短会话（&lt;10 轮）</td></tr>
+      <tr><td>Sliding Window</td><td class="center">中</td><td class="center"><span class="star">★★★</span></td><td class="center">中</td><td class="center"><span class="star">★★</span></td><td>普通闲聊</td></tr>
+      <tr><td>Summary</td><td class="center">低</td><td class="center"><span class="star">★★★</span></td><td class="center">低</td><td class="center"><span class="star">★★★</span></td><td>长对话闲聊</td></tr>
+      <tr><td>Structured State</td><td class="center">低</td><td class="center"><span class="star">★★★★</span></td><td class="center">低</td><td class="center"><span class="star">★★★★</span></td><td>任务型 Agent</td></tr>
+      <tr><td>Summary + Recent</td><td class="center">中低</td><td class="center"><span class="star">★★★★</span></td><td class="center">中低</td><td class="center"><span class="star">★★★★</span></td><td>常见生产默认方案</td></tr>
+      <tr><td>Memory Retrieval</td><td class="center">动态</td><td class="center"><span class="star">★★★★</span></td><td class="center">中</td><td class="center"><span class="star">★★★★★</span></td><td>长周期个性化 Agent</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>没有任何单一策略适合所有场景。生产环境的最优解通常是组合拳：</p>
+
+  <div class="mono-block">Recent Context                ← 最近几轮原文，保证连贯性
++
+Structured State              ← 约束/决策/待办，保证任务不漂移
++
+Session Summary               ← 更早历史的摘要，保证背景不丢失
++
+Long-Term Memory Retrieval    ← 跨 Session 个性化信息，按需召回</div>
+
+  <p>这就是后面第 20 节最终架构的 Context Builder 的四个输入源。</p>
+</section>
+
+<!-- ═══════════ 13 ═══════════ -->
+<section id="s13">
+  <h2><span class="no">13</span>Memory Storage Architecture</h2>
+  <p>一个常见误区：<b>"上 Vector DB 就完事了"。</b></p>
+  <p>生产级 Memory 不是一个 Vector Database 打天下。按访问模式选存储：</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <caption><b>表 6</b> · Memory 存储选型：按访问模式，而非按"是不是 Memory"</caption>
+    <thead><tr><th>Memory 类型</th><th>推荐存储</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td>Session State</td><td><b>Redis / KV</b></td><td>高频读写、需要 TTL、低延迟</td></tr>
+      <tr><td>Recent Messages</td><td><b>DB / KV</b></td><td>顺序追加、按 session_id 范围读取</td></tr>
+      <tr><td>User Facts</td><td><b>KV / DB</b></td><td>按 user_id 精确访问，不需要语义检索</td></tr>
+      <tr><td>Semantic Memory</td><td><b>Vector DB</b></td><td>语义模糊匹配，"用户好像说过喜欢……"</td></tr>
+      <tr><td>Summary</td><td><b>DB / KV</b></td><td>直接读取，整块注入</td></tr>
+      <tr><td>Execution Trace</td><td><b>Log / OLAP</b></td><td>只用于调试与审计，永不进 Prompt</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>为什么 User Facts 用 KV 而不是 Vector DB？因为它的访问模式是<b>精确的</b>：构建 Context 时，该用户的职业、地区是必然要注入的，不需要"语义相似检索"，直接 <code class="inline">get(user_id)</code> 更快更可靠。语义检索只服务于"模糊召回"的场景。</p>
+  <blockquote><p><b>不同类型的信息应该根据访问模式选择不同存储，而不是根据"是不是 Memory"统一选型。</b></p></blockquote>
+  <p>一个务实的落地形态：主存储用 Postgres（Memory Record 全量字段），语义检索用一个 Vector 索引层（pgvector 或独立 Vector DB）做 ANN，Redis 承担 Session State 和热点缓存。三套东西，一个逻辑 Memory 系统。</p>
+</section>
+
+<!-- ═══════════ 14 ═══════════ -->
+<section id="s14">
+  <h2><span class="no">14</span>Tool Calling 与 Memory</h2>
+  <p>Tool-heavy Agent 很容易掉进另一个坑：把 Tool 执行痕迹当记忆存。</p>
+  <p>必须严格区分：</p>
+  <div class="mono-block">Execution Trace ≠ Memory</div>
+
+  <p>一次 Tool Calling 产生：</p>
+  <div class="mono-block">Request / Arguments / Result / Retry / Error / Intermediate Result</div>
+
+  <p>这些全部属于 <b>Runtime / Trace</b>，归宿是日志和审计系统，而不是 Memory Store。</p>
+  <p>什么才可能从 Tool 执行中沉淀为 Long-Term Memory？只有<b>跨任务稳定的用户偏好</b>，例如：</p>
+  <ul>
+    <li>用户长期偏好摄氏度（从天气工具调用的反复参数修正中推断）</li>
+    <li>用户长期偏好 Markdown 表格输出（从多次格式反馈中确认）</li>
+  </ul>
+
+  <p>判断标准还是那把尺子：Persistence × Utility × Confidence。一次性的 CRM 查询结果是 Temporary Data，用户稳定的输出格式偏好才够格进 Memory。</p>
+  <blockquote><p><b>大量执行信息不等于大量值得记忆的信息。</b>把 Trace 当 Memory 存，等于给 Memory Store 倒垃圾，最后检索质量全面崩塌。</p></blockquote>
+</section>
+
+<!-- ═══════════ 15 ═══════════ -->
+<section id="s15">
+  <h2><span class="no">15</span>Memory Retrieval：什么时候应该读取长期记忆</h2>
+  <p>不能每次请求都全量加载 Memory——那回到了"全量历史塞 Prompt"的老路。</p>
+  <p>需要建一个 <b>Memory Retrieval Gate</b>：</p>
+  <div class="mono-block">Query Intent          ← 这类意图通常需要记忆吗？
++
+Task Type            ← 任务画像与记忆类型的匹配
++
+Memory Relevance     ← 检索召回的相关度分数
++
+Memory Confidence    ← 召回条目自身的置信度</div>
+
+  <p>四者综合，决定整条漏斗：</p>
+  <div class="mono-block">是否需要记忆？
+        ↓ 是
+召回哪些？      ← Top-K 语义召回 + 结构化过滤（user_id 隔离）
+        ↓
+过滤哪些？      ← 相关度 &lt; 阈值、过期、低置信度的丢弃
+        ↓
+最终进入 Context 哪些？ ← Token 预算内裁剪 + 按类型排序注入</div>
+
+  <p>实践中的 Gate 判断举例：</p>
+  <ul>
+    <li>"今天天气怎么样" → 不需要 Memory（或仅注入偏好类：摄氏度）</li>
+    <li>"帮我准备客户话术" → 需要（用户事实 + 偏好 + 长期任务）</li>
+    <li>"什么是 RAG" → 不需要</li>
+    <li>"接着上次那个方案改一下" → 需要（长期任务 + Session Summary + State）</li>
+  </ul>
+
+  <blockquote><p><b>Memory Retrieval 的目标不是找更多，而是找最相关的信息。</b>Over-Retrieval 的害处不亚于 Under-Retrieval——它用噪声挤占了本该留给 Recent Context 和 Structured State 的 Token 预算。</p></blockquote>
+
+  <div class="case">
+    <p><b>背景</b>：最初我们把 Retrieval Gate 做成了简单的意图分类器，结果踩了两个方向的坑。第一版过于保守——通用问答类请求一律不召回，用户问"帮我像上次那样整理成表格"时，Gate 判定"格式请求，无需记忆"，但"上次那样"恰恰指向记忆里的格式偏好，False Negative。</p>
+    <p><b>矫枉过正</b>：第二版几乎全量召回，Context 从平均 3.8k tokens 涨到 11k tokens，成本涨了近 3 倍，而 Task Success 只提升了 1.2 个百分点——典型的 Over-Retrieval，多花的 Token 大部分在给模型喂噪声。</p>
+    <div class="stats">
+      <div class="stat"><div class="v">3.8k</div><div class="k">原平均 Context (tokens)</div></div>
+      <div class="stat warn"><div class="v">11k</div><div class="k">全量召回后 (tokens)</div></div>
+      <div class="stat warn"><div class="v">~3<small>×</small></div><div class="k">成本涨幅</div></div>
+      <div class="stat ok"><div class="v">+1.2<small>pp</small></div><div class="k">Task Success 提升</div></div>
+    </div>
+    <p><b>最终方案</b>：Gate 输出三档决策（不召回 / 仅偏好类 / 全量漏斗），并在日志里记录每次决策，离线用探针问题回放校准阈值。</p>
+    <p class="lesson">教训：Gate 不是一次性写对的分类器，而是需要数据回灌持续校准的策略组件。</p>
+  </div>
+</section>
+
+<!-- ═══════════ 16 ═══════════ -->
+<section id="s16">
+  <h2><span class="no">16</span>Production Failure Modes</h2>
+  <p>真实生产里，Memory 系统的故障长这样。每个按 <b>现象 → 原因 → 排查 → 解决方案</b> 展开。</p>
+
+  <div class="fm">
+    <div class="head"><span>16.1 记忆污染</span><span class="en">MEMORY POLLUTION</span></div>
+    <div class="body"><dl>
+      <dt>现象</dt><dd>Agent 开始输出与用户无关的信息，"听说您在成都工作？"——用户从没去过成都。</dd>
+      <dt>原因</dt><dd>跨用户记忆泄漏（检索时 user_id 过滤失效），或 Trace 混入 Memory，或早期 Prompt Injection 让某用户写入污染数据。</dd>
+      <dt>排查</dt><dd>按用户维度导出 Memory 记录，做交叉 diff；检查 Retrieval 的过滤条件是否真的带上了 user_id。</dd>
+      <dt>解决</dt><dd>检索层强制 user_id 隔离（硬编码，不靠调用方自觉）；写入层来源标记；注入前做 ownership 校验。</dd>
+    </dl></div>
+  </div>
+
+  <div class="fm">
+    <div class="head"><span>16.2 记忆幻觉</span><span class="en">MEMORY HALLUCINATION</span></div>
+    <div class="body"><dl>
+      <dt>现象</dt><dd>Agent "记得"用户从没说过的事，且言之凿凿。</dd>
+      <dt>原因</dt><dd>Write Path 中 LLM 推断被当作事实存储（source=inferred 却给了高 confidence），摘要压缩时模型自行脑补细节。</dd>
+      <dt>排查</dt><dd>溯源该记忆的 created_at 和 session_id，回放原始对话，确认用户是否真的说过。</dd>
+      <dt>解决</dt><dd>inferred 类记忆强制低 confidence、标记 type，注入时用"（推断）"字样弱化；压缩 Prompt 禁止添加原文没有的信息。</dd>
+    </dl></div>
+  </div>
+
+  <div class="fm">
+    <div class="head"><span>16.3 检索失效</span><span class="en">MEMORY RETRIEVAL FAILURE</span></div>
+    <div class="body"><dl>
+      <dt>现象</dt><dd>记忆明明存了，但 Agent 表现得像不知道。</dd>
+      <dt>原因</dt><dd>embedding 模型升级后索引未重建；query 与记忆表述风格差异过大；K 值过小；门控误判"不需要记忆"。</dd>
+      <dt>排查</dt><dd>对失败 case 手动跑一遍检索，看相关记忆的召回排名；检查 Gate 的决策日志。</dd>
+      <dt>解决</dt><dd>embedding 版本化，升级时全量重嵌入；混合检索（语义 + 关键词）；Gate 决策记录日志可回放。</dd>
+    </dl></div>
+  </div>
+
+  <div class="fm">
+    <div class="head"><span>16.4 过度召回</span><span class="en">OVER-RETRIEVAL</span></div>
+    <div class="body"><dl>
+      <dt>现象</dt><dd>Context 里塞了 30 条记忆，Token 爆炸，回答反而变差。</dd>
+      <dt>原因</dt><dd>没有相关性阈值，只按 Top-K；没有 Token 预算控制。</dd>
+      <dt>排查</dt><dd>看 Context Token Count 指标随记忆条数的增长曲线。</dd>
+      <dt>解决</dt><dd>相关度硬阈值 + 动态 K；Memory 注入区域设独立 Token 预算；注入条数上限。</dd>
+    </dl></div>
+  </div>
+
+  <div class="fm">
+    <div class="head"><span>16.5 过期记忆</span><span class="en">STALE MEMORY</span></div>
+    <div class="body"><dl>
+      <dt>现象</dt><dd>用户换了工作半年后，Agent 还在说"您在上海负责华东"。</dd>
+      <dt>原因</dt><dd>没有 TTL；access_count 很高导致 GC 不敢清理；没有更新触发机制。</dd>
+      <dt>排查</dt><dd>对高频访问记忆做定期"事实核验"（在合适时机主动向用户确认关键事实）。</dd>
+      <dt>解决</dt><dd>事实类记忆设置复核周期（如 6 个月）；用户行为与记忆矛盾时触发更新管道。</dd>
+    </dl></div>
+  </div>
+
+  <div class="fm">
+    <div class="head"><span>16.6 记忆冲突</span><span class="en">MEMORY CONFLICT</span></div>
+    <div class="body"><dl>
+      <dt>现象</dt><dd>见第 9 节，新旧信息打架，Agent 输出自相矛盾。</dd>
+      <dt>原因</dt><dd>写入时跳过 Conflict Detection，两条矛盾记忆并存。</dd>
+      <dt>排查</dt><dd>冲突记忆对账（同 user + 同 type 语义矛盾检测任务，离线跑）。</dd>
+      <dt>解决</dt><dd>见第 9 节仲裁管道，版本化 + supersede 链。</dd>
+    </dl></div>
+  </div>
+
+  <div class="fm">
+    <div class="head"><span>16.7 压缩丢失</span><span class="en">COMPRESSION LOSS</span></div>
+    <div class="body"><dl>
+      <dt>现象</dt><dd>长会话后期，Agent 忘记了早期确立的硬约束，推荐超预算方案。</dd>
+      <dt>原因</dt><dd>摘要 Prompt 没有约束保护条款；压缩时约束被"概括"掉。</dd>
+      <dt>排查</dt><dd>构造约束记忆测试集，长会话回放后检查约束保留率（Compression 前后 diff）。</dd>
+      <dt>解决</dt><dd>Constraint 白名单字段，压缩永不丢弃；Structured State 承载约束。</dd>
+    </dl></div>
+  </div>
+
+  <div class="case">
+    <p><b>背景</b>：我们的客服 Agent 上线 Summary 压缩后，Compression Ratio 稳定在 85%，单次调用成本降了约 60%，跑了两个月没出事——直到分析长会话（&gt;40 轮）工单时发现，"违反用户早期约束"类投诉占比从 2% 涨到 6%，翻了 3 倍。</p>
+    <p><b>根因</b>：摘要把"只发邮件、不要打电话"这类<b>否定性约束</b>压没了——摘要模型把它判定为"非重点动作"。</p>
+    <div class="stats">
+      <div class="stat ok"><div class="v">85%</div><div class="k">Compression Ratio</div></div>
+      <div class="stat ok"><div class="v">−60%</div><div class="k">单次调用成本</div></div>
+      <div class="stat warn"><div class="v">2%→6%</div><div class="k">约束违反投诉占比（3×）</div></div>
+    </div>
+    <p><b>修复</b>：分两步——约束类信息改走 Structured State 白名单，物理上禁止进入摘要管道；同时摘要 Prompt 加了反向检查："逐条列出原文中的禁止性表述"。两周后该类投诉回落到 2.5%。</p>
+    <p class="lesson">教训：摘要模型对"不要做什么"的注意力，天然低于"要做什么"。</p>
+  </div>
+
+  <div class="fm">
+    <div class="head"><span>16.8 注入失败</span><span class="en">CONTEXT INJECTION FAILURE</span></div>
+    <div class="body"><dl>
+      <dt>现象</dt><dd>检索成功了，但 Agent 没用上。</dd>
+      <dt>原因</dt><dd>注入位置太靠前被"lost in the middle"稀释；注入格式模型不敏感；模板渲染 bug 导致内容为空。</dd>
+      <dt>排查</dt><dd>导出实际发送的完整 Prompt 检查——<b>永远要有原始 Prompt 的 trace</b>。</dd>
+      <dt>解决</dt><dd>关键记忆注入在 System 区靠后 + 用户消息前；结构化分块 + 明确标签；注入层单元测试。</dd>
+    </dl></div>
+  </div>
+</section>
+
+<!-- ═══════════ 17 ═══════════ -->
+<section id="s17">
+  <h2><span class="no">17</span>Memory Evaluation：如何证明 Memory 真有用</h2>
+  <p>一个必须先立的规矩：</p>
+  <blockquote>
+    <p><b>Observability ≠ Evaluation。</b></p>
+    <p>Observability 回答"系统发生了什么"；Evaluation 回答"Memory 到底有没有提高 Agent 效果"。</p>
+  </blockquote>
+
+  <p>你可以在 Dashboard 上看到"已保存 5000 条记忆、召回率 95%"——然后用户满意度纹丝不动。因为召回率高 ≠ 召回的对、 ≠ 用得上。</p>
+  <p>Memory Evaluation 指标体系：</p>
+
+  <div class="code">
+    <div class="bar"><i></i><i></i><i></i><span class="lang">TEXT · eval_metrics</span></div>
+    <pre><span class="cm">── 写入侧 ──────────────────────────────</span>
+Memory Write Accuracy      <span class="cm">← 写入的记忆是否真实（对照原始对话标注）</span>
+Memory Precision           <span class="cm">← 写入的里面多少是对的</span>
+False Write Rate           <span class="cm">← 不该记却记了</span>
+
+<span class="cm">── 读取侧 ──────────────────────────────</span>
+Memory Recall              <span class="cm">← 应该被用到的记忆，实际被注入的比例</span>
+Memory Precision           <span class="cm">← 注入的记忆里，真正相关的比例</span>
+Memory Relevance           <span class="cm">← 注入记忆与当前任务的相关度评分</span>
+
+<span class="cm">── 质量侧 ──────────────────────────────</span>
+Memory Conflict Rate       <span class="cm">← 冲突记忆对占比</span>
+Stale Memory Rate          <span class="cm">← 过期记忆占比</span>
+Memory-induced Error Rate  <span class="cm">← 因记忆错误直接导致的回答错误率</span>
+
+<span class="cm">── 最终指标 ─────────────────────────────</span>
+Task Success Rate          <span class="cm">← 一切上层指标最终服务于此</span></pre>
+  </div>
+
+  <p>其中最值得投入标注资源的是两类错误：</p>
+  <div class="mono-block">应该记住，却没有记住    → False Negative（漏记）
+不应该记，却记住了      → False Positive（误记）</div>
+
+  <p>False Negative 伤害个性化体验，False Positive 伤害正确性。两者的代价不对称——生产上通常宁可漏记（退化成无记忆的通用回答），不可误记（输出错误事实），所以准入阈值应偏保守。</p>
+  <p>构建 Eval 集的实操方法：录制真实多 Session 对话 → 人工标注"应记忆信息点"清单 → 回放对话跑 Memory 系统 → 在后续 Session 用探针问题（"我上次的预算是多少？"）验证记忆可用性 → 计算上述指标。</p>
+  <blockquote><p><b>Memory 系统应该以任务成功率和信息质量，而不是"保存了多少条记忆"作为最终评价标准。</b></p></blockquote>
+</section>
+
+<!-- ═══════════ 18 ═══════════ -->
+<section id="s18">
+  <h2><span class="no">18</span>Observability：如何知道 Agent 到底记住了什么</h2>
+  <p>Evaluation 管离线，Observability 管在线。Memory 系统的最小指标集：</p>
+
+  <div class="code">
+    <div class="bar"><i></i><i></i><i></i><span class="lang">TEXT · observability_metrics</span></div>
+    <pre><span class="fn">Memory Write Count</span>          <span class="cm">← 单位时间写入量（突增 = 污染？）</span>
+<span class="fn">Memory Read Count</span>           <span class="cm">← 读取频率</span>
+<span class="fn">Memory Retrieval Hit Rate</span>   <span class="cm">← 有记忆可用且被注入的请求占比</span>
+<span class="fn">Memory Relevance Score</span>      <span class="cm">← 注入记忆的在线相关度评估</span>
+<span class="fn">Memory Confidence 分布</span>      <span class="cm">← 低置信度占比异常 = 准入策略失效</span>
+<span class="fn">Context Token Count</span>         <span class="cm">← 每次 LLM 调用的 Context 体量（分区统计）</span>
+<span class="fn">Compression Ratio</span>           <span class="cm">← 压缩率</span>
+<span class="fn">Summary Refresh Count</span>       <span class="cm">← 摘要重建次数（过高 = 抖动）</span>
+<span class="fn">Memory Conflict Count</span>       <span class="cm">← 冲突检测命中量</span></pre>
+  </div>
+
+  <p>重点展开 <b>Compression Ratio</b>：</p>
+
+  <div class="stats">
+    <div class="stat"><div class="v">20,000</div><div class="k">原始 Context (tokens)</div></div>
+    <div class="stat ok"><div class="v">4,000</div><div class="k">压缩后 (tokens)</div></div>
+    <div class="stat"><div class="v">80%</div><div class="k">Compression Ratio</div></div>
+    <div class="stat warn"><div class="v">4 项</div><div class="k">必须联合观察的指标 ↓</div></div>
+  </div>
+
+  <p>80% 看起来很漂亮，对吧？但必须<b>同时</b>观察：</p>
+  <div class="mono-block">Compression Ratio + Memory Recall + Answer Quality + Task Success</div>
+
+  <p>单独的高压缩率只说明"扔得多"。如果压缩率 80% 的同时 Task Success 从 85% 掉到 62%，这个压缩策略在生产上是灾难。所以我建议每个压缩策略上线时都做 A/B：对照组（低压缩率高保真）vs 实验组，核心指标是 Task Success，Compression Ratio 只作为成本侧指标。</p>
+  <blockquote><p><b>高压缩率不等于高质量 Memory。压缩率的分子分母都只是 Token，而业务价值在 Token 之外。</b></p></blockquote>
+</section>
+
+<!-- ═══════════ 19 ═══════════ -->
+<section id="s19">
+  <h2><span class="no">19</span>Security：Memory 的权限与隐私边界</h2>
+  <p>轻量但必要的生产视角，不展开成合规文章，只讲 Agent 工程。</p>
+  <p>核心隔离原则：</p>
+  <div class="mono-block">User A Memory ≠ User B Memory ≠ Organization Memory</div>
+
+  <p>三层记忆（Personal / Org / Public）必须在存储和检索两层都显式标注 scope，检索时按当前请求身份过滤。Org 层记忆的写入要更严格——因为污染会扩散到全体成员。</p>
+  <p>需要明确的权限问题清单：</p>
+  <ul>
+    <li><b>Sensitive Data Filtering</b>：写入管道前置过滤器，身份证号、银行卡、密码类内容在入库前脱敏或直接拒绝。不是"存了再防读取"，是"根本不存"。</li>
+    <li><b>User-level Isolation</b>：硬编码在 Retrieval 层，不依赖上游正确传参。</li>
+    <li><b>Organization-level Memory</b>：团队共享知识（如"本团队方案模板走 D 流程"），有独立的准入和审计。</li>
+    <li><b>Access Control</b>：谁能读、谁能改、谁能删，Memory Record 上要有 scope 字段支撑。</li>
+    <li><b>Memory Delete</b>：用户"忘掉我说的"请求必须能执行到硬删除级别（<b>包括向量索引中的副本</b>！——常见漏洞：删了主库，向量库里的 embedding 还能被检索到）。</li>
+    <li><b>Audit</b>：每条记忆的写入、读取、修改、删除都要有日志，回答"Agent 为什么说了这句话"时能溯源到具体记忆条目。</li>
+  </ul>
+
+  <blockquote><p>工程上的底线是：<b>什么可以记、什么不能记、谁可以读取、谁可以修改、谁可以删除——这五个问题在设计阶段就要有答案，而不是出事后补丁。</b></p></blockquote>
+</section>
+
+<!-- ═══════════ 20 ═══════════ -->
+<section id="s20">
+  <h2><span class="no">20</span>完整生产级 Memory Architecture</h2>
+  <p>把前面所有东西拼起来：</p>
+
+  <figure>
+    <svg viewBox="0 0 780 720" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2c4a6e"/>
+        </marker>
+        <marker id="ar7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#b5543a"/>
+        </marker>
+      </defs>
+
+      <!-- User -->
+      <rect x="312" y="16" width="156" height="42" rx="21" fill="#1e2228"/>
+      <text x="390" y="42" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">User</text>
+      <line x1="390" y1="58" x2="390" y2="82" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar6)"/>
+      <!-- Agent -->
+      <rect x="322" y="86" width="136" height="42" rx="9" fill="#fff" stroke="#2c4a6e" stroke-width="1.5"/>
+      <text x="390" y="112" text-anchor="middle" fill="#1d3350" font-size="14" font-weight="700">Agent</text>
+      <line x1="390" y1="128" x2="390" y2="152" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar6)"/>
+
+      <!-- Context Builder -->
+      <rect x="222" y="156" width="336" height="56" rx="10" fill="#2c4a6e"/>
+      <text x="390" y="180" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">Context Builder</text>
+      <text x="390" y="200" text-anchor="middle" fill="#b8c7db" font-size="10.5">唯一决定 LLM 看到什么的组件</text>
+      <text x="640" y="188" font-size="10.5" fill="#8a90a0" font-style="italic">信息闸门</text>
+      <line x1="560" y1="184" x2="614" y2="184" stroke="#8a90a0" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ar6)"/>
+
+      <!-- arrows builder -> sources (down) -->
+      <line x1="240" y1="212" x2="150" y2="262" stroke="#2c4a6e" stroke-width="1.5" marker-end="url(#ar6)"/>
+      <line x1="330" y1="212" x2="320" y2="262" stroke="#2c4a6e" stroke-width="1.5" marker-end="url(#ar6)"/>
+      <line x1="470" y1="212" x2="520" y2="262" stroke="#2c4a6e" stroke-width="1.5" marker-end="url(#ar6)"/>
+      <line x1="540" y1="212" x2="660" y2="262" stroke="#2c4a6e" stroke-width="1.5" marker-end="url(#ar6)"/>
+
+      <!-- Source row -->
+      <rect x="44" y="266" width="180" height="58" rx="9" fill="#e8edf4" stroke="#2c4a6e" stroke-width="1.4"/>
+      <text x="134" y="290" text-anchor="middle" font-size="13" fill="#1d3350" font-weight="700">State</text>
+      <text x="134" y="308" text-anchor="middle" font-size="10.5" fill="#5c7398">Redis / KV · goal·step·retry</text>
+
+      <rect x="244" y="266" width="170" height="58" rx="9" fill="#e3f0ed" stroke="#0f6b5f" stroke-width="1.4"/>
+      <text x="329" y="290" text-anchor="middle" font-size="13" fill="#0d4a41" font-weight="700">Short-Term Context</text>
+      <text x="329" y="308" text-anchor="middle" font-size="10.5" fill="#4a8377">recent msgs + tool results</text>
+
+      <rect x="434" y="266" width="180" height="58" rx="9" fill="#f7ebe6" stroke="#b5543a" stroke-width="1.4"/>
+      <text x="524" y="290" text-anchor="middle" font-size="13" fill="#7c3a29" font-weight="700">Long-Term Memory</text>
+      <text x="524" y="308" text-anchor="middle" font-size="10.5" fill="#b5765f">admission · lifecycle</text>
+
+      <rect x="630" y="266" width="136" height="58" rx="9" fill="#f6efe0" stroke="#9a6b1f" stroke-width="1.4"/>
+      <text x="698" y="290" text-anchor="middle" font-size="12.5" fill="#6b4c14" font-weight="700">Session</text>
+      <text x="698" y="306" text-anchor="middle" font-size="12.5" fill="#6b4c14" font-weight="700">Summary</text>
+
+      <!-- Long-term children -->
+      <line x1="490" y1="324" x2="470" y2="360" stroke="#b5543a" stroke-width="1.3" marker-end="url(#ar7)"/>
+      <line x1="560" y1="324" x2="590" y2="360" stroke="#b5543a" stroke-width="1.3" marker-end="url(#ar7)"/>
+      <rect x="396" y="364" width="140" height="44" rx="8" fill="#fff" stroke="#dca596"/>
+      <text x="466" y="383" text-anchor="middle" font-size="11.5" fill="#7c3a29">KV / DB</text>
+      <text x="466" y="399" text-anchor="middle" font-size="10" fill="#b5765f">facts · 精确访问</text>
+      <rect x="546" y="364" width="150" height="44" rx="8" fill="#fff" stroke="#dca596"/>
+      <text x="621" y="383" text-anchor="middle" font-size="11.5" fill="#7c3a29">Vector DB</text>
+      <text x="621" y="399" text-anchor="middle" font-size="10" fill="#b5765f">semantic · 模糊召回</text>
+
+      <!-- funnel -->
+      <path d="M 390 212 L 390 232 L 300 232 L 300 444" fill="none" stroke="#8a90a0" stroke-width="1.2" stroke-dasharray="4 4"/>
+      <g>
+        <line x1="390" y1="430" x2="390" y2="448" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar6)"/>
+        <rect x="290" y="452" width="200" height="40" rx="20" fill="#0f6b5f"/>
+        <text x="390" y="477" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700">Retrieve / Rank</text>
+        <line x1="390" y1="492" x2="390" y2="508" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar6)"/>
+        <rect x="310" y="512" width="160" height="40" rx="20" fill="#0f6b5f" opacity="0.88"/>
+        <text x="390" y="537" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700">Filter</text>
+        <line x1="390" y1="552" x2="390" y2="566" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar6)"/>
+        <rect x="325" y="570" width="130" height="40" rx="20" fill="#0f6b5f" opacity="0.76"/>
+        <text x="390" y="595" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700">Compress</text>
+        <line x1="390" y1="610" x2="390" y2="624" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar6)"/>
+        <rect x="332" y="628" width="116" height="40" rx="20" fill="#0f6b5f" opacity="0.64"/>
+        <text x="390" y="653" text-anchor="middle" font-size="11.5" fill="#fff" font-weight="700">Token Budget</text>
+      </g>
+
+      <!-- LLM -->
+      <line x1="390" y1="668" x2="390" y2="684" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar6)"/>
+      <rect x="330" y="688" width="120" height="40" rx="9" fill="#1e2228"/>
+      <text x="390" y="713" text-anchor="middle" font-size="14" fill="#fff" font-weight="700">LLM</text>
+
+      <!-- write back arrow -->
+      <path d="M 724 390 L 724 660 L 724 708 L 456 708" fill="none" stroke="#b5543a" stroke-width="1.6" stroke-dasharray="7 5" marker-end="url(#ar7)"/>
+      <text x="700" y="560" font-size="11" fill="#b5543a" font-weight="500" writing-mode="tb" letter-spacing="2">Memory Write Back</text>
+      <text x="700" y="620" font-size="9.5" fill="#b5765f" writing-mode="tb">extract → admit → dedup → resolve</text>
+    </svg>
+    <figcaption><b>图 6</b> · 完整生产级 Memory Architecture：Context Builder 汇聚四路信息源，经检索漏斗与 Token 预算后进入 LLM，输出回写记忆形成闭环</figcaption>
+  </figure>
+
+  <p>核心是 <b>Context Builder</b> 这个组件：所有信息源（State、近期上下文、摘要、长期记忆）汇聚于此，经过统一的 <b>Retrieve → Rank → Filter → Compress → Token Budget</b> 管道后拼装成最终 Prompt。它是对"Context 是最终信息边界"这一原则的组件化落地。</p>
+  <p>Context Builder 的伪代码（Python 风格）：</p>
+
+  <div class="code">
+    <div class="bar"><i></i><i></i><i></i><span class="lang">Python · context_builder.py</span></div>
+    <pre><span class="kw">def</span> <span class="fn">build_context</span>(session, user_query, budget: TokenBudget) -&gt; Prompt:
+    <span class="cm"># ---------- 1. 不可压缩区：结构化 State ----------</span>
+    state = state_store.get(session.id)              <span class="cm"># Redis</span>
+    state_block = render_state(state)                <span class="cm"># goal/constraints/decisions/pending</span>
+
+    <span class="cm"># ---------- 2. 长期记忆：Gate + 检索漏斗 ----------</span>
+    memory_block = <span class="str">""</span>
+    <span class="kw">if</span> memory_gate.needs_memory(user_query, session):        <span class="cm"># 意图/任务类型判断</span>
+        candidates = memory_store.hybrid_search(             <span class="cm"># 语义 + 结构化过滤</span>
+            query=user_query,
+            filters={<span class="str">"user_id"</span>: session.user_id},            <span class="cm"># 硬隔离</span>
+            k=<span class="str">20</span>,
+        )
+        candidates = [m <span class="kw">for</span> m <span class="kw">in</span> candidates
+                      <span class="kw">if</span> m.relevance &gt; RELEVANCE_THRESHOLD   <span class="cm"># 相关度过滤</span>
+                      <span class="kw">and not</span> m.is_expired()]                 <span class="cm"># TTL 过滤</span>
+        ranked = rank(candidates,                             <span class="cm"># 相关性+置信度+时效</span>
+                      weights=(<span class="str">0.5</span>, <span class="str">0.3</span>, <span class="str">0.2</span>))
+        memory_block = render_memories(
+            ranked[: budget.memory_top_k],                    <span class="cm"># 条数上限</span>
+            annotated=<span class="str">True</span>,                                   <span class="cm"># 标注来源与置信度</span>
+        )
+
+    <span class="cm"># ---------- 3. 会话摘要：本 Session 更早历史 ----------</span>
+    summary_block = summary_store.get(session.id) <span class="kw">or</span> <span class="str">""</span>
+
+    <span class="cm"># ---------- 4. 近期上下文：原文最近 N 轮 ----------</span>
+    recent_block = render_messages(
+        session.messages[-RECENT_TURNS:]
+    )
+
+    <span class="cm"># ---------- 5. Token 预算分配与裁剪 ----------</span>
+    <span class="cm"># priority 语义统一：数值越小，预算不足时越先保留</span>
+    blocks = [
+        (state_block,   priority=<span class="str">1</span>, compressible=<span class="str">False</span>),  <span class="cm"># 约束/决策，永不丢弃</span>
+        (recent_block,  priority=<span class="str">2</span>, compressible=<span class="str">False</span>),  <span class="cm"># 近期轮次，尽量原文保留</span>
+        (memory_block,  priority=<span class="str">3</span>, compressible=<span class="str">True</span>),   <span class="cm"># 记忆可裁剪、可合并</span>
+        (summary_block, priority=<span class="str">4</span>, compressible=<span class="str">True</span>),   <span class="cm"># 摘要可二次压缩</span>
+    ]
+    prompt = assemble_within_budget(blocks, budget.total)
+
+    <span class="cm"># ---------- 6. 触发压缩（后台异步，不阻塞本次请求） ----------</span>
+    <span class="kw">if</span> session.token_estimate() &gt; COMPRESS_THRESHOLD:
+        async_task.submit(compress_session, session, state)
+
+    <span class="kw">return</span> prompt
+
+
+<span class="kw">def</span> <span class="fn">compress_session</span>(session, state):
+    <span class="str">"""Decision-Relevant Compression：约束/决策走 Structured State，过程走摘要"""</span>
+    structured = extract_structured(                    <span class="cm"># constraints/decisions 永不丢</span>
+        session.messages, protected=[<span class="str">"constraint"</span>, <span class="str">"decision"</span>, <span class="str">"pending_task"</span>])
+    summary = llm_summarize(
+        session.messages,
+        prompt=SUMMARY_PROMPT,                          <span class="cm"># 禁止脑补，保留约束</span>
+        preserve=state.constraints,
+    )
+    state_store.merge(state, structured)                <span class="cm"># 更新 State</span>
+    summary_store.set(session.id, summary)              <span class="cm"># 覆盖旧摘要</span></pre>
+  </div>
+
+  <p>关键设计解释：</p>
+  <ol>
+    <li><b>State 块 priority=1 且不可压缩</b>——约束丢失是任务型 Agent 最贵的失败。</li>
+    <li><b>Memory 走完整漏斗</b>——Gate 判断、user_id 硬过滤、相关度阈值、置信度排序，一个不少。</li>
+    <li><b>记忆带标注注入</b>——<code class="inline">（用户于3月明确提到）</code> 让模型知道信息来源，降低被低置信推断误导的概率。</li>
+    <li><b>压缩异步化</b>——压缩本身要调 LLM，放请求关键路径上会显著加 Latency。</li>
+  </ol>
+
+  <p>整条执行闭环：</p>
+
+  <figure>
+    <svg viewBox="0 0 780 260" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans SC',sans-serif">
+      <defs>
+        <marker id="ar8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2c4a6e"/>
+        </marker>
+        <marker id="ar9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#b5543a"/>
+        </marker>
+      </defs>
+      <!-- top row -->
+      <g>
+        <rect x="40" y="38" width="180" height="48" rx="10" fill="#e8edf4" stroke="#2c4a6e" stroke-width="1.4"/>
+        <text x="130" y="60" text-anchor="middle" font-size="13.5" fill="#1d3350" font-weight="700">Read</text>
+        <text x="130" y="78" text-anchor="middle" font-size="10" fill="#5c7398">Context Builder 组装</text>
+        <line x1="220" y1="62" x2="286" y2="62" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar8)"/>
+        <rect x="290" y="38" width="180" height="48" rx="10" fill="#e8edf4" stroke="#2c4a6e" stroke-width="1.4"/>
+        <text x="380" y="60" text-anchor="middle" font-size="13.5" fill="#1d3350" font-weight="700">Reason</text>
+        <text x="380" y="78" text-anchor="middle" font-size="10" fill="#5c7398">LLM 推理</text>
+        <line x1="470" y1="62" x2="536" y2="62" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar8)"/>
+        <rect x="540" y="38" width="180" height="48" rx="10" fill="#e8edf4" stroke="#2c4a6e" stroke-width="1.4"/>
+        <text x="630" y="60" text-anchor="middle" font-size="13.5" fill="#1d3350" font-weight="700">Act</text>
+        <text x="630" y="78" text-anchor="middle" font-size="10" fill="#5c7398">Tool Calling / 输出</text>
+      </g>
+      <!-- right down -->
+      <path d="M 630 86 L 630 170" fill="none" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar8)"/>
+      <!-- bottom row (right to left) -->
+      <g>
+        <rect x="540" y="174" width="180" height="48" rx="10" fill="#e3f0ed" stroke="#0f6b5f" stroke-width="1.4"/>
+        <text x="630" y="196" text-anchor="middle" font-size="13.5" fill="#0d4a41" font-weight="700">Observe</text>
+        <text x="630" y="214" text-anchor="middle" font-size="10" fill="#4a8377">Tool Result / 用户反馈</text>
+        <line x1="540" y1="198" x2="474" y2="198" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar8)"/>
+        <rect x="290" y="174" width="180" height="48" rx="10" fill="#f6efe0" stroke="#9a6b1f" stroke-width="1.4"/>
+        <text x="380" y="196" text-anchor="middle" font-size="13.5" fill="#6b4c14" font-weight="700">Update State</text>
+        <text x="380" y="214" text-anchor="middle" font-size="10" fill="#a07c40">推进任务状态</text>
+        <line x1="290" y1="198" x2="224" y2="198" stroke="#2c4a6e" stroke-width="1.8" marker-end="url(#ar8)"/>
+        <rect x="40" y="174" width="180" height="48" rx="10" fill="#f7ebe6" stroke="#b5543a" stroke-width="1.4"/>
+        <text x="130" y="196" text-anchor="middle" font-size="13.5" fill="#7c3a29" font-weight="700">Write Memory</text>
+        <text x="130" y="214" text-anchor="middle" font-size="10" fill="#b5765f">抽取 → 准入 → 落库</text>
+      </g>
+      <!-- left up (cycle) -->
+      <path d="M 130 174 L 130 92" fill="none" stroke="#b5543a" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#ar9)"/>
+      <text x="106" y="140" font-size="10" fill="#b5543a" writing-mode="tb" letter-spacing="1">下一轮</text>
+      <text x="390" y="248" text-anchor="middle" font-size="11.5" fill="#8a90a0" font-style="italic">Read → Reason → Act → Observe → Update State → Write Memory →（回到 Read）</text>
+    </svg>
+    <figcaption><b>图 7</b> · Agent 执行闭环：六步循环，记忆写入发生在闭环末端而非每轮中间</figcaption>
+  </figure>
+</section>
+
+<!-- ═══════════ 21 ═══════════ -->
+<section id="s21">
+  <h2><span class="no">21</span>最终工程决策表</h2>
+
+  <div class="tbl-wrap">
+  <table>
+    <caption><b>表 7</b> · 场景 → 推荐方案速查</caption>
+    <thead><tr><th>场景</th><th>推荐方案</th></tr></thead>
+    <tbody>
+      <tr><td>普通闲聊</td><td>Recent Window</td></tr>
+      <tr><td>长对话</td><td>Window + Summary</td></tr>
+      <tr><td>复杂任务 Agent</td><td>State + Structured Context</td></tr>
+      <tr><td>用户个性化 Agent</td><td>Long-Term Memory + Retrieval Gate</td></tr>
+      <tr><td>长周期任务（跨天/周）</td><td>State + Summary + Long-Term Memory</td></tr>
+      <tr><td>Tool-heavy Agent</td><td>State + Execution Trace（Trace 不进 Memory）</td></tr>
+      <tr><td>企业级 Agent</td><td>Multi-layer Memory（Personal / Org / Public）+ 权限与审计</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ═══════════ FINAL ═══════════ -->
+<section id="final">
+  <h2><span class="no">※</span>最终结论</h2>
+  <p>回到开头那个问题：<b>如果明天让我设计一个真正上线的 Agent State & Memory System，我的答案浓缩为三句话。</b></p>
+
+  <div class="principle" data-n="1">
+    <h5>PRINCIPLE 01</h5>
+    <p>State 管当前，Memory 管过去，Context 决定当前给 LLM 看什么。</p>
+  </div>
+  <div style="font-size:14px;color:#4a4f58;margin:-8px 0 22px 8px;">
+    三者角色不重叠：State 是 Runtime Snapshot，驱动执行、支撑恢复与重试；Memory 是带元信息的知识沉淀；Context Builder 是唯一的信息闸门。任何一个混进另一个，系统就开始在故障排查时让你怀疑人生。
+  </div>
+
+  <div class="principle" data-n="2">
+    <h5>PRINCIPLE 02</h5>
+    <p>长期记忆保存稳定、有价值、高置信度的信息，而不是保存所有历史。</p>
+  </div>
+  <div style="font-size:14px;color:#4a4f58;margin:-8px 0 22px 8px;">
+    Memory Admission Policy（Persistence × Utility × Confidence）、读写闭环、生命周期管理、冲突仲裁——这些机制的存在，都是为了让 Memory 越用越准，而不是越用越脏。存了多少条记忆不是成绩，Task Success 才是。
+  </div>
+
+  <div class="principle" data-n="3">
+    <h5>PRINCIPLE 03</h5>
+    <p>Context Compression 的目标不是最大限度压缩，而是在 Token 成本与信息损失之间找到最优点。</p>
+  </div>
+  <div style="font-size:14px;color:#4a4f58;margin:-8px 0 30px 8px;">
+    Decision-Relevant Compression：约束、决策、待办结构化永存，过程可摘要，垃圾可丢弃。Compression Ratio 是成本指标，不是质量指标——必须与 Memory Recall 和 Task Success 联合观测。
+  </div>
+
+  <blockquote>
+    <p>所以，不要把 Agent Memory 理解成"让 AI 永远记得更多"。</p>
+    <p>它真正的定义是：</p>
+    <p><b>在有限 Context、Token 和成本下，让 Agent 持续获得对当前任务真正有价值的信息。</b></p>
+  </blockquote>
+
+  <p>记住的从来不是越多越好——<b>记住对的，忘掉错的，管理好中间的一切。</b>这才是生产级 Agent Memory 的全部工程学。</p>
+
+  <div class="divider"></div>
+  <footer>
+    <span>Production Agent Engineering · Vol. 07</span>
+    <span>© 2026 · 转载请注明出处</span>
+  </footer>
+</section>
+
+</div>
+</body>
+</html>

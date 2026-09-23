@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent 系统架构：为什么需要多个 Agent，以及如何正确拆分</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&family=Long+Cang&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1c2331;
+  --ink-soft:#3d4a5d;
+  --ink-mute:#6b7887;
+  --paper:#faf8f4;
+  --paper-card:#ffffff;
+  --line:#e4dfd6;
+  --accent:#2f5d8a;
+  --accent-soft:#eaf1f7;
+  --terra:#b85c4a;
+  --terra-soft:#f9efec;
+  --gold:#9a7b3f;
+  --gold-soft:#f7f1e3;
+  --green:#4a7a5e;
+  --green-soft:#ecf3ee;
+  --code-bg:#232936;
+  --serif:'Noto Serif SC',serif;
+  --sans:'Noto Sans SC',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --hand:'Long Cang',cursive;
+  --shadow:0 1px 2px rgba(28,35,49,.04),0 6px 20px rgba(28,35,49,.06);
+  --shadow-lift:0 2px 4px rgba(28,35,49,.05),0 14px 34px rgba(28,35,49,.10);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--sans);
+  background:var(--paper);
+  color:var(--ink);
+  font-size:16.5px;
+  line-height:1.85;
+  -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(rgba(47,93,138,.035) 1px,transparent 1px);
+  background-size:26px 26px;
+}
+.wrap{max-width:880px;margin:0 auto;padding:0 28px}
+
+/* ---------- HERO ---------- */
+.hero{
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fff 0%,var(--paper) 100%);
+  padding:72px 0 56px;
+}
+.kicker{
+  font-family:var(--mono);
+  font-size:.78rem;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:22px;
+  display:flex;align-items:center;gap:14px;
+}
+.kicker::before{content:'';width:36px;height:1px;background:var(--accent)}
+h1{
+  font-family:var(--serif);
+  font-weight:900;
+  font-size:clamp(1.9rem,4.6vw,2.9rem);
+  line-height:1.35;
+  letter-spacing:.01em;
+  margin-bottom:26px;
+}
+h1 em{font-style:normal;color:var(--accent);border-bottom:3px solid rgba(47,93,138,.25)}
+.lede{
+  font-family:var(--serif);
+  font-size:1.12rem;
+  color:var(--ink-soft);
+  max-width:640px;
+  border-left:3px solid var(--terra);
+  padding-left:20px;
+  margin-bottom:34px;
+}
+.meta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:.83rem;color:var(--ink-mute)}
+.meta .dot{width:3px;height:3px;border-radius:50%;background:var(--ink-mute)}
+.tag{
+  font-family:var(--mono);font-size:.72rem;
+  background:var(--accent-soft);color:var(--accent);
+  padding:3px 11px;border-radius:99px;border:1px solid rgba(47,93,138,.18);
+}
+
+/* ---------- TOC ---------- */
+.toc{
+  margin:52px 0 0;
+  background:var(--paper-card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:28px 32px;
+  box-shadow:var(--shadow);
+}
+.toc-title{font-family:var(--serif);font-weight:700;font-size:.95rem;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.toc-title svg{flex:none}
+.toc ol{list-style:none;columns:2;column-gap:40px}
+.toc li{margin-bottom:9px;break-inside:avoid}
+.toc a{color:var(--ink-soft);text-decoration:none;font-size:.9rem;display:flex;gap:10px;transition:color .15s}
+.toc a:hover{color:var(--accent)}
+.toc a .no{font-family:var(--mono);font-size:.78rem;color:var(--terra);min-width:26px}
+
+/* ---------- SECTIONS ---------- */
+section{padding-top:76px}
+.sec-head{margin-bottom:36px}
+.sec-no{font-family:var(--mono);font-size:.8rem;letter-spacing:.2em;color:var(--terra);margin-bottom:10px;display:block}
+h2{font-family:var(--serif);font-weight:900;font-size:clamp(1.45rem,3vw,1.85rem);line-height:1.4;margin-bottom:14px}
+h2 .accent{color:var(--accent)}
+.sec-sub{color:var(--ink-mute);font-size:.95rem;max-width:620px}
+h3{
+  font-family:var(--serif);font-weight:700;font-size:1.18rem;
+  margin:52px 0 18px;padding-left:16px;position:relative;
+}
+h3::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:4px;border-radius:2px;background:var(--accent)}
+h3 .en{font-family:var(--mono);font-size:.72rem;color:var(--ink-mute);font-weight:400;margin-left:10px;letter-spacing:.08em}
+h4{font-family:var(--serif);font-size:1.02rem;margin:34px 0 12px;color:var(--ink)}
+p{margin-bottom:20px;color:var(--ink-soft)}
+strong{color:var(--ink);font-weight:700}
+em.hl{font-style:normal;color:var(--terra);font-weight:600}
+a{color:var(--accent)}
+
+/* ---------- SVG HAND-DRAWN PRIMITIVES（全局共享） ---------- */
+svg .box{fill:#fff;stroke:#3d4a5d;stroke-width:1.6;filter:url(#wob)}
+svg .boxA{fill:#eaf1f7;stroke:#2f5d8a;stroke-width:1.8;filter:url(#wob)}
+svg .chip{fill:#f4f2ec;stroke:#c9c3b6;stroke-width:1;filter:url(#wob)}
+svg .st{stroke:#6b7887;stroke-width:1.4;fill:none;filter:url(#wob);stroke-linecap:round}
+svg .stB{stroke:#2f5d8a;stroke-width:1.5;fill:none;filter:url(#wob);stroke-linecap:round}
+svg .stR{stroke:#b85c4a;stroke-width:1.5;fill:none;filter:url(#wob);stroke-linecap:round}
+.svg-hand{font-family:var(--hand);font-size:17px;fill:var(--terra)}
+.svg-lab{font-family:var(--sans);font-size:12.5px;fill:var(--ink);font-weight:600}
+.svg-lab-s{font-family:var(--sans);font-size:10.5px;fill:var(--ink-soft)}
+.svg-mono{font-family:var(--mono);font-size:10px;fill:var(--ink-mute)}
+
+/* ---------- PULL QUOTE ---------- */
+.pull{
+  font-family:var(--serif);
+  font-size:1.22rem;font-weight:600;line-height:1.7;
+  color:var(--ink);
+  margin:44px 0;padding:30px 36px;
+  background:var(--paper-card);
+  border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--shadow);
+  position:relative;
+}
+.pull::before{
+  content:'\201C';position:absolute;top:-6px;left:16px;
+  font-size:4.2rem;color:var(--terra);opacity:.28;font-family:var(--serif);line-height:1;
+}
+.pull .src{display:block;margin-top:14px;font-family:var(--sans);font-size:.8rem;font-weight:400;color:var(--ink-mute)}
+
+/* ---------- STAT CARDS ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:38px 0}
+.stat{
+  background:var(--paper-card);border:1px solid var(--line);border-radius:14px;
+  padding:24px 22px 20px;box-shadow:var(--shadow);
+  position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;
+}
+.stat:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift)}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--c,var(--accent))}
+.stat .num{font-family:var(--serif);font-weight:900;font-size:2rem;line-height:1;color:var(--c,var(--accent));margin-bottom:10px}
+.stat .num small{font-size:1rem;font-weight:700;margin-left:2px}
+.stat .lab{font-size:.85rem;font-weight:600;color:var(--ink);margin-bottom:4px}
+.stat .des{font-size:.76rem;color:var(--ink-mute);line-height:1.6}
+
+/* ---------- CALLOUT ---------- */
+.callout{border-radius:14px;padding:24px 28px;margin:36px 0;border:1px solid;display:flex;gap:18px;align-items:flex-start}
+.callout .ic{flex:none;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-top:3px}
+.callout p{margin:0 0 8px;font-size:.94rem}
+.callout p:last-child{margin-bottom:0}
+.callout .ttl{font-family:var(--serif);font-weight:700;font-size:1rem;display:block;margin-bottom:6px}
+.co-warn{background:var(--terra-soft);border-color:rgba(184,92,74,.25)}
+.co-warn .ttl{color:var(--terra)} .co-warn .ic{background:rgba(184,92,74,.14);color:var(--terra)}
+.co-info{background:var(--accent-soft);border-color:rgba(47,93,138,.22)}
+.co-info .ttl{color:var(--accent)} .co-info .ic{background:rgba(47,93,138,.12);color:var(--accent)}
+.co-good{background:var(--green-soft);border-color:rgba(74,122,94,.25)}
+.co-good .ttl{color:var(--green)} .co-good .ic{background:rgba(74,122,94,.14);color:var(--green)}
+
+/* ---------- TABLES ---------- */
+.tbl-wrap{overflow-x:auto;margin:34px 0;border-radius:14px;box-shadow:var(--shadow);border:1px solid var(--line);background:var(--paper-card)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:640px}
+caption{caption-side:top;text-align:left;padding:18px 24px 14px;font-family:var(--serif);font-weight:700;font-size:.95rem;color:var(--ink);border-bottom:1px solid var(--line)}
+caption .cap-no{font-family:var(--mono);font-size:.72rem;color:var(--terra);margin-right:10px;letter-spacing:.1em}
+thead th{
+  font-family:var(--sans);font-weight:700;font-size:.78rem;letter-spacing:.05em;
+  color:var(--accent);text-align:left;
+  padding:13px 20px;background:var(--accent-soft);
+  border-bottom:1px solid rgba(47,93,138,.2);white-space:nowrap;
+}
+tbody td{padding:13px 20px;border-bottom:1px solid #f0ece4;color:var(--ink-soft);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:nth-child(even){background:#fcfbf8}
+tbody tr:hover{background:var(--gold-soft)}
+td .b{font-weight:700;color:var(--ink)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.7rem;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.pill.b{background:var(--terra-soft);color:var(--terra)}
+.pill.m{background:var(--gold-soft);color:var(--gold)}
+.pill.g{background:var(--green-soft);color:var(--green)}
+.pill.n{background:#eef0f3;color:var(--ink-mute)}
+
+/* ---------- CODE ---------- */
+.code-card{background:var(--code-bg);border-radius:14px;margin:34px 0;box-shadow:var(--shadow-lift);overflow:hidden}
+.code-head{display:flex;align-items:center;gap:8px;padding:12px 18px;background:#2b3242;border-bottom:1px solid #38404f}
+.code-head .cdot{width:10px;height:10px;border-radius:50%}
+.code-head .fname{margin-left:10px;font-family:var(--mono);font-size:.75rem;color:#8b95a7}
+.code-head .lang{margin-left:auto;font-family:var(--mono);font-size:.68rem;color:#5d6678;letter-spacing:.1em;text-transform:uppercase}
+pre{padding:22px 24px;overflow-x:auto}
+code{font-family:var(--mono);font-size:.84rem;line-height:1.75}
+pre code{color:#dbe2ee}
+.tok-c{color:#647089;font-style:italic}
+p code,li code,td code{background:#eceae3;color:var(--terra);padding:2px 7px;border-radius:6px;font-size:.8em}
+
+/* ---------- FIGURES ---------- */
+figure{margin:44px 0;background:var(--paper-card);border:1px solid var(--line);border-radius:16px;padding:34px 30px 22px;box-shadow:var(--shadow)}
+figcaption{margin-top:20px;padding-top:16px;border-top:1px dashed var(--line);font-size:.85rem;color:var(--ink-mute);line-height:1.7}
+figcaption .fig-no{font-family:var(--mono);color:var(--terra);font-size:.75rem;margin-right:10px;letter-spacing:.08em}
+figure svg{width:100%;height:auto;display:block}
+
+/* ---------- LIST CARDS ---------- */
+.blist{list-style:none;margin:30px 0;display:grid;gap:14px}
+.blist li{
+  background:var(--paper-card);border:1px solid var(--line);border-radius:12px;
+  padding:18px 22px 16px;box-shadow:var(--shadow);
+  display:flex;gap:16px;align-items:flex-start;
+}
+.blist .n{
+  flex:none;width:30px;height:30px;border-radius:9px;margin-top:3px;
+  background:var(--accent-soft);color:var(--accent);
+  font-family:var(--mono);font-size:.8rem;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+}
+.blist .t{font-weight:700;font-size:.94rem;color:var(--ink);display:block;margin-bottom:3px}
+.blist .d{font-size:.88rem;color:var(--ink-soft)}
+
+/* ---------- Q&A ---------- */
+.qa-grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:36px}
+.qa{background:var(--paper-card);border:1px solid var(--line);border-radius:14px;padding:26px 30px;box-shadow:var(--shadow)}
+.qa .q{font-family:var(--serif);font-weight:700;font-size:1.02rem;display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;color:var(--ink)}
+.qa .q .qm{flex:none;font-family:var(--mono);font-size:.72rem;font-weight:600;color:#fff;background:var(--terra);border-radius:7px;padding:3px 8px;margin-top:3px}
+.qa .a{font-size:.92rem;color:var(--ink-soft);padding-left:44px}
+.qa .a p{margin-bottom:10px}
+.qa .a p:last-child{margin-bottom:0}
+
+/* ---------- NEXT / FOOTER ---------- */
+.next{
+  margin:80px 0 0;border-radius:18px;overflow:hidden;
+  background:linear-gradient(135deg,#243447 0%,#2f5d8a 60%,#3a6f9f 100%);
+  color:#fff;padding:48px 44px;box-shadow:var(--shadow-lift);position:relative;
+}
+.next::after{content:'\2192';position:absolute;right:36px;bottom:24px;font-size:3.4rem;opacity:.16;font-family:var(--serif)}
+.next .lbl{font-family:var(--mono);font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:16px}
+.next .t{font-family:var(--serif);font-weight:900;font-size:1.4rem;line-height:1.5;margin-bottom:14px}
+.next .t em{font-style:normal;color:#ffd9a8}
+.next p{color:rgba(255,255,255,.82);font-size:.92rem;margin:0;max-width:560px}
+footer.site{margin-top:70px;border-top:1px solid var(--line);padding:34px 0 60px;text-align:center;font-size:.8rem;color:var(--ink-mute)}
+footer.site .mono{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em}
+
+hr.dots{border:none;margin:64px 0;text-align:center}
+hr.dots::before{content:'· · ·';letter-spacing:1em;font-size:1rem;color:var(--ink-mute)}
+
+@media (max-width:720px){
+  .toc ol{columns:1}
+  .next{padding:36px 26px}
+  .qa .a{padding-left:0}
+  figure{padding:24px 12px 14px}
+  body{font-size:15.5px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 全局共享 SVG defs：所有图表引用同一份 filter / marker，避免寄生在单个 figure 内 ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="wob" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2"/>
+    </filter>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L8,4.5 L0,9" fill="none" stroke="#6b7887" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrA" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L8,4.5 L0,9" fill="none" stroke="#b85c4a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrB" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L8,4.5 L0,9" fill="none" stroke="#2f5d8a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+</svg>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">Agent Engineering · Architecture Patterns</div>
+    <h1>Multi-Agent 系统架构：<br>为什么需要<em>多个 Agent</em>，以及如何正确拆分</h1>
+    <p class="lede">单 Agent 的能力上限，不取决于模型有多强，而取决于上下文、工具与职责能否被一个执行主体干净地承载。当这三者的边界开始模糊，就该拆了。</p>
+    <div class="meta">
+      <span class="tag">Multi-Agent</span><span class="tag">Orchestration</span><span class="tag">System Design</span>
+      <span class="dot"></span><span>2026 · 09 · 22</span>
+      <span class="dot"></span><span>约 25 min 阅读时长</span>
+      <span class="dot"></span><span>工程实践系列 · 之一</span>
+    </div>
+
+    <nav class="toc">
+      <div class="toc-title">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h9M2 12h6" stroke="#2f5d8a" stroke-width="1.6" stroke-linecap="round"/></svg>
+        目录
+      </div>
+      <ol>
+        <li><a href="#s1"><span class="no">01</span>一个 Agent 的「膨胀之死」</a></li>
+        <li><a href="#s2"><span class="no">02</span>什么时候应该拆：八个工程边界</a></li>
+        <li><a href="#s3"><span class="no">03</span>四种核心架构模式</a></li>
+        <li><a href="#s4"><span class="no">04</span>架构选择：不是排名，是匹配</a></li>
+        <li><a href="#s5"><span class="no">05</span>生产级 Multi-Agent 分层架构</a></li>
+        <li><a href="#s6"><span class="no">06</span>真实案例：企业级深度研究系统</a></li>
+        <li><a href="#s7"><span class="no">07</span>六个问题的最终回答</a></li>
+        <li><a href="#next"><span class="no">→</span>下一篇预告</a></li>
+      </ol>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ================= SECTION 1 ================= -->
+<section id="s1">
+  <div class="sec-head">
+    <span class="sec-no">SECTION 01</span>
+    <h2>从一个真实场景开始：<span class="accent">一个 Agent 的「膨胀之死」</span></h2>
+    <p class="sec-sub">需求不是一次性来的，是一点点堆上来的。问题也是。</p>
+  </div>
+
+  <p>假设你在做一个企业级深度研究系统，初版架构非常朴素——一个 Agent，一个循环，一坨工具：</p>
+
+  <div class="code-card">
+    <div class="code-head">
+      <span class="cdot" style="background:#e0655f"></span><span class="cdot" style="background:#e8b34b"></span><span class="cdot" style="background:#5fb86a"></span>
+      <span class="fname">v1_architecture.txt</span><span class="lang">naive</span>
+    </div>
+    <pre><code>Single Agent
+ ├─ Prompt: 角色设定 + 研究方法论 + 引用规范 + 输出格式
+ ├─ Tools:  web_search / vector_rag / sql_query / python_repl
+ │          crawl / citation_check
+ └─ Loop:   理解问题 → 检索 → 分析 → 撰写 → 自查 → 输出</code></pre>
+  </div>
+
+  <p>上线第一个月，它工作得很好。第三个月，需求开始堆叠：支持多语言、接入内部知识库、输出带引用、跑数据分析、生成图表。于是你做了所有工程师都会做的事——<strong>往同一个 prompt 里塞规则、往同一个 tool 列表里加函数</strong>。</p>
+
+  <p>然后问题出现了，而且几乎是以固定顺序出现的：</p>
+
+  <ul class="blist">
+    <li><span class="n">1</span><div><span class="t">Prompt 膨胀与指令冲突</span><span class="d">系统提示词从 2K token 涨到 15K，「写报告时」的规则和「做数据计算时」的规则开始互相覆盖。模型在第 30 轮循环时，已经「忘记」了第 3 轮的系统约束——这是典型的 lost in the middle 现象：不是模型变笨了，是关键指令被淹没了。</span></div></li>
+    <li><span class="n">2</span><div><span class="t">Tool 数量膨胀导致选错率上升</span><span class="d">Function calling 的准确率与候选工具数量强相关。当工具从 5 个涨到 25 个，模型开始把 <code>web_search</code> 当 <code>vector_rag</code> 用，把 <code>sql_query</code> 的 schema 传错。这是信号噪声问题，不是能力问题。</span></div></li>
+    <li><span class="n">3</span><div><span class="t">上下文被工具结果污染</span><span class="d">一次 web search 返回 8K token 的原始 HTML 片段，一次 SQL 查询返回 200 行表格。这些「原始材料」对下游推理是必要输入，但对上游的意图理解是纯噪声。单一上下文窗口里，所有角色共享同一份脏上下文。</span></div></li>
+    <li><span class="n">4</span><div><span class="t">决策路径不可控</span><span class="d">同一个问题，今天跑 3 步出答案，明天跑 18 步还在循环搜索。你无法预判一条请求在 Agent 内部会走出怎样的轨迹——因为控制流和 LLM 的自由判断纠缠在了一起。</span></div></li>
+    <li><span class="n">5</span><div><span class="t">权限边界模糊</span><span class="d">这个 Agent 既能读内部知识库，又能写 SQL，还能调用外部 API。安全团队问「它能不能把内部数据发到外网」，你答不上来——因为它<em class="hl">理论上可以</em>。</span></div></li>
+    <li><span class="n">6</span><div><span class="t">错误难定位、评测难拆解</span><span class="d">答错了，是检索没找到？是推理错了？是撰写时曲解了？还是 Fact Check 这步根本没执行？单 Agent 的 trace 是一锅粥，评测只能对最终答案打分，无法对中间环节归因。</span></div></li>
+    <li><span class="n">7</span><div><span class="t">成本失控</span><span class="d">每轮循环都要把全量上下文（含所有工具结果）重新送入模型。在单 Agent 里，token 消耗以更隐蔽的方式累积——上下文越长，每一轮的单价越高。</span></div></li>
+  </ul>
+
+  <div class="stats">
+    <div class="stat" style="--c:var(--terra)">
+      <div class="num">2K <small>→</small> 15K</div>
+      <div class="lab">System Prompt 膨胀</div>
+      <div class="des">三个月内系统提示词的增长幅度，指令开始互相覆盖</div>
+    </div>
+    <div class="stat" style="--c:var(--accent)">
+      <div class="num">5 <small>→</small> 25</div>
+      <div class="lab">Tool 数量增长</div>
+      <div class="des">候选工具越多，Function Calling 选错率越高</div>
+    </div>
+    <div class="stat" style="--c:var(--gold)">
+      <div class="num">18 <small>轮</small></div>
+      <div class="lab">循环失控峰值</div>
+      <div class="des">同一问题，运行成本与延迟在两次请求间相差 6 倍</div>
+    </div>
+    <div class="stat" style="--c:var(--green)">
+      <div class="num">0</div>
+      <div class="lab">可归因的中间指标</div>
+      <div class="des">错误无法定位到具体环节，评测只能对最终答案打分</div>
+    </div>
+  </div>
+
+  <p>到这里，问题已经不再是「我的 Agent 不够聪明」，而是<em class="hl">一个执行主体被迫同时扮演七个角色，而每个角色的最优上下文、工具集、模型和权限都不一样</em>。这就是拆分的起点。</p>
+</section>
+
+<hr class="dots">
+
+<!-- ================= SECTION 2 ================= -->
+<section id="s2">
+  <div class="sec-head">
+    <span class="sec-no">SECTION 02</span>
+    <h2>什么时候应该拆：<span class="accent">八个工程边界</span></h2>
+    <p class="sec-sub">「职责单一」是结论，不是判据。真正驱动拆分的是可观测的工程边界。</p>
+  </div>
+
+  <p>下面是八个边界。当其中<em class="hl">任意两个以上同时被突破</em>时，就该考虑拆 Agent 了。</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption><span class="cap-no">TABLE 1</span>八个工程边界与拆分方式对照</caption>
+      <thead>
+        <tr><th>边界</th><th>判断信号</th><th>拆分方式</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="b">能力边界</td><td>一个 Agent 需要两套互相冲突的「专业人格」（如严谨的分析师 vs 有创意的写手）</td><td><span class="pill n">按角色拆</span></td></tr>
+        <tr><td class="b">Context 边界</td><td>一次任务的中间产物已塞不下一个窗口，或 A 阶段的原始输出对 B 阶段是噪声</td><td><span class="pill b">按 context 生命周期拆</span></td></tr>
+        <tr><td class="b">Tool 边界</td><td>工具数量 &gt; 15，或两个工具的 schema 互相干扰</td><td><span class="pill n">按工具域拆</span></td></tr>
+        <tr><td class="b">权限边界</td><td>不同操作需要不同的凭证 / 审计 / 沙箱（读内网 vs 访问公网）</td><td><span class="pill b">按权限域硬隔离</span></td></tr>
+        <tr><td class="b">模型边界</td><td>有的子任务用小模型就够，有的必须用前沿模型；混用拉高整体成本</td><td><span class="pill m">按模型分层拆</span></td></tr>
+        <tr><td class="b">成本边界</td><td>高频低价值步骤和低频高价值步骤被绑定在同一计费路径上</td><td><span class="pill m">按成本敏感度拆</span></td></tr>
+        <tr><td class="b">故障边界</td><td>一个工具超时会拖垮整条链路，没有局部降级的可能</td><td><span class="pill b">按失败域拆</span></td></tr>
+        <tr><td class="b">评测边界</td><td>无法对中间环节单独建立 ground truth 和指标</td><td><span class="pill n">按可评测单元拆</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout co-info">
+    <div class="ic">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.5"/><path d="M9 8v4M9 5.5v.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </div>
+    <div><span class="ttl">其中两条边界最「硬」</span>
+    <p><strong>Context 边界</strong>和<strong>权限边界</strong>：前者决定了系统<em class="hl">能不能</em>工作，后者决定了系统<em class="hl">敢不敢</em>上生产。其余六条边界影响的更多是效率与可维护性。</p></div>
+  </div>
+
+  <h3>什么情况下，不应该使用 Multi-Agent<span class="en">ANTI-PATTERNS</span></h3>
+
+  <p>拆分是有代价的，而且代价常常被低估。以下情形请留在 Single Agent 或 Workflow：</p>
+
+  <ul class="blist">
+    <li><span class="n" style="background:var(--terra-soft);color:var(--terra)">!</span><div><span class="t">任务能塞进一个上下文窗口，且步骤 ≤ 5 步</span><span class="d">这时 Multi-Agent 只会增加 2–4 倍 token 和延迟，不带来任何质量提升。</span></div></li>
+    <li><span class="n" style="background:var(--terra-soft);color:var(--terra)">!</span><div><span class="t">决策路径可完全枚举</span><span class="d">固定 ETL、固定问答模板、固定审批流——这是 Workflow 的主场，用 LLM 做调度纯属浪费。</span></div></li>
+    <li><span class="n" style="background:var(--terra-soft);color:var(--terra)">!</span><div><span class="t">需要严格的端到端一致性</span><span class="d">Multi-Agent 的每个交接点都是潜在的状态丢失点，链条越长，一致性越难保证。</span></div></li>
+    <li><span class="n" style="background:var(--terra-soft);color:var(--terra)">!</span><div><span class="t">团队规模太小，撑不起观测与评测基建</span><span class="d">一个人的团队维护 5 个 Agent，最终一定会退化成 5 个互相打架的 prompt。</span></div></li>
+    <li><span class="n" style="background:var(--terra-soft);color:var(--terra)">!</span><div><span class="t">延迟极度敏感</span><span class="d">Supervisor 模式下每次子 Agent 返回都要经过一次主 Agent 汇总，多一次模型调用就是多几百毫秒到几秒。</span></div></li>
+  </ul>
+
+  <div class="pull">先加工具，再上 Workflow，最后才上 Multi-Agent。<span class="src">—— 经验法则：让架构跟随复杂度演进，而不是预支未来复杂度</span></div>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption><span class="cap-no">TABLE 2</span>Single Agent / Workflow / Multi-Agent 三者对比</caption>
+      <thead>
+        <tr><th>维度</th><th>Single Agent</th><th>Workflow（固定编排）</th><th>Multi-Agent</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="b">控制流</td><td>LLM 自由决策</td><td>代码预定义</td><td>LLM + 协议约束</td></tr>
+        <tr><td class="b">适用任务复杂度</td><td>低 – 中</td><td>中（路径确定）</td><td>高（路径不确定）</td></tr>
+        <tr><td class="b">Token 成本</td><td><span class="pill g">基线</span></td><td><span class="pill g">最低</span></td><td><span class="pill b">3 – 15 倍</span></td></tr>
+        <tr><td class="b">可调试性</td><td><span class="pill m">中</span></td><td><span class="pill g">高</span></td><td><span class="pill b">低（需专门观测）</span></td></tr>
+        <tr><td class="b">并行能力</td><td>弱</td><td>由代码决定</td><td><span class="pill g">强（原生支持）</span></td></tr>
+        <tr><td class="b">团队协作友好度</td><td>低（一个 prompt 大家改）</td><td>中</td><td><span class="pill g">高（可分仓维护）</span></td></tr>
+        <tr><td class="b">失败半径</td><td>大</td><td>小且可控</td><td>取决于架构</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <figure>
+    <!-- ============ FIG 01 : 演进图（坐标已校验） ============ -->
+    <svg viewBox="0 0 820 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Single Agent 到 Workflow 到 Multi-Agent 的演进">
+      <!-- Stage 1: Single Agent -->
+      <text x="120" y="48" text-anchor="middle" class="svg-hand" style="font-size:19px">① 一个大盒子</text>
+      <rect class="boxA" x="30" y="70" width="180" height="200" rx="12"/>
+      <text x="120" y="93" text-anchor="middle" class="svg-lab" style="font-size:13.5px">Single Agent</text>
+      <g>
+        <rect class="chip" x="44" y="106" width="152" height="22" rx="6"/><text x="120" y="121" text-anchor="middle" class="svg-mono">Query Understanding</text>
+        <rect class="chip" x="44" y="134" width="152" height="22" rx="6"/><text x="120" y="149" text-anchor="middle" class="svg-mono">RAG + Web Search</text>
+        <rect class="chip" x="44" y="162" width="152" height="22" rx="6"/><text x="120" y="177" text-anchor="middle" class="svg-mono">Tool Calling ×25</text>
+        <rect class="chip" x="44" y="190" width="152" height="22" rx="6"/><text x="120" y="205" text-anchor="middle" class="svg-mono">Data Analysis</text>
+        <rect class="chip" x="44" y="218" width="152" height="22" rx="6"/><text x="120" y="233" text-anchor="middle" class="svg-mono">推理 · 生成 · 审核</text>
+      </g>
+      <text x="120" y="258" text-anchor="middle" class="svg-lab-s">单一上下文 · 一套工具 · 一个权限域</text>
+
+      <!-- arrow 1 -->
+      <path class="stR" d="M214,110 L244,110" marker-end="url(#arrA)"/>
+      <text x="229" y="152" text-anchor="middle" class="svg-hand" style="font-size:16px">能力膨胀</text>
+
+      <!-- Stage 2: Workflow -->
+      <text x="430" y="48" text-anchor="middle" class="svg-hand" style="font-size:19px">② 固定流水线</text>
+      <rect class="box" x="250" y="90" width="78" height="40" rx="9"/><text x="289" y="114" text-anchor="middle" class="svg-lab-s" style="font-weight:700">检索</text>
+      <rect class="box" x="344" y="90" width="78" height="40" rx="9"/><text x="383" y="114" text-anchor="middle" class="svg-lab-s" style="font-weight:700">分析</text>
+      <rect class="box" x="438" y="90" width="78" height="40" rx="9"/><text x="477" y="114" text-anchor="middle" class="svg-lab-s" style="font-weight:700">生成</text>
+      <rect class="box" x="532" y="90" width="78" height="40" rx="9"/><text x="571" y="114" text-anchor="middle" class="svg-lab-s" style="font-weight:700">输出</text>
+      <path class="st" d="M330,110 L342,110" marker-end="url(#arr)"/>
+      <path class="st" d="M424,110 L436,110" marker-end="url(#arr)"/>
+      <path class="st" d="M518,110 L530,110" marker-end="url(#arr)"/>
+      <text x="430" y="155" text-anchor="middle" class="svg-lab-s">路径由代码写死 · 控制流确定</text>
+      <rect class="box" x="262" y="180" width="340" height="76" rx="11" style="stroke-dasharray:5 5;stroke:#b85c4a;fill:#fdf7f5"/>
+      <text x="432" y="206" text-anchor="middle" class="svg-lab" style="fill:#b85c4a;font-size:12.5px">当路径无法枚举时，Workflow 失效</text>
+      <text x="432" y="226" text-anchor="middle" class="svg-lab-s">任务开放 → 需要 LLM 参与决策 → 进入 Multi-Agent</text>
+      <text x="432" y="244" text-anchor="middle" class="svg-mono">if path is enumerable → stay here</text>
+
+      <!-- arrow 2 -->
+      <path class="stR" d="M614,110 L636,110" marker-end="url(#arrA)"/>
+      <text x="626" y="160" text-anchor="middle" class="svg-hand" style="font-size:16px">路径开放</text>
+
+      <!-- Stage 3: Multi-Agent -->
+      <text x="720" y="48" text-anchor="middle" class="svg-hand" style="font-size:19px">③ 拆分自治</text>
+      <rect class="boxA" x="640" y="100" width="160" height="44" rx="11"/>
+      <text x="720" y="118" text-anchor="middle" class="svg-lab" style="font-size:12px">Supervisor / Planner</text>
+      <text x="720" y="134" text-anchor="middle" class="svg-mono">调度 · 汇总</text>
+      <path class="st" d="M663,144 L663,186" marker-end="url(#arr)"/>
+      <path class="st" d="M720,144 L720,186" marker-end="url(#arr)"/>
+      <path class="st" d="M777,144 L777,186" marker-end="url(#arr)"/>
+      <rect class="box" x="640" y="190" width="46" height="30" rx="7"/><text x="663" y="209" text-anchor="middle" class="svg-mono">A</text>
+      <rect class="box" x="697" y="190" width="46" height="30" rx="7"/><text x="720" y="209" text-anchor="middle" class="svg-mono">B</text>
+      <rect class="box" x="754" y="190" width="46" height="30" rx="7"/><text x="777" y="209" text-anchor="middle" class="svg-mono">C</text>
+      <text x="720" y="246" text-anchor="middle" class="svg-lab-s">按边界拆分 · 各管一段</text>
+
+      <text x="410" y="318" text-anchor="middle" class="svg-hand" style="font-size:19px">每一次升级，都由明确的「边界突破」驱动，而非架构偏好</text>
+    </svg>
+    <figcaption><span class="fig-no">FIG 01</span>系统演进路径：Single Agent → Workflow → Multi-Agent。每一步升级都由明确的「边界突破」驱动，而非架构偏好。</figcaption>
+  </figure>
+</section>
+
+<hr class="dots">
+
+<!-- ================= SECTION 3 ================= -->
+<section id="s3">
+  <div class="sec-head">
+    <span class="sec-no">SECTION 03</span>
+    <h2>Multi-Agent 的<span class="accent">四种核心架构模式</span></h2>
+    <p class="sec-sub">Supervisor · Planner-Worker · Hierarchical · Peer-to-Peer —— 没有最好的，只有匹配的。</p>
+  </div>
+
+  <!-- ===== 3.1 Supervisor ===== -->
+  <h3>3.1 Supervisor（主管模式）<span class="en">CENTRALIZED ROUTING</span></h3>
+
+  <p><strong>工作机制</strong>：Supervisor 持有全部路由逻辑，根据当前上下文决定调用哪个子 Agent；子 Agent 执行完把结果交回 Supervisor；Supervisor 汇总后决定下一步，或在信息足够后产出最终答案。</p>
+
+  <p><strong>路由</strong>：可以是规则（关键词 → Agent），也可以是 LLM 结构化输出（返回 <code>{"next": "agent_b", "task": "..."}</code>）。生产系统里两者混合——高频路径走规则，低频路径走 LLM。</p>
+
+  <p><strong>汇总</strong>：这是 Supervisor 的隐形瓶颈。子 Agent 返回的可能是一段 10K token 的原始结果，Supervisor 要在有限上下文里消化多个 Agent 的产出。工程上通常要求子 Agent 返回<em class="hl">结构化摘要 + 完整产物存对象存储、只传引用</em>。</p>
+
+  <div class="callout co-warn">
+    <div class="ic">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L16.5 15h-15L9 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 7v4M9 13v.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </div>
+    <div><span class="ttl">单点瓶颈</span>
+    <p>所有信息流经 Supervisor，意味着它的上下文压力是 O(总任务规模) 的。当子 Agent 数量 &gt; 5 或子任务产出 &gt; 5K token 时，Supervisor 自身就会出现第一节提到的「单 Agent 膨胀」问题——<em class="hl">Supervisor 本质上是一个受约束的 Single Agent，它有同样的天花板，只是推后了一步。</em></p></div>
+  </div>
+
+  <figure>
+    <!-- ============ FIG 02 : Supervisor（坐标已校验） ============ -->
+    <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Supervisor 模式">
+      <text x="380" y="16" text-anchor="middle" class="svg-mono">▲ User</text>
+      <path class="st" d="M380,20 L380,34" marker-end="url(#arr)"/>
+
+      <rect class="boxA" x="290" y="40" width="180" height="56" rx="12"/>
+      <text x="380" y="64" text-anchor="middle" class="svg-lab" style="font-size:14px">Supervisor</text>
+      <text x="380" y="84" text-anchor="middle" class="svg-mono">route · synthesize · audit</text>
+
+      <!-- forward (solid blue) -->
+      <path class="stB" d="M320,96 C290,135 235,165 195,200" marker-end="url(#arrB)"/>
+      <path class="stB" d="M372,96 L372,200" marker-end="url(#arrB)"/>
+      <path class="stB" d="M440,96 C470,135 545,165 585,200" marker-end="url(#arrB)"/>
+      <!-- result (dashed gray) -->
+      <path class="st" d="M125,200 C155,160 265,128 350,96" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+      <path class="st" d="M395,200 L395,96" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+      <path class="st" d="M615,200 C555,165 480,128 420,96" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+
+      <text x="352" y="150" text-anchor="end" class="svg-mono" style="fill:#2f5d8a">route →</text>
+      <text x="408" y="150" text-anchor="start" class="svg-mono">← result</text>
+
+      <rect class="box" x="70" y="200" width="190" height="64" rx="11"/>
+      <text x="165" y="228" text-anchor="middle" class="svg-lab" style="font-size:13px">Agent A</text>
+      <text x="165" y="248" text-anchor="middle" class="svg-mono">RAG · 知识库</text>
+
+      <rect class="box" x="285" y="200" width="190" height="64" rx="11"/>
+      <text x="380" y="228" text-anchor="middle" class="svg-lab" style="font-size:13px">Agent B</text>
+      <text x="380" y="248" text-anchor="middle" class="svg-mono">Web Search</text>
+
+      <rect class="box" x="500" y="200" width="190" height="64" rx="11"/>
+      <text x="595" y="228" text-anchor="middle" class="svg-lab" style="font-size:13px">Agent C</text>
+      <text x="595" y="248" text-anchor="middle" class="svg-mono">Data Analysis</text>
+
+      <text x="380" y="302" text-anchor="middle" class="svg-hand" style="font-size:18px">中心化控制 · 可审计 —— 代价：所有信息流经中心，O(N) 上下文压力</text>
+    </svg>
+    <figcaption><span class="fig-no">FIG 02</span>Supervisor 模式：蓝色实线为任务路由（route），灰色虚线为结果回流（result）。所有信息必须流经中心节点——这既是它的可控性来源，也是它的瓶颈所在。</figcaption>
+  </figure>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption><span class="cap-no">TABLE 3</span>Supervisor 模式速览</caption>
+      <thead><tr><th>维度</th><th>评价</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td class="b">优势</td><td><span class="pill g">可控 · 可审计</span></td><td>控制流集中在中心节点，每次调度可记录、可回放、可审计</td></tr>
+        <tr><td class="b">劣势</td><td><span class="pill b">上下文压力 O(N)</span></td><td>N 个子 Agent 的产出全部汇入 Supervisor，容易重演单 Agent 膨胀</td></tr>
+        <tr><td class="b">适合</td><td><span class="pill m">域路由型任务</span></td><td>多域个人助理（日历/邮件/CRM 各一个子 Agent）、企业知识助手</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== 3.2 Planner-Worker ===== -->
+  <h3>3.2 Planner-Worker（规划-执行模式）<span class="en">DECOMPOSE &amp; PARALLELIZE</span></h3>
+
+  <p><strong>工作机制</strong>：Planner 先把一个复杂问题拆解成带依赖关系的任务图（DAG），然后把任务分发给 Worker 并行执行，最后由 Aggregator 汇总。</p>
+
+  <p><strong>与 Supervisor 的本质区别</strong>：Supervisor 是<em class="hl">反应式</em>的——走一步看一步，根据上一步结果决定下一步；Planner 是<em class="hl">前瞻式</em>的——先有全局计划，再执行。这带来两个直接后果：</p>
+
+  <ul class="blist">
+    <li><span class="n">∥</span><div><span class="t">可以并行</span><span class="d">Planner 知道 T2 和 T3 互不依赖，就能同时派发给两个 Worker。Supervisor 想并行，就必须在一次模型调用里同时发起多个 tool call，可控性差很多。</span></div></li>
+    <li><span class="n">↑</span><div><span class="t">Planner 的质量决定系统的上限</span><span class="d">如果 Planner 拆出的任务粒度不对、依赖关系错了，Workers 执行得再好也救不回来。这是该模式最大的失效模式：<em class="hl">Planner 失控</em>——常见症状包括任务重复、依赖成环、把一个原子任务拆成 10 个碎片导致通信开销爆炸。</span></div></li>
+  </ul>
+
+  <h4>缓解 Planner 失控的四个工程手段</h4>
+  <ol style="margin:0 0 24px 22px;color:var(--ink-soft)">
+    <li style="margin-bottom:10px">给 Planner 输出<strong>强 schema 约束</strong>（JSON Schema + 任务依赖 DAG），拒绝不合规模划；</li>
+    <li style="margin-bottom:10px">限制任务数量上下界（如 3–7 个子任务），超界要求重新规划；</li>
+    <li style="margin-bottom:10px">引入 <strong>Replanner</strong>：Worker 执行中发现任务不可行，可请求局部重规划而非全量重来；</li>
+    <li><strong>Planner 用最强模型，Worker 用性价比模型</strong>——规划是杠杆点，值得花贵的 token。</li>
+  </ol>
+
+  <figure>
+    <!-- ============ FIG 03 : Planner-Worker（坐标已校验） ============ -->
+    <svg viewBox="0 0 760 372" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Planner-Worker 模式">
+      <text x="380" y="14" text-anchor="middle" class="svg-mono">▲ User</text>
+
+      <rect class="boxA" x="290" y="24" width="180" height="54" rx="12"/>
+      <text x="380" y="46" text-anchor="middle" class="svg-lab" style="font-size:14px">Planner</text>
+      <text x="380" y="64" text-anchor="middle" class="svg-mono">task graph · 强模型</text>
+      <path class="st" d="M380,78 L380,94" stroke-dasharray="4 4" marker-end="url(#arr)"/>
+
+      <!-- task graph DAG -->
+      <circle class="chip" cx="310" cy="130" r="14"/><text x="310" y="134" text-anchor="middle" class="svg-mono">T1</text>
+      <circle class="chip" cx="362" cy="112" r="14"/><text x="362" y="116" text-anchor="middle" class="svg-mono">T2</text>
+      <circle class="chip" cx="362" cy="148" r="14"/><text x="362" y="152" text-anchor="middle" class="svg-mono">T3</text>
+      <circle class="chip" cx="414" cy="130" r="14"/><text x="414" y="134" text-anchor="middle" class="svg-mono">T4</text>
+      <path class="st" d="M322,126 L349,117" marker-end="url(#arr)"/>
+      <path class="st" d="M322,134 L349,143" marker-end="url(#arr)"/>
+      <path class="st" d="M375,117 L401,126" marker-end="url(#arr)"/>
+      <path class="st" d="M375,143 L401,134" marker-end="url(#arr)"/>
+      <text x="470" y="134" text-anchor="middle" class="svg-hand" style="font-size:17px">任务图</text>
+
+      <!-- dispatch -->
+      <path class="stB" d="M294,134 C230,155 180,180 160,206" marker-end="url(#arrB)"/>
+      <path class="stB" d="M380,166 L380,206" marker-end="url(#arrB)"/>
+      <path class="stB" d="M430,134 C500,155 545,180 560,206" marker-end="url(#arrB)"/>
+      <text x="200" y="166" text-anchor="end" class="svg-mono">dispatch</text>
+      <text x="575" y="166" text-anchor="start" class="svg-mono">dispatch</text>
+      <text x="285" y="196" text-anchor="middle" class="svg-hand" style="font-size:16px">并行执行 ⚡</text>
+
+      <!-- replan -->
+      <path class="stR" d="M340,210 C340,188 350,166 357,153" stroke-dasharray="5 4" marker-end="url(#arrA)"/>
+      <text x="324" y="180" text-anchor="end" class="svg-mono" style="fill:#b85c4a">replan</text>
+
+      <!-- workers -->
+      <rect class="box" x="80" y="210" width="160" height="54" rx="11"/>
+      <text x="160" y="234" text-anchor="middle" class="svg-lab" style="font-size:13px">Worker 1</text>
+      <text x="160" y="252" text-anchor="middle" class="svg-mono">小模型 · 沙箱</text>
+      <rect class="box" x="300" y="210" width="160" height="54" rx="11"/>
+      <text x="380" y="234" text-anchor="middle" class="svg-lab" style="font-size:13px">Worker 2</text>
+      <text x="380" y="252" text-anchor="middle" class="svg-mono">小模型 · 沙箱</text>
+      <rect class="box" x="520" y="210" width="160" height="54" rx="11"/>
+      <text x="600" y="234" text-anchor="middle" class="svg-lab" style="font-size:13px">Worker 3</text>
+      <text x="600" y="252" text-anchor="middle" class="svg-mono">小模型 · 沙箱</text>
+
+      <!-- aggregate -->
+      <path class="st" d="M160,264 C200,290 250,310 286,322" marker-end="url(#arr)"/>
+      <path class="st" d="M380,264 L380,296" marker-end="url(#arr)"/>
+      <path class="st" d="M560,264 C520,290 470,310 434,322" marker-end="url(#arr)"/>
+      <rect class="boxA" x="290" y="300" width="180" height="44" rx="11"/>
+      <text x="380" y="326" text-anchor="middle" class="svg-lab" style="font-size:13px">Aggregator → 答案</text>
+
+      <text x="380" y="362" text-anchor="middle" class="svg-hand" style="font-size:18px">Planner 质量决定上限：强 schema 约束 · 任务数 3–7 · Replanner 兜底 · 规划用强模型</text>
+    </svg>
+    <figcaption><span class="fig-no">FIG 03</span>Planner-Worker 模式：Planner 产出任务 DAG，任务节点向三个 Worker 并行派发。红色虚线为 Replan 通道——Worker 发现任务不可行时请求局部重规划。</figcaption>
+  </figure>
+
+  <!-- ===== 3.3 Hierarchical ===== -->
+  <h3>3.3 Hierarchical（层级模式）<span class="en">RECURSIVE SUPERVISION</span></h3>
+
+  <p><strong>本质</strong>：Supervisor 的递归。Manager 不直接面对所有 Specialized Agent，而是先把任务路由到 Domain Agent，Domain Agent 在自己的域内再做二级调度。</p>
+
+  <p><strong>扩展性</strong>：这是四种模式里唯一能支撑大规模 Agent 集群的——Manager 的上下文压力从 O(N) 降到 O(D)（D 为域数）。当系统要接入几十个业务域、几十个团队时，这是唯一可扩展的形态。</p>
+
+  <p><strong>复杂度代价</strong>：</p>
+  <ul style="margin:0 0 22px 22px;color:var(--ink-soft)">
+    <li style="margin-bottom:8px">信息跨层传递时会衰减（每层都会摘要压缩，细节丢失）；</li>
+    <li style="margin-bottom:8px">故障排查要穿透多层 trace；</li>
+    <li style="margin-bottom:8px">域间通信需要显式协议，否则容易形成「封建割据」——Domain Agent 之间互相不透明，出现重复建设；</li>
+    <li>评测矩阵从 N 个 Agent 变成 N×N 的交互组合，测试空间爆炸。</li>
+  </ul>
+
+  <figure>
+    <!-- ============ FIG 04 : Hierarchical（坐标已校验，L3 盒体无重叠） ============ -->
+    <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hierarchical 模式">
+      <rect class="boxA" x="290" y="20" width="180" height="52" rx="12"/>
+      <text x="380" y="42" text-anchor="middle" class="svg-lab" style="font-size:13.5px">Manager Agent</text>
+      <text x="380" y="60" text-anchor="middle" class="svg-mono">全局调度 · L1</text>
+
+      <path class="stB" d="M330,72 C295,88 250,98 220,110" marker-end="url(#arrB)"/>
+      <path class="stB" d="M430,72 C465,88 510,98 540,110" marker-end="url(#arrB)"/>
+      <text x="380" y="98" text-anchor="middle" class="svg-hand" style="font-size:17px">Supervisor 的递归形态</text>
+
+      <rect class="box" x="110" y="112" width="220" height="52" rx="11" style="stroke:#9a7b3f;fill:#f7f1e3"/>
+      <text x="220" y="134" text-anchor="middle" class="svg-lab" style="font-size:12.5px;fill:#9a7b3f">Domain Agent · Finance</text>
+      <text x="220" y="152" text-anchor="middle" class="svg-mono">域内二级调度 · L2</text>
+
+      <rect class="box" x="430" y="112" width="220" height="52" rx="11" style="stroke:#9a7b3f;fill:#f7f1e3"/>
+      <text x="540" y="134" text-anchor="middle" class="svg-lab" style="font-size:12.5px;fill:#9a7b3f">Domain Agent · Engineering</text>
+      <text x="540" y="152" text-anchor="middle" class="svg-mono">域内二级调度 · L2</text>
+
+      <path class="st" d="M160,164 C142,190 126,206 119,222" marker-end="url(#arr)"/>
+      <path class="st" d="M280,164 C288,190 292,206 293,222" marker-end="url(#arr)"/>
+      <path class="st" d="M480,164 C472,190 468,206 467,222" marker-end="url(#arr)"/>
+      <path class="st" d="M600,164 C612,190 634,206 641,222" marker-end="url(#arr)"/>
+
+      <rect class="box" x="44" y="224" width="150" height="48" rx="10"/>
+      <text x="119" y="246" text-anchor="middle" class="svg-lab-s" style="font-weight:700">Agent · 报表分析</text>
+      <text x="119" y="262" text-anchor="middle" class="svg-mono">L3 · Specialized</text>
+      <rect class="box" x="218" y="224" width="150" height="48" rx="10"/>
+      <text x="293" y="246" text-anchor="middle" class="svg-lab-s" style="font-weight:700">Agent · 合规检查</text>
+      <text x="293" y="262" text-anchor="middle" class="svg-mono">L3 · Specialized</text>
+      <rect class="box" x="392" y="224" width="150" height="48" rx="10"/>
+      <text x="467" y="246" text-anchor="middle" class="svg-lab-s" style="font-weight:700">Agent · 代码检索</text>
+      <text x="467" y="262" text-anchor="middle" class="svg-mono">L3 · Specialized</text>
+      <rect class="box" x="566" y="224" width="150" height="48" rx="10"/>
+      <text x="641" y="246" text-anchor="middle" class="svg-lab-s" style="font-weight:700">Agent · 测试执行</text>
+      <text x="641" y="262" text-anchor="middle" class="svg-mono">L3 · Specialized</text>
+
+      <text x="380" y="302" text-anchor="middle" class="svg-lab-s">Manager 上下文压力 O(N) → O(D)　·　代价：跨层信息衰减 + 多层 trace 穿透 + N×N 评测矩阵</text>
+    </svg>
+    <figcaption><span class="fig-no">FIG 04</span>Hierarchical 模式：Supervisor 的递归结构，按组织域分层。Agent 数量 &gt; 10、多团队共建时的必然选择——但也不要在只有 5 个 Agent 时提前使用。</figcaption>
+  </figure>
+
+  <!-- ===== 3.4 P2P ===== -->
+  <h3>3.4 Peer-to-Peer（对等模式 / Swarm）<span class="en">HANDOFF NETWORK</span></h3>
+
+  <p><strong>工作机制</strong>：没有中心调度者。每个 Agent 根据自己看到的共享状态和对方的能力描述，自主决定把控制权移交给谁（handoff）。OpenAI 的 Swarm 和 LangGraph 的 Swarm 实现都是这个思路。</p>
+
+  <p><strong>灵活性</strong>：最高。任何 Agent 可以和任何 Agent 对话，新增一个 Agent 不需要改中心调度代码。但代价同样最高：</p>
+
+  <ul class="blist">
+    <li><span class="n" style="background:var(--terra-soft);color:var(--terra)">O</span><div><span class="t">通信复杂度 O(N²)</span><span class="d">Agent 数量翻倍，潜在交互路径变四倍。</span></div></li>
+    <li><span class="n" style="background:var(--terra-soft);color:var(--terra)">O</span><div><span class="t">状态一致性噩梦</span><span class="d">没有中心节点维护唯一真相，两个 Agent 同时修改共享状态时需要显式并发策略——乐观锁、冲突合并、或强制序列化。</span></div></li>
+    <li><span class="n" style="background:var(--terra-soft);color:var(--terra)">O</span><div><span class="t">调试困难</span><span class="d">一条请求的 trace 可能穿过 5 个 Agent，没有全局视角的话几乎无法复现问题。</span></div></li>
+  </ul>
+
+  <div class="callout co-warn">
+    <div class="ic">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L16.5 15h-15L9 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 7v4M9 13v.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </div>
+    <div><span class="ttl">适合场景与建议</span>
+    <p>Agent 数量少（通常 ≤ 5）、每个 Agent 都足够自治、交互模式高度动态、且团队有较强分布式系统经验。客服系统的「转接专家」是经典场景，但也几乎只有这种场景适合它。<em class="hl">对多数团队，Peer-to-Peer 是最后的选择，不是第一步。</em></p></div>
+  </div>
+</section>
+
+<hr class="dots">
+
+<!-- ================= SECTION 4 ================= -->
+<section id="s4">
+  <div class="sec-head">
+    <span class="sec-no">SECTION 04</span>
+    <h2>架构选择：<span class="accent">不是排名，是匹配</span></h2>
+    <p class="sec-sub">控制性、灵活性、复杂度、调试难度、并行度——五个维度上的权衡矩阵。</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption><span class="cap-no">TABLE 4</span>四种架构模式的选择矩阵</caption>
+      <thead>
+        <tr><th>模式</th><th>控制性</th><th>灵活性</th><th>复杂度</th><th>调试难度</th><th>并行度</th><th>典型场景</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="b">Supervisor</td>
+          <td>★★★★★</td><td>★★★</td><td>★★</td><td>★★</td><td>★★★</td>
+          <td>多域个人助理、企业知识助手</td>
+        </tr>
+        <tr>
+          <td class="b">Planner-Worker</td>
+          <td>★★★★</td><td>★★★★★</td><td>★★★</td><td>★★★</td><td>★★★★★</td>
+          <td>深度研究、代码重构、复杂分析</td>
+        </tr>
+        <tr>
+          <td class="b">Hierarchical</td>
+          <td>★★★</td><td>★★★★</td><td>★★★★★</td><td>★★★★★</td><td>★★★★</td>
+          <td>多团队企业平台、Agent 集群</td>
+        </tr>
+        <tr>
+          <td class="b">Peer-to-Peer</td>
+          <td>★★</td><td>★★★★★</td><td>★★★★</td><td>★★★★★</td><td>★★★</td>
+          <td>少量自治专家的动态协作</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>选择依据不是「哪个最好」，而是四个问题的答案</strong>：</p>
+
+  <ul class="blist">
+    <li><span class="n">1</span><div><span class="t">任务路径的可预测程度</span><span class="d">高度可预测 → Workflow；部分可预测 → Supervisor；完全开放 → Planner-Worker。</span></div></li>
+    <li><span class="n">2</span><div><span class="t">子任务间是否需要并行</span><span class="d">需要 → Planner-Worker 或 Router；不需要 → Supervisor 或 Handoffs。</span></div></li>
+    <li><span class="n">3</span><div><span class="t">Agent 数量和团队规模</span><span class="d">&lt; 5 个 Agent / 单团队 → 扁平架构；&gt; 10 个 / 多团队 → Hierarchical。</span></div></li>
+    <li><span class="n">4</span><div><span class="t">审计与合规要求</span><span class="d">强审计 → 中心化（Supervisor / Hierarchical）；弱约束 → 可以考虑 P2P。</span></div></li>
+  </ul>
+
+  <div class="callout co-good">
+    <div class="ic">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9.5L7.5 14 15 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div><span class="ttl">务实的演进路线</span>
+    <p><strong>从 Supervisor 起步</strong>，当出现明确的并行需求时<strong>升级为 Planner-Worker</strong>，当出现多团队、多域需求时<strong>再引入 Hierarchical</strong>。让架构跟随复杂度演进，而不是预支未来复杂度。</p></div>
+  </div>
+</section>
+
+<hr class="dots">
+
+<!-- ================= SECTION 5 ================= -->
+<section id="s5">
+  <div class="sec-head">
+    <span class="sec-no">SECTION 05</span>
+    <h2>生产级 Multi-Agent 的<span class="accent">分层架构</span></h2>
+    <p class="sec-sub">不管上层用哪种协作模式，可维护的系统都需要硬边界分层。每层职责必须足够硬，否则 Agent 数量的增加会让系统迅速失控。</p>
+  </div>
+
+  <figure>
+    <!-- ============ FIG 05 : 分层架构（坐标已校验） ============ -->
+    <svg viewBox="0 0 820 548" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="生产级 Multi-Agent 总体分层架构">
+      <rect class="box" x="310" y="20" width="200" height="44" rx="10"/>
+      <text x="410" y="47" text-anchor="middle" class="svg-lab" style="font-size:13px">User / Client</text>
+      <path class="st" d="M410,64 L410,84" marker-end="url(#arr)"/>
+      <text x="424" y="78" class="svg-mono">request + api key</text>
+
+      <rect class="boxA" x="130" y="90" width="560" height="52" rx="11"/>
+      <text x="410" y="112" text-anchor="middle" class="svg-lab" style="font-size:13.5px">L1 · API Gateway</text>
+      <text x="410" y="130" text-anchor="middle" class="svg-mono">鉴权 · 限流 · 配额 · 会话粘性</text>
+      <path class="st" d="M410,142 L410,160" marker-end="url(#arr)"/>
+
+      <rect class="boxA" x="130" y="166" width="560" height="62" rx="11" style="stroke-width:2"/>
+      <text x="410" y="192" text-anchor="middle" class="svg-lab" style="font-size:13.5px">L2 · Orchestrator　—— 系统的脊梁骨</text>
+      <text x="410" y="214" text-anchor="middle" class="svg-mono">会话状态机 · trace 上下文 · 超时/重试/降级 · 断点恢复 · 人工接管</text>
+      <path class="st" d="M410,228 L410,246" marker-end="url(#arr)"/>
+
+      <rect class="box" x="130" y="252" width="560" height="78" rx="11"/>
+      <text x="410" y="274" text-anchor="middle" class="svg-lab" style="font-size:12.5px">L3 · Agents（独立部署单元，互不直接调用）</text>
+      <rect class="chip" x="152" y="288" width="96" height="26" rx="7"/><text x="200" y="305" text-anchor="middle" class="svg-mono">Research</text>
+      <rect class="chip" x="258" y="288" width="96" height="26" rx="7"/><text x="306" y="305" text-anchor="middle" class="svg-mono">Search</text>
+      <rect class="chip" x="364" y="288" width="96" height="26" rx="7"/><text x="412" y="305" text-anchor="middle" class="svg-mono">Analysis</text>
+      <rect class="chip" x="470" y="288" width="96" height="26" rx="7"/><text x="518" y="305" text-anchor="middle" class="svg-mono">Writer</text>
+      <rect class="chip" x="576" y="288" width="96" height="26" rx="7"/><text x="624" y="305" text-anchor="middle" class="svg-mono">Reviewer</text>
+      <path class="st" d="M410,330 L410,348" marker-end="url(#arr)"/>
+      <text x="424" y="344" class="svg-mono">tool calls（白名单鉴权）</text>
+
+      <rect class="box" x="130" y="354" width="560" height="60" rx="11"/>
+      <text x="410" y="378" text-anchor="middle" class="svg-lab" style="font-size:12.5px">L4 · Tools / RAG / Memory　—— 工具即资源，Agent 即租户</text>
+      <text x="410" y="398" text-anchor="middle" class="svg-mono">向量库 · 搜索 API · 对象存储 · 会话记忆（工作记忆 + 长期知识）</text>
+      <path class="st" d="M410,414 L410,432" marker-end="url(#arr)"/>
+
+      <rect class="box" x="130" y="438" width="560" height="60" rx="11" style="stroke:#9a7b3f;fill:#f7f1e3"/>
+      <text x="410" y="462" text-anchor="middle" class="svg-lab" style="font-size:12.5px;fill:#9a7b3f">L5 · Infrastructure</text>
+      <text x="410" y="482" text-anchor="middle" class="svg-mono">模型网关 · 全链路可观测 · 离线评测 · 代码沙箱 · 密钥与权限</text>
+
+      <text x="752" y="190" text-anchor="middle" class="svg-hand" style="font-size:18px">故障隔离</text>
+      <text x="752" y="220" text-anchor="middle" class="svg-hand" style="font-size:18px">独立演进</text>
+
+      <text x="410" y="530" text-anchor="middle" class="svg-lab-s" style="font-size:12.5px">Agent 之间不直接调用 —— 所有交互经 Orchestrator 中转（系统成熟之前保持该约束）</text>
+    </svg>
+    <figcaption><span class="fig-no">FIG 05</span>生产级 Multi-Agent 总体架构。核心约束：Agent 之间不直接调用，所有交互经 Orchestrator 中转——至少在系统成熟之前应该这样约束。</figcaption>
+  </figure>
+
+  <ul class="blist">
+    <li><span class="n">L1</span><div><span class="t">API Gateway</span><span class="d">认证、限流、配额、会话粘性。Agent 系统的请求成本是普通 API 的几十倍，必须在网关层就把预算和配额管住，而不是等 token 烧完才发现。</span></div></li>
+    <li><span class="n">L2</span><div><span class="t">Orchestrator —— 系统的脊梁骨</span><span class="d">不参与业务判断，只负责：维护会话级状态机；传递 trace 上下文（trace_id、span 层级）；执行超时、重试、降级、熔断；持久化中间产物，支持断点恢复和人工接管。LangGraph 的 checkpoint、Temporal 的 workflow 引擎，本质上都在做这一层的事。</span></div></li>
+    <li><span class="n">L3</span><div><span class="t">Agents 层</span><span class="d">每个 Agent 是独立的部署单元，有自己的 system prompt、tool 白名单、模型选择、超时策略。Agent 之间不直接调用，所有交互经 Orchestrator 中转。</span></div></li>
+    <li><span class="n">L4</span><div><span class="t">Tools / RAG / Memory</span><span class="d">工具的统一注册与鉴权；向量库与检索服务；会话记忆（短期工作记忆 + 长期知识记忆）。这一层要做到「工具即资源，Agent 即租户」——每个 Agent 只能看到被授权的工具子集。</span></div></li>
+    <li><span class="n">L5</span><div><span class="t">Infrastructure</span><span class="d">模型网关（统一计费、路由、降级）、全链路可观测（LangSmith / Langfuse / 自建 trace）、离线评测流水线、Agent 代码沙箱、密钥与权限管理。</span></div></li>
+  </ul>
+
+  <p><strong>分层的核心价值在于故障隔离和独立演进</strong>——你可以把 Writer Agent 换个模型，不影响 Search Agent；可以给 Analysis Agent 加沙箱，不碰其他层。这是微服务架构的老原则，在 Agent 时代依然成立。</p>
+</section>
+
+<hr class="dots">
+
+<!-- ================= SECTION 6 ================= -->
+<section id="s6">
+  <div class="sec-head">
+    <span class="sec-no">SECTION 06</span>
+    <h2>真实案例：<span class="accent">企业级深度研究系统</span></h2>
+    <p class="sec-sub">把前面的所有原则串起来，看一个完整的拆分过程——为什么拆、怎么拆、每个 Agent 的边界是什么。</p>
+  </div>
+
+  <h3>6.1 业务需求</h3>
+  <p>用户提出一个复杂问题，如<em>「分析过去三年国内新能源车市场的竞争格局变化，并评估某新进入者的可行性」</em>。系统需要：检索互联网 + 内部研究报告；提取结构化数据并做定量分析；对关键结论交叉验证；产出带引用的长文报告；经审核后发布。</p>
+
+  <h3>6.2 为什么拆、怎么拆</h3>
+  <p>初始版本是一个单 Agent，上线后遇到第一节的全部问题。拆分方案如下：</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption><span class="cap-no">TABLE 5</span>七个 Agent 的边界定义（输入 / 输出 / 模型 / 工具 / 拆分理由）</caption>
+      <thead>
+        <tr><th>Agent</th><th>职责</th><th>模型</th><th>关键工具</th><th>边界理由</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="b">Research Agent</span><br><span style="font-size:.75rem;color:var(--ink-mute)">(Orchestrator)</span></td>
+          <td>理解问题、制定研究计划、分配子任务、汇总</td>
+          <td><span class="pill b">前沿模型</span></td>
+          <td><code>无直接工具，只调度</code></td>
+          <td>Planner 角色要用最强推理能力；不碰工具，避免上下文被污染</td>
+        </tr>
+        <tr>
+          <td class="b">Search Agent</td>
+          <td>互联网检索、结果去重、相关性初筛</td>
+          <td><span class="pill g">小模型</span></td>
+          <td><code>web_search</code> <code>crawl</code></td>
+          <td>高频调用，用性价比模型；工具白名单仅限搜索</td>
+        </tr>
+        <tr>
+          <td class="b">Retrieval Agent</td>
+          <td>内部知识库 RAG 检索</td>
+          <td><span class="pill g">小模型</span></td>
+          <td><code>vector_search</code> <code>kb_api</code></td>
+          <td>权限域独立：只能读内部 KB，禁止外联</td>
+        </tr>
+        <tr>
+          <td class="b">Data Analysis Agent</td>
+          <td>对提取的数据跑统计分析、生成图表</td>
+          <td><span class="pill m">中档模型</span></td>
+          <td><code>python_repl</code> <code>sql_query</code></td>
+          <td><strong>必须跑在沙箱里</strong>，故障域隔离；权限独立</td>
+        </tr>
+        <tr>
+          <td class="b">Fact Checker</td>
+          <td>对 Writer 的关键论断做交叉验证</td>
+          <td><span class="pill m">中档模型</span></td>
+          <td><code>search</code> <code>retrieval</code>（只读）</td>
+          <td><strong>独立于 Writer</strong>，避免自我确认偏误</td>
+        </tr>
+        <tr>
+          <td class="b">Writer</td>
+          <td>组织成结构化长文、插入引用</td>
+          <td><span class="pill b">前沿模型</span></td>
+          <td><code>无工具（纯生成）</code></td>
+          <td>隔离上下文——只看整理好的材料，不看原始搜索结果</td>
+        </tr>
+        <tr>
+          <td class="b">Reviewer</td>
+          <td>检查引用完整性、口径一致性、合规</td>
+          <td><span class="pill m">中档模型</span></td>
+          <td><code>无工具</code></td>
+          <td>最后的质量门</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.3 协作流程</h3>
+  <p>采用<em class="hl">Planner-Worker 为主、Supervisor 语义为辅</em>的混合架构：Research Agent 担任 Planner，先产出研究计划；Search 和 Retrieval 并行执行；Data Analysis 依赖 Retrieval 产出后启动；Writer 串行在最后；Fact Checker 和 Reviewer 构成质量关卡。</p>
+
+  <figure>
+    <!-- ============ FIG 06 : 案例流程（坐标已校验，返修回路已移至上方避让） ============ -->
+    <svg viewBox="0 0 820 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="深度研究系统协作流程">
+      <rect class="box" x="30" y="30" width="100" height="42" rx="10"/>
+      <text x="80" y="56" text-anchor="middle" class="svg-lab-s" style="font-weight:700">User</text>
+      <path class="st" d="M130,51 L156,51" marker-end="url(#arr)"/>
+      <rect class="box" x="160" y="30" width="130" height="42" rx="10"/>
+      <text x="225" y="56" text-anchor="middle" class="svg-lab-s" style="font-weight:700">API Gateway</text>
+      <path class="st" d="M290,51 L326,51" marker-end="url(#arr)"/>
+
+      <rect class="boxA" x="330" y="24" width="210" height="58" rx="12" style="stroke-width:2"/>
+      <text x="435" y="48" text-anchor="middle" class="svg-lab" style="font-size:13px">Research Agent（Planner）</text>
+      <text x="435" y="68" text-anchor="middle" class="svg-mono">plan · 前沿模型 · 不碰工具</text>
+
+      <!-- parallel dispatch -->
+      <path class="stB" d="M390,82 C370,105 330,122 302,138" marker-end="url(#arrB)"/>
+      <path class="stB" d="M480,82 C500,105 540,122 568,138" marker-end="url(#arrB)"/>
+      <text x="435" y="118" text-anchor="middle" class="svg-hand" style="font-size:17px">并行 ⚡</text>
+
+      <rect class="box" x="180" y="140" width="180" height="54" rx="11"/>
+      <text x="270" y="164" text-anchor="middle" class="svg-lab-s" style="font-weight:700;font-size:12.5px">Search Agent</text>
+      <text x="270" y="182" text-anchor="middle" class="svg-mono">小模型 · web_search</text>
+
+      <rect class="box" x="540" y="140" width="180" height="54" rx="11"/>
+      <text x="630" y="164" text-anchor="middle" class="svg-lab-s" style="font-weight:700;font-size:12.5px">Retrieval Agent</text>
+      <text x="630" y="182" text-anchor="middle" class="svg-mono">小模型 · 内部 KB（只读）</text>
+
+      <!-- converge to analysis -->
+      <path class="st" d="M270,194 C290,220 330,236 388,248" marker-end="url(#arr)"/>
+      <path class="st" d="M630,194 C610,220 570,236 502,248" marker-end="url(#arr)"/>
+      <rect class="box" x="355" y="250" width="180" height="54" rx="11" style="stroke:#b85c4a"/>
+      <text x="445" y="274" text-anchor="middle" class="svg-lab-s" style="font-weight:700;font-size:12.5px">Data Analysis Agent</text>
+      <text x="445" y="292" text-anchor="middle" class="svg-mono">python_repl（沙箱）</text>
+      <text x="560" y="282" text-anchor="start" class="svg-hand" style="font-size:16px">在沙箱中执行</text>
+
+      <!-- analysis -> writer -->
+      <path class="st" d="M445,304 L445,354" marker-end="url(#arr)"/>
+
+      <!-- writer -->
+      <rect class="box" x="355" y="360" width="180" height="54" rx="11" style="stroke:#9a7b3f;fill:#f7f1e3"/>
+      <text x="445" y="384" text-anchor="middle" class="svg-lab-s" style="font-weight:700;font-size:12.5px">Writer</text>
+      <text x="445" y="402" text-anchor="middle" class="svg-mono">前沿模型 · 纯生成 · 无工具</text>
+
+      <!-- writer -> fact checker -->
+      <path class="st" d="M535,387 L594,387" marker-end="url(#arr)"/>
+      <rect class="box" x="600" y="360" width="170" height="54" rx="11"/>
+      <text x="685" y="384" text-anchor="middle" class="svg-lab-s" style="font-weight:700;font-size:12.5px">Fact Checker</text>
+      <text x="685" y="402" text-anchor="middle" class="svg-mono">独立上下文 · 交叉验证</text>
+
+      <!-- rework loop (top route, avoids all other edges) -->
+      <path class="stR" d="M685,358 L685,332 L490,332 L490,352" stroke-dasharray="5 4" marker-end="url(#arrA)"/>
+      <text x="565" y="324" text-anchor="middle" class="svg-mono" style="fill:#b85c4a">issues → 返修</text>
+      <text x="735" y="342" text-anchor="middle" class="svg-hand" style="font-size:16px">独立上下文</text>
+
+      <!-- fact checker -> reviewer -->
+      <path class="st" d="M640,414 C640,458 604,490 541,508" marker-end="url(#arr)"/>
+
+      <!-- reviewer -> publish -->
+      <rect class="box" x="355" y="490" width="180" height="48" rx="11"/>
+      <text x="445" y="518" text-anchor="middle" class="svg-lab-s" style="font-weight:700">Reviewer · 质量门</text>
+      <path class="st" d="M535,514 L596,514" marker-end="url(#arr)"/>
+      <rect class="boxA" x="602" y="492" width="110" height="44" rx="11"/>
+      <text x="657" y="518" text-anchor="middle" class="svg-lab" style="font-size:13px;fill:#2f5d8a">发布</text>
+      <text x="665" y="478" text-anchor="middle" class="svg-hand" style="font-size:16px">approved ✓</text>
+
+      <text x="30" y="552" class="svg-mono">── 任务流　·　红色虚线 = 返修回路　·　通过 Reviewer 后方可发布</text>
+    </svg>
+    <figcaption><span class="fig-no">FIG 06</span>深度研究系统的完整协作流。Search 与 Retrieval 无依赖关系故并行执行；Fact Checker 的红色虚线是返修回路（从 Writer 顶部回流，避让主流程）；通过 Reviewer 质量门后才允许发布。</figcaption>
+  </figure>
+
+  <h3>6.4 五个关键工程决策</h3>
+
+  <ul class="blist">
+    <li><span class="n">1</span><div><span class="t">Research Agent 不直接调工具</span><span class="d">这是整条链路上最重要的约束。让 Planner 亲自做搜索，会让它的上下文被原始网页污染，规划质量迅速下降。Planner 只消费结构化的中间结果。</span></div></li>
+    <li><span class="n">2</span><div><span class="t">子 Agent 之间不传原始数据，只传结构化产物 + 存储引用</span><span class="d">Search Agent 返回的不是 8K token 的网页原文，而是 <code>[{url, title, snippet, relevance}]</code>；原文存对象存储，Writer 需要时通过引用拉取。</span></div></li>
+    <li><span class="n">3</span><div><span class="t">Fact Checker 必须独立于 Writer</span><span class="d">如果让 Writer 自查，它会有强烈的确认偏误——倾向于相信自己写的东西。独立 Agent + 独立上下文，是打破偏误的唯一工程手段。</span></div></li>
+    <li><span class="n">4</span><div><span class="t">并行度通过任务图显式声明</span><span class="d">Search 和 Retrieval 没有依赖关系，Orchestrator 同时派发；Data Analysis 依赖 Retrieval 输出，用事件触发而非轮询。</span></div></li>
+    <li><span class="n">5</span><div><span class="t">每个 Agent 独立评测</span><span class="d">Search 用 recall@k；Retrieval 用忠实度 + 相关性；Data Analysis 用数值正确性；Writer 用结构化 rubric + LLM-as-judge；Fact Checker 用标注集上的精确率。<em class="hl">拆分的最大隐性红利，就是让评测变得可归因。</em></span></div></li>
+  </ul>
+
+  <div class="stats">
+    <div class="stat" style="--c:var(--accent)">
+      <div class="num">+90.2<small>%</small></div>
+      <div class="lab">内部研究评测提升</div>
+      <div class="des">Orchestrator-Worker 架构相对单 Agent 的表现（Anthropic 公开数据）</div>
+    </div>
+    <div class="stat" style="--c:var(--terra)">
+      <div class="num">15<small>×</small></div>
+      <div class="lab">Token 消耗倍数</div>
+      <div class="des">多 Agent 相对单轮对话的代价——只有任务价值够高时账才算得过来</div>
+    </div>
+    <div class="stat" style="--c:var(--green)">
+      <div class="num">-60<small>%</small></div>
+      <div class="lab">链路 Token 降幅</div>
+      <div class="des">「只传引用不传原文」约束带来的上下文消耗下降</div>
+    </div>
+    <div class="stat" style="--c:var(--gold)">
+      <div class="num">4<small>min</small> → 90<small>s</small></div>
+      <div class="lab">端到端延迟</div>
+      <div class="des">任务图显式声明并行度之后的优化效果</div>
+    </div>
+  </div>
+</section>
+
+<hr class="dots">
+
+<!-- ================= SECTION 7 ================= -->
+<section id="s7">
+  <div class="sec-head">
+    <span class="sec-no">SECTION 07</span>
+    <h2>收束：<span class="accent">六个问题的最终回答</span></h2>
+  </div>
+
+  <div class="qa-grid">
+    <div class="qa">
+      <div class="q"><span class="qm">Q1</span>Multi-Agent 为什么出现？</div>
+      <div class="a"><p>不是因为多个 Agent 比一个「更聪明」，而是因为单一执行主体在 Context、Tool、权限、模型、成本等多个维度上都存在物理性上限。Multi-Agent 的本质是通过<em class="hl">上下文隔离</em>换取能力的可组合性——每个 Agent 在自己的小世界里保持干净，靠协议组合成复杂行为。</p></div>
+    </div>
+    <div class="qa">
+      <div class="q"><span class="qm">Q2</span>Agent 应该按什么原则拆？</div>
+      <div class="a"><p>按<em class="hl">边界</em>拆，不按「职责」拆。八个边界里，Context 边界和权限边界最硬，能力边界和模型边界次之。每次拆分都要能回答：这个 Agent 的输入输出契约是什么？它的工具白名单是什么？它挂了会影响谁？</p></div>
+    </div>
+    <div class="qa">
+      <div class="q"><span class="qm">Q3</span>Workflow 与 Multi-Agent 如何选择？</div>
+      <div class="a"><p>路径可完全枚举 → Workflow；路径不可枚举但子任务域清晰 → Supervisor；路径开放且需要并行 → Planner-Worker。判断标准不是「任务多复杂」，而是<em class="hl">「控制流应该由谁持有」</em>——代码能写清楚的逻辑永远不要交给 LLM。</p></div>
+    </div>
+    <div class="qa">
+      <div class="q"><span class="qm">Q4</span>Supervisor 与 Planner-Worker 的区别是什么？</div>
+      <div class="a"><p>Supervisor 是<strong>反应式</strong>调度，每一步根据当前状态做局部决策，天然串行，适合域路由；Planner-Worker 是<strong>前瞻式</strong>规划，先有全局任务图再执行，天然支持并行，适合复杂分解。前者可控性强、上下文压力集中；后者上限更高、但 Planner 的质量成为单点风险。生产系统常常两者混用：外层 Planner 拆解，内层每个子任务用 Supervisor 管理局部执行。</p></div>
+    </div>
+    <div class="qa">
+      <div class="q"><span class="qm">Q5</span>Agent 数量是不是越多越好？</div>
+      <div class="a"><p>不是，且通常正好相反。每多一个 Agent，就多一个交接点、多一份通信成本、多一个需要评测和监控的对象。<em class="hl">Agent 数量应该由边界决定，而不是由架构野心决定。</em>大多数生产系统的甜蜜点在 3–7 个 Agent；超过 10 个就需要 Hierarchical 架构和专门的平台团队支撑。</p></div>
+    </div>
+    <div class="qa">
+      <div class="q"><span class="qm">Q6</span>为什么拆分后系统复杂度会迅速上升？</div>
+      <div class="a"><p>因为 Multi-Agent 本质上是<em class="hl">分布式系统</em>，把单进程内的函数调用变成了跨网络的协议交互。复杂度上升来自四个方面：</p>
+      <p><strong>状态</strong>从「一个变量」变成「多处副本」（需要一致性策略）；<strong>失败</strong>从「一次异常」变成「部分失败」（需要补偿和幂等）；<strong>观测</strong>从「一个 stack trace」变成「跨 Agent trace」（需要专门的观测基建）；<strong>评测</strong>从「端到端打分」变成「组合爆炸的中间指标矩阵」。</p>
+      <p>拆 Agent 是把复杂度从「prompt 里的纠缠」搬到「系统里的协议」——如果团队没有驾驭分布式系统的能力，拆完只会更糟。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= NEXT ================= -->
+<div class="next" id="next">
+  <div class="lbl">Next in Series · 下一篇</div>
+  <div class="t">Agent 拆出来之后，真正的问题变成了：<br>它们之间<em>如何通信</em>，以及<em>状态到底应该放在哪里</em>？</div>
+  <p>Handoff 协议、共享状态 vs 消息传递、会话记忆与长期记忆的分层设计——Multi-Agent 系统的第二个深水区。敬请期待系列第二篇。</p>
+</div>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <p>Agent Engineering Series · Vol.1 — Multi-Agent System Architecture</p>
+    <p class="mono">WRITTEN WITH ❤ FOR ENGINEERS WHO SHIP · 2026</p>
+  </div>
+</footer>
+
+</body>
+</html>

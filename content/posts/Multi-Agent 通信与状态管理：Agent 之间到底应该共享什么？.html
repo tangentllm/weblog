@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent 通信与状态管理：Agent 之间到底应该共享什么？</title>
+
+<!-- ===== SEO ===== -->
+<meta name="description" content="把 Multi-Agent 看成一个分布式协作系统：三种通信模式对比、Agent Contract 契约设计、五层状态模型、Context 最小化原则、乐观锁并发控制，附完整可运行 Python 代码与架构图。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Multi-Agent 通信与状态管理：Agent 之间到底应该共享什么？">
+<meta property="og:description" content="Agent 拆开之后，彼此如何协作？哪些信息可以共享，哪些必须隔离？一篇讲透 Multi-Agent 的通信、契约与状态设计。">
+<!-- 发布时请替换为你的站点域名与文章 URL -->
+<meta property="og:url" content="https://your-site.com/blog/multi-agent-04-communication-state">
+<meta property="article:published_time" content="2026-09-23">
+
+<style>
+  /* ========== 设计变量 ========== */
+  :root {
+    --ink: #2b2622;
+    --ink-soft: #6b6259;
+    --ink-faint: #9c938a;
+    --paper: #fbf9f5;
+    --card: #ffffff;
+    --line: #e6e0d6;
+    --accent: #c25e3a;
+    --accent-soft: #f6e8e1;
+    --blue: #3a6ea5;
+    --blue-soft: #e8eff6;
+    --green: #4a7c59;
+    --green-soft: #e7f0ea;
+    --code-bg: #2b2622;
+    --code-ink: #e8e2d9;
+    --serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+    --sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", -apple-system, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", "Fira Code", Consolas, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ========== 顶部题头 ========== */
+  .masthead {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 72px 24px 40px;
+    border-bottom: 3px double var(--line);
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  h1.title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: clamp(28px, 5vw, 40px);
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    margin-bottom: 24px;
+  }
+  .byline {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+  }
+  .byline span::before { content: "· "; color: var(--accent); }
+
+  /* ========== 正文容器 ========== */
+  .article {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: 700;
+    margin: 72px 0 8px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  h2 .sec-no {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  h3 {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 700;
+    margin: 44px 0 14px;
+  }
+  h3::before { content: "§ "; color: var(--ink-faint); font-weight: 400; }
+
+  p { margin-bottom: 18px; color: var(--ink); }
+  p.lead {
+    font-size: 17.5px;
+    color: var(--ink-soft);
+    margin-bottom: 28px;
+  }
+
+  strong { font-weight: 600; }
+  em { font-style: normal; color: var(--accent); }
+
+  blockquote {
+    margin: 32px 0;
+    padding: 20px 26px;
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 10px 10px 0;
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.9;
+  }
+  blockquote p { margin: 0; }
+
+  /* ========== 卡片 ========== */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 28px 30px;
+    margin: 32px 0;
+    box-shadow: 0 1px 3px rgba(43,38,34,0.05), 0 8px 24px rgba(43,38,34,0.04);
+  }
+  .card-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  .card-trio {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 16px;
+    margin: 32px 0;
+  }
+  .card-trio .card { margin: 0; padding: 22px; }
+  .card-trio .card h4 {
+    font-family: var(--serif);
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  .card-trio .card p { font-size: 13.5px; color: var(--ink-soft); margin: 0; line-height: 1.7; }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+  .tag.a { background: var(--blue-soft); color: var(--blue); }
+  .tag.b { background: var(--green-soft); color: var(--green); }
+  .tag.c { background: var(--accent-soft); color: var(--accent); }
+
+  /* ========== 统计卡片 ========== */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+    margin: 36px 0;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 18px;
+    text-align: center;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .stat:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(43,38,34,0.08); }
+  .stat .num {
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.2;
+  }
+  .stat .label { font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; }
+
+  /* ========== 表格 ========== */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 32px 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+    box-shadow: 0 1px 3px rgba(43,38,34,0.05);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 560px;
+  }
+  thead th {
+    font-family: var(--sans);
+    font-weight: 600;
+    text-align: left;
+    padding: 14px 18px;
+    background: var(--ink);
+    color: var(--code-ink);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  tbody td {
+    padding: 13px 18px;
+    border-top: 1px solid var(--line);
+    vertical-align: top;
+    color: var(--ink-soft);
+  }
+  tbody td:first-child { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  tbody tr:hover { background: #f7f4ee; }
+  .pill {
+    display: inline-block; font-size: 11px; font-family: var(--mono);
+    padding: 1px 9px; border-radius: 12px;
+  }
+  .pill.good { background: var(--green-soft); color: var(--green); }
+  .pill.mid  { background: #faf0dc; color: #a07414; }
+  .pill.bad  { background: var(--accent-soft); color: var(--accent); }
+
+  /* ========== 代码块 ========== */
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border-radius: 12px;
+    padding: 24px 26px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.75;
+    margin: 28px 0;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 8px 24px rgba(43,38,34,0.12);
+  }
+  pre .k { color: #e79a6b; }
+  pre .s { color: #a8c69a; }
+  pre .c { color: #8a8178; font-style: italic; }
+  pre .n { color: #d9c9a3; }
+  pre .f { color: #9fc1d9; }
+  code.inline {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: #efeae1;
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 5px;
+  }
+
+  /* ========== SVG 架构图容器 ========== */
+  .figure {
+    margin: 40px 0;
+    padding: 28px 20px 18px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(43,38,34,0.05);
+  }
+  .figure svg { width: 100%; height: auto; display: block; }
+  .figcap {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin-top: 14px;
+    font-family: var(--serif);
+  }
+  .figcap b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ========== 清单 ========== */
+  ul.check { list-style: none; margin: 20px 0; }
+  ul.check li {
+    padding: 6px 0 6px 30px;
+    position: relative;
+    color: var(--ink-soft);
+  }
+  ul.check li::before {
+    content: "✓";
+    position: absolute; left: 4px; top: 6px;
+    color: var(--green); font-weight: 700;
+  }
+  ul.cross { list-style: none; margin: 20px 0; }
+  ul.cross li {
+    padding: 6px 0 6px 30px;
+    position: relative;
+    color: var(--ink-soft);
+  }
+  ul.cross li::before {
+    content: "✗";
+    position: absolute; left: 4px; top: 6px;
+    color: var(--accent); font-weight: 700;
+  }
+
+  /* 核心原则盒 */
+  .principle {
+    background: linear-gradient(135deg, var(--blue-soft), #f2f6fa);
+    border: 1px solid #cfdeed;
+    border-radius: 12px;
+    padding: 26px 30px;
+    margin: 36px 0;
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.9;
+  }
+  .principle::before {
+    content: "核心原则";
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--blue);
+    margin-bottom: 10px;
+  }
+
+  /* ========== 系列导航 ========== */
+  .series-nav {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px 24px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .series-nav a {
+    flex: 1;
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 18px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .series-nav a:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .series-nav a .dir {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  /* 下一篇预告 */
+  .next-up {
+    margin-top: 80px;
+    padding: 40px 36px;
+    background: var(--ink);
+    color: var(--code-ink);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .next-up::before {
+    content: "";
+    position: absolute; right: -40px; top: -40px;
+    width: 200px; height: 200px;
+    border: 2px dashed rgba(255,255,255,0.12);
+    border-radius: 50%;
+  }
+  .next-up .kicker { color: #e79a6b; margin-bottom: 14px; }
+  .next-up h3 {
+    font-size: 24px; margin: 0 0 14px; color: #fff;
+  }
+  .next-up h3::before { content: none; }
+  .next-up p { color: #c4bcb2; font-size: 15px; }
+
+  .divider {
+    text-align: center;
+    color: var(--ink-faint);
+    letter-spacing: 1.5em;
+    margin: 56px 0 0;
+    font-size: 14px;
+  }
+
+  /* ========== 响应式（纯 CSS，无 JS 依赖） ========== */
+  @media (max-width: 640px) {
+    .two-col { grid-template-columns: 1fr !important; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    pre { font-size: 12px; padding: 18px; }
+    .series-nav { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= 题头 ================= -->
+<header class="masthead">
+  <div class="kicker">Multi-Agent Systems · Part 04 / Communication &amp; State</div>
+  <h1 class="title">Multi-Agent 通信与状态管理：<br>Agent 之间到底应该共享什么？</h1>
+  <div class="byline">
+    <span>技术深潜</span>
+    <span>约 25 min 阅读</span>
+    <span>2026.09</span>
+  </div>
+</header>
+
+<main class="article">
+
+  <p class="lead">承接上一篇：我们已经解决了「为什么拆 Agent、如何拆 Agent、采用什么编排模式」的问题。这一篇解决 Agent 拆开之后的三个问题——彼此如何协作？状态如何保存？哪些信息可以共享，哪些必须隔离？</p>
+
+  <p>上一篇结束时，很多人以为自己已经拥有了一个 Multi-Agent 系统：几个 Agent、一个 Orchestrator、链路能跑通。</p>
+  <p>但这只是起点。<strong>Agent 拆开的那一刻，你就不再是在写一个程序，而是在设计一个分布式协作系统。</strong> 分布式系统的所有经典难题——通信、状态一致性、上下文传播、并发冲突——会原封不动地出现在你的 Agent 架构里。这一篇，我们逐个拆解。</p>
+
+  <!-- ============ 统计卡片 ============ -->
+  <div class="stat-grid">
+    <div class="stat"><div class="num">3</div><div class="label">通信模式</div></div>
+    <div class="stat"><div class="num">5</div><div class="label">状态层级</div></div>
+    <div class="stat"><div class="num">×6</div><div class="label">上下文逐跳膨胀</div></div>
+    <div class="stat"><div class="num">1</div><div class="label">条铁律：Context 最小化</div></div>
+  </div>
+
+  <!-- ================= 第 1 章 ================= -->
+  <h2><span class="sec-no">01</span>Agent Communication 的三种模式</h2>
+
+  <p>Agent 之间通信，本质上只有三种范式。选型错误不会立刻爆炸，但会在系统规模变大时让你付出十倍代价。</p>
+
+  <div class="card-trio">
+    <div class="card">
+      <span class="tag a">Pattern A</span>
+      <h4>Shared State</h4>
+      <p>A 把结果写入共享空间（Dict / Redis / DB），B 从中读取。简单直接，但所有 Agent 耦合在同一份存储结构上。</p>
+    </div>
+    <div class="card">
+      <span class="tag b">Pattern B</span>
+      <h4>Message Passing</h4>
+      <p>A 构造结构化消息点对点发给 B，B 处理后回执。契约清晰，链路可追踪，是中型系统的主力模式。</p>
+    </div>
+    <div class="card">
+      <span class="tag c">Pattern C</span>
+      <h4>Event Driven</h4>
+      <p>A 只发布事件到总线，不关心谁消费。扩展性最强，但事件扩散后链路追踪与调试成本陡增。</p>
+    </div>
+  </div>
+
+  <!-- ===== 手绘 SVG：三种模式（fix: viewBox 高度 340 -> 375，修复底部裁切） ===== -->
+  <figure class="figure">
+    <svg viewBox="0 0 720 375" xmlns="http://www.w3.org/2000/svg" font-family="PingFang SC, sans-serif">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,1 L9,5 L0,9" fill="none" stroke="#6b6259" stroke-width="1.6" stroke-linecap="round"/>
+        </marker>
+        <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,1 L9,5 L0,9" fill="none" stroke="#c25e3a" stroke-width="1.6" stroke-linecap="round"/>
+        </marker>
+      </defs>
+      <style>
+        .box { fill:#fbf9f5; stroke:#2b2622; stroke-width:1.6; rx:8; }
+        .lbl { font-size:13px; fill:#2b2622; font-weight:600; }
+        .sub { font-size:10.5px; fill:#9c938a; }
+        .flow { stroke:#6b6259; stroke-width:1.5; fill:none; }
+        .title2 { font-size:14px; font-weight:700; fill:#c25e3a; font-family:Georgia, serif; }
+      </style>
+
+      <!-- 模式一：Shared State -->
+      <text x="30" y="36" class="title2">① Shared State　共享状态</text>
+      <rect x="30" y="60" width="110" height="52" rx="9" class="box"/>
+      <text x="85" y="82" text-anchor="middle" class="lbl">Agent A</text>
+      <text x="85" y="100" text-anchor="middle" class="sub">write()</text>
+      <rect x="260" y="55" width="160" height="62" rx="9" class="box" stroke="#3a6ea5"/>
+      <rect x="266" y="61" width="148" height="50" rx="6" fill="#e8eff6"/>
+      <text x="340" y="82" text-anchor="middle" class="lbl">Shared State</text>
+      <text x="340" y="100" text-anchor="middle" class="sub">Dict / Redis / DB</text>
+      <rect x="550" y="60" width="110" height="52" rx="9" class="box"/>
+      <text x="605" y="82" text-anchor="middle" class="lbl">Agent B</text>
+      <text x="605" y="100" text-anchor="middle" class="sub">read()</text>
+      <path d="M142,86 C 200,80 230,84 258,86" class="flow" marker-end="url(#arr)"/>
+      <path d="M422,86 C 470,92 500,84 548,86" class="flow" marker-end="url(#arr)"/>
+
+      <!-- 模式二：Message Passing -->
+      <text x="30" y="166" class="title2">② Message Passing　消息传递</text>
+      <rect x="30" y="188" width="110" height="52" rx="9" class="box"/>
+      <text x="85" y="210" text-anchor="middle" class="lbl">Agent A</text>
+      <text x="85" y="228" text-anchor="middle" class="sub">sender</text>
+      <rect x="260" y="193" width="160" height="42" rx="21" class="box" stroke="#4a7c59" fill="#e7f0ea"/>
+      <text x="340" y="213" text-anchor="middle" class="lbl" font-size="12">Message</text>
+      <text x="340" y="228" text-anchor="middle" class="sub">结构化契约</text>
+      <rect x="550" y="188" width="110" height="52" rx="9" class="box"/>
+      <text x="605" y="210" text-anchor="middle" class="lbl">Agent B</text>
+      <text x="605" y="228" text-anchor="middle" class="sub">receiver</text>
+      <path d="M142,214 C 200,208 228,212 258,214" class="flow" marker-end="url(#arr)"/>
+      <path d="M422,214 C 470,220 500,212 548,214" class="flow" marker-end="url(#arr)"/>
+      <path d="M605,240 C 540,262 160,262 90,244" class="flow" stroke="#c25e3a" stroke-dasharray="5 4" marker-end="url(#arrR)"/>
+      <text x="345" y="270" text-anchor="middle" class="sub" fill="#c25e3a">reply（回执也走契约）</text>
+
+      <!-- 模式三：Event Driven -->
+      <text x="30" y="306" class="title2">③ Event Driven　事件驱动</text>
+      <rect x="30" y="288" width="110" height="52" rx="9" class="box"/>
+      <text x="85" y="310" text-anchor="middle" class="lbl">Agent A</text>
+      <text x="85" y="328" text-anchor="middle" class="sub">publisher</text>
+      <rect x="260" y="295" width="160" height="44" rx="9" class="box" stroke="#c25e3a" fill="#f6e8e1"/>
+      <text x="340" y="315" text-anchor="middle" class="lbl" font-size="12">Event Bus / Queue</text>
+      <text x="340" y="330" text-anchor="middle" class="sub">解耦 · 广播</text>
+      <rect x="550" y="288" width="110" height="34" rx="9" class="box"/>
+      <rect x="550" y="328" width="110" height="34" rx="9" class="box"/>
+      <text x="605" y="310" text-anchor="middle" class="lbl" font-size="12">Agent B</text>
+      <text x="605" y="350" text-anchor="middle" class="lbl" font-size="12">Agent C</text>
+      <path d="M142,304 C 200,298 228,302 258,312" class="flow" marker-end="url(#arr)"/>
+      <path d="M422,306 C 470,296 500,296 548,302" class="flow" marker-end="url(#arr)"/>
+      <path d="M422,322 C 470,338 500,342 548,344" class="flow" marker-end="url(#arr)"/>
+    </svg>
+    <figcaption class="figcap"><b>图 1</b>｜三种通信范式：从「共享存储」到「点对点契约」再到「发布订阅」，解耦程度逐级上升，调试难度也随之上升</figcaption>
+  </figure>
+
+  <h3>六维度对比</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>维度</th><th>Shared State</th><th>Message Passing</th><th>Event Driven</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>延迟</td><td><span class="pill good">低</span> 直接读写</td><td><span class="pill mid">中</span> 点对点投递</td><td><span class="pill bad">较高</span> 经过队列</td></tr>
+        <tr><td>一致性</td><td><span class="pill good">强</span> 共享同一份数据</td><td><span class="pill mid">中</span> 依赖消息可靠性</td><td><span class="pill mid">最终一致</span></td></tr>
+        <tr><td>解耦</td><td><span class="pill bad">差</span> 绑定存储结构</td><td><span class="pill good">好</span> 只依赖协议</td><td><span class="pill good">最好</span> 发布者不知消费者</td></tr>
+        <tr><td>可扩展性</td><td><span class="pill bad">差</span> 存储是瓶颈</td><td><span class="pill mid">中</span></td><td><span class="pill good">高</span> 水平扩展消费者</td></tr>
+        <tr><td>可追踪性</td><td><span class="pill good">好</span> 状态集中</td><td><span class="pill good">好</span> 消息即轨迹</td><td><span class="pill bad">差</span> 事件链路难追</td></tr>
+        <tr><td>调试难度</td><td><span class="pill good">低</span></td><td><span class="pill mid">中</span></td><td><span class="pill bad">高</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="principle">
+    <strong>经验法则：</strong>原型阶段用 Shared State，最快跑通；生产中型系统用 Message Passing，契约清晰；Agent 数量超过 10 个、需要动态扩缩容时，才考虑 Event Driven。一个常见错误是一开始就上 Event Bus，结果调试一个五步任务要翻三遍事件日志——<em>通信复杂度要匹配系统规模。</em>
+  </div>
+
+  <!-- ================= 第 2 章 ================= -->
+  <h2><span class="sec-no">02</span>Agent Contract：全文的重点</h2>
+
+  <p>无论选哪种通信模式，Agent 之间传递的都必须是<em>结构化契约</em>，而不是一段自由文本。</p>
+
+  <div class="card">
+    <div class="card-title">Agent Contract · Schema v1.0</div>
+<pre><span class="c">// 每一条跨 Agent 消息都必须符合这份契约</span>
+{
+  <span class="f">"task_id"</span>:      <span class="s">"task-8f3a21"</span>,      <span class="c">// 哪个任务</span>
+  <span class="f">"trace_id"</span>:     <span class="s">"trace-0c41de"</span>,     <span class="c">// 哪条链路</span>
+  <span class="f">"source_agent"</span>: <span class="s">"researcher"</span>,       <span class="c">// 谁发的</span>
+  <span class="f">"target_agent"</span>: <span class="s">"writer"</span>,           <span class="c">// 发给谁</span>
+  <span class="f">"input"</span>:        { <span class="s">"findings"</span>: [<span class="s">"fact-1"</span>, <span class="s">"fact-2"</span>] },
+  <span class="f">"context"</span>:      { <span class="s">"task_goal"</span>: <span class="s">"写一篇关于 Multi-Agent 的文章"</span> },
+  <span class="f">"constraints"</span>:  { <span class="s">"timeout_ms"</span>: <span class="n">3000</span>, <span class="s">"max_tokens"</span>: <span class="n">1000</span> },
+  <span class="f">"output"</span>:       {},
+  <span class="f">"status"</span>:       <span class="s">"success"</span>,
+  <span class="f">"error"</span>:        <span class="n">null</span>,
+  <span class="f">"metadata"</span>:     { <span class="s">"schema_version"</span>: <span class="s">"1.0"</span>,
+                    <span class="s">"idempotency_key"</span>: <span class="s">"task-8f3a21:writer"</span>,
+                    <span class="s">"attempt"</span>: <span class="n">1</span> }
+}</pre>
+  </div>
+
+  <h3>逐字段深入解释</h3>
+
+  <div class="card">
+    <div class="card-title">七个必须认真对待的字段</div>
+    <p><strong>① Schema Validation（模式校验）</strong> — 消息在发出前和接收后都要校验。缺 <code class="inline">trace_id</code> 的消息宁可拒收，也不要让它进入系统——否则它出问题时你连查都查不到。</p>
+    <p><strong>② Versioning（版本化）</strong> — <code class="inline">schema_version</code> 是契约的生命线。今天 Researcher 输出 <code class="inline">findings: list[str]</code>，明天变成 <code class="inline">list[dict]</code>，Writer 立刻全挂。有了版本号，可以让 Writer 同时兼容 v1 / v2，灰度迁移。</p>
+    <p><strong>③ Idempotency（幂等性）</strong> — <code class="inline">idempotency_key = task_id + agent_name</code>。网络抖动导致重试时，同一个 key 的重复消息只应被处理一次。没有幂等，任何 Retry 机制都是灾难的放大器。</p>
+    <p><strong>④ Error Code（结构化错误码）</strong> — 错误不要写成一句「这个东西我搞不定」。要结构化，下游才能决定重试、降级还是终止：</p>
+<pre>{
+  <span class="f">"error"</span>: {
+    <span class="f">"code"</span>: <span class="s">"E_TIMEOUT"</span>,
+    <span class="f">"retryable"</span>: <span class="n">true</span>,
+    <span class="f">"message"</span>: <span class="s">"LLM call exceeded 3000ms"</span>
+  }
+}</pre>
+    <p><strong>⑤ Timeout（超时）</strong> — 每个契约必须携带 <code class="inline">constraints.timeout_ms</code>。一个没有超时的 Agent 调用，等于把系统的命运交给一个可能永远不返回的黑盒。</p>
+    <p><strong>⑥ Trace ID（追踪）</strong> — <code class="inline">task_id</code> 标识「哪个任务」，<code class="inline">trace_id</code> 标识「哪条链路」。一个任务经过 6 个 Agent，6 条消息共享同一个 trace_id，可观测性全靠它。</p>
+    <p><strong>⑦ Metadata（元数据）</strong> — 重试次数、时间戳、模型版本等运维信息统一放 metadata，不污染业务字段。</p>
+  </div>
+
+  <blockquote>
+    <p><strong>一条必须刻在墙上的原则：</strong>Agent 不应该依赖自然语言作为系统间唯一通信协议。自然语言适合做 Agent 的「思考」和「与人交互」的界面，但作为系统协议，它不可校验、不可靠、昂贵且充满噪声。</p>
+  </blockquote>
+
+  <ul class="cross">
+    <li><strong>不可校验</strong> — 你无法对一段散文做 schema 验证；</li>
+    <li><strong>不可靠</strong> — 「写 800 字」和「写大约 800 字左右」在系统语义上不可控；</li>
+    <li><strong>昂贵且充满噪声</strong> — 把完整上下文写成自然语言传下去，是在烧 Token 买混乱。</li>
+  </ul>
+  <ul class="check">
+    <li><strong>正确姿势</strong>：协议用结构化数据（JSON），自然语言只出现在字段值的内部。</li>
+  </ul>
+
+  <!-- ================= 第 3 章 ================= -->
+  <h2><span class="sec-no">03</span>State 如何设计：五层状态模型</h2>
+
+  <p>把所有状态塞进一个全局对象，是最常见也最致命的设计错误。正确做法是先分层：</p>
+
+  <!-- ===== 手绘 SVG：状态分层 ===== -->
+  <figure class="figure">
+    <svg viewBox="0 0 720 330" xmlns="http://www.w3.org/2000/svg" font-family="PingFang SC, sans-serif">
+      <style>
+        .lname { font-size:13.5px; font-weight:700; fill:#2b2622; }
+        .ldesc { font-size:11px; fill:#6b6259; }
+        .scope { font-size:11px; font-family:JetBrains Mono, monospace; }
+      </style>
+      <text x="30" y="30" font-size="14" font-weight="700" fill="#c25e3a" font-family="Georgia, serif">State 五层模型 —— 由内向外，可见范围递增</text>
+
+      <rect x="270" y="60" width="180" height="42" rx="9" fill="#f6e8e1" stroke="#c25e3a" stroke-width="1.8"/>
+      <text x="360" y="78" text-anchor="middle" class="lname">Agent Local State</text>
+      <text x="360" y="94" text-anchor="middle" class="ldesc">中间草稿 / 内部推理 · 严格私有</text>
+
+      <rect x="210" y="112" width="300" height="42" rx="9" fill="#e7f0ea" stroke="#4a7c59" stroke-width="1.6"/>
+      <text x="360" y="130" text-anchor="middle" class="lname">Task State</text>
+      <text x="360" y="146" text-anchor="middle" class="ldesc">这个任务做到哪了 · 相关 Agent 只读</text>
+
+      <rect x="150" y="164" width="420" height="42" rx="9" fill="#e8eff6" stroke="#3a6ea5" stroke-width="1.6"/>
+      <text x="360" y="182" text-anchor="middle" class="lname">Workflow State</text>
+      <text x="360" y="198" text-anchor="middle" class="ldesc">整个流程走到第几步 · 编排器独占</text>
+
+      <rect x="90" y="216" width="540" height="42" rx="9" fill="#faf0dc" stroke="#a07414" stroke-width="1.6"/>
+      <text x="360" y="234" text-anchor="middle" class="lname">Session State</text>
+      <text x="360" y="250" text-anchor="middle" class="ldesc">这轮会话聊了什么 · 会话内所有 Agent</text>
+
+      <rect x="30" y="268" width="660" height="42" rx="9" fill="#efeae1" stroke="#6b6259" stroke-width="1.6"/>
+      <text x="360" y="286" text-anchor="middle" class="lname">User State</text>
+      <text x="360" y="302" text-anchor="middle" class="ldesc">用户的长期偏好与记忆 · 跨会话持久，经授权访问</text>
+
+      <text x="640" y="81" class="scope" fill="#c25e3a">仅自己</text>
+      <text x="640" y="133" class="scope" fill="#4a7c59">任务内</text>
+      <text x="640" y="185" class="scope" fill="#3a6ea5">编排器</text>
+      <text x="640" y="237" class="scope" fill="#a07414">会话内</text>
+      <text x="640" y="289" class="scope" fill="#6b6259">全系统</text>
+    </svg>
+    <figcaption class="figcap"><b>图 2</b>｜State 五层模型：越靠内越私有，越靠外越需要授权。Research Agent 可以读 Task State，但绝不应该看见 Writer 的 Local State</figcaption>
+  </figure>
+
+  <h3>什么应该共享，什么必须隔离？</h3>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin: 28px 0;" class="two-col">
+    <div class="card" style="margin:0; border-top:3px solid var(--green);">
+      <div class="card-title" style="color:var(--green)">✓ 可以共享</div>
+      <ul class="check" style="margin:0">
+        <li>任务目标</li>
+        <li>全局约束（字数、风格、deadline）</li>
+        <li>前序 Agent 的<b>产出结果</b>（而非过程）</li>
+        <li>用户偏好中与本任务相关的部分</li>
+      </ul>
+    </div>
+    <div class="card" style="margin:0; border-top:3px solid var(--accent);">
+      <div class="card-title" style="color:var(--accent)">✗ 必须隔离</div>
+      <ul class="cross" style="margin:0">
+        <li>Agent 的内部推理过程</li>
+        <li>Agent 的中间草稿</li>
+        <li>工具调用的原始返回</li>
+        <li>其他 Agent 的失败重试细节</li>
+      </ul>
+    </div>
+  </div>
+
+  <blockquote>
+    <p><strong>一条分界线：</strong>Research Agent 可以访问任务上下文，但不应该拥有 Writer Agent 的全部内部状态。理由有三：最小知识原则（Writer 的内部状态对 Research 是噪声）、Token 成本（每多传一段无用状态，下游每次 LLM 调用都在为它付费）、安全边界（内部状态可能包含不该扩散的信息）。</p>
+  </blockquote>
+
+  <!-- ================= 第 4 章 ================= -->
+  <h2><span class="sec-no">04</span>Memory 与 State 的区别</h2>
+
+  <p>这两个概念经常被混用，但它们回答的是完全不同的问题：</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:28px 0;" class="two-col">
+    <div class="card" style="margin:0; text-align:center;">
+      <div style="font-size:34px; font-family:var(--serif); font-weight:700; color:var(--blue);">State</div>
+      <p style="margin:10px 0 0; font-family:var(--serif); font-size:16px;">「系统<em>现在</em>进行到哪一步？」</p>
+      <p style="margin:8px 0 0; font-size:13px; color:var(--ink-faint);">快照 · 结构化 · 可校验</p>
+    </div>
+    <div class="card" style="margin:0; text-align:center;">
+      <div style="font-size:34px; font-family:var(--serif); font-weight:700; color:var(--accent);">Memory</div>
+      <p style="margin:10px 0 0; font-family:var(--serif); font-size:16px;">「系统<em>过去</em>知道什么？」</p>
+      <p style="margin:8px 0 0; font-size:13px; color:var(--ink-faint);">沉积 · 可检索 · 有衰减</p>
+    </div>
+  </div>
+
+  <p>Memory 继续拆分为四种，各自的生命周期和存储方式完全不同：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Memory 类型</th><th>存什么</th><th>例子</th><th>典型存储</th></tr></thead>
+      <tbody>
+        <tr><td>Short-term</td><td>当前任务链条内的信息</td><td>本轮任务的 findings、错误记录</td><td>内存 / Redis</td></tr>
+        <tr><td>Long-term</td><td>跨任务的持久知识</td><td>用户是资深工程师，偏好技术细节</td><td>向量库</td></tr>
+        <tr><td>Conversation</td><td>对话轮次历史</td><td>「上一轮你说要更简洁」</td><td>会话存储</td></tr>
+        <tr><td>Working</td><td>当前推理步的上下文窗口</td><td>本步 Prompt 里塞了什么</td><td>LLM Context</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="principle">
+    一个判断口诀：<strong>需要精确恢复的，用 State；需要模糊回忆的，用 Memory。</strong> 想用向量检索恢复「任务进行到第几步」，一定会出事。
+  </div>
+
+  <!-- ================= 第 5 章 ================= -->
+  <h2><span class="sec-no">05</span>Context 传播：一个生产事故的根源</h2>
+
+  <p>这是 Multi-Agent 系统在生产环境中<em>最隐蔽的杀手</em>。设想一个任务经过 6 个 Agent：</p>
+
+  <!-- ===== 手绘 SVG：Context Flow ===== -->
+  <figure class="figure">
+    <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" font-family="PingFang SC, sans-serif">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,1 L9,5 L0,9" fill="none" stroke="#c25e3a" stroke-width="1.8" stroke-linecap="round"/>
+        </marker>
+      </defs>
+      <text x="30" y="30" font-size="14" font-weight="700" fill="#c25e3a" font-family="Georgia, serif">错误做法：完整上下文逐跳叠加 → Context Explosion</text>
+
+      <g>
+        <circle cx="70"  cy="90" r="22" fill="#e8eff6" stroke="#3a6ea5" stroke-width="1.8"/>
+        <text x="70"  y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#2b2622">A</text>
+        <circle cx="180" cy="90" r="30" fill="#e8eff6" stroke="#3a6ea5" stroke-width="1.8"/>
+        <text x="180" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#2b2622">B</text>
+        <circle cx="305" cy="90" r="40" fill="#faf0dc" stroke="#a07414" stroke-width="1.8"/>
+        <text x="305" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#2b2622">C</text>
+        <circle cx="445" cy="90" r="52" fill="#f6e8e1" stroke="#c25e3a" stroke-width="1.8"/>
+        <text x="445" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#2b2622">D</text>
+        <circle cx="600" cy="90" r="66" fill="#f3d9cd" stroke="#c25e3a" stroke-width="2.2"/>
+        <text x="600" y="96" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2622">E → F</text>
+        <path d="M94,90 Q 135,80 148,88" fill="none" stroke="#c25e3a" stroke-width="1.6" marker-end="url(#arr2)"/>
+        <path d="M212,90 Q 258,80 263,88" fill="none" stroke="#c25e3a" stroke-width="1.6" marker-end="url(#arr2)"/>
+        <path d="M347,90 Q 390,82 391,88" fill="none" stroke="#c25e3a" stroke-width="1.6" marker-end="url(#arr2)"/>
+        <path d="M499,90 Q 548,82 532,88" fill="none" stroke="#c25e3a" stroke-width="1.6" marker-end="url(#arr2)"/>
+        <text x="70"  y="135" text-anchor="middle" font-size="10.5" fill="#9c938a">1 KB</text>
+        <text x="180" y="138" text-anchor="middle" font-size="10.5" fill="#9c938a">+A</text>
+        <text x="305" y="148" text-anchor="middle" font-size="10.5" fill="#9c938a">+A+B</text>
+        <text x="445" y="160" text-anchor="middle" font-size="10.5" fill="#9c938a">+A+B+C</text>
+        <text x="600" y="174" text-anchor="middle" font-size="10.5" fill="#c25e3a">全部历史 ≈ 1 MB</text>
+      </g>
+
+      <line x1="30" y1="192" x2="690" y2="192" stroke="#e6e0d6" stroke-width="1.5" stroke-dasharray="6 5"/>
+
+      <text x="30" y="220" font-size="14" font-weight="700" fill="#4a7c59" font-family="Georgia, serif">正确做法：每跳只传下游完成任务所需的最小上下文</text>
+      <g>
+        <circle cx="70"  cy="258" r="20" fill="#e7f0ea" stroke="#4a7c59" stroke-width="1.8"/>
+        <text x="70"  y="263" text-anchor="middle" font-size="13" font-weight="700">A</text>
+        <circle cx="190" cy="258" r="20" fill="#e7f0ea" stroke="#4a7c59" stroke-width="1.8"/>
+        <text x="190" y="263" text-anchor="middle" font-size="13" font-weight="700">B</text>
+        <circle cx="310" cy="258" r="20" fill="#e7f0ea" stroke="#4a7c59" stroke-width="1.8"/>
+        <text x="310" y="263" text-anchor="middle" font-size="13" font-weight="700">C</text>
+        <circle cx="430" cy="258" r="20" fill="#e7f0ea" stroke="#4a7c59" stroke-width="1.8"/>
+        <text x="430" y="263" text-anchor="middle" font-size="13" font-weight="700">D</text>
+        <circle cx="550" cy="258" r="20" fill="#e7f0ea" stroke="#4a7c59" stroke-width="1.8"/>
+        <text x="550" y="263" text-anchor="middle" font-size="13" font-weight="700">E</text>
+        <circle cx="662" cy="258" r="20" fill="#e7f0ea" stroke="#4a7c59" stroke-width="1.8"/>
+        <text x="662" y="263" text-anchor="middle" font-size="13" font-weight="700">F</text>
+        <path d="M92,252 Q 138,240 168,250" fill="none" stroke="#4a7c59" stroke-width="1.6"/>
+        <path d="M212,252 Q 258,240 288,250" fill="none" stroke="#4a7c59" stroke-width="1.6"/>
+        <path d="M332,252 Q 378,240 408,250" fill="none" stroke="#4a7c59" stroke-width="1.6"/>
+        <path d="M452,252 Q 498,240 528,250" fill="none" stroke="#4a7c59" stroke-width="1.6"/>
+        <path d="M572,252 Q 610,240 640,250" fill="none" stroke="#4a7c59" stroke-width="1.6"/>
+        <text x="366" y="292" text-anchor="middle" font-size="11" fill="#4a7c59">每个 Agent 只拿到「完成当前任务所需要的信息」，大小恒定</text>
+      </g>
+    </svg>
+    <figcaption class="figcap"><b>图 3</b>｜Context Flow 对比：上／错误——上下文像滚雪球逐跳膨胀；下／正确——每跳裁剪，恒定最小</figcaption>
+  </figure>
+
+  <h3>如果不断传完整上下文，会发生什么？</h3>
+  <div class="stat-grid">
+    <div class="stat"><div class="num">↑80%</div><div class="label">Token 浪费<br>（与下游任务无关的历史）</div></div>
+    <div class="stat"><div class="num">↓</div><div class="label">输出质量<br>上下文越长注意力越稀释</div></div>
+    <div class="stat"><div class="num">淹没</div><div class="label">关键约束埋在 50K Token 里被遗忘</div></div>
+    <div class="stat"><div class="num">有损</div><div class="label">事后压缩本身会丢关键信息</div></div>
+  </div>
+
+  <p>五个具体恶果：</p>
+  <ul class="cross">
+    <li><strong>Context Explosion</strong> — A 的上下文是 1KB，到 F 手里可能是 1MB，每一跳都在叠加；</li>
+    <li><strong>Token Cost</strong> — F 的每一次 LLM 调用都在为 A~E 的全部历史付费；</li>
+    <li><strong>Noise</strong> — 上下文越长，模型注意力越稀释，输出质量反而下降；</li>
+    <li><strong>Information Loss（反直觉但真实）</strong> — F 忘记字数限制，不是因为约束没传，而是它埋在 50K Token 里；</li>
+    <li><strong>Context Compression 的陷阱</strong> — 很多人最后被迫加一个「压缩 Agent」，而压缩本身有损，可能恰好丢掉关键信息。</li>
+  </ul>
+
+  <div class="principle">
+    <strong>Context 最小化原则：</strong>让 Agent 只获得完成当前任务所需要的信息。具体操作——① 传递产物，不传递过程（Writer 需要 findings，不需要 Researcher 搜索了哪些 URL）；② 按需裁剪，由编排器决定每个下游能看到哪些 context key；③ 大文件传引用（ID / URI）代替拷贝；④ timeout、字数、schema 这类硬约束<em>永远直传</em>，放在 <code class="inline">constraints</code> 里，不参与压缩。
+  </div>
+
+  <!-- ================= 第 6 章 ================= -->
+  <h2><span class="sec-no">06</span>并发与状态一致性</h2>
+
+  <p>只要允许并行（如上一篇的 Parallel 模式），就一定会遇到：<strong>两个 Agent 同时修改同一个 State 怎么办？</strong> 例如两个 Writer 分支并行写稿，最后都要写 <code class="inline">article_draft</code> 这个 key。</p>
+
+  <!-- ===== 手绘 SVG：乐观锁 ===== -->
+  <figure class="figure">
+    <svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg" font-family="PingFang SC, sans-serif">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,1 L9,5 L0,9" fill="none" stroke="#6b6259" stroke-width="1.6" stroke-linecap="round"/>
+        </marker>
+        <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,1 L9,5 L0,9" fill="none" stroke="#c25e3a" stroke-width="1.8" stroke-linecap="round"/>
+        </marker>
+        <marker id="arr5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,1 L9,5 L0,9" fill="none" stroke="#4a7c59" stroke-width="1.8" stroke-linecap="round"/>
+        </marker>
+      </defs>
+      <text x="30" y="32" font-size="14" font-weight="700" fill="#c25e3a" font-family="Georgia, serif">Optimistic Lock：写入时校验版本号，冲突显式暴露而非静默覆盖</text>
+
+      <rect x="30" y="60" width="130" height="50" rx="9" fill="#fbf9f5" stroke="#2b2622" stroke-width="1.6"/>
+      <text x="95" y="82" text-anchor="middle" font-size="13" font-weight="600">Writer A</text>
+      <text x="95" y="100" text-anchor="middle" font-size="10.5" fill="#9c938a">读到 v1</text>
+
+      <rect x="30" y="150" width="130" height="50" rx="9" fill="#fbf9f5" stroke="#2b2622" stroke-width="1.6"/>
+      <text x="95" y="172" text-anchor="middle" font-size="13" font-weight="600">Writer B</text>
+      <text x="95" y="190" text-anchor="middle" font-size="10.5" fill="#9c938a">也读到 v1</text>
+
+      <rect x="300" y="95" width="170" height="70" rx="10" fill="#efeae1" stroke="#6b6259" stroke-width="1.8"/>
+      <text x="385" y="122" text-anchor="middle" font-size="13.5" font-weight="700">StateStore</text>
+      <text x="385" y="142" text-anchor="middle" font-size="11" fill="#6b6259">article_draft = v1</text>
+      <text x="385" y="157" text-anchor="middle" font-size="10.5" fill="#9c938a">每次写入 version + 1</text>
+
+      <path d="M162,80 C 220,72 260,90 296,105" fill="none" stroke="#4a7c59" stroke-width="1.8" marker-end="url(#arr5)"/>
+      <text x="228" y="72" text-anchor="middle" font-size="11" fill="#4a7c59" font-weight="600">write(v1) → 成功，version→2 ✓</text>
+      <path d="M162,180 C 220,188 260,168 296,155" fill="none" stroke="#c25e3a" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arr4)"/>
+      <text x="228" y="212" text-anchor="middle" font-size="11" fill="#c25e3a" font-weight="600">write(v1) → 拒绝 ✗ ConflictError</text>
+      <text x="228" y="228" text-anchor="middle" font-size="10.5" fill="#9c938a">→ 触发 Retry / Merge / Human in the Loop</text>
+
+      <path d="M470,130 C 510,130 530,128 560,128" fill="none" stroke="#6b6259" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <rect x="565" y="105" width="125" height="46" rx="9" fill="#e7f0ea" stroke="#4a7c59" stroke-width="1.6"/>
+      <text x="627" y="125" text-anchor="middle" font-size="11.5" font-weight="600" fill="#4a7c59">草稿A 保留</text>
+      <text x="627" y="142" text-anchor="middle" font-size="10.5" fill="#4a7c59">v2 · 无静默覆盖</text>
+    </svg>
+    <figcaption class="figcap"><b>图 4</b>｜乐观锁工作方式：Writer B 基于过期版本写入被显式拒绝，冲突被暴露出来交给上层策略处理</figcaption>
+  </figure>
+
+  <h3>五种武器</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>机制</th><th>原理</th><th>适用时机</th></tr></thead>
+      <tbody>
+        <tr><td>Version</td><td>每个状态条目带版本号，写操作必须基于自己读到的版本——这是一切的基础</td><td>默认启用</td></tr>
+        <tr><td>Optimistic Lock</td><td>写入时校验 <code class="inline">expected_version == current_version</code>，不匹配即拒绝</td><td>Agent 间冲突本质低频，先乐观，真频繁再升级</td></tr>
+        <tr><td>Event Sourcing</td><td>不存「当前状态」只存「事件序列」，状态由事件重放得出；天然可回放、可审计</td><td>大规模系统再引入，实现复杂度高</td></tr>
+        <tr><td>State Snapshot</td><td>关键步骤保存快照，出问题时回滚到上一个一致点——工程上的「后悔药」</td><td>所有长流程任务</td></tr>
+        <tr><td>Conflict Resolution</td><td>Last Write Wins（各写各 key）/ Merge（交给 Mediator Agent 合并）/ Human in the Loop（高价值内容升级给人）</td><td>冲突真实发生后的三种出路</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ================= 第 7 章 ================= -->
+  <h2><span class="sec-no">07</span>代码实现：Contract 驱动的协作</h2>
+
+  <p>以下代码已验证可运行。实现了 <code class="inline">Task</code>、<code class="inline">AgentMessage</code>（Contract 载体）、<code class="inline">AgentState</code>、<code class="inline">StateStore</code>（乐观锁），以及三个 Agent 通过 Contract 端到端协作：</p>
+
+<pre><span class="k">import</span> json, uuid, threading
+<span class="k">from</span> enum <span class="k">import</span> Enum
+<span class="k">from</span> dataclasses <span class="k">import</span> dataclass, field
+<span class="k">from</span> typing <span class="k">import</span> Any, Optional
+
+<span class="c"># ============ 0. Task：任务实体 ============</span>
+<span class="k">class</span> <span class="f">TaskStatus</span>(str, Enum):
+    PENDING = <span class="s">"pending"</span>; RUNNING = <span class="s">"running"</span>
+    SUCCESS = <span class="s">"success"</span>; FAILED = <span class="s">"failed"</span>
+
+<span class="f">@dataclass</span>
+<span class="k">class</span> <span class="f">Task</span>:
+    task_id: str
+    trace_id: str
+    goal: str
+    status: TaskStatus = TaskStatus.PENDING
+
+<span class="c"># ============ 1. AgentMessage：Agent Contract 的载体 ============</span>
+<span class="f">@dataclass</span>
+<span class="k">class</span> <span class="f">AgentMessage</span>:
+    task_id: str
+    trace_id: str
+    source_agent: str
+    target_agent: str
+    input: dict = field(default_factory=dict)
+    context: dict = field(default_factory=dict)       <span class="c"># 最小化上下文</span>
+    constraints: dict = field(default_factory=dict)   <span class="c"># timeout / max_tokens</span>
+    output: dict = field(default_factory=dict)
+    status: str = <span class="s">"success"</span>
+    error: Optional[dict] = <span class="n">None</span>
+    metadata: dict = field(default_factory=dict)      <span class="c"># schema_version / idempotency_key</span>
+
+    <span class="k">def</span> <span class="f">validate</span>(self):
+        <span class="s">"""Schema Validation：必填字段校验，不合格宁拒收"""</span>
+        required = [<span class="s">"task_id"</span>, <span class="s">"trace_id"</span>, <span class="s">"source_agent"</span>, <span class="s">"target_agent"</span>]
+        missing = [k <span class="k">for</span> k <span class="k">in</span> required <span class="k">if not</span> getattr(self, k)]
+        <span class="k">if</span> missing:
+            <span class="k">raise</span> ValueError(<span class="s">f"Contract validation failed, missing: {missing}"</span>)
+        self.metadata.setdefault(<span class="s">"schema_version"</span>, <span class="s">"1.0"</span>)
+        <span class="k">return</span> <span class="n">True</span>
+
+<span class="c"># ============ 2. AgentState：Agent 本地状态（严格私有） ============</span>
+<span class="k">class</span> <span class="f">AgentState</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, agent_name: str):
+        self.agent_name = agent_name
+        self._state, self._version = {}, <span class="n">0</span>
+        self._lock = threading.Lock()
+
+    <span class="k">def</span> <span class="f">update</span>(self, key: str, value: Any):
+        <span class="k">with</span> self._lock:
+            self._state[key] = value
+            self._version += <span class="n">1</span>
+
+    <span class="k">def</span> <span class="f">snapshot</span>(self) -> dict:
+        <span class="s">"""对外只暴露快照副本，绝不泄漏可变引用 —— 这就是「隔离」的代码体现"""</span>
+        <span class="k">with</span> self._lock:
+            <span class="k">return</span> {<span class="s">"agent"</span>: self.agent_name,
+                    <span class="s">"version"</span>: self._version, <span class="s">"state"</span>: dict(self._state)}
+
+<span class="c"># ============ 3. StateStore：共享状态 + 乐观锁 ============</span>
+<span class="k">class</span> <span class="f">ConflictError</span>(Exception): ...
+
+<span class="k">class</span> <span class="f">StateStore</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self):
+        self._data, self._versions = {}, {}
+        self._lock = threading.Lock()
+
+    <span class="k">def</span> <span class="f">write</span>(self, key, value, expect_version: Optional[<span class="k">int</span>] = <span class="n">None</span>):
+        <span class="k">with</span> self._lock:
+            cur = self._versions.get(key, <span class="n">0</span>)
+            <span class="k">if</span> expect_version <span class="k">is not None and</span> expect_version != cur:
+                <span class="k">raise</span> ConflictError(
+                    <span class="s">f"conflict on '{key}': expected v{expect_version}, actual v{cur}"</span>)
+            self._data[key] = value
+            self._versions[key] = cur + <span class="n">1</span>
+            <span class="k">return</span> self._versions[key]
+
+    <span class="k">def</span> <span class="f">read</span>(self, key):    <span class="k">return</span> self._data.get(key)
+    <span class="k">def</span> <span class="f">version</span>(self, key): <span class="k">return</span> self._versions.get(key, <span class="n">0</span>)
+
+<span class="c"># ============ 4. BaseAgent ============</span>
+<span class="k">class</span> <span class="f">BaseAgent</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, name: str, store: StateStore):
+        self.name, self.store = name, store
+        self.local_state = AgentState(name)
+
+    <span class="k">def</span> <span class="f">handle</span>(self, msg: AgentMessage) -> AgentMessage:
+        <span class="k">raise</span> NotImplementedError
+
+    <span class="k">def</span> <span class="f">reply</span>(self, req: AgentMessage, output: dict) -> AgentMessage:
+        <span class="s">"""构造符合 Contract 的回执，透传裁剪后的最小上下文"""</span>
+        <span class="k">return</span> AgentMessage(
+            task_id=req.task_id, trace_id=req.trace_id,
+            source_agent=self.name, target_agent=req.source_agent,
+            input=req.input, context=req.context,
+            constraints=req.constraints, output=output,
+            metadata={**req.metadata,
+                      <span class="s">"idempotency_key"</span>: <span class="s">f"{req.task_id}:{self.name}"</span>})
+
+<span class="c"># ============ 5. 具体 Agent ============</span>
+<span class="k">class</span> <span class="f">RouterAgent</span>(BaseAgent):
+    <span class="s">"""负责 Context 最小化裁剪 —— Context 最小化原则的执行者"""</span>
+    ALLOWED_KEYS = {<span class="s">"task_goal"</span>, <span class="s">"topic"</span>}
+
+    <span class="k">def</span> <span class="f">handle</span>(self, msg: AgentMessage) -> AgentMessage:
+        msg.context = {k: v <span class="k">for</span> k, v <span class="k">in</span> msg.context.items()
+                       <span class="k">if</span> k <span class="k">in</span> self.ALLOWED_KEYS}
+        self.local_state.update(<span class="s">"forwarded"</span>, msg.task_id)
+        <span class="k">return</span> msg
+
+<span class="k">class</span> <span class="f">ResearchAgent</span>(BaseAgent):
+    <span class="k">def</span> <span class="f">handle</span>(self, msg: AgentMessage) -> AgentMessage:
+        topic = msg.context.get(<span class="s">"topic"</span>)   <span class="c"># 只能看到被授权的最小上下文</span>
+        self.local_state.update(<span class="s">"last_topic"</span>, topic)
+        <span class="k">return</span> self.reply(msg, {<span class="s">"topic"</span>: topic,
+                                <span class="s">"findings"</span>: [<span class="s">"fact-1"</span>, <span class="s">"fact-2"</span>]})
+
+<span class="k">class</span> <span class="f">WriterAgent</span>(BaseAgent):
+    <span class="k">def</span> <span class="f">handle</span>(self, msg: AgentMessage) -> AgentMessage:
+        findings = msg.input.get(<span class="s">"findings"</span>, [])
+        cur = self.local_state.snapshot()[<span class="s">"state"</span>].get(<span class="s">"draft_count"</span>, <span class="n">0</span>)
+        self.local_state.update(<span class="s">"draft_count"</span>, cur + <span class="n">1</span>)
+        <span class="k">return</span> self.reply(msg,
+            {<span class="s">"article"</span>: <span class="s">f"基于 {len(findings)} 条素材生成的文章草稿"</span>})
+
+<span class="c"># ============ 6. 端到端协作演示 ============</span>
+store = StateStore()
+router = RouterAgent(<span class="s">"router"</span>, store)
+researcher = ResearchAgent(<span class="s">"researcher"</span>, store)
+writer = WriterAgent(<span class="s">"writer"</span>, store)
+
+trace_id = str(uuid.uuid4())[:<span class="n">8</span>]
+task = Task(task_id=str(uuid.uuid4())[:<span class="n">8</span>], trace_id=trace_id,
+            goal=<span class="s">"写一篇关于 Multi-Agent 的文章"</span>)
+
+full_context = {                      <span class="c"># 原始上下文很大，充满噪声</span>
+    <span class="s">"task_goal"</span>: task.goal,
+    <span class="s">"topic"</span>: <span class="s">"Multi-Agent State Management"</span>,
+    <span class="s">"user_history"</span>: [<span class="s">"x"</span> * <span class="n">200</span>],      <span class="c"># 噪音</span>
+    <span class="s">"raw_docs"</span>: [<span class="s">"y"</span> * <span class="n">500</span>],          <span class="c"># 噪音</span>
+}
+
+<span class="c"># A. Orchestrator -> Router：裁剪上下文</span>
+msg = AgentMessage(
+    task_id=task.task_id, trace_id=task.trace_id,
+    source_agent=<span class="s">"orchestrator"</span>, target_agent=<span class="s">"router"</span>,
+    context=full_context,
+    constraints={<span class="s">"timeout_ms"</span>: <span class="n">3000</span>, <span class="s">"max_tokens"</span>: <span class="n">1000</span>},
+    metadata={<span class="s">"idempotency_key"</span>: <span class="s">f"{task.task_id}:router"</span>})
+msg.validate()
+msg = router.handle(msg)
+<span class="k">assert</span> set(msg.context.keys()) == {<span class="s">"task_goal"</span>, <span class="s">"topic"</span>}  <span class="c"># 噪声已被裁掉 ✓</span>
+
+<span class="c"># B. Router -> Researcher</span>
+msg.target_agent = <span class="s">"researcher"</span>
+msg = researcher.handle(msg)
+
+<span class="c"># C. Researcher -> Writer：只透传 findings</span>
+msg.target_agent = <span class="s">"writer"</span>
+msg.input = msg.output
+msg = writer.handle(msg)
+print(json.dumps(msg.output, ensure_ascii=<span class="n">False</span>))
+
+<span class="c"># D. 并发冲突：两个 Writer 同时写同一个 key（乐观锁生效）</span>
+<span class="k">def</span> <span class="f">agent_write</span>(name, value, expect_v):
+    <span class="k">try</span>:
+        v = store.write(<span class="s">"article_draft"</span>, value, expect_version=expect_v)
+        print(<span class="s">f"{name} 写入成功, version={v}"</span>)
+    <span class="k">except</span> ConflictError <span class="k">as</span> e:
+        print(<span class="s">f"{name} 写入失败 -> {e}"</span>)
+
+store.write(<span class="s">"article_draft"</span>, <span class="s">"v0草稿"</span>)
+cur = store.version(<span class="s">"article_draft"</span>)
+t1 = threading.Thread(target=agent_write, args=(<span class="s">"writer-1"</span>, <span class="s">"草稿A"</span>, cur))
+t2 = threading.Thread(target=agent_write, args=(<span class="s">"writer-2"</span>, <span class="s">"草稿B"</span>, cur))
+t1.start(); t2.start(); t1.join(); t2.join()</pre>
+
+  <div class="card">
+    <div class="card-title">运行输出</div>
+<pre>{<span class="s">"article"</span>: <span class="s">"基于 2 条素材生成的文章草稿"</span>}
+writer-1 写入成功, version=<span class="n">2</span>
+writer-2 写入失败 -> conflict on <span class="s">'article_draft'</span>: expected v<span class="n">1</span>, actual v<span class="n">2</span></pre>
+  </div>
+
+  <div class="principle">
+    注意三个设计点：① <strong>RouterAgent 演示了 Context 最小化</strong>——噪声上下文在进入业务 Agent 前就被裁掉；② <strong>AgentState 的 <code class="inline">snapshot()</code> 只返回副本</strong>——本地状态对外没有可变引用泄漏，这就是「隔离」的代码体现；③ <strong>StateStore 的乐观锁</strong>——writer-2 基于过期版本写入被拒绝，冲突被显式暴露而不是静默覆盖。
+  </div>
+
+  <div class="divider">· · ·</div>
+
+  <!-- ================= 第 8 章 ================= -->
+  <h2><span class="sec-no">08</span>选型总结</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模式</th><th>优点</th><th>缺点</th><th>适用场景</th></tr></thead>
+      <tbody>
+        <tr><td>Shared State</td><td><span class="pill good">简单直观</span> 易调试</td><td><span class="pill bad">强耦合</span> 扩展性差</td><td>小型系统 / 原型</td></tr>
+        <tr><td>Message Passing</td><td><span class="pill good">解耦</span> 契约清晰可追踪</td><td><span class="pill mid">协议设计复杂</span></td><td>中型生产系统</td></tr>
+        <tr><td>Event Driven</td><td><span class="pill good">扩展性高</span> 支持动态拓扑</td><td><span class="pill bad">调试复杂</span> 最终一致</td><td>大型系统</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>再把这一篇的四个核心决策浓缩成一句话：</p>
+
+  <div class="stat-grid">
+    <div class="card" style="margin:0; text-align:center;">
+      <div style="font-size:12px; color:var(--ink-faint); font-family:var(--mono); margin-bottom:8px;">AGENT 之间传什么？</div>
+      <div style="font-family:var(--serif); font-weight:700; font-size:16px;">结构化 Contract<br>而非自然语言</div>
+    </div>
+    <div class="card" style="margin:0; text-align:center;">
+      <div style="font-size:12px; color:var(--ink-faint); font-family:var(--mono); margin-bottom:8px;">状态怎么分？</div>
+      <div style="font-family:var(--serif); font-weight:700; font-size:16px;">五层模型<br>能私有的绝不共享</div>
+    </div>
+    <div class="card" style="margin:0; text-align:center;">
+      <div style="font-size:12px; color:var(--ink-faint); font-family:var(--mono); margin-bottom:8px;">CONTEXT 怎么传？</div>
+      <div style="font-family:var(--serif); font-weight:700; font-size:16px;">最小化原则<br>只传下游所需</div>
+    </div>
+    <div class="card" style="margin:0; text-align:center;">
+      <div style="font-size:12px; color:var(--ink-faint); font-family:var(--mono); margin-bottom:8px;">并发冲突怎么办？</div>
+      <div style="font-family:var(--serif); font-weight:700; font-size:16px;">版本号 + 乐观锁<br>冲突显式暴露</div>
+    </div>
+  </div>
+
+  <!-- ================= 下一篇预告 ================= -->
+  <div class="next-up">
+    <div class="kicker">Next · Part 05 / Reliability</div>
+    <h3>通信解决「说得上话」，可靠性解决「靠得住」</h3>
+    <p>到这里，你的 Agent 已经能通信、能共享状态、能通过 Contract 精确协作了。但请清醒一点：<strong>Agent 能通信、能共享状态，并不意味着系统可靠。</strong></p>
+    <p>真实的 LLM 系统里，失败是常态而非异常：模型输出超时、Tool 调用抛异常、API 限流、某个分支 Agent 挂了而其他分支已经成功……这些时刻，你精心设计的通信契约只有一个问题要回答——<em>失败了，然后呢？</em></p>
+    <p>下一篇进入 Multi-Agent 真正困难的部分：<strong>Agent 超时怎么办？Tool 调用失败怎么办？部分 Agent 成功怎么办？如何设计 Retry、Fallback 和降级？</strong></p>
+  </div>
+
+</main>
+
+<!-- ===== 系列导航（发布前把 href 换成你站内前后两篇的 URL） ===== -->
+<nav class="series-nav">
+  <a href="/blog/multi-agent-03-orchestration">
+    <span class="dir">← 上一篇 · PART 03</span>
+    Agent 拆分与编排模式
+  </a>
+  <a href="/blog/multi-agent-05-reliability">
+    <span class="dir">下一篇 · PART 05 →</span>
+    超时、重试、Fallback 与降级
+  </a>
+</nav>
+
+</body>
+</html>
