@@ -1956,6 +1956,25 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine {
   --pass-soft: color-mix(in srgb, var(--pass, var(--josh-color-success-500)) 22%, var(--josh-color-background)) !important;
   --fail-soft: color-mix(in srgb, var(--fail, #b03a3a) 22%, var(--josh-color-background)) !important;
   --paper-alt: color-mix(in srgb, var(--josh-color-cloud-300) 40%, var(--josh-color-background)) !important;
+  --paper-card: color-mix(in srgb, var(--josh-color-cloud-300) 72%, var(--josh-color-background)) !important;
+  --card-warm: color-mix(in srgb, var(--josh-color-cloud-300) 65%, var(--josh-color-background)) !important;
+  --card-alt: color-mix(in srgb, var(--josh-color-cloud-300) 60%, var(--josh-color-background)) !important;
+  --navy-deep: var(--josh-color-text) !important;
+  --navy: color-mix(in srgb, var(--accent, var(--josh-color-primary)) 45%, #ffffff) !important;
+  --navy-tint: color-mix(in srgb, var(--josh-color-cloud-300) 72%, var(--josh-color-background)) !important;
+  --terra-tint: color-mix(in srgb, var(--terra, #b5543a) 22%, var(--josh-color-background)) !important;
+  --terra-soft: color-mix(in srgb, var(--terra, #b85c4a) 22%, var(--josh-color-background)) !important;
+  --gold-soft: color-mix(in srgb, var(--gold, #9a7b3f) 22%, var(--josh-color-background)) !important;
+  --sand-soft: color-mix(in srgb, var(--sand, #b98a2f) 22%, var(--josh-color-background)) !important;
+  --line-strong: color-mix(in srgb, var(--josh-color-text) 28%, transparent) !important;
+}
+
+/* Hero / masthead: drafts use white gradients — strip so light ink tokens stay readable */
+html.josh-site.dark .josh-prose .josh-html-magazine :is(.hero, .masthead, header.hero),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(.hero, .masthead, header.hero) {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: color-mix(in srgb, var(--josh-color-text) 16%, transparent);
 }
 
 /* Body text that drafts hard-code near-black — leave accent/status alone.
@@ -1963,12 +1982,16 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine {
 html.josh-site.dark .josh-prose .josh-html-magazine :is(
   p, li, td, dd, dt, blockquote, figcaption,
   .fig-cap, .flow-caption, .byline, .meta, .meta-info, .subtitle, .deck, .lead-deck, .lead,
-  .abstract p, .svg-caption, .flow-text, .anti p, .label, .stat-caption, .note, .card-title
+  .abstract p, .svg-caption, .flow-text, .anti p, .label, .stat-caption, .note, .card-title,
+  .post-subtitle, .sec-sub, .toc a, .blist .t, .blist .d, .stat .lab, .stat .des, .figcap,
+  .formula-note, h3 .en, .mini p, .mini li, .qa .a, .card .d, caption
 ),
 html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
   p, li, td, dd, dt, blockquote, figcaption,
   .fig-cap, .flow-caption, .byline, .meta, .meta-info, .subtitle, .deck, .lead-deck, .lead,
-  .abstract p, .svg-caption, .flow-text, .anti p, .label, .stat-caption, .note, .card-title
+  .abstract p, .svg-caption, .flow-text, .anti p, .label, .stat-caption, .note, .card-title,
+  .post-subtitle, .sec-sub, .toc a, .blist .t, .blist .d, .stat .lab, .stat .des, .figcap,
+  .formula-note, h3 .en, .mini p, .mini li, .qa .a, .card .d, caption
 ) {
   color: var(--josh-color-text) !important;
 }
@@ -2031,7 +2054,22 @@ html.josh-site.dark .josh-prose .josh-html-magazine :is(
   .box,
   .anti,
   .flow-text,
-  table
+  table,
+  figure,
+  .figure,
+  .blist li,
+  .lead-card,
+  .series-bar,
+  .post-header,
+  .qa,
+  .mini,
+  .formula-card,
+  .next-post,
+  blockquote,
+  .co-warn,
+  .co-info,
+  .co-good,
+  .case
 ),
 html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
   .card,
@@ -2078,7 +2116,22 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
   .box,
   .anti,
   .flow-text,
-  table
+  table,
+  figure,
+  .figure,
+  .blist li,
+  .lead-card,
+  .series-bar,
+  .post-header,
+  .qa,
+  .mini,
+  .formula-card,
+  .next-post,
+  blockquote,
+  .co-warn,
+  .co-info,
+  .co-good,
+  .case
 ) {
   background: color-mix(in srgb, var(--josh-color-cloud-300) 72%, var(--josh-color-background)) !important;
   border-color: color-mix(in srgb, var(--josh-color-text) 16%, transparent);
@@ -2086,9 +2139,90 @@ html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
 }
 
 /* Soft callout body copy must follow surface (overrides draft #22456b etc.) */
-html.josh-site.dark .josh-prose .josh-html-magazine :is(.tech-note, .tnote, .callout, .card, .note, .insight, .warn, .danger, .abstract, .lead-quote, .highlight-box, .case-study, .concept-card) :is(p, li, span, div:not([class]), strong),
-html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(.tech-note, .tnote, .callout, .card, .note, .insight, .warn, .danger, .abstract, .lead-quote, .highlight-box, .case-study, .concept-card) :is(p, li, span, div:not([class]), strong) {
+html.josh-site.dark .josh-prose .josh-html-magazine :is(
+  .tech-note, .tnote, .callout, .card, .note, .insight, .warn, .danger, .abstract,
+  .lead-quote, .highlight-box, .case-study, .concept-card, .lead-card, .co-warn,
+  .co-info, .co-good, .case, .qa, .mini, .next-post, blockquote, .blist li, figure, .figure
+) :is(p, li, span, div:not([class]), strong, .ttl, .lab, .des, .cap, .t, .d),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(
+  .tech-note, .tnote, .callout, .card, .note, .insight, .warn, .danger, .abstract,
+  .lead-quote, .highlight-box, .case-study, .concept-card, .lead-card, .co-warn,
+  .co-info, .co-good, .case, .qa, .mini, .next-post, blockquote, .blist li, figure, .figure
+) :is(p, li, span, div:not([class]), strong, .ttl, .lab, .des, .cap, .t, .d) {
   color: var(--josh-color-text) !important;
+}
+
+/* Drafts hard-code near-black body copy (#31353d, #3a352b) — lift on dark bg */
+html.josh-site.dark .josh-prose .josh-html-magazine :is(p, li, ul.plain li, ol.steps li, td, .post-meta, .byline),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(p, li, ul.plain li, ol.steps li, td, .post-meta, .byline) {
+  color: var(--josh-color-text) !important;
+}
+
+html.josh-site.dark .josh-prose .josh-html-magazine tbody tr:hover,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine tbody tr:hover {
+  background-color: color-mix(in srgb, var(--josh-color-cloud-300) 55%, var(--josh-color-background)) !important;
+}
+
+/* Inline code chips with hard-coded cream fills */
+html.josh-site.dark .josh-prose .josh-html-magazine :is(p, li, td) code,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(p, li, td) code {
+  background: color-mix(in srgb, var(--josh-color-cloud-300) 55%, var(--josh-color-background)) !important;
+  color: color-mix(in srgb, var(--terra, var(--accent, var(--josh-color-primary))) 35%, #ffffff) !important;
+  border-color: color-mix(in srgb, var(--josh-color-text) 18%, transparent) !important;
+}
+
+/* Meta chips / tags that keep white or navy-tint fills */
+html.josh-site.dark .josh-prose .josh-html-magazine .meta span,
+html.josh-site.dark .josh-prose .josh-html-magazine .meta .tag,
+html.josh-site.dark .josh-prose .josh-html-magazine .tag:not(.yes):not(.no):not(.part),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .meta span,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .meta .tag,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .tag:not(.yes):not(.no):not(.part) {
+  background: color-mix(in srgb, var(--josh-color-cloud-300) 55%, var(--josh-color-background)) !important;
+  border-color: color-mix(in srgb, var(--josh-color-text) 18%, transparent) !important;
+  color: color-mix(in srgb, var(--accent, var(--josh-color-primary)) 45%, #ffffff) !important;
+}
+
+/* Stat numerals / pills that keep draft --accent on dark cards */
+html.josh-site.dark .josh-prose .josh-html-magazine .stat .num,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .stat .num {
+  color: color-mix(in srgb, var(--accent, var(--josh-color-primary)) 45%, #ffffff) !important;
+}
+
+html.josh-site.dark .josh-prose .josh-html-magazine .stat.bad .num,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .stat.bad .num {
+  color: color-mix(in srgb, var(--warn, var(--josh-color-warning-500)) 45%, #ffffff) !important;
+}
+
+html.josh-site.dark .josh-prose .josh-html-magazine :is(.pill.yes, .pill.mid, .pill.no),
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine :is(.pill.yes, .pill.mid, .pill.no) {
+  border-color: color-mix(in srgb, var(--josh-color-text) 18%, transparent) !important;
+}
+
+html.josh-site.dark .josh-prose .josh-html-magazine .pill.yes,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .pill.yes {
+  background: color-mix(in srgb, var(--accent, var(--josh-color-primary)) 22%, var(--josh-color-background)) !important;
+  color: color-mix(in srgb, var(--accent, var(--josh-color-primary)) 45%, #ffffff) !important;
+}
+
+html.josh-site.dark .josh-prose .josh-html-magazine .pill.no,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .pill.no {
+  background: color-mix(in srgb, var(--warn, var(--josh-color-warning-500)) 22%, var(--josh-color-background)) !important;
+  color: color-mix(in srgb, var(--warn, var(--josh-color-warning-500)) 45%, #ffffff) !important;
+}
+
+html.josh-site.dark .josh-prose .josh-html-magazine .pill.mid,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine .pill.mid {
+  background: color-mix(in srgb, var(--gold, var(--josh-color-warning-500)) 22%, var(--josh-color-background)) !important;
+  color: color-mix(in srgb, var(--gold, var(--josh-color-warning-500)) 45%, #ffffff) !important;
+}
+
+/* table.data uses background:var(--accent) + #fff labels — keep ink band */
+html.josh-site.dark .josh-prose .josh-html-magazine table.data th,
+html.josh-site[data-color-mode='dark'] .josh-prose .josh-html-magazine table.data th {
+  background-color: #1c2430 !important;
+  color: #f4f2ed !important;
+  border-color: color-mix(in srgb, #f4f2ed 14%, transparent) !important;
 }
 
 html.josh-site.dark .josh-prose .josh-html-magazine tbody tr:nth-child(even),
